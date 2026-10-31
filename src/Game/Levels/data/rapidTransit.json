@@ -2,7 +2,7 @@
   "id": "rapidTransit",
   "sceneWidth": 1380,
   "sceneHeight": 752,
-  "cameraZoom": 1.37,
+  "cameraZoom": 1,
   "grid": {
     "columns": 44,
     "rows": 22,

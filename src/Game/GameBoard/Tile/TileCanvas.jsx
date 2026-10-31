@@ -19,6 +19,7 @@ const TILE_LOOK = {
   hoverFadeEndTiles: 7,
   // a hard line along the edge of the walkable tiles, which comes into view as the player gets close
   perimeterColor: "255, 255, 255", // r, g, b: the same on every level
+  perimeterOpacity: 0.8, // at its strongest, right beside the player
   perimeterWidth: 4, // in screen pixels
   perimeterFullTiles: 2,
   perimeterHiddenTiles: 7,
@@ -284,7 +285,7 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom }) => {
     const drawPerimeter = ({ x, y }) => {
       const { perimeterColor, perimeterFullTiles, perimeterHiddenTiles } = TILE_LOOK;
       const fade = ctx.createRadialGradient(x, y, perimeterFullTiles * tileSize, x, y, perimeterHiddenTiles * tileSize);
-      fade.addColorStop(0, `rgba(${perimeterColor}, 1)`);
+      fade.addColorStop(0, `rgba(${perimeterColor}, ${TILE_LOOK.perimeterOpacity})`);
       fade.addColorStop(1, `rgba(${perimeterColor}, 0)`);
       ctx.strokeStyle = fade;
       ctx.lineWidth = TILE_LOOK.perimeterWidth / zoom;

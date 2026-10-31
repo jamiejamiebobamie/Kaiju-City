@@ -141,16 +141,18 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
     return camera;
   }, [level, frame]);
 
-  const isWideShot = gameManager.getIsWideShot();
+  // walking scenes are made to be seen whole
+  const getIsWholeLevelInView = () => level.isWalkingLevel || gameManager.getIsWideShot();
+  const isWideShot = getIsWholeLevelInView();
   const camera = isWideShot ? wideCamera : closeCamera;
 
   useEffect(() => {
-    let wasWideShot = gameManager.getIsWideShot();
+    let wasWideShot = getIsWholeLevelInView();
     let pullEndMs = 0;
     const moveCamera = () => {
       const player = gameManager.getPieces()[0];
       if (!player || !worldRef.current) return;
-      const isWide = gameManager.getIsWideShot();
+      const isWide = getIsWholeLevelInView();
       const nowMs = performance.now();
       if (isWide != wasWideShot) {
         wasWideShot = isWide;
@@ -205,6 +207,54 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
       </EdgeCaret>
     ));
 
+  // on press rather than on release, so a click can't be lost, and it feels immediate
+  const handlePress = e => {
+    if (isPlayerDead || isPaused || isEditingTiles || e.button != 0) return;
+    inputHandler.updatePlayerDestinationAndClickedTileFromClick(gameManager.getClosestReachableTile(getLocationFromEvent(e)));
+  };
+
+  const handleMouseMove = e => {
+    const board = boardRef.current.getBoundingClientRect();
+    if (!getIsTouchScreen()) {
+      const getAim = (spot, start, size) => Math.max(Math.min(((spot - start) / size) * 2 - 1, 1), -1);
+      mouseAim.current = { x: getAim(e.clientX, board.left, board.width), y: getAim(e.clientY, board.top, board.height) };
+    }
+    const location = getLocationFromEvent(e);
+    const tileIndex = getTileIndexAtLocation(grid, location);
+    const isClickable = !isPlayerDead && !!tileIndex && gameManager.getIsWalkable(tileIndex);
+    boardRef.current.style.cursor = isClickable ? "pointer" : "default";
+    if (isPlayerDead || isPaused || isEditingTiles) return;
+    inputHandler.updateHoveredTileFromPlayerHover(gameManager.getClosestReachableTile(location));
+  };
+
+  const handleMouseLeave = () => {
+    mouseAim.current = { x: 0, y: 0 };
+    if (isPlayerDead) return;
+    inputHandler.updateHoveredTileFromPlayerHover(undefined);
+  };
+
+  const mouseHandlers = useRef(null);
+  mouseHandlers.current = { handlePress, handleMouseMove, handleMouseLeave };
+
+  // the mouse counts everywhere on the page, so the empty area around a small play window still aims and clicks
+  useEffect(() => {
+    const gameFrame = boardRef.current.closest("[data-game-frame]");
+    const press = e => {
+      const isOnGameArea = e.target == gameFrame || boardRef.current.contains(e.target);
+      if (isOnGameArea) mouseHandlers.current.handlePress(e);
+    };
+    const move = e => mouseHandlers.current.handleMouseMove(e);
+    const leave = () => mouseHandlers.current.handleMouseLeave();
+    gameFrame.addEventListener("pointerdown", press);
+    document.addEventListener("mousemove", move);
+    document.documentElement.addEventListener("mouseleave", leave);
+    return () => {
+      gameFrame.removeEventListener("pointerdown", press);
+      document.removeEventListener("mousemove", move);
+      document.documentElement.removeEventListener("mouseleave", leave);
+    };
+  }, []);
+
   const piecesComponents = pieces.map(p =>
     <GameBoardPieceComponent
       key={p.pieceIndex}
@@ -250,32 +300,7 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
 
   return (
     <Board
-      ref={boardRef}
-      // on press rather than on release, so a click can't be lost, and it feels immediate
-      onPointerDown={e => {
-        if (isPlayerDead || isPaused || isEditingTiles || e.button != 0) return;
-        inputHandler.updatePlayerDestinationAndClickedTileFromClick(gameManager.getClosestReachableTile(getLocationFromEvent(e)));
-      }}
-      onMouseMove={e => {
-        const board = boardRef.current.getBoundingClientRect();
-        if (!getIsTouchScreen()) {
-          mouseAim.current = {
-            x: ((e.clientX - board.left) / board.width) * 2 - 1,
-            y: ((e.clientY - board.top) / board.height) * 2 - 1
-          };
-        }
-        const location = getLocationFromEvent(e);
-        const tileIndex = getTileIndexAtLocation(grid, location);
-        const isClickable = !isPlayerDead && !!tileIndex && gameManager.getIsWalkable(tileIndex);
-        boardRef.current.style.cursor = isClickable ? "pointer" : "default";
-        if (isPlayerDead || isPaused || isEditingTiles) return;
-        inputHandler.updateHoveredTileFromPlayerHover(gameManager.getClosestReachableTile(location));
-      }}
-      onMouseOut={() => {
-        mouseAim.current = { x: 0, y: 0 };
-        if (isPlayerDead) return;
-        inputHandler.updateHoveredTileFromPlayerHover(undefined);
-      }}>
+      ref={boardRef}>
       {isPaused && <PauseModal />}
       <SceneShake $isShaking={!isPaused && level.shakePhases.some(id => activePhases.includes(id))}>
       <World ref={worldRef} data-game-world style={{ width: `${world.width}px`, height: `${world.height}px` }}>

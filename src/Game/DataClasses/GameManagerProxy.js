@@ -116,6 +116,10 @@ export class GameManagerProxy {
         return this.props.getIsInBounds(tileIndex);
     }
 
+    getIsClosedTile(tileIndex) {
+        return this.props.getIsClosedTile(tileIndex);
+    }
+
     getSafeTileIndex(pieceIndex) {
         return this.props.getSafeTileIndex(pieceIndex);
     }

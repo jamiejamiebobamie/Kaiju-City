@@ -26,6 +26,7 @@ export class GameBoardManager {
         this.moveSpeedScale = level.moveSpeedScale;
         this.walkableTiles = level.walkableTiles;
         this.walkableRevision = 0;
+        this.closedTileKeys = new Set(); // tiles taken away for now, eg. the tracks while a train is due
         this.walkableTileKeys = new Set(level.walkableTiles.map(({ i, j }) => `${i} ${j}`));
         this.linkedTiles = new Map(level.tileLinks.flatMap(([a, b]) => [[`${a.i} ${a.j}`, b], [`${b.i} ${b.j}`, a]]));
     }
@@ -356,6 +357,7 @@ export class GameBoardManager {
     setWalkableTiles(tiles) {
         this.walkableTiles = tiles;
         this.walkableTileKeys = new Set(tiles.map(({ i, j }) => `${i} ${j}`));
+        this.closedTileKeys = new Set(this.level.walkableTiles.map(({ i, j }) => `${i} ${j}`).filter(key => !this.walkableTileKeys.has(key)));
         const allTiles = this.tiles.flat();
         allTiles.forEach(tile => tile.updateIsVisible(this.getIsInBounds(tile.tileIndex)));
         this.activeTiles = allTiles.filter(tile => tile.getIsVisible());
@@ -376,8 +378,9 @@ export class GameBoardManager {
     getClosestReachableTile(fromTile, { x, y }) {
         const seen = new Set([`${fromTile.i} ${fromTile.j}`]);
         const reachable = [fromTile];
+        const getNextTiles = this.getPathStepsFrom(fromTile);
         for (const tile of reachable) { // also visits the tiles added along the way
-            [...this.getAdjacentTileIndices(tile), ...this.getLinkedTiles(tile)].forEach(next => {
+            getNextTiles(tile).forEach(next => {
                 const key = `${next.i} ${next.j}`;
                 if (seen.has(key)) return;
                 seen.add(key);
@@ -388,7 +391,21 @@ export class GameBoardManager {
             const center = getTileCenter(this.grid, tile);
             return Math.hypot(center.x - x, center.y - y);
         };
-        return reachable.reduce((closest, tile) => getDistance(tile) < getDistance(closest) ? tile : closest);
+        const open = reachable.filter(this.getIsInBounds);
+        return (open.length ? open : reachable).reduce((closest, tile) => getDistance(tile) < getDistance(closest) ? tile : closest);
+    }
+
+    getIsClosedTile = ({ i, j }) => {
+        return this.closedTileKeys.has(`${i} ${j}`);
+    }
+
+    // a piece standing on a closed tile can still walk across closed tiles, to get off of them
+    getPathStepsFrom(startTile) {
+        const isLeavingClosedTiles = this.getIsClosedTile(startTile);
+        return tile => {
+            const closedSteps = isLeavingClosedTiles ? this.getNeighborTiles(tile).filter(this.getIsClosedTile) : [];
+            return [...this.getAdjacentTileIndices(tile), ...closedSteps, ...this.getLinkedTiles(tile)];
+        };
     }
 
     getLinkedTile = ({ i, j }) => {
@@ -410,7 +427,7 @@ export class GameBoardManager {
         const avoidedPath = findPath({
             start: startIndex,
             goal: goalIndex,
-            getAdjacentTiles: tile => [...this.getAdjacentTileIndices(tile), ...this.getLinkedTiles(tile)],
+            getAdjacentTiles: this.getPathStepsFrom(startIndex),
             getLocation: this.getCharXAndYFromTileIndex,
             getIsBlocked: tile => getIsEnemyTile(tile) || (isAlwaysAvoid && getIsNextToEnemy(tile)),
             getExtraCost: tile => getIsNextToEnemy(tile) ? ENEMY_NEARBY_TILE_COST : 0
@@ -445,6 +462,10 @@ export class GameBoardManager {
     };
 
     getAdjacentTileIndices(tileIndex) {
+        return this.getNeighborTiles(tileIndex).filter(this.getIsInBounds);
+    }
+
+    getNeighborTiles(tileIndex) {
         return [
             { i: 0, j: -1 },
             { i: 1, j: tileIndex.i % 2 ? 0 : -1 },
@@ -452,8 +473,7 @@ export class GameBoardManager {
             { i: 0, j: 1 },
             { i: -1, j: tileIndex.i % 2 ? 1 : 0 },
             { i: -1, j: tileIndex.i % 2 ? 0 : -1 }
-        ].map(t => ({ i: t.i + tileIndex.i, j: t.j + tileIndex.j }))
-            .filter(tileIndex => this.getIsInBounds(tileIndex))
+        ].map(t => ({ i: t.i + tileIndex.i, j: t.j + tileIndex.j }));
     };
 
     getNumAdjacentTilesInDirectionFromTileToTile({ fromTileIndex, toTileIndex, numTiles = 1 }) {

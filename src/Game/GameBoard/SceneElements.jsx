@@ -341,6 +341,121 @@ const KaijuPart = ({ element, activePhases, style }) => {
   );
 };
 
+// a recruit's glowing outline comes on when they touch a Kaiju part
+const NpcElement = styled(ImageElement)`
+  transform: translateX(-50%);
+  transition: filter 0.8s;
+`;
+
+const SPEECH_LOOK = {
+  pixel: 4, // the size of one art pixel, in scene pixels
+  cornerSteps: 3,
+  outlineColor: "#101018",
+  fillColor: "#fbfbf0",
+  labelColor: "#ffe600",
+  width: 290
+};
+
+const speechPop = keyframes`
+  0% { transform: translate(-22%, -100%) scale(0.6); }
+  60% { transform: translate(-22%, -100%) scale(1.08); }
+  100% { transform: translate(-22%, -100%) scale(1); }
+`;
+
+const SpeechBubbleElement = styled.div`
+  position: absolute;
+  width: ${SPEECH_LOOK.width}px;
+  pointer-events: none;
+  transform-origin: 22% 100%;
+  animation: ${speechPop} 0.24s steps(3) both;
+`;
+
+const SpeechLayer = styled.div`
+  position: absolute;
+  inset: 0;
+`;
+
+const SpeechContent = styled.div`
+  position: relative;
+  padding: 26px 20px 20px;
+  font-family: gameboy;
+  font-size: 15px;
+  line-height: 1.5;
+  text-transform: uppercase;
+  color: ${SPEECH_LOOK.outlineColor};
+`;
+
+const SpeechLabel = styled.div`
+  position: absolute;
+  left: 14px;
+  top: -14px;
+  padding: 5px 9px;
+  font-family: gameboy;
+  font-size: 13px;
+  color: ${SPEECH_LOOK.outlineColor};
+  background: ${SPEECH_LOOK.labelColor};
+  border: ${SPEECH_LOOK.pixel}px solid ${SPEECH_LOOK.outlineColor};
+`;
+
+const SpeechTail = styled.div`
+  position: absolute;
+  left: 44px;
+  top: calc(100% - ${SPEECH_LOOK.pixel}px);
+  width: 36px;
+  height: 32px;
+`;
+
+// a shape with stair-stepped corners, like pixel art. 'inset' pulls it in from the box it fills.
+const getPixelBox = inset => {
+  const { pixel, cornerSteps } = SPEECH_LOOK;
+  const near = value => `${inset + value}px`;
+  const far = value => `calc(100% - ${inset + value}px)`;
+  const stair = Array.from({ length: cornerSteps }, (_, step) => [
+    [step * pixel, (cornerSteps - step) * pixel],
+    [(step + 1) * pixel, (cornerSteps - step) * pixel]
+  ]).flat();
+  stair.push([cornerSteps * pixel, 0]);
+  const corner = (getX, getY, points) => points.map(([x, y]) => `${getX(x)} ${getY(y)}`);
+  return `polygon(${[
+    ...corner(near, near, stair),
+    ...corner(far, near, [...stair].reverse()),
+    ...corner(far, far, stair),
+    ...corner(near, far, [...stair].reverse())
+  ].join(", ")})`;
+};
+
+// a stepped wedge pointing down at whoever is talking
+const getPixelTail = inset => {
+  const steps = [[0, 0], [100, 0], [100, 25], [75, 25], [75, 50], [50, 50], [50, 75], [25, 75], [25, 100], [0, 100]];
+  return `polygon(${steps.map(([x, y]) => `calc(${x}% ${x > 50 ? "-" : "+"} ${inset}px) calc(${y}% ${y > 50 ? "-" : "+"} ${inset}px)`).join(", ")})`;
+};
+
+// after Jet Set Radio Future's comic balloons, drawn in pixels
+const SpeechBubble = ({ element, style }) => {
+  const { lines, seconds, x, y } = element;
+  const [lineIndex, setLineIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => setLineIndex(index => (index + 1) % lines.length), seconds * 1000);
+    return () => clearInterval(interval);
+  }, [lines, seconds]);
+
+  const { pixel, outlineColor, fillColor } = SPEECH_LOOK;
+  const getLayer = (background, shape) => <SpeechLayer style={{ background, clipPath: shape }} />;
+  return (
+    <SpeechBubbleElement key={lineIndex} style={{ left: `${x}px`, top: `${y - 32}px`, zIndex: style.zIndex, width: `${SPEECH_LOOK.width}px`, height: "auto" }}>
+      {getLayer(outlineColor, getPixelBox(0))}
+      {getLayer(fillColor, getPixelBox(pixel))}
+      <SpeechTail>
+        {getLayer(outlineColor, getPixelTail(0))}
+        {getLayer(fillColor, getPixelTail(pixel))}
+      </SpeechTail>
+      <SpeechLabel>Agent</SpeechLabel>
+      <SpeechContent>{lines[lineIndex]}</SpeechContent>
+    </SpeechBubbleElement>
+  );
+};
+
 export const SceneElements = ({ level, activePhases, isPaused }) => (
   <>
     {level.sceneElements.map(element => {
@@ -382,6 +497,16 @@ export const SceneElements = ({ level, activePhases, isPaused }) => (
         "--to-x": `${-(firstFrame + frames) * width}px`
       };
 
+      if (type == "npc") {
+        const isGlowing = activePhases.includes(element.glowPhase);
+        return <NpcElement key={id} src={src} style={{
+          ...style,
+          width: "auto",
+          top: `${y - height}px`,
+          filter: isGlowing ? `drop-shadow(0 0 4px ${element.glowColor}) drop-shadow(0 0 10px ${element.glowColor})` : "none"
+        }} />;
+      }
+      if (type == "speech") return <SpeechBubble key={id} element={element} style={style} />;
       if (type == "part") return <KaijuPart key={id} element={element} activePhases={activePhases} style={style} />;
       if (type == "moth") {
         return <MothElement key={id} style={{

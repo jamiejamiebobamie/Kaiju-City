@@ -98,17 +98,30 @@ export class GameManager {
         else this.setPhase(id, isActive);
     }
 
+    // the tiles change as soon as the lights do, so everyone has time to get off the tracks
+    closeTracks() {
+        const board = this.gameBoardManager;
+        if (board.walkableTiles == this.level.tileSets.train) return;
+        board.setWalkableTiles(this.level.tileSets.train);
+        this.gameBoardPiecesManager.updatePiecesForWalkableTiles(() => { });
+    }
+
     handleTrainStage = (stage, accTime) => {
-        const { tileSets, walkableTiles } = this.level;
+        const { walkableTiles } = this.level;
         this.setPhase('trainLights', stage != 'idle');
+        if (stage == 'warning') this.closeTracks();
         const isTrainIn = stage == 'train';
         if (isTrainIn == this.activePhases.has('train')) return;
 
         this.setPhase('train', isTrainIn);
-        this.gameBoardManager.setWalkableTiles(isTrainIn ? tileSets.train : walkableTiles);
-        this.gameBoardPiecesManager.updatePiecesForWalkableTiles(piece => {
-            piece.hitByTrain(accTime, TRAIN_HIT, this.gameBoardManager.getClosestWalkableTile(piece.getTileIndex()));
-        });
+        if (isTrainIn) {
+            this.closeTracks();
+            this.gameBoardPiecesManager.updatePiecesForWalkableTiles(piece => {
+                piece.hitByTrain(accTime, TRAIN_HIT, this.gameBoardManager.getClosestWalkableTile(piece.getTileIndex()));
+            });
+        } else {
+            this.gameBoardManager.setWalkableTiles(walkableTiles);
+        }
     }
 
     getActiveTiles() {
@@ -271,6 +284,7 @@ export class GameManager {
             moveTo: this.gameBoardManager.moveTo,
             getTileOffsetFromDir: this.gameBoardManager.getTileOffsetFromDir,
             getIsInBounds: this.gameBoardManager.getIsInBounds,
+            getIsClosedTile: this.gameBoardManager.getIsClosedTile,
             getLinkedTile: this.gameBoardManager.getLinkedTile,
             getSafeTileIndex: this.gameBoardManager.getSafeTileIndex,
             getHighlightedTiles: this.gameBoardManager.getHighlightedTiles,

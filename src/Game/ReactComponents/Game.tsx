@@ -283,7 +283,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
         />
         : !gameManager.current ? null : (<GameArea>
           <GameFrame data-game-frame>
-            <PlayWindow playWindow={playWindow} setPlayWindow={updatePlayWindow} isAdjusting={isAdjustingWindow} isOpen={isWideShot}>
+            <PlayWindow playWindow={playWindow} setPlayWindow={updatePlayWindow} isAdjusting={isAdjustingWindow} isOpen={isWideShot || level.isWalkingLevel}>
               <GameBoard
                 key={`${level.id} ${matchCount}`}
                 isPaused={isPaused}

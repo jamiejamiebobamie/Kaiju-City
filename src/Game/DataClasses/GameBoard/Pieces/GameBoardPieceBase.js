@@ -244,6 +244,7 @@ export class GameBoardPieceBase {
 
     // the tiles changed: the piece doesn't walk onto tiles that have gone
     trimPathToWalkableTiles() {
+        if (this.gameManagerProxy.getIsClosedTile(this.tileIndex)) return; // the path may be its way off
         const firstGone = this.moveToTiles.findIndex(tile => !this.gameManagerProxy.getIsInBounds(tile));
         if (firstGone != -1) this.moveToTiles = this.moveToTiles.slice(0, firstGone);
     }
@@ -319,6 +320,8 @@ export class GameBoardPieceBase {
     getPathFromPressedDir(pressedDir, playerInputHandler) {
         const moveToTiles = [];
         const seenTiles = new Set([`${this.tileIndex.i} ${this.tileIndex.j}`]);
+        const isLeavingClosedTiles = this.gameManagerProxy.getIsClosedTile(this.tileIndex);
+        const getCanStepOnto = tile => this.gameManagerProxy.getIsInBounds(tile) || (isLeavingClosedTiles && this.gameManagerProxy.getIsClosedTile(tile));
         let tileIndex = this.tileIndex;
         while (tileIndex) {
             const fromTile = tileIndex;
@@ -327,7 +330,7 @@ export class GameBoardPieceBase {
                     const offset = this.gameManagerProxy.getTileOffsetFromDir(dir, fromTile);
                     return { i: fromTile.i + offset.i, j: fromTile.j + offset.j };
                 })
-                .find(tile => this.gameManagerProxy.getIsInBounds(tile) && !seenTiles.has(`${tile.i} ${tile.j}`));
+                .find(tile => getCanStepOnto(tile) && !seenTiles.has(`${tile.i} ${tile.j}`));
             if (tileIndex) {
                 seenTiles.add(`${tileIndex.i} ${tileIndex.j}`);
                 moveToTiles.push(tileIndex);

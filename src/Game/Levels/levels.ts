@@ -48,7 +48,7 @@ export type LevelPhase = {
 */
 export type SceneElement = {
   id: string;
-  type: 'image' | 'sprite' | 'pulse' | 'light' | 'sequence' | 'part' | 'moth' | 'whiteout';
+  type: 'image' | 'sprite' | 'pulse' | 'light' | 'sequence' | 'part' | 'moth' | 'whiteout' | 'npc' | 'speech';
   x: number;
   y: number;
   width: number;
@@ -74,6 +74,8 @@ export type SceneElement = {
   isUneven?: boolean; // pulse: an irregular beat
   isHaunting?: boolean; // pulse: fades up slowly, holds, fades away, then rests in the dark
   color?: string; // light: its color
+  glowPhase?: string; // npc: the phase that lights up its glowing outline
+  lines?: Array<string>; // speech: what the character says, in turn
   comesFrom?: { x: number; y: number }; // sprite: leaps here from this point, after 'appearSeconds'
   appearSeconds?: number; // sprite
   flashColor?: string; // part: the whole screen flashes this color when it is touched
@@ -186,6 +188,13 @@ const godRay = (id, src, x, y, width, height, seconds, delaySeconds, look) => ({
 const subwayRay = (n, seconds, delaySeconds) =>
   godRay(`godRay${n}`, `/levels/rapidTransit/god-rays-${n}.png`, 0, 0, 1380, 752, seconds, delaySeconds, { isUneven: true, lowOpacity: 0.15, highOpacity: 0.85 });
 
+// a character standing in a scene. x is the middle of its feet, and y the ground under them, so it sorts with the pieces.
+const npc = (id, pose, x, y, height, glowPhase = undefined, glowColor = undefined, sortY = y) => ({
+  id, type: 'npc' as const, src: `/levels/npcs/${pose}.png`, x, y, width: 0, height, sortY, glowPhase, glowColor
+});
+
+const RECRUIT_GLOW_COLOR = '#57E931';
+
 const signalLight = (id, x) => [
   { id: `${id}Off`, type: 'sprite' as const, src: '/levels/rapidTransit/lights-spritesheet.png', x, y: 3, width: 48, height: 94, zIndex: -2, firstFrame: 0, frames: 1, fps: 1 },
   { id, type: 'sprite' as const, phase: 'trainLights', src: '/levels/rapidTransit/lights-spritesheet.png', x, y: 3, width: 48, height: 94, zIndex: -2, firstFrame: 1, frames: 2, fps: 2 }
@@ -207,6 +216,7 @@ const RAPID_TRANSIT_SCENE = {
   phases: [{ id: 'eye', label: 'Kaiju eye' }, { id: 'eyeTouched', label: 'Touch part' }, { id: 'train', label: 'Train' }],
   defaultPhases: ['eye'],
   sceneElements: [
+    npc('recruit', 'mohawkBack', 1213, 530, 130, 'eyeTouched', '#57E931', 640), // stands in front of the eye
     { id: 'godRaysAll', type: 'image' as const, src: '/levels/rapidTransit/god-rays-all.png', x: 0, y: 0, width: 1380, height: 752, sortY: ABOVE_CHARACTERS },
     subwayRay(1, 7.3, 0),
     subwayRay(2, 9.1, -2.4),
@@ -241,6 +251,7 @@ const ROOFTOP_SCENE = {
   phases: [{ id: 'head', label: 'Kaiju head' }, { id: 'headTouched', label: 'Touch part' }],
   defaultPhases: ['head'],
   sceneElements: [
+    npc('recruit', 'blackFemaleBack', 733, 542, 72, 'headTouched', '#ff1a0d', 600), // stands in front of the head
     { id: 'head', type: 'part' as const, phase: 'head', touchPhase: 'headTouched', src: '/levels/rooftop/head-spritesheet.png', x: 255, y: 233, width: 959, height: 519, sortY: 573, seconds: 4.5, flashColor: '#ff1a0d' }
   ]
 };
@@ -297,6 +308,7 @@ const AQUARIUM_SCENE = {
   ],
   defaultPhases: ['tongue', 'shards'],
   sceneElements: [
+    npc('recruit', 'mermaid', 905, 690, 100, 'tongueTouched', '#ff1464'),
     { id: 'shattered', type: 'image' as const, phase: 'shattered', src: '/levels/aquarium/shattered.png', x: 0, y: 0, width: 1408, height: 768, zIndex: -3, fadeSeconds: 1.2, delaySeconds: 0.8 },
     ...GLASS_PANELS,
     aquariumRay(1, 234, -16, 349, 463, 7, 0, 0.9),
@@ -322,6 +334,12 @@ const SEWER1_SCENE = {
   tileTone: 'faint' as const,
   phases: [{ id: 'glow', label: 'Glow' }],
   sceneElements: [
+    npc('recruit1', 'mohawkFront', 415, 410, 110, 'glow', RECRUIT_GLOW_COLOR),
+    npc('recruit2', 'mohawkFrontAlt', 664, 515, 112, 'glow', RECRUIT_GLOW_COLOR),
+    npc('recruit3', 'mohawkFront', 520, 672, 112, 'glow', RECRUIT_GLOW_COLOR),
+    npc('recruit4', 'mohawkFrontAlt', 1097, 428, 110, 'glow', RECRUIT_GLOW_COLOR),
+    npc('recruit5', 'mohawkFront', 1207, 530, 110, 'glow', RECRUIT_GLOW_COLOR),
+    npc('recruit6', 'mohawkFrontAlt', 1347, 610, 110, 'glow', RECRUIT_GLOW_COLOR),
     // two smooth fades on different beats drift in and out of step, so it never settles into a pattern
     { id: 'glow', type: 'pulse' as const, phase: 'glow', src: '/levels/sewer1/glow.png', x: 193, y: 274, width: 244, height: 176, zIndex: -3, seconds: 3.7, lowOpacity: 0.1, highOpacity: 0.7 },
     { id: 'glowEcho', type: 'pulse' as const, phase: 'glow', src: '/levels/sewer1/glow.png', x: 193, y: 274, width: 244, height: 176, zIndex: -3, seconds: 5.9, delaySeconds: 1.3, lowOpacity: 0, highOpacity: 0.6 },
@@ -341,6 +359,12 @@ const SEWER2_SCENE = {
   tileTone: 'faint' as const,
   phases: [{ id: 'blinding', label: 'Blinding light' }],
   sceneElements: [
+    npc('recruit1', 'mohawkFront', 842, 655, 230, 'blinding', RECRUIT_GLOW_COLOR),
+    npc('recruit2', 'mohawkFrontAlt', 907, 615, 230, 'blinding', RECRUIT_GLOW_COLOR),
+    npc('recruit3', 'mohawkFront', 970, 725, 225, 'blinding', RECRUIT_GLOW_COLOR),
+    npc('recruit4', 'mohawkFrontAlt', 1033, 635, 250, 'blinding', RECRUIT_GLOW_COLOR),
+    npc('recruit5', 'mohawkFront', 1105, 725, 225, 'blinding', RECRUIT_GLOW_COLOR),
+    npc('recruit6', 'mohawkFrontAlt', 1238, 725, 225, 'blinding', RECRUIT_GLOW_COLOR),
     sewerPart('eye', 601, 133, 284, 369, 3.1, 0, '#e6ff3a'),
     sewerPart('tail', 28, 96, 455, 349, 5.3, 1.1, '#b13cff'),
     sewerPart('tooth', 458, 330, 165, 179, 2.3, 0.4, '#2a9cff'),
@@ -358,6 +382,23 @@ const streetGlow = (id, x, y, width, height, seconds, delaySeconds) => ({
 const STREET_SCENE = {
   tileTone: 'dark' as const,
   sceneElements: [
+    npc('agent', 'agent', 335, 682, 224),
+    npc('hazmat1', 'hazmatBroomLeft', 740, 600, 215),
+    npc('hazmat2', 'hazmatFront', 845, 420, 112),
+    npc('hazmat3', 'hazmatBroomRight', 1005, 372, 80),
+    npc('hazmat4', 'hazmatLeft', 1155, 376, 78),
+    npc('hazmat5', 'hazmatLeft', 1228, 475, 155),
+    {
+      id: 'agentSpeech', type: 'speech' as const, x: 372, y: 452, width: 0, height: 0, sortY: ABOVE_CHARACTERS, seconds: 4.2,
+      lines: [
+        'Nothing to see here. Move along.',
+        "Don't touch anything. Especially the glowing ones.",
+        'The cleanup crew has it handled.',
+        "Those parts are classified. So is this conversation.",
+        'Good work out there. The city owes you.',
+        'Report to the Lab. That is an order.'
+      ]
+    },
     streetGlow('hand', 586, 0, 168, 129, 4.7, 0),
     streetGlow('tail', 571, 126, 348, 266, 6.3, 1.4),
     streetGlow('tentacle', 901, 56, 173, 173, 3.9, 0.6),

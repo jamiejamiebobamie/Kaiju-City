@@ -6,6 +6,8 @@ import rapidTransit from 'Game/Levels/data/rapidTransit.json';
 import { GameManager } from './GameManager';
 import { SettingsManager } from './SettingsManager';
 import { TRAIN_HIT } from './TrainSchedule';
+import { GameBoardPieceKaiju } from './GameBoard/Pieces/GameBoardPieceKaiju';
+import { PIECES_INFO } from 'Utils/gameState';
 import { MASTER_PENINSULA as PENINSULA, MASTER_PENINSULA_TILES as PENINSULA_TILE_LOOKUP_VALS } from './masterPeninsula';
 import { Camera, CAMERA, getCameraZoom, getCloseZoom, WIDE_SHOT } from './Camera';
 import { getCharXAndY, getPerimeterEdges, getTileCenter, getTileIndexAtLocation, getTileXAndY } from './GameBoard/hexGrid';
@@ -219,6 +221,117 @@ describe('levels', () => {
       expect(gm.getActivePhases()).not.toContain('train');
       gm.trainSchedule.setStage('idle', 0);
       expect(gm.getActivePhases()).not.toContain('trainLights');
+    });
+
+    it('closes the tracks as soon as the lights start, and opens them as the train leaves', () => {
+      const { gm, board } = makeSubway();
+      gm.trainSchedule.setStage('warning', 0);
+      expect(board.getIsInBounds(trackTile)).toBe(false);
+      gm.trainSchedule.setStage('train', 0);
+      expect(board.getIsInBounds(trackTile)).toBe(false);
+      gm.trainSchedule.setStage('clearing', 0);
+      expect(board.getIsInBounds(trackTile)).toBe(true);
+    });
+
+    const runPiece = (gm, piece, ticks) => {
+      const input = gm.getPlayerInputHandler();
+      for (let k = 0; k < ticks; k++) {
+        gm.accTime += 110;
+        piece.movePiece({ accTime: gm.accTime, playerInputHandler: input });
+      }
+    };
+
+    it('a teammate fighting a rival heads off the tracks on their own by the longest warning', () => {
+      const settingsManager = new SettingsManager();
+      settingsManager.setSortedPlayerChosenAbilityElementsString(['Fire', 'Ice', 'Water']);
+      settingsManager.setIsTeammate(true);
+      const gm = new GameManager({ level: LEVELS.rapidTransit, settingsManager });
+      gm.initGame();
+      const [player, teammate] = gm.getPieces();
+      const rival = gm.gameBoardPiecesManager.addPiece({
+        pieceClass: GameBoardPieceKaiju,
+        pieceInfo: {
+          ...PIECES_INFO.kaiju,
+          abilities: settingsManager.getKaijuAbilities(0),
+          spewFireCoolDown: 9000,
+          maxLives: 3,
+          moveSpeed: 3,
+          isDoAvoidEnemy: false
+        },
+        teamIndex: 1
+      });
+      placePiece(gm, rival, LEVELS.rapidTransit.tileSets.train[0]);
+      placePiece(gm, player, LEVELS.rapidTransit.tileSets.train[10]);
+      placePiece(gm, teammate, trackTile);
+      gm.accTime = 5000;
+      gm.trainSchedule.setStage('warning', gm.accTime);
+      gm.wideShotMs = 0;
+      const longestWarningTicks = 90;
+      for (let k = 0; k < longestWarningTicks; k++) {
+        if (gm.trainSchedule.stage != 'warning') gm.trainSchedule.setStage('warning', gm.accTime);
+        gm.stepPieces();
+        gm.wideShotMs = 0;
+      }
+      expect(gm.gameBoardManager.getIsInBounds(teammate.getTileIndex())).toBe(true);
+    });
+
+    it('the player on the tracks is left to get off alone, and is hit if they stay', () => {
+      const { gm, player } = makeSubway();
+      player.initCharLocation(true, trackTile);
+      const lives = player.lives;
+      gm.accTime = 5000;
+      gm.trainSchedule.setStage('warning', gm.accTime);
+      expect(player.getMoveToTiles()).toEqual([]);
+      runPiece(gm, player, 30);
+      expect(player.getTileIndex()).toEqual(trackTile);
+      gm.trainSchedule.setStage('train', gm.accTime);
+      expect(player.lives).toBe(lives - TRAIN_HIT.dmg);
+    });
+
+    it('the player can click their way off the tracks during the warning', () => {
+      const { gm, player, board } = makeSubway();
+      const input = gm.getPlayerInputHandler();
+      player.initCharLocation(true, trackTile);
+      const lives = player.lives;
+      gm.accTime = 5000;
+      gm.trainSchedule.setStage('warning', gm.accTime);
+      const center = getTileCenter(LEVELS.rapidTransit.grid, LEVELS.rapidTransit.tileSets.train[0]);
+      input.updatePlayerDestinationAndClickedTileFromClick(gm.getClosestReachableTile(center));
+      expect(player.getMoveToTiles().length).toBeGreaterThan(0);
+      runPiece(gm, player, 300);
+      expect(board.getIsInBounds(player.getTileIndex())).toBe(true);
+      gm.trainSchedule.setStage('train', gm.accTime);
+      expect(player.lives).toBe(lives);
+    });
+
+    it('the player can run off the tracks with the keys during the warning', () => {
+      const { gm, player, board } = makeSubway();
+      const input = gm.getPlayerInputHandler();
+      player.initCharLocation(true, trackTile);
+      gm.accTime = 5000;
+      gm.trainSchedule.setStage('warning', gm.accTime);
+      input.addKey('KeyA');
+      runPiece(gm, player, 60);
+      input.removeKey('KeyA');
+      expect(board.getIsInBounds(player.getTileIndex())).toBe(true);
+    });
+
+    it('a path across the tracks keeps going if the player is on them when the lights start', () => {
+      const { gm, player, board } = makeSubway();
+      const onPlatform = LEVELS.rapidTransit.tileSets.train[0];
+      player.initCharLocation(true, trackTile);
+      player.updateMovmement(board.findPathFromTo(trackTile, onPlatform));
+      const { length } = player.getMoveToTiles();
+      gm.trainSchedule.setStage('warning', 0);
+      expect(player.getMoveToTiles().length).toBe(length);
+    });
+
+    it('walking on open tiles, closed tiles stay off limits', () => {
+      const { gm, board } = makeSubway();
+      const onPlatform = LEVELS.rapidTransit.tileSets.train[0];
+      gm.trainSchedule.setStage('warning', 0);
+      expect(board.getIsInBounds(gm.getClosestReachableTile(getTileCenter(LEVELS.rapidTransit.grid, onPlatform)))).toBe(true);
+      expect(board.findPathFromTo(onPlatform, trackTile)).toEqual([]);
     });
 
     it('swaps the walkable tiles while it is in', () => {
@@ -509,6 +622,10 @@ describe('close camera', () => {
 
   it('a zoom of 1 leaves the whole scene in view', () => {
     expect(getCloseZoom({ ...sizes, cameraZoom: 1 })).toBe(getCameraZoom(sizes));
+  });
+
+  it('walking scenes sit at the whole scene', () => {
+    Object.values(LEVELS).filter(({ isWalkingLevel }) => isWalkingLevel).forEach(({ cameraZoom }) => expect(cameraZoom).toBe(1));
   });
 
   it('every level file sets a camera zoom', () => {

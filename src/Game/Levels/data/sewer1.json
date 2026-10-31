@@ -2,7 +2,7 @@
   "id": "sewer1",
   "sceneWidth": 1408,
   "sceneHeight": 768,
-  "cameraZoom": 1.27,
+  "cameraZoom": 1,
   "grid": {
     "columns": 41,
     "rows": 21,
