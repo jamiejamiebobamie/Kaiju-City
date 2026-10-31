@@ -115,6 +115,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
 
   const [isTeammate, setIsTeammate] = useState(true);
   const [isWholeScene, setIsWholeScene] = useState(false);
+  const [isMouseLook, setIsMouseLook] = useState(true);
   const [isAdjustingWindow, setIsAdjustingWindow] = useState(false);
   const [playWindow, setPlayWindow] = useState(() => import.meta.env.DEV ? loadPlayWindow() : FULL_WINDOW);
   const updatePlayWindow = next => {
@@ -293,6 +294,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 playWindow={playWindow}
                 isShowingWindowSize={isAdjustingWindow}
                 isEditingTiles={isEditingTiles}
+                isMouseLook={isMouseLook}
               />
             </PlayWindow>
             {import.meta.env.DEV && (
@@ -307,6 +309,9 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 ))}
                 <label>
                   <input type="checkbox" checked={isWholeScene} onChange={() => setIsWholeScene(!isWholeScene)} /> Whole scene
+                </label>
+                <label>
+                  <input type="checkbox" checked={isMouseLook} onChange={() => setIsMouseLook(!isMouseLook)} /> Mouse look
                 </label>
                 <label>
                   <input type="checkbox" checked={isAdjustingWindow} onChange={() => setIsAdjustingWindow(!isAdjustingWindow)} /> Adjust window

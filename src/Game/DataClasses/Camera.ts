@@ -9,6 +9,10 @@ type CameraProps = {
 type Point = { x: number; y: number };
 
 export const CAMERA = {
+  // the camera leans toward the mouse, so the player can look ahead
+  lookPan: 0.3, // with the mouse at the edge of the view, how far the view shifts, as a fraction of the view
+  lookZoomStart: 0.7, // how far from the middle of the view the mouse gets before the camera eases out, from 0 to 1
+  lookZoomOut: 0.2, // with the mouse at the edge of the view, how much of the zoom is given up
   edgeMargin: 0.42, // how close to the edge of the view a piece gets before the view pans, as a fraction of the view
   minMouseTilePx: 20, // with a mouse, zoom in until tiles are at least this wide
   minTouchTilePx: 50, // on touch screens, zoom in until tiles are at least this wide
@@ -36,12 +40,20 @@ export class Camera {
   x = 0; // top-left corner of the view, in world pixels
   y = 0;
   zoom: number;
+  private baseZoom: number;
+  private minZoom: number;
+  private viewPxWidth: number;
+  private viewPxHeight: number;
   private viewWidth: number;
   private viewHeight: number;
   private worldWidth: number;
   private worldHeight: number;
 
   constructor({ viewWidth, viewHeight, worldWidth, worldHeight, zoom }: CameraProps) {
+    this.baseZoom = zoom;
+    this.minZoom = Math.min(zoom, viewWidth / worldWidth, viewHeight / worldHeight);
+    this.viewPxWidth = viewWidth;
+    this.viewPxHeight = viewHeight;
     this.viewWidth = viewWidth / zoom;
     this.viewHeight = viewHeight / zoom;
     this.worldWidth = worldWidth;
@@ -71,6 +83,23 @@ export class Camera {
     if (y > nextY + this.viewHeight - marginY) nextY = y - this.viewHeight + marginY;
     this.x = this.getClamped(nextX, this.viewWidth, this.worldWidth);
     this.y = this.getClamped(nextY, this.viewHeight, this.worldHeight);
+  }
+
+  private setZoom(zoom: number) {
+    this.zoom = zoom;
+    this.viewWidth = this.viewPxWidth / zoom;
+    this.viewHeight = this.viewPxHeight / zoom;
+  }
+
+  // 'aim' is where the mouse is in the view: from -1 to 1 across, and down, with 0 in the middle
+  lookToward({ x, y }: Point, aim: Point) {
+    const reach = Math.min(Math.max(Math.abs(aim.x), Math.abs(aim.y)), 1);
+    const easeOut = Math.max((reach - CAMERA.lookZoomStart) / (1 - CAMERA.lookZoomStart), 0);
+    this.setZoom(Math.max(this.baseZoom * (1 - CAMERA.lookZoomOut * easeOut), this.minZoom));
+    this.follow({
+      x: x + aim.x * this.viewWidth * CAMERA.lookPan,
+      y: y + aim.y * this.viewHeight * CAMERA.lookPan
+    });
   }
 
   getTransform() {

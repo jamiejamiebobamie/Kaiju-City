@@ -91,7 +91,7 @@ const WindowSize = styled.div`
 
 const getIsTouchScreen = () => window.matchMedia("(pointer: coarse)").matches;
 
-export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeScene, playWindow, isShowingWindowSize, isEditingTiles }) => {
+export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeScene, playWindow, isShowingWindowSize, isEditingTiles, isMouseLook }) => {
   // redraws the pieces when the game updates. the tiles draw themselves.
   useSyncExternalStore(gameManager.subscribeToBoard, gameManager.getBoardRevision);
   const pieces = gameManager.getPieces();
@@ -99,6 +99,7 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
 
   const boardRef = useRef(null);
   const worldRef = useRef(null);
+  const mouseAim = useRef({ x: 0, y: 0 }); // where the mouse is in the view: -1 to 1, with 0 in the middle
   const [frame, setFrame] = useState({ width: 1, height: 1 });
   const { grid, world, contentOffset, pieceScale } = level;
   const getWorldLocation = ({ x, y }) => ({ x: x + contentOffset.x, y: y + contentOffset.y });
@@ -156,13 +157,17 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
         pullEndMs = nowMs + WIDE_SHOT.pullMs;
       }
       worldRef.current.style.transition = nowMs < pullEndMs ? `transform ${WIDE_SHOT.pullMs}ms ease-in-out` : "";
-      if (!isWide) closeCamera.follow(getWorldLocation(player.charLocation));
+      if (!isWide) {
+        // the keys are in charge when the mouse's hover is hidden
+        const isLooking = isMouseLook && !!gameManager.getHoveredTileIndex();
+        closeCamera.lookToward(getWorldLocation(player.charLocation), isLooking ? mouseAim.current : { x: 0, y: 0 });
+      }
       worldRef.current.style.transform = (isWide ? wideCamera : closeCamera).getTransform();
     };
     closeCamera.centerOn(getWorldLocation(gameManager.getPieces()[0].charLocation));
     moveCamera();
     return gameManager.subscribeToBoard(moveCamera);
-  }, [gameManager, closeCamera, wideCamera]);
+  }, [gameManager, closeCamera, wideCamera, isMouseLook]);
 
   const getLocationFromEvent = e => {
     // includes the camera's pan and zoom
@@ -252,6 +257,13 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
         inputHandler.updatePlayerDestinationAndClickedTileFromClick(gameManager.getClosestReachableTile(getLocationFromEvent(e)));
       }}
       onMouseMove={e => {
+        const board = boardRef.current.getBoundingClientRect();
+        if (!getIsTouchScreen()) {
+          mouseAim.current = {
+            x: ((e.clientX - board.left) / board.width) * 2 - 1,
+            y: ((e.clientY - board.top) / board.height) * 2 - 1
+          };
+        }
         const location = getLocationFromEvent(e);
         const tileIndex = getTileIndexAtLocation(grid, location);
         const isClickable = !isPlayerDead && !!tileIndex && gameManager.getIsWalkable(tileIndex);
@@ -260,6 +272,7 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
         inputHandler.updateHoveredTileFromPlayerHover(gameManager.getClosestReachableTile(location));
       }}
       onMouseOut={() => {
+        mouseAim.current = { x: 0, y: 0 };
         if (isPlayerDead) return;
         inputHandler.updateHoveredTileFromPlayerHover(undefined);
       }}>

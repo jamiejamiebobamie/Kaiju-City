@@ -527,6 +527,46 @@ describe('close camera', () => {
   });
 });
 
+describe('mouse look', () => {
+  const makeCamera = (zoom = 2) => new Camera({ viewWidth: 400, viewHeight: 300, worldWidth: 2000, worldHeight: 1500, zoom });
+  const player = { x: 1000, y: 750 };
+
+  it('stays on the player with the mouse in the middle', () => {
+    const camera = makeCamera();
+    camera.centerOn(player);
+    const { x, y, zoom } = camera;
+    camera.lookToward(player, { x: 0, y: 0 });
+    expect([camera.x, camera.y, camera.zoom]).toEqual([x, y, zoom]);
+  });
+
+  it('shifts toward the mouse, then comes back', () => {
+    const camera = makeCamera();
+    camera.centerOn(player);
+    const { x } = camera;
+    camera.lookToward(player, { x: 0.6, y: 0 });
+    expect(camera.x).toBeGreaterThan(x);
+    expect(camera.zoom).toBe(2);
+    camera.lookToward(player, { x: -0.6, y: 0 });
+    expect(camera.x).toBeLessThan(x + 1);
+  });
+
+  it('eases out when the mouse is far out, and keeps the player in view', () => {
+    const camera = makeCamera();
+    camera.centerOn(player);
+    camera.lookToward(player, { x: 1, y: 1 });
+    expect(camera.zoom).toBeCloseTo(2 * (1 - CAMERA.lookZoomOut));
+    const viewWidth = 400 / camera.zoom;
+    expect(player.x).toBeGreaterThan(camera.x);
+    expect(player.x).toBeLessThan(camera.x + viewWidth);
+  });
+
+  it('never zooms out past the whole level', () => {
+    const camera = new Camera({ viewWidth: 1400, viewHeight: 787, worldWidth: 1408, worldHeight: 768, zoom: 1.05 });
+    camera.lookToward({ x: 700, y: 400 }, { x: 1, y: 0 });
+    expect(camera.zoom).toBeCloseTo(1400 / 1408);
+  });
+});
+
 describe('camera', () => {
   const makeCamera = () => new Camera({ viewWidth: 100, viewHeight: 100, worldWidth: 400, worldHeight: 300, zoom: 1 });
 
