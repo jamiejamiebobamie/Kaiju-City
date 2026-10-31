@@ -1,22 +1,33 @@
-import { Bounds, PERIMETER_TILES_VALS, PENINSULA_TILE_LOOKUP, PENINSULA_TILE_LOOKUP_VALS, MAX_ROWS, MAX_COLS } from 'Utils/gameState';
-import { getRandomIntInRange, getDistanceToFrom, getNormVecFromDestAndOrigin, getDotProduct2D } from 'Game/utils'
+import { TILE_DIRS, TILE_DIR_NORM_VECS, TILE_STATUS_RANKS } from 'Utils/gameState';
+import { getRandomIntInRange, getDistanceToFrom, getNormVecFromDestAndOrigin } from 'Game/utils'
 import { GameBoardTile } from 'Game/DataClasses/GameBoard/Tile/GameBoardTile'
+import { findPath } from 'Game/DataClasses/GameBoard/findPath'
+import { getCharXAndY, getTileCenter, getTileXAndY } from 'Game/DataClasses/GameBoard/hexGrid'
+
+// how much pathing avoids the tiles around enemies, in tiles
+const ENEMY_NEARBY_TILE_COST = 4;
+
+// how far off a wall's line a tile can sit and still be part of the wall, in half-rows
+const WALL_TOLERANCE = 0.2;
 
 export class GameBoardManager {
-    constructor({ scale, gameManagerProxy }) {
+    constructor({ level, gameManagerProxy }) {
         this.gameManagerProxy = gameManagerProxy;
         this.updateProxyProps = undefined;
         this.clickedTileIndex = undefined;
         this.hoveredTileIndex = undefined;
         this.tiles = []; // per tile (unique 'i' and 'j') rendering and tile status info
-        this.numTileColumns = MAX_COLS;
-        this.numTileRows = MAX_ROWS;
-        this.isRenderTiles = true;
-        this.isRenderMap = true;
-        this.bounds = Bounds.Lookup;
-        this.boundsLookup = PENINSULA_TILE_LOOKUP;
-        this.scale = scale;
-        this.tilesLookupVals = []
+        this.activeTiles = []; // tiles with something to draw on them
+        this.level = level;
+        this.grid = level.grid;
+        this.numTileColumns = level.grid.columns;
+        this.numTileRows = level.grid.rows;
+        this.scale = level.grid.scale;
+        this.moveSpeedScale = level.moveSpeedScale;
+        this.walkableTiles = level.walkableTiles;
+        this.walkableRevision = 0;
+        this.walkableTileKeys = new Set(level.walkableTiles.map(({ i, j }) => `${i} ${j}`));
+        this.linkedTiles = new Map(level.tileLinks.flatMap(([a, b]) => [[`${a.i} ${a.j}`, b], [`${b.i} ${b.j}`, a]]));
     }
 
     initTiles() {
@@ -30,14 +41,14 @@ export class GameBoardManager {
                     isVisible: this.getIsInBounds(tileIndex),
                     tileLocation: this.getTileXAndYFromTileIndex(tileIndex),
                     zIndex: this.getFlattenedArrayIndex(tileIndex),
-                    scale: this.scale,
-                    gameManagerProxy: this.gameManagerProxy
+                    scale: this.scale
                 })
                 row.push(newTile);
             }
             tiles.push(row);
         }
         this.tiles = tiles;
+        this.activeTiles = tiles.flat().filter(tile => tile.getIsVisible());
     }
 
     getClickedTileIndex = () => {
@@ -68,12 +79,8 @@ export class GameBoardManager {
         return this.tiles.flat();
     }
 
-    async getTilesIterator() {
-        for (let i = 0; i < this.numTileColumns; i++) {
-            for (let j = 0; j < this.numTileRows; j++) {
-                await this.tiles[i][j];
-            }
-        }
+    getActiveTiles() {
+        return this.activeTiles;
     }
 
     resetTiles() {
@@ -89,14 +96,19 @@ export class GameBoardManager {
         pieceIndex,
         appliedStatus
     }) => {
-        const pieceTileIndex = this.gameManagerProxy.getPieceTileIndex(pieceIndex);
+        const self = this.gameManagerProxy.getPiece(pieceIndex);
+        const pieceTileIndex = self.getTileIndex();
+
+        const abilityAndTileStatusData = this.gameManagerProxy.getAbilityAndTileStatusData();
+        const tileStatus = abilityAndTileStatusData[appliedStatus];
+
+        // teleporting moves the piece. it does not put a status on the board.
+        if (appliedStatus == 'isTeleportTile') {
+            self.setShouldTeleport(true);
+            return;
+        }
 
         // determine target of power
-        /*
-            set target as self as fail-safe so game doesn't crash
-            status will 'shoot' at self but will not impact.
-        */
-        const self = this.gameManagerProxy.getPiece(pieceIndex);
         let target = self;
         if (appliedStatus == 'isHealing') {
             const teammate = this.gameManagerProxy.getMostDmgedTeammate(pieceIndex);
@@ -110,238 +122,208 @@ export class GameBoardManager {
             }
         }
 
-        const abilityAndTileStatusData = this.gameManagerProxy.getAbilityAndTileStatusData();
-        const tileStatus = abilityAndTileStatusData[appliedStatus];
-
         const targetTileIndex = target.getTileIndex();
+        const area = self.numTilesModifier ? Math.max(tileStatus.area + self.numTilesModifier, 1) : tileStatus.area;
+
         /*
             1. get the 'tileIndex' of the tile to update with the 'appliedStatus'
             2. also: get the directions ('dirs') the status will spread in
                 from that tile on next update
+
+            with no target to aim at, shoot in the direction the piece is facing.
         */
-        const { area } = tileStatus;
-        const [tileIndex, dirs] = this.getNumAdjacentTilesInDirectionFromTileToTile({ fromTileIndex: pieceTileIndex, toTileIndex: targetTileIndex, numTiles: area })
+        const isTargetOnSameTile = targetTileIndex.i == pieceTileIndex.i && targetTileIndex.j == pieceTileIndex.j;
+        const [tileIndex, dirs] = isTargetOnSameTile ?
+            this.getAdjacentTilesFromNormVec(pieceTileIndex, this.getNormVecFromAnimDir(self.getFacingDir()), area)
+            : this.getNumAdjacentTilesInDirectionFromTileToTile({ fromTileIndex: pieceTileIndex, toTileIndex: targetTileIndex, numTiles: area });
 
         const targetIndex = target.getPieceIndex();
+        const teamIndex = self.getTeamIndex();
 
-        const teamIndex = this.gameManagerProxy.getPieceTeamIndex(pieceIndex);
-        const { range } = tileStatus;
-
-        // TEST
-        // if (pieceIndex == 0) {
-        //     console.log({
-        //         accTime,
-        //         pieceIndex,
-        //         appliedStatus,
-        //         pieceTileIndex,
-        //         self,
-        //         target,
-        //         abilityAndTileStatusData,
-        //         tileStatus,
-        //         targetTileIndex,
-        //         area,
-        //         tileIndex,
-        //         dirs,
-        //         targetIndex,
-        //         teamIndex,
-        //         range,
-        //         isInBounds: this.getIsInBounds(tileIndex)
-        //     })
-        // }
+        // 'Dispel' keeps its size. it is not affected by the range modifier.
+        const range = tileStatus.range + (appliedStatus == 'isBubble' ? 0 : self.tileCountModifier);
 
         if (this.getIsInBounds(tileIndex)) {
-            // TO-DO: consider setting tile's 'contenders' with desired status
-            this.tiles[tileIndex.i][tileIndex.j].updateTileStatus({ updateKey: accTime, tileStatus, currCount: range, dirs, teamIndex, targetIndex });
+            const tile = this.tiles[tileIndex.i][tileIndex.j];
+            if (tile.getCanApplyStatus(tileStatus)) {
+                tile.updateTileStatus({ updateKey: accTime, tileStatus, currCount: range, dirs: [...dirs], teamIndex, targetIndex });
+            }
         }
     };
 
+    /*
+        Every tile reads the current board, then every tile updates together,
+        so the order of the update loops has no effect on where a status goes.
+    */
     updateTileState(accTime) {
-
-        // iterate TWICE through gameboard tiles
-        let iterCount = 1;
-        // FIRST ITERATION: iterate from TOP-LEFT corner to BOTTOM-RIGHT corner
+        const contenders = {};
         for (let i = 0; i < this.numTileColumns; i++) {
             for (let j = 0; j < this.numTileRows; j++) {
-                this.iterateThroughGameboardTilesAndCreateContenders({ i, j, accTime, iterCount });
+                this.addContendersFromTile(this.tiles[i][j], contenders);
             }
         }
 
-        iterCount++;
-        /*
-            SECOND ITERATION: iterate from BOTTOM-RIGHT corner to TOP-LEFT corner
-            Fixes bug when status is travelling in the opposite direction as the update...
- 
-            TO-DO: test if this is still necessary...
-        */
-        // for (let i = this.numTileColumns - 1; i > -1; i--) {
-        //     for (let j = this.numTileRows - 1; j > -1; j--) {
-        //         this.iterateThroughGameboardTilesAndCreateContenders({ i, j, accTime, iterCount });
-        //     }
-        // }
+        const { lookup, highlightedTileIndices } = this.getHighlightedTiles();
+        const teleportTileKey = this.getTeleportTileKey(highlightedTileIndices);
+        const { isTeleportTile } = this.gameManagerProxy.getAbilityAndTileStatusData();
+        this.activeTiles = [];
 
-        const { lookup } = this.getHighlightedTiles();
-
-        // const checkedKeys = {};
-        // A tile status is valid (and not an update bug) if it is present in a tile's 'contenders' lookup twice
         for (let i = 0; i < this.numTileColumns; i++) {
             for (let j = 0; j < this.numTileRows; j++) {
                 const tile = this.tiles[i][j];
-                const contenders = tile.getContenders();
-                let count = 0;
-                // !!Object.keys(contenders).length && console.log({ tile, contenders });
-                const reducedContenders = Object.values(contenders).reduce((acc, v) => {
-                    // const kParts = k.split(" ");
-                    // kParts.pop(); // remove 'iterCount' from key
-                    // const key = kParts.join(" ");
-                    // const isValid = true;//contenders[`${key} ${1}`] && contenders[`${key} ${2}`];
-                    // const isChecked = checkedKeys[key];
-                    // checkedKeys[key] = true; // only add the contender once
-                    // if (isValid && !isChecked) {
-                    const appliedStatus = v.getAppliedStatus();
+                const key = `${i} ${j}`;
+                const winner = this.getWinningContender(contenders[key]);
 
-                    if (!!acc[appliedStatus]) {
-                        if (v.getCurrCount() > acc[appliedStatus].getCurrCount()) {
-                            acc[appliedStatus] = v;
-                            count++;
-                        }
-                    } else {
-                        acc[appliedStatus] = v;
-                        count++;
-                    }
-                    // }
-                    return acc;
-                }, {});
-
-                if (count > 0) {
-                    // NOTE: 'reducedContenders' lookup uses 'appliedStatus' keys
-                    // console.log("before", { reducedContenders, tile });
-                    tile.setContenders(reducedContenders);
-                    tile.resolveContendersAndSetNewTileStatus();
-                    // console.log("after", { reducedContenders, tile });
+                tile.setUpdateKey(accTime);
+                if (winner) {
+                    tile.updateTileStatus({ updateKey: accTime, ...winner.getTileStatusValues() });
                 } else {
                     tile.clearTileStatus();
                 }
 
-                tile.clearContenders();
-
                 // update player tile highlight from hovered or clicked tile
-                const isHighlighted = lookup.has(`${i} ${j}`);
-                this.tiles[i][j].setIsHighlighted(isHighlighted);
+                tile.setIsHighlighted(tile.getIsVisible() && lookup.has(key));
+                tile.setTeleportTileStatus(teleportTileKey == key ? isTeleportTile : undefined);
+                if (tile.getIsVisible()) this.activeTiles.push(tile);
             }
         }
     }
 
-    iterateThroughGameboardTilesAndCreateContenders({ i, j, accTime, iterCount }) {
-        const tile = this.tiles[i][j];
+    // the highest ranked status wins. among the same status, the highest count wins.
+    getWinningContender(tileContenders = []) {
+        if (!tileContenders.length) return undefined;
+        const getRank = contender => TILE_STATUS_RANKS[contender.getAppliedStatus()];
+        const winningRank = Math.min(...tileContenders.map(getRank));
+        const winners = tileContenders.filter(contender => getRank(contender) == winningRank);
+        const highestCount = Math.max(...winners.map(contender => contender.getCurrCount()));
+        const strongest = winners.filter(contender => contender.getCurrCount() == highestCount);
+        return strongest[getRandomIntInRange({ max: strongest.length - 1 })];
+    }
+
+    getTeleportTileKey(highlightedTileIndices) {
+        const player = this.gameManagerProxy.getPlayerPiece();
+        const lastTile = highlightedTileIndices[highlightedTileIndices.length - 1];
+        return player.shouldTeleport && !!lastTile ? `${lastTile.i} ${lastTile.j}` : undefined;
+    }
+
+    addContender(contenders, { i, j }, contender) {
+        const key = `${i} ${j}`;
+        contenders[key] = contenders[key] || [];
+        contenders[key].push(contender);
+    }
+
+    addContendersFromTile(tile, contenders) {
         const tileIndex = tile.tileIndex;
+        const tileStatus = tile.getTileStatus();
+        if (!tile.isVisible || !tileStatus) return;
 
-        tile.setUpdateKey(accTime);
+        const currCount = tile.getCurrCount();
 
-        if (tile.isVisible) { // is on board
+        // 1. persist curr tile's status on curr tile (a piece on the tile clears it)
+        const trailAge = currCount == 0 ? tile.trailAge + 1 : 0;
+        const isPersist = tileStatus.getIsPersistent() || (tileStatus.getIsLeaveTrail() && currCount != 0);
+        if (isPersist && !tileStatus.getIsTrailFaded(trailAge) && !this.gameManagerProxy.getIsPieceOnTile(tileIndex)) {
+            this.addContender(contenders, tileIndex, tile.getTileContenderFromTile({ currCount: 0, trailAge }));
+        }
 
-            const tileStatus = tile.getTileStatus();
+        if (currCount == 0) return;
 
-            if (!!tileStatus) {
+        // 2. move curr tile's status to adjacent tiles based on dirs
+        const tick = tileStatus.getCurrTick(currCount);
+        const tileWall = this.getTileWall(tile, tick);
+        const isWallReversing = !!tileWall && tileStatus.getIsReverseDirection(currCount);
+        const wall = isWallReversing ? this.getReversedWall(tileWall, tick) : tileWall;
+        const dirs = isWallReversing ? tile.getDirs().map(d => tileStatus.reverseDir(d)[0]) : tile.getDirs();
+        dirs.forEach((d, dirIndex) => {
+            const tileIndexOffset = this.getTileOffsetFromDir(d, tileIndex);
+            const nextTileIndex = { i: tileIndex.i + tileIndexOffset.i, j: tileIndex.j + tileIndexOffset.j };
 
-                const currCount = tile.getCurrCount();
-
-                // 1. persist curr tile's status on curr tile
-                if (tileStatus.getIsPersistent() || (tileStatus.getIsLeaveTrail() && currCount != 0)) {
-                    const contenderCount = 0;
-
-                    const tileContender = tile.getTileContenderFromTile({ contenderCount });
-                    const key = tileContender.getKey(iterCount);
-                    // add current tile status to contenders
-                    tile.addContender(key, tileContender);
+            let newDirs = [d];
+            if (this.getIsInBounds(nextTileIndex)) {
+                if (tileStatus.getIsSpread(currCount)) {
+                    const area = tileStatus.getSpreadArea(currCount);
+                    const [_, dirs] = this.getNumAdjacentTilesInDirectionFromTileToTile({ fromTileIndex: tileIndex, toTileIndex: nextTileIndex, numTiles: area });
+                    newDirs = dirs;
+                } else if (tileStatus.getIsRotating(currCount)) {
+                    newDirs = tileStatus.rotateStatus(currCount);
+                } else if (tileStatus.getIsConserveDirections(currCount)) {
+                    newDirs = dirs;
+                } else if (tileStatus.getIsTracking(currCount)) {
+                    // with nothing to chase, keep going the same way
+                    const target = this.gameManagerProxy.getPiece(tile.targetIndex);
+                    if (!target.getIsDead() && (target.getTeamIndex() != tile.teamIndex || tileStatus.getDmgAmt() < 0)) {
+                        const [_, dirs] = this.getNumAdjacentTilesInDirectionFromTileToTile({ fromTileIndex: tileIndex, toTileIndex: target.getTileIndex() });
+                        newDirs = dirs;
+                    }
+                } else if (tileStatus.getIsReverseDirection(currCount)) {
+                    newDirs = tileStatus.reverseDir(d);
                 }
 
-                // 2. move curr tile's status to adjacent tiles based on dirs
-                if (currCount != 0) {
-                    const dirs = tile.getDirs();
-                    dirs.forEach(d => {
-                        const tileIndexOffset = this.getTileOffsetFromDir(d, tileIndex);
-                        const nextTileIndex = { i: tileIndex.i + tileIndexOffset.i, j: tileIndex.j + tileIndexOffset.j };
-
-                        let newDirs = [d];
-                        if (this.getIsInBounds(nextTileIndex)) {
-                            if (tileStatus.getIsRotating(currCount)) {
-                                newDirs = tileStatus.rotateStatus(currCount);
-                            } else if (tileStatus.getIsConserveDirections(currCount)) {
-                                newDirs = dirs;
-                            } else if (tileStatus.getIsTracking(currCount)) {
-                                const pieceIndex = tile.targetIndex;
-                                const targetTileIndex = this.gameManagerProxy.getPieceTileIndex(pieceIndex);
-                                const [_, dirs] = this.getNumAdjacentTilesInDirectionFromTileToTile({ fromTileIndex: tileIndex, toTileIndex: targetTileIndex });
-                                newDirs = dirs;
-                                // TESTING...
-                                console.log({ pieceIndex, i_j: { i, j }, tileIndex, targetTileIndex, newDirs, tileStatus })
-                            } else if (tileStatus.getIsSpread(currCount)) {
-                                const area = tileStatus.getSpreadArea(currCount);
-                                const [_, dirs] = this.getNumAdjacentTilesInDirectionFromTileToTile({ fromTileIndex: tileIndex, toTileIndex: nextTileIndex, numTiles: area });
-                                newDirs = dirs;
-                            } else if (tileStatus.getIsReverseDirection(currCount)) {
-                                newDirs = tileStatus.reverseDir(d);
-                            }
-
-
-                            // SIDE EFFECT: 'getTileContenderFromTile' decrements currCount for next tile update
-                            // NOTE: count was being decremented by -1 or -2... (ie. removed randomness)
-                            const tileContender = tile.getTileContenderFromTile({ newDirs });
-                            const key = tileContender.getKey(iterCount);
-
-                            const nextTile = this.tiles[nextTileIndex.i][nextTileIndex.j];
-                            // add current tile status to next tile's contenders
-                            nextTile.addContender(key, tileContender);
-
-                            // TEST
-                            // tileStatus.getAppliedStatus() == 'isOnFire'
-                            //     && console.log("inBounds", {
-                            //         tileContender,
-                            //         key,
-                            //         nextTile,
-                            //         nextTileIndex,
-                            //         newDirs, tileStatus, tile, currCount, d
-                            //     });
-
-                        } else if (tileStatus.getIsBouncy()) {
-                            /*
-                                next tile is not on game board,
-                                if status isBouncy, reflect status back onto the game board.
-                                find the reflected dir based on tileStatus' 'bounceLogic'
-                            */
-
-                            const rd = tileStatus.reflectDir(d);
-                            const tileIndexOffset = this.getTileOffsetFromDir(rd, tileIndex);
-                            const reflectedTileIndex = { i: tileIndex.i + tileIndexOffset.i, j: tileIndex.j + tileIndexOffset.j };
-                            if (this.getIsInBounds(reflectedTileIndex)) {
-                                const tileContender = tile.getTileContenderFromTile({ currCount: tileStatus.getBounceCount(currCount), newDirs: rd });
-                                const key = tileContender.getKey(iterCount);
-
-                                const reflectedTile = this.tiles[reflectedTileIndex.i][reflectedTileIndex.j];
-                                // add current tile status to next tile's contenders
-                                reflectedTile.addContender(key, tileContender);
-
-                                // TEST
-                                // tileStatus.getAppliedStatus() == 'isOnFire'
-                                //     && console.log("reflected", {
-                                //         tileContender,
-                                //         key,
-                                //         reflectedTile,
-                                //         reflectedTileIndex,
-                                //         rd, tileStatus, tile, currCount, d
-                                //     });
-                            }
-                        }
-                    })
+                if (!wall || this.getIsTileInWall(wall, nextTileIndex, tick + 1)) {
+                    // SIDE EFFECT: 'getTileContenderFromTile' decrements currCount for next tile update
+                    this.addContender(contenders, nextTileIndex, tile.getTileContenderFromTile({ newDirs, wall, currCount: tileStatus.getBranchCount(dirIndex) }));
+                }
+            } else if (tileStatus.getIsBouncy()) {
+                /*
+                    next tile is not on game board,
+                    if status isBouncy, reflect status back onto the game board.
+                    find the reflected dir based on tileStatus' 'bounceLogic'
+                */
+                const rd = tileStatus.reflectDir(d);
+                const reflectedOffset = this.getTileOffsetFromDir(rd[0], tileIndex);
+                const reflectedTileIndex = { i: tileIndex.i + reflectedOffset.i, j: tileIndex.j + reflectedOffset.j };
+                if (this.getIsInBounds(reflectedTileIndex)) {
+                    this.addContender(contenders, reflectedTileIndex, tile.getTileContenderFromTile({ currCount: tileStatus.getBounceCount(currCount), newDirs: rd, wall: false }));
                 }
             }
-        }
+        });
     }
 
-    getFlattenedArrayIndex(tileIndex) {
+    /*
+        A wall moves half a row forward each tick, two half-rows deep, and it widens a column on each side.
+        'wall' is the line it moves from: where it started, which way it faces, and the tick it set off.
+    */
+    getTileWall(tile, tick) {
+        if (!tile.getTileStatus().getIsWall() || tile.wall === false) return undefined;
+        if (!tile.wall) {
+            tile.wall = {
+                origin: getTileCenter(this.grid, tile.tileIndex),
+                normVec: this.getNormVecFromAnimDir(tile.getDirs()[0]),
+                startTick: tick
+            };
+        }
+        return tile.wall;
+    }
+
+    // the same wall, turned around where it stands
+    getReversedWall(wall, tick) {
+        const ticksMoving = tick - wall.startTick;
+        const halfRows = ticksMoving ? ticksMoving + 1 : 0;
+        const distance = halfRows * this.grid.rowStep * this.grid.scale / 2;
+        return {
+            origin: { x: wall.origin.x + wall.normVec.x * distance, y: wall.origin.y + wall.normVec.y * distance },
+            normVec: { x: -wall.normVec.x, y: -wall.normVec.y },
+            startTick: tick
+        };
+    }
+
+    getIsTileInWall(wall, tileIndex, tick) {
+        const { x, y } = getTileCenter(this.grid, tileIndex);
+        const forward = (x - wall.origin.x) * wall.normVec.x + (y - wall.origin.y) * wall.normVec.y;
+        const halfRows = forward / (this.grid.rowStep * this.grid.scale / 2);
+        const ticksMoving = tick - wall.startTick;
+        return halfRows >= ticksMoving - WALL_TOLERANCE && halfRows <= ticksMoving + 1 + WALL_TOLERANCE;
+    }
+
+    getFlattenedArrayIndex = (tileIndex) => {
         const { i, j } = tileIndex;
-        return i !== undefined && j !== undefined ? this.numTileRows * j + i : 0;
+        return i !== undefined && j !== undefined ? this.numTileColumns * j + i : 0;
     };
+
+    resetHightlightedTiles = () => {
+        this.clickedTileIndex = undefined;
+        this.hoveredTileIndex = undefined;
+    }
 
     getHighlightedTiles = () => {
         let highlightedTileIndices = [];
@@ -366,110 +348,85 @@ export class GameBoardManager {
         return { lookup, highlightedTileIndices };
     }
 
-    /* "PRIVATE" METHOD... call 'updateBounds' */
-    changeBounds({ newBounds = '', lookup = PENINSULA_TILE_LOOKUP, rows = MAX_ROWS, columns = MAX_COLS }) {
-        this.bounds = !!Bounds[newBounds] ? Bounds[newBounds] : Bounds.Lookup;
-        this.boundsLookup = lookup;
-        this.numTileRows = rows;
-        this.numTileColumns = columns;
-    }
-
-    updateBounds({ newBounds = '', lookup = PENINSULA_TILE_LOOKUP, rows = MAX_ROWS, columns = MAX_COLS }) {
-        this.changeBounds({ newBounds, lookup, rows, columns });
-        this.tilesLookupVals = this.getLookupVals();
+    updateBounds() {
         this.updateProxyProps();
     }
 
-    getIsInBounds = (tileIndex) => {
-        if (this.bounds == Bounds.Grid) {
-            // ASSUMES: (1) non-inclusive and (2) i = rows, j = columns... CONFIRM/TEST
-            return tileIndex.i < this.numTileColumns && tileIndex.j < this.numTileRows;
-        } else {
-            return !!this.boundsLookup[`${tileIndex.i} ${tileIndex.j}`];
+    // for levels that change as they go, eg. the subway's platforms while a train is in
+    setWalkableTiles(tiles) {
+        this.walkableTiles = tiles;
+        this.walkableTileKeys = new Set(tiles.map(({ i, j }) => `${i} ${j}`));
+        const allTiles = this.tiles.flat();
+        allTiles.forEach(tile => tile.updateIsVisible(this.getIsInBounds(tile.tileIndex)));
+        this.activeTiles = allTiles.filter(tile => tile.getIsVisible());
+        this.walkableRevision += 1;
+    }
+
+    getWalkableRevision() {
+        return this.walkableRevision;
+    }
+
+    getClosestWalkableTile(tileIndex) {
+        const { x, y } = this.getCharXAndYFromTileIndex(tileIndex);
+        const getDistance = tile => getDistanceToFrom(this.getCharXAndYFromTileIndex(tile), { x, y });
+        return this.walkableTiles.reduce((closest, tile) => getDistance(tile) < getDistance(closest) ? tile : closest);
+    }
+
+    // the tile the player can walk to that is closest to a spot on the level. tiles cut off from the player don't count.
+    getClosestReachableTile(fromTile, { x, y }) {
+        const seen = new Set([`${fromTile.i} ${fromTile.j}`]);
+        const reachable = [fromTile];
+        for (const tile of reachable) { // also visits the tiles added along the way
+            [...this.getAdjacentTileIndices(tile), ...this.getLinkedTiles(tile)].forEach(next => {
+                const key = `${next.i} ${next.j}`;
+                if (seen.has(key)) return;
+                seen.add(key);
+                reachable.push(next);
+            });
         }
+        const getDistance = tile => {
+            const center = getTileCenter(this.grid, tile);
+            return Math.hypot(center.x - x, center.y - y);
+        };
+        return reachable.reduce((closest, tile) => getDistance(tile) < getDistance(closest) ? tile : closest);
+    }
+
+    getLinkedTile = ({ i, j }) => {
+        return this.linkedTiles.get(`${i} ${j}`);
+    }
+
+    getLinkedTiles(tileIndex) {
+        const linkedTile = this.getLinkedTile(tileIndex);
+        return linkedTile ? [linkedTile] : [];
+    }
+
+    getIsInBounds = (tileIndex) => {
+        return this.walkableTileKeys.has(`${tileIndex.i} ${tileIndex.j}`);
     }
 
     findPathFromTo = (startIndex, goalIndex, /* and (optionally) avoid: */ enemyTiles = undefined, isAlwaysAvoid = false) => {
-        const recur = (currTileIndex, arr, count) => {
-            if ((currTileIndex.i === goalIndex.i && currTileIndex.j === goalIndex.j) || count > 400)
-                return arr;
+        const getIsEnemyTile = tile => !!enemyTiles && enemyTiles.some(e => e.i === tile.i && e.j === tile.j);
+        const getIsNextToEnemy = tile => !!enemyTiles && this.getAdjacentAdjacentTileIndices(tile).some(getIsEnemyTile);
+        const avoidedPath = findPath({
+            start: startIndex,
+            goal: goalIndex,
+            getAdjacentTiles: tile => [...this.getAdjacentTileIndices(tile), ...this.getLinkedTiles(tile)],
+            getLocation: this.getCharXAndYFromTileIndex,
+            getIsBlocked: tile => getIsEnemyTile(tile) || (isAlwaysAvoid && getIsNextToEnemy(tile)),
+            getExtraCost: tile => getIsNextToEnemy(tile) ? ENEMY_NEARBY_TILE_COST : 0
+        });
+        if (!!avoidedPath.length || !enemyTiles || isAlwaysAvoid) return avoidedPath;
 
-            // produce all possible adjacent tile indices to currTile
-            let adjacentTiles = this.getAdjacentTileIndices(currTileIndex);
-
-            if (!!enemyTiles) {
-                const tilesWithEnemyTilesRemoved = adjacentTiles.filter(t => {
-                    // filter-out adjacent tiles that have other team's pieces on them
-                    if (enemyTiles.some(e => e.i === t.i && e.j === t.j)) return false;
-
-                    // filter-out adjacent tiles that have adjacent tiles with other team's pieces on them
-                    const adjAdjTiles = this.getAdjacentAdjacentTileIndices(t).flat();//getAdjacentTileIndices(t).flat();
-                    return adjAdjTiles.every(at => !enemyTiles.some(e => e.i === at.i && e.j === at.j));
-                });
-
-                // do not allow teammate to run through enemies (if possible...)
-                if (isAlwaysAvoid || !!tilesWithEnemyTilesRemoved.length) {
-                    adjacentTiles = tilesWithEnemyTilesRemoved;
-                }
-            }
-
-            // get all charXAndY for each confirmed adjacent tile
-            const goalXY = this.getCharXAndYFromTileIndex(goalIndex);
-            const test = this.getCharXAndYFromTileIndex(adjacentTiles[0]);
-            const shortest = {
-                tileIndex: adjacentTiles[0],
-                distance: getDistanceToFrom(test, goalXY)
-            };
-            adjacentTiles.forEach(t => {
-                const adjXY = this.getCharXAndYFromTileIndex(t);
-                const distance = getDistanceToFrom(adjXY, goalXY);
-                if (distance < shortest.distance) {
-                    shortest.tileIndex = t;
-                    shortest.distance = distance;
-                }
-            });
-            if (
-                shortest.tileIndex &&
-                shortest.tileIndex.i == currTileIndex.i &&
-                shortest.tileIndex.j == currTileIndex.j
-            ) {
-                const keyedArr = arr.map(({ i, j }) => `${i} ${j}`);
-                const remainingTiles = adjacentTiles.filter(
-                    ({ i, j }) => !keyedArr.includes(`${i} ${j}`)
-                );
-                const randInt = getRandomIntInRange({ max: remainingTiles.length - 1 });
-                const randTile = remainingTiles[randInt];
-                const _arr = [...arr, randTile];
-                return recur(randTile, _arr, count + 1);
-            } else if (shortest.tileIndex) {
-                const _arr = [...arr, shortest.tileIndex];
-                return recur(shortest.tileIndex, _arr, count + 1);
-            } else {
-                return [];
-            }
-        }
-        let count = 0;
-        return recur(startIndex, [], count).reduce((acc, tileIndex) => {
-            if (!!tileIndex && !acc.lookup[`${tileIndex.i} ${tileIndex.j}`]) {
-                acc.lookup[`${tileIndex.i} ${tileIndex.j}`] = true;
-                acc.result.push(tileIndex);
-            }
-            return acc;
-        }, { lookup: {}, result: [] }
-        ).result;
+        // boxed-in by enemies: going through them beats not moving
+        return this.findPathFromTo(startIndex, goalIndex);
     };
 
-    getTileXAndYFromTileIndex({ i, j }) {
-        const x = (i === 0 ? i * 45 - 25 : i * 45 + 25 * (i - 1)) * this.scale;
-        const y = (i % 2 ? j * 80 + 40 : j * 80) * this.scale;
-        return { x, y };
+    getTileXAndYFromTileIndex(tileIndex) {
+        return getTileXAndY(this.grid, tileIndex);
     };
 
-    getCharXAndYFromTileIndex = ({ i, j }) => {
-        const x =
-            (i === 0 ? i * 45 - 25 : i * 45 + 25 * (i - 1)) * this.scale + 52.5 * this.scale;
-        const y = (i % 2 ? j * 80 + 40 : j * 80) * this.scale + 42.5 * this.scale;
-        return { x, y };
+    getCharXAndYFromTileIndex = (tileIndex) => {
+        return getCharXAndY(this.grid, tileIndex);
     };
 
     getAreTilesAdjacent(tileIndex1, tileIndex2) {
@@ -501,7 +458,6 @@ export class GameBoardManager {
 
     getNumAdjacentTilesInDirectionFromTileToTile({ fromTileIndex, toTileIndex, numTiles = 1 }) {
         const normVec = this.getNormVecFromTileIndices({ fromTileIndex, toTileIndex });
-        console.log({ normVec }); // TESTING
         return this.getAdjacentTilesFromNormVec(fromTileIndex, normVec, numTiles);
     }
 
@@ -554,7 +510,7 @@ export class GameBoardManager {
 
     getClosestPieceFromTileIndex = (pieces, tileIndex) => {
         const { piece } = pieces
-            .filter(({ lives, isOnTiles }) => lives > 0 && !!isOnTiles)
+            .filter(({ isDead, isOnTiles }) => !isDead && !!isOnTiles)
             .reduce(
                 (maxDistanceData, piece) => {
                     const distance = getDistanceToFrom(this.getCharXAndYFromTileIndex(tileIndex), piece.charLocation);
@@ -571,9 +527,7 @@ export class GameBoardManager {
     getPathToTeamLeader = (pieceIndex) => {
         const piece = this.gameManagerProxy.getPiece(pieceIndex);
         const leaderPiece = this.gameManagerProxy.getTeamLeaderPiece(pieceIndex);
-        const teamPieces = this.gameManagerProxy.getTeamPieces(piece.teamIndex);
-        const isAlwaysAvoid = true;
-        const path = this.findPathFromTo(piece.getTileIndex(), leaderPiece.getTileIndex(), teamPieces, isAlwaysAvoid);
+        const path = this.findPathFromTo(piece.getTileIndex(), leaderPiece.getTileIndex());
         return path;  // aka: 'moveToTiles'
     }
 
@@ -581,8 +535,9 @@ export class GameBoardManager {
         currentLocation,
         moveFromLocation,
         moveToLocation,
-        moveSpeed
+        moveSpeed: tilesMoveSpeed
     }) => {
+        const moveSpeed = tilesMoveSpeed * this.moveSpeedScale;
         const distanceFromStart = getDistanceToFrom(moveFromLocation, currentLocation);
         const distanceToFinish = getDistanceToFrom(moveToLocation, currentLocation);
         const totalDistance = getDistanceToFrom(moveFromLocation, moveToLocation);
@@ -596,7 +551,7 @@ export class GameBoardManager {
         const hasArrived =
             distanceToFinish < moveSpeed || distanceFromStart > totalDistance;
         return {
-            newLocation: {
+            newLocation: hasArrived ? moveToLocation : {
                 x: x + x_dir * moveSpeed,
                 y: y + y_dir * moveSpeed
             },
@@ -605,44 +560,38 @@ export class GameBoardManager {
     };
 
     getSafeTileIndex = (pieceIndex) => {
-        const otherTeamsPieces = this.gameManagerProxy.getOtherTeamsPieces(pieceIndex);
+        const otherTeamsPieces = this.gameManagerProxy.getOtherTeamsPieces(pieceIndex).filter(({ isDead }) => !isDead);
+
+        if (!otherTeamsPieces.length) {
+            return this.getRandomTileIndexOnBoard();
+        }
 
         const otherTeamsTilesLookup = otherTeamsPieces.reduce((acc, { tileIndex }) => {
             acc[`${tileIndex.i} ${tileIndex.j}`] = tileIndex;
             return acc;
         }, {});
 
+        const sumLocations = otherTeamsPieces.reduce((acc, { charLocation }) => {
+            acc.x += charLocation.x;
+            acc.y += charLocation.y;
+            return acc
+        }, { x: 0, y: 0 });
+
+        const avgLocation = { x: sumLocations.x / otherTeamsPieces.length, y: sumLocations.y / otherTeamsPieces.length };
+
         let safeTileObj = {
             distance: Number.MIN_SAFE_INTEGER,
             tileIndex: this.getRandomTileIndexOnBoard()
         };
 
-        if (!otherTeamsPieces.length) {
-            return safeTileObj
-        }
-
-        const sumLocations = otherTeamsPieces
-            .filter(({ lives }) => !!lives)
-            .map((charLocation) => charLocation)
-            .reduce((acc, item) => {
-                acc.x += item.x;
-                acc.y += item.y;
-                return acc
-            }, { x: 0, y: 0 });
-
-        const avgLocation = { x: sumLocations.x / otherTeamsPieces.length, y: sumLocations.y / otherTeamsPieces.length };
-
         const teamIndex = this.gameManagerProxy.getPieceTeamIndex(pieceIndex);
-        const allTiles = this.tilesLookupVals;//this.getLookupVals();
-        allTiles.forEach(tileIndex => {
+        this.walkableTiles.forEach(tileIndex => {
             const currTileXY = this.getCharXAndYFromTileIndex(tileIndex);
             const testDist = getDistanceToFrom(currTileXY, avgLocation);
             if (testDist > safeTileObj.distance) {
-                const isSafe =
-                    // TO-DO: ensure below lines are correct...
-                    !this.tiles[tileIndex.i][tileIndex.j].getIsDmgTile(teamIndex) // dmg tile status
-                    &&
-                    !otherTeamsTilesLookup[`${tileIndex.i} ${tileIndex.j}`] // enemy tile, will cause dmg  
+                const tile = this.tiles[tileIndex.i][tileIndex.j];
+                const isDmgTile = tile.getIsDmgTile(teamIndex) && tile.getDmgAmt() > 0;
+                const isSafe = !isDmgTile && !otherTeamsTilesLookup[`${tileIndex.i} ${tileIndex.j}`];
 
                 if (isSafe) {
                     safeTileObj = {
@@ -655,30 +604,8 @@ export class GameBoardManager {
         return safeTileObj.tileIndex;
     };
 
-    getGridLookupVals() {
-        const tileIndices = this.getTilesInFlatArray().map(({ tileIndex }) => tileIndex)
-        return tileIndices;
-    }
-
-    getLookupVals() {
-        if (this.bounds == Bounds.Grid) {
-            const gridVals = this.getGridLookupVals()
-            return gridVals;
-        } else if (this.boundsLookup == PENINSULA_TILE_LOOKUP) {
-            return PENINSULA_TILE_LOOKUP_VALS;
-        } else {
-            const tileIndices = Object.values(this.boundsLookup);
-            return tileIndices
-        }
-    }
-
     getMoveOntoGameBoardMovementData = () => {
-        // TO-DO: make this not hard-coded...
-        const min_X = 0;
-        const min_Y = 30;
-        const max_X = 490;
-        const max_Y = 800;
-        // - - - - - - - - 
+        const { minX: min_X, minY: min_Y, maxX: max_X, maxY: max_Y } = this.level.kaijuEntry.bounds;
 
         const randIntX = getRandomIntInRange({ min: min_X, max: max_X });
         const randIntY = getRandomIntInRange({ min: min_Y, max: max_Y });
@@ -696,8 +623,9 @@ export class GameBoardManager {
     }
 
     getClosestPerimeterTileFromLocation(location) {
-        let closest = { distance: Number.MAX_SAFE_INTEGER, tile: PERIMETER_TILES_VALS[0] };
-        PERIMETER_TILES_VALS.forEach(({ i, j }) => {
+        const { perimeterTiles } = this.level.kaijuEntry;
+        let closest = { distance: Number.MAX_SAFE_INTEGER, tile: perimeterTiles[0] };
+        perimeterTiles.forEach(({ i, j }) => {
             const distance = getDistanceToFrom(this.getCharXAndYFromTileIndex({ i, j }), location);
             if (closest.distance > distance) closest = { distance, tile: { i, j } };
         });
@@ -705,16 +633,7 @@ export class GameBoardManager {
     };
 
     getRandomTileIndexOnBoard = () => {
-        if (this.bounds == Bounds.Grid) {
-            return {
-                i: getRandomIntInRange({ max: this.numTileColumns }),
-                j: getRandomIntInRange({ max: this.numTileRows })
-            };
-        } else {
-            const tileIndices = this.tilesLookupVals;//this.getLookupVals(); // eg. [{ i: 0, j: 0 }, ...]
-            const randomInt = getRandomIntInRange({ max: tileIndices.length - 1 });
-            return tileIndices[randomInt];
-        }
+        return this.walkableTiles[getRandomIntInRange({ max: this.walkableTiles.length - 1 })];
     };
 
     getPathToSafeTile = (pieceIndex) => {
@@ -733,7 +652,7 @@ export class GameBoardManager {
     }
 
     getIsPieceInDanger = (pieceIndex) => {
-        const otherTeamsTilesLookup = this.gameManagerProxy.getOtherTeamsPieces(pieceIndex).reduce((acc, { tileIndex }) => {
+        const otherTeamsTilesLookup = this.gameManagerProxy.getOtherTeamsPieces(pieceIndex).filter(({ isDead }) => !isDead).reduce((acc, { tileIndex }) => {
             acc[`${tileIndex.i} ${tileIndex.j}`] = tileIndex;
             return acc;
         }, {});
@@ -749,23 +668,23 @@ export class GameBoardManager {
                 t =>
                     !!t &&
                     (Array.isArray(this.tiles[t.i]) &&
-                        Array.isArray(this.tiles[t.i][t.j]) &&
                         !!this.tiles[t.i][t.j] &&
                         this.tiles[t.i][t.j].getIsDmgTile(teamIndex)
                         && this.tiles[t.i][t.j].getDmgAmt() > 0
                     ) // enemy status tile, will cause dmg
                     ||
-                    !!otherTeamsTilesLookup[`${t.i} ${t.j}`] // enemy tile, will cause dmg  
+                    !!otherTeamsTilesLookup[`${t.i} ${t.j}`] // enemy tile, will cause dmg
             );
         return isInDanger;
     }
 
-    getDmg = (pieceIndex) => {
-        const tileIndex = this.gameManagerProxy.getPieceTileIndex(pieceIndex);
+    // includes dmg from Kaiju on the tile and dmg status tiles (and 'Heals', ie. negative dmg)
+    getDmg = (pieceIndex, tileIndex = this.gameManagerProxy.getPieceTileIndex(pieceIndex)) => {
         const teamIndex = this.gameManagerProxy.getPieceTeamIndex(pieceIndex);
         const tile = this.tiles[tileIndex.i][tileIndex.j];
-        const isDmg = tile.getIsDmgTile(teamIndex);
-        return isDmg ? tile.getDmgAmt() : 0;
+        const statusDmg = tile.getIsDmgTile(teamIndex) ? tile.getDmgAmt() : 0;
+        const isContactDmg = this.gameManagerProxy.getIsContactDmg(pieceIndex, tileIndex);
+        return isContactDmg ? Math.max(statusDmg, 1) : statusDmg;
     }
 
     getTileOffsetFromDir = (dir, tileIndex) => {
@@ -827,6 +746,12 @@ export class GameBoardManager {
         return normVec;
     }
 
+    // eg. 'downRight' -> 'down right' -> { x: 0.868, y: 0.496 }
+    getNormVecFromAnimDir(animDir) {
+        const tileDir = animDir.replace(/([A-Z])/, ' $1').toLowerCase();
+        return TILE_DIR_NORM_VECS[Math.max(TILE_DIRS.indexOf(tileDir), 0)];
+    }
+
     getDirFromNormVec(normVec) {
         const xDir = normVec.x > 0 ? "Right" : "Left"; // go right
         const yDir = normVec.y > 0 ? "down" : "up"; // go up
@@ -851,27 +776,23 @@ export class GameBoardManager {
             { i: -1, j: currTile.i % 2 ? 0 : -1 } // up left
         ];
         const coords = directionMapping[0];
-        // const dot = Math.MIN_SAFE_INTEGER;
-        const distance = Math.MAX_SAFE_INTEGER;
+        const distance = Number.MAX_SAFE_INTEGER;
         const closest = directionMapping.reduce(
             (acc, item, i) => {
                 const distance = getDistanceToFrom(item, normVec);
 
-                // const dot = getDotProduct2D(item, normVec);
                 if (
-                    distance < acc.distance 
-
-                    // dot >= acc.dot // TO-DO: TEST!
+                    distance < acc.distance
                     && this.getIsInBounds({
                         i: currTile.i + tileIndexMapping[i].i,
                         j: currTile.j + tileIndexMapping[i].j
                     })) {
-                    return { i, coords: item, /*dot*/ distance }
+                    return { i, coords: item, distance }
                 } else {
                     return acc;
                 }
             },
-            { i: 0, coords, /*dot*/ distance }
+            { i: 0, coords, distance }
         );
         const tileDirMapping = [
             "up",
@@ -887,7 +808,8 @@ export class GameBoardManager {
             j: currTile.j + tileIndexMapping[i].j
         };
         if (area >= 6) {
-            return [spawnPowerTileIndex, tileDirMapping];
+            // the aimed direction comes first
+            return [spawnPowerTileIndex, [...tileDirMapping.slice(i), ...tileDirMapping.slice(0, i)]];
         } else if (area) {
             const dirs = [tileDirMapping[i]];
             for (let k = 1; k < area - 1; k++) {

@@ -2,7 +2,6 @@
 export class GameBoardTileStatusAndAbilityData {
     constructor({
         appliedStatus, // string tile status, eg. "isWet", "isOnFire", etc.
-        beats = {}, // status key lookup. tracks which statuses the current status wins against
         bounceCountResetVal = 0,
         isPersistent = true,
         dmgAmt = 1,
@@ -14,6 +13,9 @@ export class GameBoardTileStatusAndAbilityData {
         isTracking = [/* example: { tickFrom: 3, tickTo: 6 } */],
         isSpread = [/* example: { tick: 3, dirs: [1-6] } */],
         isReverseDirection = [/* example, tick(s): 3, 4, 5 */],
+        isWall = false, // spreads as a straight front that widens, not as separate lines
+        branchCount = undefined, // how far the status travels in every direction after its first
+        trailTicks = undefined, // how long a persistent status stays on a tile, in tile updates. forever if undefined
         color,
         passiveName,
         activeName,
@@ -45,8 +47,6 @@ export class GameBoardTileStatusAndAbilityData {
         this.area = area; // numTiles
         this.dmgAmt = dmgAmt;
 
-        this.beats = beats;
-
         // BOOLEANS
         this.isPersistent = isPersistent;
         this.isBouncy = isBouncy;
@@ -66,6 +66,10 @@ export class GameBoardTileStatusAndAbilityData {
         this.isSpread = isSpread;
         this.isReverseDirection = isReverseDirection;
         // - - - -
+
+        this.isWall = isWall;
+        this.branchCount = branchCount;
+        this.trailTicks = trailTicks;
 
         // status color
         this.color = color;
@@ -89,7 +93,7 @@ export class GameBoardTileStatusAndAbilityData {
         this.desiredAIRange = desiredAIRange; // ideal number of tiles away from enemy given ability
         this.type = type; // array of ability types: 'offensive', 'defensive', 'escape', 'heal'
         this.cooldownTimeAI = cooldownTimeAI;
-        // - - - 
+        // - - -
 
         this.cooldownTimePlayer = cooldownTimePlayer;
 
@@ -168,10 +172,6 @@ export class GameBoardTileStatusAndAbilityData {
         return this.dmgAmt;
     }
 
-    getBeats() {
-        return this.beats;
-    }
-
     getIsPersistent() {
         return this.isPersistent;
     }
@@ -193,6 +193,7 @@ export class GameBoardTileStatusAndAbilityData {
     }
 
     modifyStats(piece, toggleOff) {
+        if (!this.fieldToModify) return;
         const mod = (toggleOff ? -1 : 1) * this.modifierVal;
         const modification = piece[this.fieldToModify] + mod;
         piece[this.fieldToModify] = modification;
@@ -249,7 +250,7 @@ export class GameBoardTileStatusAndAbilityData {
     }
 
     getBounceCount(currCount) {
-        return Math.min(currCount, this.bounceCountResetVal);
+        return currCount > this.bounceCountResetVal ? this.bounceCountResetVal : currCount - 1;
     }
 
     isInRange(range, currCount) {
@@ -277,12 +278,25 @@ export class GameBoardTileStatusAndAbilityData {
         return this.isConserveDirections.some(range => this.isInRange(range, currCount))
     }
 
+    getIsWall() {
+        return this.isWall;
+    }
+
+    // undefined if the status travels as far in this direction as in any other
+    getBranchCount(dirIndex) {
+        return dirIndex > 0 ? this.branchCount : undefined;
+    }
+
+    getIsTrailFaded(trailAge) {
+        return this.trailTicks !== undefined && trailAge >= this.trailTicks;
+    }
+
     // isTracking: [{ tickFrom: 8, tickTo: 25 }],
     getIsTracking(currCount) {
         return this.isTracking.some(range => this.isInRange(range, currCount))
     }
 
-    // isSpread: [{ tick: 1, area: 1 }], // example: at TICK 1, reduce directions to 1 tile. 
+    // isSpread: [{ tick: 1, area: 1 }], // example: at TICK 1, reduce directions to 1 tile.
     getIsSpread(currCount) {
         const currTick = this.getCurrTick(currCount);
         return this.isSpread.some(({ tick }) => tick == currTick);
@@ -294,7 +308,7 @@ export class GameBoardTileStatusAndAbilityData {
         return this.isReverseDirection.includes(currTick);
     }
 
-    // isSpread: [{ tick: 1, area: 1 }], // example: at TICK 1, reduce directions to 1 tile. 
+    // isSpread: [{ tick: 1, area: 1 }], // example: at TICK 1, reduce directions to 1 tile.
     getSpreadArea(currCount) {
         const currTick = this.getCurrTick(currCount);
         const spread = this.isSpread.find(({ tick }) => tick == currTick)

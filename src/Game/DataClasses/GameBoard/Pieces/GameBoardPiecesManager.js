@@ -24,7 +24,41 @@ export class GameBoardPiecesManager {
         return this.pieces;
     }
 
-    getMostDmgedTeammate(pieceIndex) {
+    getDeathPieces() {
+        return this.deathPieces;
+    }
+
+    getIsPlayerTeamDead() {
+        return this.getTeamPieces(this.getPlayerTeamIndex()).every(piece => piece.getIsDead());
+    }
+
+    getPlayerTeamUiState() {
+        return this.getTeamPieces(this.getPlayerTeamIndex()).map(piece => piece.getUiState());
+    }
+
+    getIsPieceOnTile = ({ i, j }) => {
+        return this.pieces.some(({ isDead, isOnTiles, tileIndex }) => !isDead && isOnTiles && tileIndex.i == i && tileIndex.j == j);
+    }
+
+    getIsContactDmg = (pieceIndex, { i, j }) => {
+        const teamIndex = this.pieces[pieceIndex].teamIndex;
+        return this.pieces.some(({ teamIndex: otherTeamIndex, dealsContactDmg, isDead, isOnTiles, tileIndex }) =>
+            dealsContactDmg && otherTeamIndex != teamIndex && !isDead && isOnTiles && tileIndex.i == i && tileIndex.j == j);
+    }
+
+    // after the walkable tiles change: 'hitOffTiles' is run on any piece left off of them
+    updatePiecesForWalkableTiles(hitOffTiles) {
+        this.pieces.filter(piece => !piece.isDead && piece.isOnTiles).forEach(piece => {
+            piece.trimPathToWalkableTiles();
+            if (!this.gameManagerProxy.getIsInBounds(piece.getTileIndex())) hitOffTiles(piece);
+        });
+    }
+
+    applyDmgFromTouchedTiles(accTime) {
+        this.pieces.forEach(piece => piece.applyDmgFromTouchedTiles(accTime));
+    }
+
+    getMostDmgedTeammate = (pieceIndex) => {
 
         const teamIndex = this.pieces[pieceIndex].teamIndex;
         const teammateIndices = this.teams[teamIndex].getTeamPiecesIndices();
@@ -34,7 +68,7 @@ export class GameBoardPiecesManager {
 
         teammateIndices.forEach(i => {
             const test = this.pieces[i].getLives();
-            if (lowestHealth > test) {
+            if (!this.pieces[i].getIsDead() && lowestHealth > test) {
                 lowestHealth = test;
                 mostDmgedTeammateIndex = i;
             }
@@ -58,9 +92,9 @@ export class GameBoardPiecesManager {
         return teamIndex;
     }
 
-    initPlayerLocationsOnBoard() {
+    initPlayerLocationsOnBoard(spawnTiles = []) {
         const isOnTiles = true;
-        this.pieces.forEach(p => p.initCharLocation(isOnTiles));
+        this.pieces.forEach((p, i) => p.initCharLocation(isOnTiles, spawnTiles[i]));
     }
 
     getTeamLeaderPiece = (pieceIndex) => {
@@ -102,8 +136,8 @@ export class GameBoardPiecesManager {
         return isSomeAlive;
     }
 
-    movePieces({ accTime, timeoutHandler, playerInputHandler }) {
-        this.pieces.forEach(p => p.movePiece({ accTime, timeoutHandler, playerInputHandler }));
+    movePieces({ accTime, playerInputHandler }) {
+        this.pieces.forEach(p => p.movePiece({ accTime, playerInputHandler }));
     }
 
     addPlayer({ playerAvatar, playerAbilities }) {
@@ -122,11 +156,9 @@ export class GameBoardPiecesManager {
         return teamPieces
     }
 
-    spawnDeathPieceAtLocation = (charLocation, avatar, tileIndex, color) => {
+    spawnDeathPieceAtLocation = (charLocation, avatar, tileIndex, color, pieceIndex) => {
         const zIndex = this.gameManagerProxy.getFlattenedArrayIndex(tileIndex);
-        // TO-DO: make a DeathPiece class.
-        const deathPiece = {}//new DeathPiece(charLocation, avatar, zIndex, color);
-        this.deathPieces.push(deathPiece);
+        this.deathPieces.push({ key: this.deathPieces.length, charLocation, avatar, zIndex, color, pieceIndex });
     }
 
     getIsTeamDamaged = (pieceIndex) => {
@@ -134,7 +166,7 @@ export class GameBoardPiecesManager {
         const teammates = this.teams[teamIndex].teammateIndices;
         return teammates.some(pieceIndex => {
             const teammate = this.pieces[pieceIndex];
-            return teammate.lives < teammate.maxLives;
+            return !teammate.getIsDead() && teammate.lives < teammate.maxLives;
         });
     }
 

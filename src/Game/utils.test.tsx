@@ -1,6 +1,4 @@
-import { getRandomIntInRange, getDistanceToFrom, getNormVecFromDestAndOrigin, getDotProduct2D
-  // , getDotProduct // <-- NOT USING...
-} from './utils';
+import { getRandomIntInRange, getDistanceToFrom, getNormVecFromDestAndOrigin, getDotProduct2D } from './utils';
 
 describe('getRandomIntInRange', () => {
 

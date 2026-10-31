@@ -1,40 +1,70 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
 import styled from "styled-components";
+import { useSnapshot } from "valtio";
 import { GlobalSettingsContext } from "Home";
 import { GameBoard } from "../GameBoard/GameBoard";
+import { FULL_WINDOW, loadPlayWindow, PlayWindow, PORTRAIT_WINDOW, savePlayWindow } from "../GameBoard/PlayWindow";
 import { UI } from "../UI/UI";
 import { AbilityPicker } from "./AbilityPicker";
-import {
-  useInterval,
-  useKeyPress,
-  movePlayerPieces,
-  moveKaijuPieces,
-  determineKaijuQuantity,
-  updateTileState,
-  redrawTiles,
-  updateHighlightedTiles
-} from "Utils/utils";
-import { FullscreenPage } from "Components/FullscreenPage.js";
-import { HolographGridBackground } from "Game/UI/HolographGridBackground";
-import { GameManager } from '../DataClasses/GameManager';
-import { damageKaiju, type KaijuState, WeatherCondition, GameDifficulty } from 'Utils/gameState'; // TESTING typescript ".ts" file import/export
+import { useKeyPress } from "Utils/utils";
+import { ABILITY_KEY_MAPPINGS, GAME_TICK } from "Utils/gameState";
+import { FullscreenPage } from "Components/FullscreenPage.jsx";
+import { GameManager, GameResult } from '../DataClasses/GameManager';
+import { GameLoop } from '../DataClasses/GameLoop';
+import { applyLevelFile, LEVELS, PENINSULA } from '../Levels/levels';
+import { TileEditor } from '../Levels/TileEditor';
+import { gameUiStore, publishGameUi, resetGameUi } from '../gameUiStore';
 
-const Wrapper = styled.div`
+const GameArea = styled.div`
   position: relative;
+  width: 100dvw;
+  height: 100dvh;
   display: flex;
-  align-self: center;
+  align-items: center;
+  justify-content: center;
+  background: #0a1224;
 `;
 
-const GameWrapper = styled.div`
+// everything in the game sits in this box, and scales with it
+const GameFrame = styled.div`
   position: relative;
-  display: flex;
-  justify-content: space-between;
-  ${props => props.width ? `width: ${props.width};` : "width:800px;"}
-  ${props => props.height ? `height: ${props.height};` : "height:800px;"}
-  overflow: visible;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  max-width: calc(100dvh * 16 / 9);
+  max-height: 100dvh;
+  overflow: hidden;
+  container-type: inline-size;
+  background: #000;
+  @media (orientation: portrait) {
+    aspect-ratio: auto;
+    height: 100dvh;
+    max-width: none;
+  }
 `;
 
-export const FloatingEffect = styled.div`
+const PhaseToggles = styled.div`
+  position: absolute;
+  top: 4.5cqw;
+  left: 1cqw;
+  z-index: 2147483646;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3cqw;
+  padding: 0.5cqw 0.8cqw;
+  border-radius: 0.4cqw;
+  font-size: 1.2cqw;
+  color: #dfe;
+  background: rgba(0, 0, 0, 0.6);
+`;
+
+const LevelPicker = styled.select`
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 2147483647;
+`;
+
+export const FloatingEffect = styled.div<{ styles?: string; duration?: string }>`
 
   ${props => !!props.styles && props.styles}
 
@@ -67,441 +97,249 @@ export const FloatingEffect = styled.div`
   }
 }`;
 
-const GameBoardOverlay = styled.div`
-  position: absolute;
-  z-index: ${props => props.isBackground ? 214 : 2147483643};
-
-  pointer-events: none;
-  background: url(${props => props.isBackground ? "GameUI_Pieces/GameArea_Background.png" : "GameUI_Pieces/GameArea_Overlay.png"});
-  transform: ${props => props.isBackground ? "scale(0.78, 0.84) translate(537px, 620px)" : "scale(.78, .83) translate(-193px, -117px)"};
-  
-  width: ${props => props.isBackground ? "387px" : "1117px"};
-  height: ${props => props.isBackground ? "46px" : "919px"};
-
-  ${props => !props.isBackground && "filter: drop-shadow(0px 5px 5px black);"}
-`;
-
-const ProgressCounterOverlay = styled.div`
-  position: absolute;
-  z-index: ${props => props.isBackground ? 214 : 2147483645};
-
-  pointer-events: none;
-  background: url(GameUI_Pieces/ScoreArea_Overlay.png);
-    background: url(${props => props.isBackground ? "GameUI_Pieces/ScoreArea_Background.png" : "GameUI_Pieces/ScoreArea_Overlay.png"});
-  transform: scale(1.3, 1) translate(397px, 32px);
-  width: 255px;
-  height: 109px;
-  ${props => props.isBackground && "filter: brightness(0.5) drop-shadow(0px 20px 15px black) hue-rotate(275deg);"}
-`;
-
-const Avatar_Overlay = styled.div`
-  position: absolute;
-  z-index: ${props => props.isBackground ? 2147483644 : 2147483645};
-
-  pointer-events: none;
-  background: url(${props => props.isTeammate ?
-    props.isBackground ? 'GameUI_Pieces/TeammateArea_Background.png' : 'GameUI_Pieces/TeammateArea_Overlay.png'
-    : props.isBackground ? 'GameUI_Pieces/PlayerArea_Background.png' : 'GameUI_Pieces/PlayerArea_Overlay.png'});
-  transform: ${props => props.isTeammate ? 'scale(0.8, 0.785) translate(572.5px, 434px)' : 'scale(0.79, 0.78) translate(442px, 190.5px)'};
-  width: ${props => props.isTeammate ? '355px' : '483px'};
-  height: ${props => props.isTeammate ? '162px' : '215px'};
-
-  ${props => props.isBackground && (props.isTeammate ? "filter: brightness(0.5) drop-shadow(-2px 2px 10px black) hue-rotate(275deg);" : "filter: brightness(0.5) drop-shadow(-4px 10px 10px black) hue-rotate(275deg);")}
-`;
-
-const RiseUpEffect = styled.div`
-  position: absolute;
-  z-index: 2147483645; 
-  transform: scale(0.7) translate(328px, 107px);
-  filter: drop-shadow(-2px 2px 10px black);
-
-  animation: rise-up-animation ${props => props.duration}s linear forwards 1;
-  animation-delay: ${props => props.delay}s;
-  @keyframes rise-up-animation{
-    0% {
-      transform: scale(0.7) translate(328px, 107px);
-      filter: drop-shadow(-2px 2px 10px black);
-    }
-
-  60% {
-      transform: scale(0.8) translate(214px, 85px);
-      filter: drop-shadow(black -4px 10px 6px);
-    }
-
-  100% {
-      transform: scale(1) translate(0px, 0px);
-      filter: drop-shadow(black -4px 7px 30px);
-    }
-  }
-
-  ${props => !!props.styles && props.styles}
-`;
-
-const RotateInPlaceEffect = styled.div`
-  position: absolute;
-  z-index: 2147483645; 
-  // transform: scale(0.7) translate(328px, 107px);
-  // filter: drop-shadow(-2px 2px 10px black);
-
-
-  animation: rotate-in-place-animation ${props => props.duration}s linear forwards 1;
-  animation-delay: ${props => props.delay ? props.delay : 0}s;
-  @keyframes rotate-in-place-animation{
-    0% {
-        transform: scale(-1, 1);
-    }
-
-    100% {
-        transform: scale(1, 1);
-    }
-  }
-
-  ${props => !!props.styles && props.styles}
-`;
-
-const SwoopOutEffect = styled.div`
-  position: absolute;
-  ${props => !!props.styles && props.styles}
-  animation: swoop-out-animation  ${props => props.duration}s ease-out forwards 1;
-
-@keyframes swoop-out-animation{
-0% {
-    z-index: -84;
-    transform: translate(-400px, 0px);
-}
-
-99% {
-    z-index: -84;
-    transform: translate(0px, 0px);
-}
-100% {
-    z-index: 2147483646;
-    transform: translate(0px, 0px);
-}
-}`;
-
-
-const shouldUpdate = (accTime, interval) => !(accTime % interval);
+const MATCH_END_DELAY_MS = 2000;
 
 export const Game = ({ handleClickHome, triggerTransition }) => {
-  const DEFAULT_FULLSCREEN_PAGE_DATA = {
-    text: ["Wild Kaiju have appeared!"],
-    buttons: [
-      {
-        text: "Fight!",
-        onClick: () => {
-          setWinner(null);
-          setIntervalTime(TURN_DELAY);
-          setFullScreenPageData(undefined);
-        }
-      }
-    ],
-    image: { src: './story_images/match_start.png', width: '535px', height: '535px' }
-  }
-  const { selectedAvatar, selectedDifficulty } = useContext(GlobalSettingsContext);
+  const { selectedAvatar, selectedDifficulty, settingsManager } = useContext(GlobalSettingsContext);
+  const { isPaused, winner, isPlayerDead, players, kaijuKillCount, kaijuToWin, activePhases, isWideShot } = useSnapshot(gameUiStore);
 
-  const { MAX_TO_WIN } = determineKaijuQuantity(selectedDifficulty);
+  const [levelId, setLevelId] = useState(new URLSearchParams(window.location.search).get('level') || PENINSULA.id);
+  const level = LEVELS[levelId] || PENINSULA;
+  const togglePhase = id => {
+    gameManager.current.togglePhase(id);
+    publishGameUi(gameManager.current.getUiState());
+  };
 
-  const TURN_DELAY = 1;//50;//110;//75;//50;
-
-  // 100%, "normal size":
-  const SCALE = 0.3;
-  const WIDTH = 500;
-  const HEIGHT = 800;
-  // - - - - - - - - - - -
-  const percentZoom = 90 / 100;
-  const scale = SCALE * percentZoom;
-  const width = WIDTH * percentZoom;
-  const height = HEIGHT * percentZoom;
-
-  // const [isPaused, setIsPaused] = useState(false);
-  const gameManager = useRef();
-  const inputHandler = useRef();
-  const { settingsManager } = useContext(GlobalSettingsContext);
-
-  // const isPaused = !gameManager.current ? true : gameManager.current.getIsPaused();
-
-  const accTime = useRef(0);
-  const [isPaused, setIsPaused] = useState(false);
-
-  const [pieces, setPieces] = useState([]);
-  const [tiles, setTiles] = useState([]);
-  const [colorLookup, setColorLookup] = useState({});
+  const gameManager = useRef<any>(null);
+  const gameLoop = useRef<GameLoop | null>(null);
 
   const [isTeammate, setIsTeammate] = useState(true);
+  const [isWholeScene, setIsWholeScene] = useState(false);
+  const [isAdjustingWindow, setIsAdjustingWindow] = useState(false);
+  const [playWindow, setPlayWindow] = useState(() => import.meta.env.DEV ? loadPlayWindow() : FULL_WINDOW);
+  const updatePlayWindow = next => {
+    setPlayWindow(next);
+    savePlayWindow(next);
+  };
+  const [isEditingTiles, setIsEditingTiles] = useState(false);
+  const [isEditorPanelOnRight, setIsEditorPanelOnRight] = useState(false);
+  const [matchCount, setMatchCount] = useState(0); // the board starts fresh with each match
   const [pickedAbilities, setPickedAbilities] = useState([]);
   const [isPlayingGame, setIsPlayingGame] = useState(false);
-  const [winner, setWinner] = useState(null);
-  const [dmgArray, setDmgArray] = useState([]);
-  const [kaijuKillCount, setKaijuKillCount] = useState([]);
-  const [playerData, setPlayerData] = useState([]);
-  const [teleportData, setTeleportData] = useState([]);
-  const [playerKillCount, setPlayerKillCount] = useState(0);
-  const [kaijuData, setKaijuData] = useState([]);
-  const [clickedTile, setClickedTile] = useState({ i: -1, j: -1 });
-  const [highlightedTiles0, setHighlightedTiles0] = useState([]);
-  const [playerMoveToTiles, setPlayerMoveToTiles] = useState(null);
-  const [tileStatuses, setTileStatuses] = useState(null);
-  const [hoverLookupString, setHoverLookupString] = useState('');
-  const [path, setPath] = useState(null);
-  const [intervalTime, setIntervalTime] = useState(null);
-  const [isGameInitialized, setIsGameInitialized] = useState(false);
-  const [fullScreenPageData, setFullScreenPageData] = useState(DEFAULT_FULLSCREEN_PAGE_DATA);
-  const [isPlayerDead, setIsPlayerDead] = useState(false);
-  const pressedKeys = useRef([]);
+  const [fullScreenPageData, setFullScreenPageData] = useState(undefined);
 
-  useEffect(() => {
-    console.log({
-      GameDifficulty,
-      // WeatherCondition,
-      // KaijuState,
-      damageKaiju
-    })
-    if (intervalTime) {
-      const gm = new GameManager({ scale, settingsManager });
-      gameManager.current = gm;
-      gameManager.current.initGame();
-      // gameManager.current.startKaijuSpawner(0); // TESTING
-      inputHandler.current = gameManager.current.getPlayerInputHandler();
-      setIsGameInitialized(true); // updates callback closures
+  const endMatch = () => {
+    if (gameLoop.current) gameLoop.current.stop();
+    gameLoop.current = null;
+    gameManager.current = null;
+  };
+
+  // the game stops when the player leaves the page
+  useEffect(() => endMatch, []);
+
+  const startMatch = (matchLevel = level) => {
+    settingsManager.updatePlayerAvatar(selectedAvatar);
+    settingsManager.setDifficulty(selectedDifficulty);
+    settingsManager.setIsTeammate(isTeammate);
+
+    const gm = new GameManager({ level: matchLevel, settingsManager });
+    gm.initGame();
+    gameManager.current = gm;
+    resetGameUi();
+    publishGameUi(gm.getUiState());
+
+    gameLoop.current = new GameLoop({
+      steps: [
+        { everyMs: GAME_TICK.pieceMs, run: () => gm.stepPieces() },
+        { everyMs: GAME_TICK.tileMs, run: () => gm.stepTiles() }
+      ],
+      maxCatchUpMs: GAME_TICK.maxCatchUpMs,
+      onAdvanced: () => {
+        gm.notifyBoard();
+        publishGameUi(gm.getUiState());
+      }
+    });
+    gameLoop.current.start();
+    setIsEditingTiles(false);
+    setMatchCount(count => count + 1);
+    setFullScreenPageData(undefined);
+  };
+
+  // dev testing: changes level, and a match in progress restarts on it with the same powers
+  const switchLevel = id => {
+    setLevelId(id);
+    const url = new URL(window.location.href);
+    url.searchParams.set('level', id);
+    window.history.replaceState({}, "Kaiju City", url);
+    if (gameManager.current) {
+      endMatch();
+      startMatch(LEVELS[id]);
     }
-  }, [intervalTime]);
-  // TESTING...
-  // useInterval(() => {
-  //   // gameManager.current.testBounds();
-  //   console.log({ gameManager: gameManager.current, isPaused })
-  // }, 5000);
+  };
 
-  const resetState = () => {
+  const setIsEditing = isEditing => {
+    gameManager.current.setIsEditingTiles(isEditing);
+    publishGameUi(gameManager.current.getUiState());
+    setIsEditingTiles(isEditing);
+  };
+
+  const playSavedLevel = file => {
+    applyLevelFile(file);
+    endMatch();
+    startMatch(LEVELS[file.id]);
+  };
+
+  const cycleLevel = step => {
+    const ids = Object.keys(LEVELS);
+    switchLevel(ids[(ids.indexOf(level.id) + step + ids.length) % ids.length]);
+  };
+
+  const levelOptions = Object.values(LEVELS).map(({ id, name }) => <option key={id} value={id}>{name}</option>);
+
+  const resetMatch = () => {
+    endMatch();
+    resetGameUi();
     setPickedAbilities([]);
     setIsPlayingGame(false);
-    setWinner(null);
-    // setIsPaused(false);
-    setDmgArray([]);
-    setKaijuKillCount([]);
-    setPlayerData([]);
-    setTeleportData([]);
-    setPlayerKillCount(0);
-    setKaijuData([]);
-    setClickedTile({ i: -1, j: -1 });
-    setHighlightedTiles0([]);
-    // setTiles([]);
-    setPlayerMoveToTiles(null);
-    setTileStatuses(null);
-    setPath(null);
-    setIntervalTime(null);
-    setFullScreenPageData(DEFAULT_FULLSCREEN_PAGE_DATA);
+    setFullScreenPageData(undefined);
   };
+
+  const handleClickPlay = () => {
+    setFullScreenPageData({
+      text: ["Wild Kaiju have appeared!"],
+      buttons: [{ text: "Fight!", onClick: () => startMatch() }],
+      image: { src: './story_images/match_start.png', width: '535px', height: '535px' }
+    });
+    triggerTransition(() => setIsPlayingGame(true));
+  };
+
   const handleClickPause = () => {
+    if (!gameManager.current || winner !== null) return;
     gameManager.current.togglePauseGame();
-    setIsPaused(gameManager.current.getIsPaused());
-    setIntervalTime(gameManager.current.getIsPaused() ? null : TURN_DELAY);
+    publishGameUi(gameManager.current.getUiState());
+  };
+
+  const handleUseAbility = (playerIndex, abilityIndex) => {
+    if (!gameManager.current || isPaused || level.isWalkingLevel) return;
+    gameManager.current.getPlayerInputHandler().usePlayerAbilityFromIndex(playerIndex * 3 + abilityIndex, gameManager.current.getAccTime());
   };
 
   useKeyPress({ keyCodes: "Escape", keyUpCallback: handleClickPause, isCharacterDead: false });
 
-  const keyDown = code => {
-    inputHandler.current.addKey(code);
-  }
-
-  const keyUp = code => {
-    inputHandler.current.removeKey(code);
-  }
-
   useKeyPress({
-    keyCodes: [
-      // "KeyW", "KeyA", "KeyS", "KeyD", // <-- WASD is now being used for ability keys...
-      "ArrowUp", "ArrowLeft", "ArrowDown", "ArrowRight"],
-    keyDownCallback: keyDown,
-    keyUpCallback: keyUp,
-    isCharacterDead: isPaused || isPlayerDead,
-    dependencies: [isGameInitialized]
+    keyCodes: ["BracketLeft", "BracketRight"],
+    keyDownCallback: code => cycleLevel(code == "BracketRight" ? 1 : -1),
+    isCharacterDead: !import.meta.env.DEV
   });
 
   useKeyPress({
-    keyCodes: !inputHandler.current ? [] : inputHandler.current.getPlayerAbilities().map((_, i) => inputHandler.current.getAbilityKeyInputMapping(i)),
-    keyDownCallback: !inputHandler.current ? () => { } : keycode => inputHandler.current.usePlayerAbility(keycode, accTime.current),
-    isCharacterDead: isPaused || isPlayerDead,
-    dependencies: [isGameInitialized]
+    keyCodes: ["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowLeft", "ArrowDown", "ArrowRight"],
+    keyDownCallback: code => gameManager.current && gameManager.current.getPlayerInputHandler().addKey(code),
+    keyUpCallback: code => gameManager.current && gameManager.current.getPlayerInputHandler().removeKey(code),
+    isCharacterDead: isPaused || isPlayerDead
+  });
+
+  useKeyPress({
+    keyCodes: ABILITY_KEY_MAPPINGS,
+    keyDownCallback: code => gameManager.current && gameManager.current.getPlayerInputHandler().usePlayerAbility(code, gameManager.current.getAccTime()),
+    isCharacterDead: isPaused || level.isWalkingLevel
   });
 
   useEffect(() => {
-    if (kaijuKillCount.length >= MAX_TO_WIN) {
-      const _winner = 0;
-      setWinner(_winner);
-    }
-
-    if (!!playerData.length && playerKillCount >= playerData.length) {
-      setWinner(-1);
-    }
-
-    if (!!playerData.length && !!playerData[0] && playerData[0].isDead) {
-      setIsPlayerDead(true);
-      // setKeysPressed([]);
-      pressedKeys.current = [];
-      setHighlightedTiles0([]);
-    }
-  }, [kaijuKillCount, playerKillCount, MAX_TO_WIN]);
-
-  useEffect(() => {
-    if (winner !== null && !fullScreenPageData) {
-      let text, buttons, image = undefined;
-      switch (winner) {
-        case 1:
-          text = ["Wild Kaiju have appeared!"];
-          buttons = [
-            {
-              text: "Fight!",
-              onClick: () => {
-                setWinner(null);
-                setIntervalTime(TURN_DELAY);
-                setFullScreenPageData(undefined);
-              }
-            }
-          ];
-          image = { src: './story_images/match_start.png', width: '535px', height: '535px' };
-          break;
-        case 0:
-          text = ["You saved the city!", "Play again ?"];
-          buttons = [{ text: "Yes", onClick: () => triggerTransition(() => resetState()) }, { text: "No", onClick: handleClickHome }];
-          image = { src: './story_images/match_won.png', width: '535px', height: '535px' };
-          break;
-        case -1:
-          text = ["You lost...", "Play again ?"];
-          buttons = [{ text: "Yes", onClick: () => triggerTransition(() => resetState()) }, { text: "No", onClick: handleClickHome }];
-          image = { src: './story_images/match_lost.png', width: '535px', height: '535px' };
-          break;
-      }
-      if (!!buttons) {
-        setTimeout(() => setFullScreenPageData({ text, buttons, image }), 2000);
-        setIntervalTime(null);
-      } else {
-        setFullScreenPageData(undefined);
-      }
-    }
-  }, [kaijuData, winner, isPlayingGame]);
-
-  // event tick
-  useInterval(() => {
-    gameManager.current.updateTileState(accTime.current);
-    const tiles = gameManager.current.getTiles();
-    setTiles(tiles);
-    gameManager.current.movePieces(accTime.current);
-    const pieces = gameManager.current.getPieces();
-    const piecesTilesColorLookup = gameManager.current.getPieceColorsLookup();
-    setColorLookup(piecesTilesColorLookup);
-    setPieces(pieces);
-
-    // update accumulated time.
-    accTime.current = isPaused ? accTime.current :
-      accTime.current > Number.MAX_SAFE_INTEGER - 10000
-        ? 0 // reset to 0 if overflow
-        : accTime.current + intervalTime;
-  }, intervalTime);
-
-  const swoopOutDuration = 3; //testing
+    if (winner === null || !isPlayingGame) return;
+    const playAgainButtons = [{ text: "Yes", onClick: () => triggerTransition(resetMatch) }, { text: "No", onClick: handleClickHome }];
+    const page = winner === GameResult.PlayerWon ?
+      { text: ["You saved the city!", "Play again ?"], buttons: playAgainButtons, image: { src: './story_images/match_won.png', width: '535px', height: '535px' } }
+      : { text: ["You lost...", "Play again ?"], buttons: playAgainButtons, image: { src: './story_images/match_lost.png', width: '535px', height: '535px' } };
+    const timeoutRef = setTimeout(() => setFullScreenPageData(page), MATCH_END_DELAY_MS);
+    return () => clearTimeout(timeoutRef);
+  }, [winner, isPlayingGame]);
 
   return (
     !isPlayingGame ?
+      <>
+      {import.meta.env.DEV && (
+        <LevelPicker value={level.id} onChange={e => { switchLevel(e.target.value); e.target.blur(); }}>
+          {levelOptions}
+        </LevelPicker>
+      )}
       <AbilityPicker
         handleClickHome={handleClickHome}
         pickedAbilities={pickedAbilities}
         setPickedAbilities={setPickedAbilities}
-        handleClickPlay={() => {
-          setWinner(1);
-          triggerTransition(() => setIsPlayingGame(bool => !bool));
-        }}
-        isPaused={false}
-        powerUpData={[]}
-        playerData={playerData}
-        setPlayerData={setPlayerData}
-        setTeleportData={setTeleportData}
-        kaijuData={kaijuData}
-        setPlayerMoveToTiles={setPlayerMoveToTiles}
-        tileStatuses={tileStatuses}
-        setTileStatuses={setTileStatuses}
-        clickedTile={clickedTile}
-        setClickedTile={setClickedTile}
-        tiles={tiles}
-        path={path}
-        width={width}
-        height={height}
-        scale={scale}
+        handleClickPlay={handleClickPlay}
+        playerData={[]}
         numAbilitiesToPick={3}
         isTeammate={isTeammate}
         setIsTeammate={setIsTeammate}
       />
+      </>
       : fullScreenPageData ?
         <FullscreenPage
           text={fullScreenPageData.text}
           buttons={fullScreenPageData.buttons}
           image={fullScreenPageData.image}
-          homeButtonOnClick={fullScreenPageData.homeButtonOnClick}
         />
-        : (<Wrapper>
-          <GameBoardOverlay />
-          <GameBoardOverlay isBackground={true} />
-          <HolographGridBackground isVisible={true} />
-          <HolographGridBackground isVisible={isPaused} isLeftSide={true} />
-          <SwoopOutEffect duration={swoopOutDuration}>
-            <FloatingEffect>
-              <ProgressCounterOverlay />
-              <ProgressCounterOverlay isBackground={true} />
-            </FloatingEffect>
-          </SwoopOutEffect>
-          {isTeammate ?
-            <SwoopOutEffect duration={swoopOutDuration}>
-              <FloatingEffect
-                styles={`display: flex; flex-direction: column; animation-delay: 3s;`}
-                duration={"5"}>
-                <Avatar_Overlay isTeammate={isTeammate} />
-                <Avatar_Overlay isTeammate={isTeammate} isBackground={true} />
-              </FloatingEffect>
-            </SwoopOutEffect>
-            : null}
-          <SwoopOutEffect duration={swoopOutDuration}>
-            <RiseUpEffect duration={1} delay={swoopOutDuration}>
-              <FloatingEffect
-                styles={`display: flex; flex-direction: column; animation-delay: 2s;`}
-                duration={"5.5"}>
-                <Avatar_Overlay isTeammate={false} />
-                <Avatar_Overlay isTeammate={false} isBackground={true} />
-              </FloatingEffect>
-            </RiseUpEffect>
-          </SwoopOutEffect>
-          <GameWrapper width={width} height={height}>
-            <GameBoard
-              isPaused={isPaused}
-              pieces={pieces}
-              tiles={tiles}
-              colorLookup={colorLookup}
-              // pieces={!!gameManager.current ? gameManager.current.getPieces() : []}//pieces}
-              // tiles={!!gameManager.current ? gameManager.current.getTiles() : []}//tiles}
-              // colorLookup={!!gameManager.current ? gameManager.current.getPieceColorsLookup() : {}}//colorLookup}
-              inputHandler={inputHandler.current}
-              width={width}
-              height={height}
-              scale={scale}
-            />
-            <UI
-              playerData={playerData}
-              setPlayerData={setPlayerData}
+        : !gameManager.current ? null : (<GameArea>
+          <GameFrame data-game-frame>
+            <PlayWindow playWindow={playWindow} setPlayWindow={updatePlayWindow} isAdjusting={isAdjustingWindow} isOpen={isWideShot}>
+              <GameBoard
+                key={`${level.id} ${matchCount}`}
+                isPaused={isPaused}
+                gameManager={gameManager.current}
+                level={level}
+                activePhases={activePhases as Array<string>}
+                isWholeScene={isWholeScene}
+                playWindow={playWindow}
+                isShowingWindowSize={isAdjustingWindow}
+                isEditingTiles={isEditingTiles}
+              />
+            </PlayWindow>
+            {import.meta.env.DEV && (
+              <PhaseToggles style={isEditingTiles && isEditorPanelOnRight ? { left: 'auto', right: '1cqw' } : undefined}>
+                <select aria-label="Level" value={level.id} onChange={e => { switchLevel(e.target.value); e.target.blur(); }}>
+                  {levelOptions}
+                </select>
+                {level.phases.map(({ id, label }) => (
+                  <label key={id}>
+                    <input type="checkbox" checked={activePhases.includes(id)} onChange={() => togglePhase(id)} /> {label}
+                  </label>
+                ))}
+                <label>
+                  <input type="checkbox" checked={isWholeScene} onChange={() => setIsWholeScene(!isWholeScene)} /> Whole scene
+                </label>
+                <label>
+                  <input type="checkbox" checked={isAdjustingWindow} onChange={() => setIsAdjustingWindow(!isAdjustingWindow)} /> Adjust window
+                </label>
+                {isAdjustingWindow && <button onClick={() => updatePlayWindow(PORTRAIT_WINDOW)}>Portrait window</button>}
+                {isAdjustingWindow && <button onClick={() => updatePlayWindow(FULL_WINDOW)}>Full window</button>}
+                <label>
+                  <input type="checkbox" checked={isEditingTiles} onChange={() => setIsEditing(!isEditingTiles)} /> Edit tiles
+                </label>
+                {isEditingTiles && (
+                  <TileEditor
+                    key={`${level.id} ${matchCount}`}
+                    levelId={level.id}
+                    playWindow={playWindow}
+                    onSaved={playSavedLevel}
+                    onCancel={() => setIsEditing(false)}
+                    onMovePanel={() => setIsEditorPanelOnRight(!isEditorPanelOnRight)}
+                  />
+                )}
+              </PhaseToggles>
+            )}
+            {!isEditingTiles && <UI
+              players={players}
               kaijuKillCount={kaijuKillCount}
-              kaijuKilledToWin={MAX_TO_WIN}
-              kaijuData={kaijuData}
-              setTeleportData={setTeleportData}
-              setTileStatuses={setTileStatuses}
+              kaijuKilledToWin={kaijuToWin}
+              isKaijuLevel={!!level.kaijuEntry}
+              isShowingHuds={!level.isWalkingLevel}
               handleClickHome={handleClickHome}
               handleClickPause={handleClickPause}
-              width={width}
-              height={height}
-              scale={scale}
-              percentZoom={percentZoom}
-              isTeammate={isTeammate}
+              onUseAbility={handleUseAbility}
               isPaused={isPaused}
-              accTime={accTime.current}
-            />
-          </GameWrapper>
-        </Wrapper>)
+            />}
+          </GameFrame>
+        </GameArea>)
   );
 };

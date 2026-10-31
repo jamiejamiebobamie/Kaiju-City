@@ -1,0 +1,359 @@
+import { GAME_TICK } from 'Utils/gameState';
+import { MASTER_PENINSULA_TILES as PENINSULA_TILE_LOOKUP_VALS } from './masterPeninsula';
+import { GameLoop } from './GameLoop';
+import { GameResult } from './GameManager';
+import { TimeoutHandler } from './TimeoutHandler';
+import { findPath } from './GameBoard/findPath';
+import { CENTER_TILE, getLitTiles, makeGame, placePiece, putStatusOnTile } from './testHelpers';
+
+const useAbility = ({ gm, player }, abilityIndex) => {
+  const ability = player.abilities[abilityIndex];
+  ability.useAbility({
+    accTime: gm.accTime || 1,
+    piece: player,
+    registerTimeout: gm.gameManagerProxy.registerTimeout,
+    updateTileWithAbilityStatus: gm.gameManagerProxy.updateTileWithAbilityStatus
+  });
+};
+
+describe('aiming', () => {
+  const { i, j } = CENTER_TILE;
+  const aims = [
+    { name: 'up', target: { i, j: j - 4 }, dir: 'up' },
+    { name: 'down', target: { i, j: j + 4 }, dir: 'down' },
+    { name: 'down right', target: { i: i + 4, j: j + 4 }, dir: 'down right' },
+    { name: 'up left', target: { i: i - 4, j: j - 4 }, dir: 'up left' }
+  ];
+  aims.forEach(({ name, target, dir }) => {
+    it(`shoots ${name} at an enemy ${name}`, () => {
+      const { board } = makeGame();
+      const [, dirs] = board.getNumAdjacentTilesInDirectionFromTileToTile({ fromTileIndex: CENTER_TILE, toTileIndex: target, numTiles: 1 });
+      expect(dirs).toEqual([dir]);
+    });
+  });
+
+  it('lands an ability between the player and the Kaiju', () => {
+    const game = makeGame({ kaijuTile: { i, j: j + 4 } });
+    useAbility(game, 0);
+    expect(getLitTiles(game.gm)[0].tileIndex).toEqual({ i, j: j + 1 });
+  });
+
+  it('shoots the way the piece is facing with no enemy on the board', () => {
+    const game = makeGame();
+    game.kaiju.isDead = true;
+    game.player.setDir('up');
+    game.player.setDir('idle');
+    useAbility(game, 0);
+    expect(getLitTiles(game.gm)[0].tileIndex).toEqual({ i, j: j - 1 });
+  });
+
+  it('applies the range and area passives', () => {
+    const game = makeGame({ kaijuTile: { i, j: j + 4 } });
+    game.player.tileCountModifier = 2;
+    useAbility(game, 0);
+    const { range } = game.settingsManager.getAbilityAndTileStatusData().isOnFire;
+    expect(getLitTiles(game.gm)[0].getCurrCount()).toBe(range + 2);
+  });
+});
+
+describe('damage, healing and death', () => {
+  const { i, j } = CENTER_TILE;
+
+  it('statuses damage enemies, but not teammates', () => {
+    const { gm, board, player, kaiju } = makeGame({ kaijuTile: { i, j: j + 2 } });
+    putStatusOnTile(gm, 'isOnFire', kaiju.tileIndex, { dirs: ['down'], teamIndex: 0 });
+    putStatusOnTile(gm, 'isOnFire', player.tileIndex, { dirs: ['down'], teamIndex: 0 });
+    expect(board.getDmg(kaiju.pieceIndex)).toBe(1);
+    expect(board.getDmg(player.pieceIndex)).toBe(0);
+  });
+
+  it('decrements and heals lives', () => {
+    const { player } = makeGame();
+    player.decrementHealth(5000, 1);
+    expect(player.lives).toBe(player.maxLives - 1);
+    player.decrementHealth(7000, -1);
+    expect(player.lives).toBe(player.maxLives);
+    player.decrementHealth(9000, -1);
+    expect(player.lives).toBe(player.maxLives);
+  });
+
+  it('takes from extra lives first', () => {
+    const { player } = makeGame();
+    player.livesModifier = 1;
+    player.decrementHealth(5000, 1);
+    expect(player.livesModifier).toBe(0);
+    expect(player.lives).toBe(player.maxLives);
+  });
+
+  it('only lands one hit per damage interval: 1 second for players, 400ms for Kaiju', () => {
+    const { player, kaiju } = makeGame();
+    player.decrementHealth(1000, 1);
+    player.decrementHealth(1500, 1);
+    expect(player.lives).toBe(player.maxLives - 1);
+    kaiju.decrementHealth(1000, 1);
+    kaiju.decrementHealth(1500, 1);
+    expect(kaiju.lives).toBe(kaiju.maxLives - 2);
+  });
+
+  it('a Kaiju on the same tile hurts the player, and takes no damage itself', () => {
+    const { board, player, kaiju } = makeGame({ kaijuTile: CENTER_TILE });
+    expect(board.getDmg(player.pieceIndex)).toBe(1);
+    expect(board.getDmg(kaiju.pieceIndex)).toBe(0);
+  });
+
+  it('a dead piece dies, leaves remains, and scores', () => {
+    const { gm, kaiju, piecesManager } = makeGame();
+    kaiju.lives = 1;
+    kaiju.decrementHealth(5000, 1);
+    expect(kaiju.getIsDead()).toBe(true);
+    expect(gm.score).toBe(1);
+    expect(piecesManager.getDeathPieces().length).toBe(1);
+  });
+});
+
+describe('abilities', () => {
+  it('a Kaiju shoots fire when its cooldown ends, and not before', () => {
+    const { i, j } = CENTER_TILE;
+    const { gm, kaiju } = makeGame({ kaijuTile: { i, j: j + 2 } });
+    kaiju.useAbilities(100);
+    expect(getLitTiles(gm).length).toBe(0);
+    kaiju.useAbilities(9001);
+    expect(getLitTiles(gm)[0].getAppliedStatus()).toBe('isOnKaijuFire');
+  });
+
+  it('heal finds the most damaged teammate', () => {
+    const { gm, player } = makeGame({ isTeammate: true });
+    const teammate = gm.getPieces()[1];
+    teammate.lives = 1;
+    expect(gm.gameManagerProxy.getMostDmgedTeammate(player.pieceIndex)).toBe(teammate);
+  });
+
+  it('cannot be used again until its cooldown ends', () => {
+    const { gm } = makeGame();
+    const input = gm.getPlayerInputHandler();
+    input.usePlayerAbilityFromIndex(0, 1000);
+    const { accTime } = input.getPlayerAbilities()[0];
+    input.usePlayerAbilityFromIndex(0, 1500);
+    expect(input.getPlayerAbilities()[0].accTime).toBe(accTime);
+    input.usePlayerAbilityFromIndex(0, 4000);
+    expect(input.getPlayerAbilities()[0].accTime).toBe(4000);
+  });
+
+  it('passives switch off after their duration of game time', () => {
+    const game = makeGame({ abilities: ['Fire', 'Ice', 'Water'] });
+    useAbility(game, 1); // ice: -1 speed
+    expect(game.player.moveSpeedModifier).toBe(-1);
+    game.gm.timeoutHandler.update(4000);
+    expect(game.player.moveSpeedModifier).toBe(-1);
+    game.gm.timeoutHandler.update(6000);
+    expect(game.player.moveSpeedModifier).toBe(0);
+  });
+
+  it('the player teleports to the end of their chosen path, then gets the passive', () => {
+    const { i, j } = CENTER_TILE;
+    const game = makeGame({ abilities: ['Glass', 'Ice', 'Water'] });
+    const { gm, player } = game;
+    const input = gm.getPlayerInputHandler();
+    input.usePlayerAbilityFromIndex(0, 1000);
+    expect(player.shouldTeleport).toBe(true);
+    player.moveToTiles = [{ i, j: j + 1 }, { i, j: j + 2 }];
+    player.teleportPiece();
+    expect(player.tileIndex).toEqual({ i, j: j + 2 });
+    expect(player.numTilesModifier).toBe(2);
+  });
+});
+
+describe('AI', () => {
+  const { i, j } = CENTER_TILE;
+
+  it('notices enemy fire nearby', () => {
+    const { gm, board, player } = makeGame();
+    expect(board.getIsPieceInDanger(player.pieceIndex)).toBe(false);
+    putStatusOnTile(gm, 'isOnFire', { i, j: j + 1 }, { dirs: ['down'], count: 5, teamIndex: 1 });
+    expect(board.getIsPieceInDanger(player.pieceIndex)).toBe(true);
+  });
+
+  it('runs to the safest tile: the same one every time', () => {
+    const { board, player } = makeGame();
+    const safeTiles = new Set(Array.from({ length: 10 }, () => JSON.stringify(board.getSafeTileIndex(player.pieceIndex))));
+    expect(safeTiles.size).toBe(1);
+  });
+});
+
+describe('pathing', () => {
+  it('walks around walls, which the old greedy pathing could not do', () => {
+    const blocked = new Set(['1 0', '1 1', '1 2']);
+    const path = findPath({
+      start: { i: 0, j: 1 },
+      goal: { i: 2, j: 1 },
+      getAdjacentTiles: ({ i, j }) => [[1, 0], [-1, 0], [0, 1], [0, -1]]
+        .map(([a, b]) => ({ i: i + a, j: j + b }))
+        .filter(t => t.i >= 0 && t.j >= 0 && t.i < 4 && t.j < 4),
+      getLocation: ({ i, j }) => ({ x: i, y: j }),
+      getIsBlocked: ({ i, j }) => blocked.has(`${i} ${j}`)
+    });
+    expect(path.length).toBeGreaterThan(2);
+    expect(path[path.length - 1]).toEqual({ i: 2, j: 1 });
+    expect(path.every(({ i, j }) => !blocked.has(`${i} ${j}`))).toBe(true);
+  });
+
+  it('returns no path between separated areas', () => {
+    const path = findPath({
+      start: { i: 0, j: 0 },
+      goal: { i: 2, j: 0 },
+      getAdjacentTiles: ({ i, j }) => [{ i, j: j + 1 }].filter(t => t.j < 2),
+      getLocation: ({ i, j }) => ({ x: i, y: j })
+    });
+    expect(path).toEqual([]);
+  });
+
+  it('finds the map\'s paths step by step, tile to adjacent tile', () => {
+    const { board } = makeGame();
+    const from = PENINSULA_TILE_LOOKUP_VALS[0];
+    const to = PENINSULA_TILE_LOOKUP_VALS[PENINSULA_TILE_LOOKUP_VALS.length - 1];
+    const path = board.findPathFromTo(from, to);
+    expect(path.length).toBeGreaterThan(5);
+    path.forEach((tile, k) => expect(board.getAreTilesAdjacent(k ? path[k - 1] : from, tile)).toBe(true));
+  });
+});
+
+describe('player movement', () => {
+  const countTilesMoved = ({ player, gm }, ticks, playerInputHandler) => {
+    const seen = new Set();
+    for (let k = 0; k < ticks; k++) {
+      gm.accTime += GAME_TICK.pieceMs;
+      player.movePiece({ accTime: gm.accTime, playerInputHandler });
+      seen.add(`${player.tileIndex.i} ${player.tileIndex.j}`);
+    }
+    return seen.size;
+  };
+
+  it('moves as fast holding a key as it does following a click', () => {
+    const { i, j } = CENTER_TILE;
+    const clicking = makeGame();
+    const clickInput = clicking.gm.getPlayerInputHandler();
+    clicking.player.updateMovmement(clicking.board.findPathFromTo(CENTER_TILE, { i, j: j - 4 }));
+    const clicked = countTilesMoved(clicking, 13, clickInput);
+
+    const holding = makeGame();
+    const holdInput = holding.gm.getPlayerInputHandler();
+    holdInput.addKey('ArrowUp');
+    const held = countTilesMoved(holding, 13, holdInput);
+
+    expect(held).toBeGreaterThan(3);
+    expect(Math.abs(held - clicked)).toBeLessThanOrEqual(1);
+  });
+});
+
+describe('timers', () => {
+  it('run on game time', () => {
+    const timers = new TimeoutHandler();
+    let hasFired = false;
+    timers.update(1000);
+    timers.registerTimeout(() => { hasFired = true; }, 500);
+    timers.update(1400);
+    expect(hasFired).toBe(false);
+    timers.update(1500);
+    expect(hasFired).toBe(true);
+  });
+
+  it('can be cancelled', () => {
+    const timers = new TimeoutHandler();
+    let hasFired = false;
+    const ref = timers.registerTimeout(() => { hasFired = true; }, 100);
+    timers.unregisterTimeout(ref);
+    timers.update(1000);
+    expect(hasFired).toBe(false);
+  });
+});
+
+describe('game loop', () => {
+  const makeLoop = () => {
+    const counts = { pieces: 0, tiles: 0 };
+    const loop = new GameLoop({
+      steps: [
+        { everyMs: GAME_TICK.pieceMs, run: () => { counts.pieces++; } },
+        { everyMs: GAME_TICK.tileMs, run: () => { counts.tiles++; } }
+      ],
+      maxCatchUpMs: GAME_TICK.maxCatchUpMs
+    });
+    return { loop, counts };
+  };
+
+  // the same 11 seconds of play on displays from 30Hz to a future 1000Hz
+  [30, 60, 144, 240, 1000].forEach(hz => {
+    it(`runs at the same speed at ${hz}Hz`, () => {
+      const { loop, counts } = makeLoop();
+      const frameMs = 1000 / hz;
+      for (let elapsed = 0; elapsed < 11000; elapsed += frameMs) loop.advance(frameMs);
+      expect(Math.abs(counts.pieces - 100)).toBeLessThanOrEqual(1);
+      expect(Math.abs(counts.tiles - 68)).toBeLessThanOrEqual(1);
+    });
+  });
+
+  it('catches up after a slow frame', () => {
+    const { loop, counts } = makeLoop();
+    loop.advance(440);
+    expect(counts.pieces).toBe(4);
+  });
+
+  it('does not fast-forward after a stall, such as a hidden tab', () => {
+    const { loop, counts } = makeLoop();
+    loop.advance(60000);
+    expect(counts.pieces).toBeLessThanOrEqual(5);
+  });
+});
+
+describe('a full match', () => {
+  it('pausing freezes the game, and unpausing carries on with the same match', () => {
+    const { gm, player } = makeGame();
+    gm.stepPieces();
+    const { accTime } = gm;
+    gm.togglePauseGame();
+    gm.stepPieces();
+    gm.stepTiles();
+    expect(gm.accTime).toBe(accTime);
+    gm.togglePauseGame();
+    gm.stepPieces();
+    expect(gm.accTime).toBe(accTime + GAME_TICK.pieceMs);
+    expect(gm.gameBoardPiecesManager.getPlayerPiece()).toBe(player);
+  });
+
+  it('spawns Kaiju onto the board', () => {
+    const { gm } = makeGame();
+    gm.gameBoardPiecesManager.pieces = [gm.gameBoardPiecesManager.getPlayerPiece()];
+    gm.gameBoardPiecesManager.teams[1].teammateIndices = [];
+    for (let k = 0; k < 250; k++) { gm.stepPieces(); gm.stepTiles(); }
+    const kaiju = gm.getPieces().filter(p => p.avatar == 'kaiju');
+    expect(kaiju.length).toBeGreaterThan(0);
+    expect(kaiju[0].isOnTiles).toBe(true);
+  });
+
+  it('is won by reaching the kill target', () => {
+    const { gm } = makeGame();
+    expect(gm.getGameResult()).toBe(null);
+    gm.score = 5; // easy difficulty
+    expect(gm.getGameResult()).toBe(GameResult.PlayerWon);
+  });
+
+  it('is lost when the whole player team is dead', () => {
+    const { gm, player } = makeGame();
+    player.lives = 1;
+    player.decrementHealth(5000, 1);
+    expect(gm.getGameResult()).toBe(GameResult.PlayerLost);
+    expect(gm.getUiState().isPlayerDead).toBe(true);
+  });
+
+  it('plays minutes of a real match with a teammate without crashing', () => {
+    const { gm, settingsManager } = makeGame({ isTeammate: true, abilities: ['Love', 'Glass', 'Death'] });
+    settingsManager.setDifficulty(3);
+    for (let k = 0; k < 3000 && gm.getGameResult() === null; k++) {
+      gm.stepPieces();
+      if (k % 3 != 2) gm.stepTiles();
+      const uiState = gm.getUiState();
+      expect(uiState.players[0].abilities.length).toBe(3);
+    }
+    const positions = gm.getPieces().flatMap(p => [p.charLocation.x, p.charLocation.y]);
+    expect(positions.every(Number.isFinite)).toBe(true);
+  });
+});

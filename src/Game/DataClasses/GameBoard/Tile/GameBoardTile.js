@@ -3,6 +3,7 @@ import {
     TILE_DIRS,
     TILE_DIR_NORM_VECS,
     TILE_DIR_ROTATIONS_IN_DEGREES,
+    TILE_STATUS_RANKS,
     ICON_ROTATION_METHODS
 } from 'Utils/gameState';
 import { getRandomIntInRange } from 'Game/utils'
@@ -16,14 +17,12 @@ export class GameBoardTile {
         scale = 1,
         isHighlighted = false,
         tileStatus = undefined,
-        contenders = {},
         currCount = 0,
         targetIndex = -1,
         teamIndex = -1,
         dirs = [],
         dmgMultiplier = 1,
-        updateKey = 0,
-        gameManagerProxy
+        updateKey = 0
     }) {
 
         // CACHED ON INIT - - - - - - - -
@@ -47,19 +46,20 @@ export class GameBoardTile {
         // CLASS: 'GameBoardTileStatusAndAbilityData' (shared "flyweight" instances)
         this.tileStatus = tileStatus;
 
-        this.contenders = contenders;
-
         // per-tile status info
         this.currCount = currCount;
         this.targetIndex = targetIndex;
         this.teamIndex = teamIndex;
         this.dirs = dirs;
         this.dmgMultiplier = dmgMultiplier;
+        this.wall = undefined; // where a wall status set off from. false once it has bounced apart.
+        this.trailAge = 0; // tile updates since the status stopped moving
 
         // stored accTime of last tileStatus update
         this.updateKey = updateKey;
 
-        this.gameManagerProxy = gameManagerProxy;
+        // shown while the player is choosing where to teleport
+        this.teleportTileStatus = undefined;
     }
 
     getAngleOfRotationFromTileDirs() {
@@ -100,6 +100,7 @@ export class GameBoardTile {
     }
 
     getColor() {
+        if (this.teleportTileStatus) return this.teleportTileStatus.getColor();
         return this.tileStatus ? this.tileStatus.getColor() : ''
     }
 
@@ -107,8 +108,10 @@ export class GameBoardTile {
         if (!!this.tileStatus) {
             // each tile icon uses the dirs rotation in a different way (sometimes overwriting it)
             const perIconRotation = ICON_ROTATION_METHODS[this.tileStatus.getRotationShift()]
-            const rotation = perIconRotation(this.getAngleOfRotationFromTileDirs());
-            return rotation;
+            const { i, j } = this.tileIndex;
+            const startCount = this.tileStatus.range;
+            const rotation = perIconRotation(this.getAngleOfRotationFromTileDirs(), this.currCount, startCount, this.updateKey, i, j);
+            return Number.isFinite(rotation) ? rotation : 0;
         }
         return 0;
     }
@@ -118,7 +121,12 @@ export class GameBoardTile {
     }
 
     getActiveIcon() {
+        if (this.teleportTileStatus) return this.teleportTileStatus.getActiveIcon();
         return this.tileStatus ? this.tileStatus.getActiveIcon() : ''
+    }
+
+    setTeleportTileStatus(teleportTileStatus) {
+        this.teleportTileStatus = teleportTileStatus;
     }
 
     getIsVisible() {
@@ -126,7 +134,7 @@ export class GameBoardTile {
     }
 
     getIsHighlighted() {
-        return this.isHighlighted;
+        return this.isHighlighted && !this.teleportTileStatus;
     }
 
     getZIndex() {
@@ -164,22 +172,6 @@ export class GameBoardTile {
         return dmg > 0 ? dmg * this.dmgMultiplier : dmg;
     }
 
-    getContenders() {
-        return this.contenders;
-    }
-
-    setContenders(contenders) {
-        this.contenders = contenders;
-    }
-
-    addContender(key, contender) {
-        this.contenders[key] = contender;
-    }
-
-    clearContenders() {
-        this.contenders = {};
-    }
-
     getTileStatus() {
         return this.tileStatus;
     }
@@ -191,6 +183,8 @@ export class GameBoardTile {
         this.targetIndex = -1;
         this.teamIndex = -1;
         this.dirs = [];
+        this.wall = undefined;
+        this.trailAge = 0;
     }
 
     getCurrCount() {
@@ -209,7 +203,7 @@ export class GameBoardTile {
         return this.dirs;
     }
 
-    updateTileStatus({ updateKey, tileStatus, currCount, dirs, teamIndex, targetIndex }) {
+    updateTileStatus({ updateKey, tileStatus, currCount, dirs, teamIndex, targetIndex, wall = undefined, trailAge = 0 }) {
         this.setUpdateKey(updateKey);
         this.setTileStatus(tileStatus);
 
@@ -217,58 +211,26 @@ export class GameBoardTile {
         this.dirs = dirs;
         this.teamIndex = teamIndex;
         this.targetIndex = targetIndex;
+        this.wall = wall;
+        this.trailAge = trailAge;
     }
 
-    setClickedTile() {
-        this.gameManagerProxy.updatePlayerDestinationFromClick(this.tileIndex);
-     }
-
-    getTileContenderFromTile({ currCount, newDirs }) {
-        const newContender = new TileContender({
+    getTileContenderFromTile({ currCount, newDirs, wall, trailAge }) {
+        return new TileContender({
             tileStatus: this.tileStatus,
-            currCount: currCount || Math.max(this.currCount - 1, 0), // SIDE EFFECT: decrement count
+            currCount: currCount ?? Math.max(this.currCount - 1, 0), // SIDE EFFECT: decrement count
             targetIndex: this.targetIndex,
             teamIndex: this.teamIndex,
-            dirs: newDirs || this.dirs
+            dirs: newDirs || this.dirs,
+            wall: wall ?? this.wall,
+            trailAge
         });
-        return newContender;
     }
 
-    resolveContendersAndSetNewTileStatus() {
-        // init winning appliedStatus "tracker"
-        const contendersTracker = Object.keys(this.contenders).reduce((acc, k) => {
-            acc[k] = true;
-            return acc;
-        }, {});
-
-        Object.values(this.contenders).forEach(c => {
-            const tileStatus = c.getTileStatus();
-            const otherStatusesThisStatusBeats = tileStatus.getBeats();
-            Object.keys(otherStatusesThisStatusBeats).forEach(otherStatus => {
-                /*
-                    for each contender status,
-                    check which status (if any) is not cancelled-out by another contender status
-
-                    NOTE: this only works if a tile status never "beats" itself... otherwise it will always cancel out itself
-                */
-                if (otherStatus in contendersTracker) {
-                    contendersTracker[otherStatus] = false;
-                }
-            })
-        });
-
-        const winners = Object.entries(contendersTracker).filter(([_, v]) => !!v).map((k, _) => k);
-        let i = 0;
-        if (!winners.length) {
-            this.clearTileStatus();
-        } else {
-            if (winners.length > 1) {
-                // Pick random winner if more than one
-                i = getRandomIntInRange({ max: winners.length - 1 });
-            }
-            const [winningAppliedStatus, _] = winners[i];
-            const winningContender = this.contenders[winningAppliedStatus];
-            this.updateTileStatus({ updateKey: this.updateKey, ...winningContender.getTileStatusValues() });
-        }
+    // true if 'tileStatus' does not lose to the tile's current status
+    getCanApplyStatus(tileStatus) {
+        if (!this.tileStatus) return true;
+        return TILE_STATUS_RANKS[tileStatus.getAppliedStatus()] <= TILE_STATUS_RANKS[this.tileStatus.getAppliedStatus()];
     }
+
 }

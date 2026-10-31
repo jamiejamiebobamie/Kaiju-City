@@ -1,15 +1,15 @@
+// the extra wait before an NPC can use an ability again, in milliseconds
+const AI_COOLDOWN_DELAY = 750;
+
 export class GameBoardPieceAbility {
     constructor({
         accTime = 0,
         isPassiveApplied = false,
-        isOnCooldown = false,
-        toggleOffPassiveTimeoutRef = undefined, // TO-DO... handle this with timeout manager class...
         gameBoardPieceAbilityData = undefined // GameBoardTileStatusAndAbilityData
     }) {
         this.accTime = accTime;
-        this.toggleOffPassiveTimeoutRef = toggleOffPassiveTimeoutRef;
+        this.toggleOffPassiveTimeoutRef = undefined;
         this.isPassiveApplied = isPassiveApplied;
-        this.isOnCooldown = isOnCooldown;
         this.gameBoardPieceAbilityData = gameBoardPieceAbilityData;
     }
 
@@ -21,22 +21,25 @@ export class GameBoardPieceAbility {
     }) {
         // update accTime
         this.accTime = accTime;
-        // activate teammate active ability
+        // activate active ability
         updateTileWithAbilityStatus({
             pieceIndex: piece.pieceIndex,
             appliedStatus: this.gameBoardPieceAbilityData.appliedStatus,
             accTime
         });
         const triggerPassive = () => {
-            // toggle-on teammate passive ability
+            // toggle-on passive ability
             this.gameBoardPieceAbilityData.togglePassive(piece);
-            // toggle-off teammate passive ability
+            this.isPassiveApplied = true;
+            // toggle-off passive ability
             const delay = this.gameBoardPieceAbilityData.passiveDurationTime ? this.gameBoardPieceAbilityData.passiveDurationTime : this.gameBoardPieceAbilityData.cooldownTimeAI;
             const toggleOffPassive = () => {
                 const toggleOff = true;
                 this.gameBoardPieceAbilityData.togglePassive(piece, toggleOff);
+                this.isPassiveApplied = false;
+                this.toggleOffPassiveTimeoutRef = undefined;
             }
-            registerTimeout(accTime, toggleOffPassive, delay);
+            this.toggleOffPassiveTimeoutRef = registerTimeout(toggleOffPassive, delay);
         }
         if (this.gameBoardPieceAbilityData.isTriggerPassiveImmediately) {
             triggerPassive();
@@ -45,11 +48,38 @@ export class GameBoardPieceAbility {
         }
     }
 
+    // the passive was used up (eg. 'Healthy' extra lives taking dmg). it no longer needs toggling-off.
+    clearPassiveTimeout(unregisterTimeout) {
+        unregisterTimeout(this.toggleOffPassiveTimeoutRef);
+        this.toggleOffPassiveTimeoutRef = undefined;
+        this.isPassiveApplied = false;
+    }
+
+    getIsOnCooldown(accTime, isNpc) {
+        if (!this.accTime) return false; // never used
+        const { cooldownTimeAI, cooldownTimePlayer } = this.gameBoardPieceAbilityData;
+        const cooldown = isNpc ? cooldownTimeAI + AI_COOLDOWN_DELAY : cooldownTimePlayer;
+        return (accTime - this.accTime) < cooldown;
+    }
+
     getType() {
         return this.gameBoardPieceAbilityData.type;
     }
 
     getDesiredAIRange() {
         return this.gameBoardPieceAbilityData.desiredAIRange;
+    }
+
+    getUiState(isNpc) {
+        const { element, color, activeName, passiveName, cooldownTimeAI, cooldownTimePlayer } = this.gameBoardPieceAbilityData;
+        return {
+            element,
+            color,
+            activeName,
+            passiveName,
+            accTime: this.accTime,
+            isPassiveApplied: this.isPassiveApplied,
+            cooldownTime: isNpc ? cooldownTimeAI + AI_COOLDOWN_DELAY : cooldownTimePlayer
+        };
     }
 }

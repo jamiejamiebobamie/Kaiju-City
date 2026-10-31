@@ -4,7 +4,9 @@ export class TileContender {
         currCount,
         targetIndex,
         teamIndex,
-        dirs
+        dirs,
+        wall,
+        trailAge = 0
     }) {
         // CLASS: 'GameBoardTileStatusAndAbilityData' (shared "flyweight" instances)
         this.tileStatus = tileStatus;
@@ -14,11 +16,8 @@ export class TileContender {
         this.targetIndex = targetIndex;
         this.teamIndex = teamIndex;
         this.dirs = dirs;
-    }
-
-    getKey(iterCount) {
-        // TO-DO: check sort strings method 'compareLocale'...
-        return `${this.tileStatus.getAppliedStatus()} ${this.currCount} ${this.targetIndex} ${this.teamIndex} ${this.dirs.length ? this.dirs.sort((a, b) => a - b).join("") : '_'} ${iterCount}`
+        this.wall = wall;
+        this.trailAge = trailAge; // tile updates since the status stopped moving
     }
 
     getTileStatus() {
@@ -33,27 +32,15 @@ export class TileContender {
         return this.tileStatus.getAppliedStatus();
     }
 
-    // TO-DO: this is causing bug with statuses never clearing on amp perimeters
-    mergeSameStatusContenders(tileContender) {
-        // accumulate
-        // this.currCount += tileContender.currCount;
-        // this.dirs = Array.from(new Set(...this.dirs, ...tileContender.dirs));
-        if (Math.random() > .5) {
-            // overwrite...
-            this.targetIndex = tileContender.targetIndex;
-            this.teamIndex = tileContender.teamIndex;
-            this.currCount = tileContender.currCount;
-            this.dirs = tileContender.dirs;
-        }
-    }
-
     getTileStatusValues() {
         return {
             tileStatus: this.tileStatus,
             currCount: this.currCount,
             targetIndex: this.targetIndex,
             teamIndex: this.teamIndex,
-            dirs: this.dirs
+            dirs: this.dirs,
+            wall: this.wall,
+            trailAge: this.trailAge
         }
     }
 }

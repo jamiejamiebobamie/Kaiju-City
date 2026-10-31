@@ -1,4 +1,4 @@
-import { GameMode, ZoomLvl } from 'Utils/gameState';
+import { GameMode, GAME_TICK, ZoomLvl } from 'Utils/gameState';
 import { TimeoutHandler } from './TimeoutHandler';
 import { GameManagerProxy } from './GameManagerProxy';
 import { PlayerInputHandler } from './PlayerInputHandler';
@@ -6,24 +6,44 @@ import { SettingsManager } from './SettingsManager';
 import { GameBoardPiecesManager } from './GameBoard/Pieces/GameBoardPiecesManager';
 import { KaijuManager } from './KaijuManager';
 import { GameBoardManager } from './GameBoard/GameBoardManager';
+import { PENINSULA } from 'Game/Levels/levels';
+import { TrainSchedule, TRAIN_HIT } from './TrainSchedule';
+import { WIDE_SHOT } from './Camera';
+
+export const GameResult = Object.freeze({
+    PlayerWon: 0,
+    PlayerLost: -1
+});
 
 export class GameManager {
-    constructor({ scale, settingsManager }) {
+    constructor({ level = PENINSULA, settingsManager }) {
         this.zoomLvl = ZoomLvl.NoZoom;
+        this.accTime = 0;
         this.score = 0;
         this.isPaused = false;
         this.tutorialIndex = 0;
+        this.boardRevision = 0;
+        this.wideShotMs = 0; // what is left of the current wide shot. the game holds still during it.
+        this.isEditingTiles = false; // dev: the game holds still and shows the whole level
+        this.level = level;
+        this.activePhases = new Set(level.defaultPhases);
+        this.trainSchedule = level.hasTrainSchedule ? new TrainSchedule({ onStageChange: this.handleTrainStage }) : undefined;
+        this.boardListeners = new Set();
         this.settingsManager = !!settingsManager ? settingsManager : new SettingsManager();
         this.timeoutHandler = new TimeoutHandler();
         this.gameManagerProxy = new GameManagerProxy();
         this.playerInputHandler = new PlayerInputHandler({ gameManagerProxy: this.gameManagerProxy });
         this.gameBoardPiecesManager = new GameBoardPiecesManager({ gameManagerProxy: this.gameManagerProxy });
-        this.gameBoardManager = new GameBoardManager({ gameManagerProxy: this.gameManagerProxy, scale });
+        this.gameBoardManager = new GameBoardManager({ gameManagerProxy: this.gameManagerProxy, level });
         this.kaijuManager = new KaijuManager({ gameManagerProxy: this.gameManagerProxy });
     }
 
     getIsPaused = () => {
         return this.isPaused;
+    }
+
+    getAccTime = () => {
+        return this.accTime;
     }
 
     getPlayerInputHandler() {
@@ -34,6 +54,67 @@ export class GameManager {
         return this.gameBoardManager.getTilesInFlatArray();
     }
 
+    getWalkableRevision() {
+        return this.gameBoardManager.getWalkableRevision();
+    }
+
+    getIsWalkable = (tileIndex) => {
+        return this.gameBoardManager.getIsInBounds(tileIndex);
+    }
+
+    getClosestReachableTile(location) {
+        return this.gameBoardManager.getClosestReachableTile(this.gameBoardPiecesManager.getPlayerPiece().getTileIndex(), location);
+    }
+
+    getHoveredTileIndex() {
+        return this.gameBoardManager.getHoveredTileIndex();
+    }
+
+    getActivePhases() {
+        return [...this.activePhases];
+    }
+
+    // the camera starts its move back in before the game resumes
+    getIsWideShot = () => {
+        return this.isEditingTiles || this.wideShotMs > WIDE_SHOT.pullMs;
+    }
+
+    setIsEditingTiles(isEditingTiles) {
+        this.isEditingTiles = isEditingTiles;
+    }
+
+    setPhase(id, isActive) {
+        const holdMs = this.level.wideShots && this.level.wideShots[id];
+        if (isActive && holdMs && !this.activePhases.has(id)) {
+            this.wideShotMs = Math.max(this.wideShotMs, WIDE_SHOT.pullMs * 2 + holdMs);
+        }
+        if (isActive) this.activePhases.add(id);
+        else this.activePhases.delete(id);
+    }
+
+    togglePhase = (id) => {
+        const isActive = !this.activePhases.has(id);
+        if (id == 'train' && !!this.trainSchedule) this.trainSchedule.setIsTrainIn(isActive, this.accTime);
+        else this.setPhase(id, isActive);
+    }
+
+    handleTrainStage = (stage, accTime) => {
+        const { tileSets, walkableTiles } = this.level;
+        this.setPhase('trainLights', stage != 'idle');
+        const isTrainIn = stage == 'train';
+        if (isTrainIn == this.activePhases.has('train')) return;
+
+        this.setPhase('train', isTrainIn);
+        this.gameBoardManager.setWalkableTiles(isTrainIn ? tileSets.train : walkableTiles);
+        this.gameBoardPiecesManager.updatePiecesForWalkableTiles(piece => {
+            piece.hitByTrain(accTime, TRAIN_HIT, this.gameBoardManager.getClosestWalkableTile(piece.getTileIndex()));
+        });
+    }
+
+    getActiveTiles() {
+        return this.gameBoardManager.getActiveTiles();
+    }
+
     getPieceColorsLookup() {
         return this.gameBoardPiecesManager.getPieceColorsLookup();
     }
@@ -42,8 +123,23 @@ export class GameManager {
         return this.gameBoardPiecesManager.getPieces();
     }
 
-    setScale(scale) {
-        this.scale = scale;
+    getDeathPieces() {
+        return this.gameBoardPiecesManager.getDeathPieces();
+    }
+
+    // for React's 'useSyncExternalStore': the board redraws when the revision changes
+    subscribeToBoard = (listener) => {
+        this.boardListeners.add(listener);
+        return () => this.boardListeners.delete(listener);
+    }
+
+    getBoardRevision = () => {
+        return this.boardRevision;
+    }
+
+    notifyBoard() {
+        this.boardRevision += 1;
+        this.boardListeners.forEach(listener => listener());
     }
 
     initGame() {
@@ -73,68 +169,65 @@ export class GameManager {
             GameMode.Story
         ]
         // - does player want a teammate?
-        if (false // TESTING
-            && (mandatoryTeammateGamemodes.includes(gameMode) || this.settingsManager.getIsTeammate())) {
+        if (mandatoryTeammateGamemodes.includes(gameMode) && this.settingsManager.getIsTeammate()) {
             const teammateAvatar = playerAvatar == 'guy' ? 'girl' : 'guy'; // TO-DO: hook this up to selection screen...
-            for (let i = 0; i < 4; i++) {
-                const teammateAbilities = this.settingsManager.getThreeRandomAbilities();
+            const teammateAbilities = this.settingsManager.getThreeRandomAbilities();
 
-                // add teammate abilities to input handler to be triggered by keyboard keys
-                teammateAbilities.forEach(a => this.playerInputHandler.addPlayerAbilities(a));
+            // add teammate abilities to input handler to be triggered by keyboard keys
+            teammateAbilities.forEach(a => this.playerInputHandler.addPlayerAbilities(a));
 
-                const cyberPunks = [
-                    teammateAvatar,
-                    'rival_guy',
-                    'rival_girl',
-                    'agent',
-                    'agent',
-                    'agent',
-                    'agent'
-                ];
-
-                // add teammate
-                this.gameBoardPiecesManager.addTeammate({ teammateAvatar: cyberPunks[i], teammateAbilities });
-            }
+            // add teammate
+            this.gameBoardPiecesManager.addTeammate({ teammateAvatar, teammateAbilities });
         }
 
         // must be set before calling updateBounds
         this.gameBoardManager.setUpdateProxyProps(this.updateProxyProps);
 
-        // TO-DO: pass-in correct params for desired GameMode...
-        // if (gameMode == GameMode.Story)
-        this.gameBoardManager.updateBounds({}/* ...to peninsula map */);
+        this.gameBoardManager.updateBounds();
 
         this.gameBoardManager.initTiles();
 
-        this.gameBoardPiecesManager.initPlayerLocationsOnBoard();
+        this.gameBoardPiecesManager.initPlayerLocationsOnBoard(this.level.spawnTiles);
     }
 
-    movePieces(accTime) {
-        if (this.isPaused) return;
-        this.gameBoardPiecesManager.movePieces({ accTime, timeoutHandler: this.timeoutHandler, playerInputHandler: this.playerInputHandler });
+    stepPieces() {
+        if (this.isPaused || this.isEditingTiles || this.getGameResult() !== null) return;
+        if (this.wideShotMs > 0) {
+            this.wideShotMs -= GAME_TICK.pieceMs;
+            return;
+        }
+        this.accTime += GAME_TICK.pieceMs;
+        this.timeoutHandler.update(this.accTime);
+        if (this.trainSchedule) this.trainSchedule.update(this.accTime);
+        if (this.level.kaijuEntry) this.kaijuManager.update(this.accTime, this.score);
+        this.gameBoardPiecesManager.movePieces({ accTime: this.accTime, playerInputHandler: this.playerInputHandler });
     }
 
-    startKaijuSpawner(accTime) {
-        if (!this.kaijuManager.getIsKaiju())
-            this.kaijuManager.startKaijuSpawner(accTime);
+    stepTiles() {
+        if (this.isPaused || this.isEditingTiles || this.wideShotMs > 0 || this.getGameResult() !== null) return;
+        this.gameBoardManager.updateTileState(this.accTime);
+        this.gameBoardPiecesManager.applyDmgFromTouchedTiles(this.accTime);
     }
 
-    updateTileState(accTime) {
-        this.gameBoardManager.updateTileState(accTime);
+    getGameResult() {
+        const { MAX_TO_WIN } = this.gameManagerProxy.determineKaijuDetails();
+        if (this.score >= MAX_TO_WIN) return GameResult.PlayerWon;
+        if (this.gameBoardPiecesManager.getIsPlayerTeamDead()) return GameResult.PlayerLost;
+        return null;
     }
 
-    getIsGameOver() {
-        const isSomeAlive = this.gameBoardPiecesManager.getIsSomePiecesAlive();
-        if (!isSomeAlive) return true; // GAME OVER
-
-        const isOnlyOneTeamStillAlive = this.gameBoardPiecesManager.getIsAllLivingPiecesFromOneTeam();
-        return isOnlyOneTeamStillAlive; // GAME OVER
-    }
-
-    // TEST
-    testBounds() {
-        this.gameBoardManager.updateBounds({ newBounds: this.gameBoardManager.bounds == 2 ? 'Lookup' : 'Grid' });
-        this.gameBoardManager.initTiles();
+    getUiState() {
+        const { MAX_TO_WIN } = this.gameManagerProxy.determineKaijuDetails();
+        return {
+            players: this.gameBoardPiecesManager.getPlayerTeamUiState(),
+            kaijuKillCount: this.score,
+            kaijuToWin: MAX_TO_WIN,
+            isPaused: this.isPaused,
+            activePhases: this.getActivePhases(),
+            isWideShot: this.getIsWideShot(),
+            winner: this.getGameResult(),
+            isPlayerDead: this.gameBoardPiecesManager.getPlayerPiece().getIsDead()
+        };
     }
 
     updateScore = (teamIndex) => {
@@ -145,29 +238,16 @@ export class GameManager {
         }
     }
 
-    goToTutorialPage(tutorialIndex) {
-        /*
-            Tutorial is a GameMode and is managed by the GameManager    
-        */
-        this.tutorialIndex = tutorialIndex;
-    }
-
-    togglePauseGame = (accTime) => {
+    togglePauseGame = () => {
         this.isPaused = !this.isPaused;
-        // TO-DO: Fix!
-
-        // if (this.isPaused) {
-        //     this.timeoutHandler.pauseTimeouts(accTime);
-        // } else {
-        //     this.timeoutHandler.restartTimeouts(accTime);
-        // }
     }
 
     resetGame() {
+        this.accTime = 0;
         this.score = 0;
         this.timeoutHandler.reset();
         this.gameBoardPiecesManager.resetPieces();
-        this.kaijuManager.setKaijuCount(0);
+        this.kaijuManager.reset();
         this.gameBoardManager.resetTiles();
         this.playerInputHandler.resetPlayerAbilities();
     }
@@ -177,6 +257,7 @@ export class GameManager {
             updateScore: this.updateScore,
             registerTimeout: this.timeoutHandler.registerTimeout,
             unregisterTimeout: this.timeoutHandler.unregisterTimeout,
+            getAccTime: this.getAccTime,
             getAbilityAndTileStatusData: this.settingsManager.getAbilityAndTileStatusData,
             getKaijuAbilities: this.settingsManager.getKaijuAbilities,
             determineKaijuDetails: () => this.kaijuManager.determineKaijuDetailsFromDifficulty(this.settingsManager.getDifficulty()),
@@ -190,14 +271,18 @@ export class GameManager {
             moveTo: this.gameBoardManager.moveTo,
             getTileOffsetFromDir: this.gameBoardManager.getTileOffsetFromDir,
             getIsInBounds: this.gameBoardManager.getIsInBounds,
+            getLinkedTile: this.gameBoardManager.getLinkedTile,
             getSafeTileIndex: this.gameBoardManager.getSafeTileIndex,
             getHighlightedTiles: this.gameBoardManager.getHighlightedTiles,
+            resetHightlightedTiles: this.gameBoardManager.resetHightlightedTiles,
             getClickedTileIndex: this.gameBoardManager.getClickedTileIndex,
             getHoveredTileIndex: this.gameBoardManager.getHoveredTileIndex,
             setClickedTileIndex: this.gameBoardManager.setClickedTileIndex,
             setHoveredTileIndex: this.gameBoardManager.setHoveredTileIndex,
             getIsPieceInDanger: this.gameBoardManager.getIsPieceInDanger,
             getIsTeamDamaged: this.gameBoardPiecesManager.getIsTeamDamaged,
+            getIsPieceOnTile: this.gameBoardPiecesManager.getIsPieceOnTile,
+            getIsContactDmg: this.gameBoardPiecesManager.getIsContactDmg,
             getPlayerPiece: this.gameBoardPiecesManager.getPlayerPiece,
             findPathFromTo: this.gameBoardManager.findPathFromTo,
             getPathToSafeTileAndAvoidEnemies: this.gameBoardManager.getPathToSafeTileAndAvoidEnemies,

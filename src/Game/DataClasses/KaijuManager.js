@@ -1,49 +1,48 @@
 import { Difficulty, PIECES_INFO } from 'Utils/gameState';
-import { GameBoardPieceKaiju } from 'Game/DataClasses/GameBoard/Pieces/GameBoardPieceKaiju'//'../GameBoard/Pieces/GameBoardPieceKaiju';
+import { GameBoardPieceKaiju } from 'Game/DataClasses/GameBoard/Pieces/GameBoardPieceKaiju';
+
+const KAIJU_SPAWN = {
+    spawnIntervalMs: 11000, // time between new Kaiju
+    respawnIntervalMs: 1100 // time between attempts to bring back dead Kaiju
+};
 
 export class KaijuManager {
     constructor({
         gameManagerProxy,
         kaijuTeamIndex = 1
     }) {
-        this.isKaiju = false;
-        this.kaijuCount = 0;
-        this.kaijuSpawnAccTime = 0;
+        this.kaijuPieces = [];
         this.kaijuTeamIndex = kaijuTeamIndex;
-        // - -
-        // CONSIDER MAKING THIS DEPENDENT ON DIFFICULTY... 
-        this.kaijuSpawnInterval = 12000;
-        this.kaijuRespawnInterval = 3000;
-        this.intialKaijuSpawnDelay = 7000;
-        // - -
-
+        this.lastSpawnAccTime = 0;
+        this.lastRespawnAccTime = 0;
         this.gameManagerProxy = gameManagerProxy;
     }
 
-    startKaijuSpawner = accTime => {
-        const callback = (accTime) => {
-            const { MAX_AT_ONCE } = this.gameManagerProxy.determineKaijuDetails(); // 'difficulty' passed-in in 'GameManager'
-            const isRespawn = this.kaijuCount >= MAX_AT_ONCE;
-            const delay = this.kaijuCount + 1 >= MAX_AT_ONCE ? this.kaijuRespawnInterval : this.kaijuSpawnInterval;
+    reset() {
+        this.kaijuPieces = [];
+        this.lastSpawnAccTime = 0;
+        this.lastRespawnAccTime = 0;
+    }
 
-            const newAccTime = accTime + delay;
-            if (isRespawn) {
-                const isRespawnSuccess = this.respawnKaiju(accTime);
+    update(accTime, killCount) {
+        const { MAX_AT_ONCE, MAX_TO_WIN } = this.gameManagerProxy.determineKaijuDetails();
 
-                if (isRespawnSuccess) {
-                    this.gameManagerProxy.registerTimeout(accTime, () => callback(newAccTime), delay)
-                } else {
-                    // wait one second and try again if no dead kaiju
-                    this.gameManagerProxy.registerTimeout(accTime, () => callback(newAccTime), 1000);
-                }
-            } else {
-                this.spawnNewKaiju(accTime);
-                this.gameManagerProxy.registerTimeout(accTime, () => callback(newAccTime), delay)
-            }
+        if (accTime >= this.lastSpawnAccTime + KAIJU_SPAWN.spawnIntervalMs) {
+            this.lastSpawnAccTime = accTime;
+            if (this.kaijuPieces.length < MAX_AT_ONCE) this.addKaijuPiece(accTime);
         }
 
-        this.gameManagerProxy.registerTimeout(accTime, () => callback(accTime), this.intialKaijuSpawnDelay);
-        this.isKaiju = true;
+        if (accTime >= this.lastRespawnAccTime + KAIJU_SPAWN.respawnIntervalMs) {
+            this.lastRespawnAccTime = accTime;
+            const numAlive = this.kaijuPieces.filter(piece => !piece.getIsDead()).length;
+            let remainingNeeded = MAX_TO_WIN - (killCount + numAlive);
+            this.kaijuPieces.filter(piece => piece.getIsDead()).forEach(piece => {
+                if (remainingNeeded > 0) {
+                    remainingNeeded -= 1;
+                    piece.respawn(accTime);
+                }
+            });
+        }
     }
 
     determineKaijuDetailsFromDifficulty = (difficulty) => {
@@ -80,52 +79,21 @@ export class KaijuManager {
         return { MAX_AT_ONCE, MAX_TO_WIN, KAIJU_MAX_HEALTH, KAIJU_MAX_SPEED, KAIJU_COOL_DOWN };
     }
 
-    getIsSpawnNewKaiju(accTime, spawnInterval) {
-        return accTime >= (this.kaijuSpawnAccTime + spawnInterval);
-    }
-
-    spawnNewKaiju(accTime) {
-        this.addKaijuPiece(accTime);
-    }
-
     addKaijuPiece(accTime) {
-
-        // TO-DO: consider making this set on init...
         const { KAIJU_MAX_HEALTH, KAIJU_MAX_SPEED, KAIJU_COOL_DOWN } = this.gameManagerProxy.determineKaijuDetails();
 
         const teamIndex = this.kaijuTeamIndex;
         const pieceInfo = {
             ...PIECES_INFO['kaiju'],
-            abilities: this.gameManagerProxy.getKaijuAbilities(),
+            abilities: this.gameManagerProxy.getKaijuAbilities(accTime),
             spewFireCoolDown: KAIJU_COOL_DOWN,
             maxLives: KAIJU_MAX_HEALTH,
             moveSpeed: KAIJU_MAX_SPEED,
             isDoAvoidEnemy: false,
         };
 
-        const newKaiju = this.gameManagerProxy.addPiece({ pieceInfo, teamIndex, pieceClass: GameBoardPieceKaiju })
+        const newKaiju = this.gameManagerProxy.addPiece({ pieceInfo, teamIndex, pieceClass: GameBoardPieceKaiju });
         newKaiju.initCharLocation();
-        this.kaijuCount += 1;
-        this.kaijuSpawnAccTime = accTime;
-    }
-
-    respawnKaiju(accTime) {
-        const kaijuPieces = this.gameManagerProxy.getTeamPieces(this.kaijuTeamIndex);
-        const deadKaijuPiece = kaijuPieces.find(piece => piece.getIsDead());
-
-        if (!!deadKaijuPiece) {
-            deadKaijuPiece.respawn(accTime);
-            this.kaijuSpawnAccTime = accTime;
-            const isRespawnSuccess = true;
-            return isRespawnSuccess;
-        }
-    }
-
-    setKaijuCount(kaijuCount) {
-        this.kaijuCount = kaijuCount;
-    }
-
-    getIsKaiju() {
-        return this.isKaiju;
+        this.kaijuPieces.push(newKaiju);
     }
 }

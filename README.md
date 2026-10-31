@@ -19,11 +19,10 @@ The game features:
 2. In your terminal, navigate to the main folder of the cloned repo and type:
 ```npm install```
 3. After install, type:
-```npm run-script build```
+```npm run dev```
 **If you are having issues building, remove ```  "type": "module", ``` from your package.json (second line) and try building again. (Just be sure to add the line back after building.)**
 3. Once installed, type:
-```npm start```
-and open http://localhost:9000/ in your browser.
+and open http://localhost:5173/ in your browser.
 
 ### Prerequisites
 

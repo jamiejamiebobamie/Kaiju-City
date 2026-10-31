@@ -1,16 +1,25 @@
 {
   "compilerOptions": {
-    "baseUrl": "src",
     "target": "es2022",
-    "module": "commonjs",
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "jsx": "react-jsx",
     "allowJs": true,
     "checkJs": false,
+    "noEmit": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": false,
     "skipLibCheck": true,
-    "types": ["node", "react", "react-dom", "jest"]
+    "types": ["node", "vite/client", "vitest/globals"],
+    "paths": {
+      "Components/*": ["./src/Components/*"],
+      "Game/*": ["./src/Game/*"],
+      "Settings/*": ["./src/Settings/*"],
+      "Tutorial/*": ["./src/Tutorial/*"],
+      "Utils/*": ["./src/Utils/*"],
+      "Home": ["./src/Home.jsx"]
+    }
   },
-  "include": ["src"]
+  "include": ["src", "vite.config.ts"]
 }

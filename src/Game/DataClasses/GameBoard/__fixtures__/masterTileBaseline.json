@@ -1,0 +1,342 @@
+{
+  "origin": {
+    "i": 8,
+    "j": 28
+  },
+  "playerTile": {
+    "i": 14,
+    "j": 26
+  },
+  "kaijuTile": {
+    "i": 3,
+    "j": 27
+  },
+  "dirs": [
+    "down"
+  ],
+  "maxTicks": 300,
+  "statuses": {
+    "isCold": {
+      "range": 25,
+      "dirs": [
+        "up",
+        "up right",
+        "down right",
+        "down",
+        "down left",
+        "up left"
+      ],
+      "clearsAfterTicks": 26,
+      "peakTiles": 12,
+      "example": [
+        1,
+        7,
+        12,
+        12,
+        12,
+        12,
+        12,
+        12,
+        12,
+        12,
+        12,
+        12,
+        10,
+        6,
+        5,
+        2,
+        2,
+        1,
+        2,
+        2,
+        2,
+        1,
+        2,
+        2,
+        2,
+        1,
+        0
+      ]
+    },
+    "isOnFire": {
+      "range": 25,
+      "dirs": [
+        "down",
+        "down right",
+        "down left"
+      ],
+      "clearsAfterTicks": 14,
+      "peakTiles": 32,
+      "example": [
+        1,
+        4,
+        7,
+        10,
+        13,
+        16,
+        18,
+        19,
+        22,
+        24,
+        32,
+        30,
+        28,
+        12,
+        0
+      ]
+    },
+    "isWet": {
+      "range": 15,
+      "dirs": [
+        "down",
+        "down right",
+        "down left"
+      ],
+      "clearsAfterTicks": 16,
+      "peakTiles": 32,
+      "example": [
+        1,
+        4,
+        7,
+        10,
+        13,
+        16,
+        18,
+        19,
+        22,
+        24,
+        32,
+        30,
+        28,
+        26,
+        26,
+        23,
+        0
+      ]
+    },
+    "isWooded": {
+      "range": 25,
+      "dirs": [
+        "up",
+        "up right",
+        "down right",
+        "down",
+        "down left",
+        "up left"
+      ],
+      "clearsAfterTicks": null,
+      "peakTiles": 26,
+      "example": [
+        1,
+        7,
+        13,
+        16,
+        17,
+        18,
+        19,
+        20,
+        20,
+        20,
+        20,
+        21,
+        20,
+        20,
+        20,
+        21,
+        20,
+        20,
+        20,
+        20,
+        20,
+        20,
+        20,
+        20,
+        20,
+        20,
+        20,
+        20,
+        20,
+        20
+      ]
+    },
+    "isElectrified": {
+      "range": 15,
+      "dirs": [
+        "down",
+        "down right",
+        "down left"
+      ],
+      "clearsAfterTicks": 16,
+      "peakTiles": 24,
+      "example": [
+        1,
+        4,
+        10,
+        14,
+        14,
+        19,
+        24,
+        22,
+        22,
+        18,
+        13,
+        10,
+        10,
+        10,
+        8,
+        6,
+        0
+      ]
+    },
+    "isGhosted": {
+      "range": 30,
+      "dirs": [
+        "down"
+      ],
+      "clearsAfterTicks": 16,
+      "peakTiles": 1,
+      "example": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0
+      ]
+    },
+    "isBubble": {
+      "range": 7,
+      "dirs": [
+        "up",
+        "up right",
+        "down right",
+        "down",
+        "down left",
+        "up left"
+      ],
+      "clearsAfterTicks": 8,
+      "peakTiles": 24,
+      "example": [
+        1,
+        6,
+        7,
+        24,
+        19,
+        19,
+        18,
+        16,
+        0
+      ]
+    },
+    "isShielded": {
+      "range": 2,
+      "dirs": [
+        "up",
+        "up right",
+        "down right",
+        "down",
+        "down left",
+        "up left"
+      ],
+      "clearsAfterTicks": null,
+      "peakTiles": 13,
+      "example": [
+        1,
+        7,
+        13,
+        13,
+        13,
+        13,
+        13,
+        13,
+        13,
+        13,
+        13,
+        13,
+        13,
+        13,
+        13,
+        13,
+        13,
+        13,
+        13,
+        13,
+        13,
+        13,
+        13,
+        13,
+        13,
+        13,
+        13,
+        13,
+        13,
+        13
+      ]
+    },
+    "isHealing": {
+      "range": 20,
+      "dirs": [
+        "down"
+      ],
+      "clearsAfterTicks": 16,
+      "peakTiles": 1,
+      "example": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0
+      ]
+    },
+    "isOnKaijuFire": {
+      "range": 15,
+      "dirs": [
+        "down",
+        "down right",
+        "down left"
+      ],
+      "clearsAfterTicks": 14,
+      "peakTiles": 32,
+      "example": [
+        1,
+        4,
+        7,
+        10,
+        13,
+        16,
+        18,
+        19,
+        22,
+        24,
+        32,
+        30,
+        28,
+        12,
+        0
+      ]
+    }
+  }
+}

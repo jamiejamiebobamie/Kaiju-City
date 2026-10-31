@@ -41,12 +41,8 @@ export class GameManagerProxy {
         return this.props.getTeamLeaderPiece(pieceIndex);
     }
 
-    getAbilityAndTileStatusData() {
-        return this.props.getAbilityAndTileStatusData();
-    }
-
-    getDmg(pieceIndex) {
-        return this.props.getDmg(pieceIndex);
+    getDmg(pieceIndex, tileIndex) {
+        return this.props.getDmg(pieceIndex, tileIndex);
     }
 
     addPiece(accTime) {
@@ -85,8 +81,8 @@ export class GameManagerProxy {
         return this.props.getMoveOntoGameBoardMovementData();
     }
 
-    getAbilityAndTileStatusData(tileIndex) {
-        return this.props.getAbilityAndTileStatusData(tileIndex);
+    getAbilityAndTileStatusData() {
+        return this.props.getAbilityAndTileStatusData();
     }
 
     getKaijuAbilities(accTime) {
@@ -112,6 +108,10 @@ export class GameManagerProxy {
         return this.props.getTileOffsetFromDir(dir, tileIndex);
     }
 
+    getLinkedTile(tileIndex) {
+        return this.props.getLinkedTile(tileIndex);
+    }
+
     getIsInBounds(tileIndex) {
         return this.props.getIsInBounds(tileIndex);
     }
@@ -130,6 +130,18 @@ export class GameManagerProxy {
 
     getIsTeamDamaged(pieceIndex) {
         return this.props.getIsTeamDamaged(pieceIndex);
+    }
+
+    getIsPieceOnTile(tileIndex) {
+        return this.props.getIsPieceOnTile(tileIndex);
+    }
+
+    getIsContactDmg(pieceIndex, tileIndex) {
+        return this.props.getIsContactDmg(pieceIndex, tileIndex);
+    }
+
+    getAccTime() {
+        return this.props.getAccTime();
     }
 
     getPathToSafeTileAndAvoidEnemies(pieceIndex) {
@@ -152,8 +164,8 @@ export class GameManagerProxy {
         return this.props.getDirFromTiles(fromTile, toTile)
     }
 
-    registerTimeout = (accTime, callback, delay) => {
-        const timeoutRef = this.props.registerTimeout(accTime, callback, delay);
+    registerTimeout = (callback, delay) => {
+        const timeoutRef = this.props.registerTimeout(callback, delay);
         return timeoutRef;
     }
 
@@ -162,15 +174,13 @@ export class GameManagerProxy {
     }
 
     updateTileWithAbilityStatus = ({
+        accTime,
         pieceIndex,
-        range,
-        area,
         appliedStatus
     }) => {
         this.props.updateTileWithAbilityStatus({
+            accTime,
             pieceIndex,
-            range,
-            area,
             appliedStatus
         });
     }
@@ -185,10 +195,6 @@ export class GameManagerProxy {
 
     getPlayerPiece() {
         return this.props.getPlayerPiece();
-    }
-
-    getIsHightlightedTiles() {
-        this.props.getIsHightlightedTiles();
     }
 
     getClickedTileIndex() {

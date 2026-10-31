@@ -9,9 +9,9 @@ import { getRandomIntInRange } from 'Game/utils'
 export class SettingsManager {
     constructor() {
         this.abilityEdits = {};
-        this.playerAvatar = 'agent';//'guy'; // TESTING...
+        this.playerAvatar = 'guy';
         this.isTeammate = true;
-        this.playerChosenAbilityElements = '';
+        this.playerChosenAbilityElements = [];
         this.gameMode = GameMode.StoryPlusTutorial;
         this.difficulty = Difficulty.Medium;
 
@@ -31,6 +31,14 @@ export class SettingsManager {
 
     getIsTeammate() {
         return this.isTeammate;
+    }
+
+    setIsTeammate(isTeammate) {
+        this.isTeammate = isTeammate;
+    }
+
+    setDifficulty(difficulty) {
+        this.difficulty = difficulty;
     }
 
     getAbilityEdits() {
@@ -99,7 +107,7 @@ export class SettingsManager {
             return new GameBoardPieceAbility({ gameBoardPieceAbilityData: abilityData });
         });
     }
-    
+
     getKaijuAbilities = (accTime) => {
         // only one kaiju ability for the time being...
         const kaijuAbilityData = Object.values(this.abilityAndTileStatusData).find(({ element }) => element == 'kaijuFire')

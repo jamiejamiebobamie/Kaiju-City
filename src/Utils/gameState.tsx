@@ -1,5 +1,3 @@
-import { shootPower, modifyStats } from "./utils";
-
 const PAGES = Object.freeze({
   Home: 'Home',
   Game: 'Game',
@@ -1549,25 +1547,6 @@ export const PLAYER_ABILITIES = {
     range: 3,
     type: ["offensive", "defensive"],
     moveSpeedModifier: true,
-    togglePassive: (playerStats, toggleOff) => modifyStats(playerStats, toggleOff, 'moveSpeedModifier', -1),
-    activateActive: (
-      k,
-      data,
-      _,
-      targetData,
-      setTileStatuses,
-      scale
-    ) =>
-      shootPower({
-        data,
-        dataIndex: k,
-        targetData,
-        scale,
-        count: 25,
-        statusKey: "isCold",
-        numTiles: 6,
-        setTileStatuses
-      }),
     displayLookup: "abilityIce",
     elementUppercase: "Ice",
     element: "ice",
@@ -1588,28 +1567,8 @@ export const PLAYER_ABILITIES = {
     tileCountModifier: true,
     // livesModifier: true,
     // moveSpeedModifier: true,
-    togglePassive: (playerStats, toggleOff) => modifyStats(playerStats, toggleOff, 'tileCountModifier', 1),
     //   Math.random() < .01 ? modifyStats(playerStats, toggleOff, 'numTilesModifier', 1) :
     //  modifyStats(playerStats, toggleOff, 'livesModifier', -1),
-    activateActive: (
-      k,
-      data,
-      _,
-      targetData,
-      setTileStatuses,
-      scale
-    ) =>
-      shootPower({
-        data,
-        dataIndex: k,
-        targetData,
-        scale,
-        bounceCount: 3,
-        count: 20,
-        statusKey: "isOnFire",
-        numTiles: 3,
-        setTileStatuses
-      }),
     displayLookup: "abilityFire",
     elementUppercase: "Fire",
     element: "fire",
@@ -1627,25 +1586,6 @@ export const PLAYER_ABILITIES = {
     range: 10,
     type: ["offensive"],
     moveSpeedModifier: true,
-    togglePassive: (playerStats, toggleOff) => modifyStats(playerStats, toggleOff, 'moveSpeedModifier', -1),// 'tileCountModifier', 1),
-    activateActive: (
-      k,
-      data,
-      _,
-      targetData,
-      setTileStatuses,
-      scale
-    ) =>
-      shootPower({
-        data,
-        dataIndex: k,
-        targetData,
-        scale,
-        count: 15,
-        statusKey: "isWet",
-        numTiles: 3,
-        setTileStatuses
-      }),
     displayLookup: "abilityWater",
     elementUppercase: "Water",
     element: "water",
@@ -1662,26 +1602,6 @@ export const PLAYER_ABILITIES = {
     activeName: "Overgrowth",
     type: ["offensive"],
     livesModifier: true,
-    togglePassive: (playerStats, toggleOff) => modifyStats(playerStats, toggleOff, 'livesModifier', 1),
-    activateActive: (
-      k,
-      data,
-      _,
-      targetData,
-      setTileStatuses,
-      scale
-    ) =>
-      shootPower({
-        data,
-        dataIndex: k,
-        targetData,
-        scale,
-        count: 25,
-        statusKey: "isWooded",
-        numTiles: 3,
-        // numTiles: 6,
-        setTileStatuses
-      }),
     range: 10,
     displayLookup: "abilityWood",
     elementUppercase: "Wood",
@@ -1699,25 +1619,6 @@ export const PLAYER_ABILITIES = {
     activeName: "Discharge",
     type: ["offensive"],
     moveSpeedModifier: true,
-    togglePassive: (playerStats, toggleOff) => modifyStats(playerStats, toggleOff, 'moveSpeedModifier', 2),
-    activateActive: (
-      k,
-      data,
-      _,
-      targetData,
-      setTileStatuses,
-      scale
-    ) =>
-      shootPower({
-        data,
-        dataIndex: k,
-        targetData,
-        scale,
-        count: 15,
-        statusKey: "isElectrified",
-        numTiles: 3,
-        setTileStatuses
-      }),
     range: 15,
     displayLookup: "abilityLightning",
     elementUppercase: "Lightning",
@@ -1736,26 +1637,6 @@ export const PLAYER_ABILITIES = {
     range: 10,
     type: ["offensive"],
     livesModifier: true,
-    togglePassive: (playerStats, toggleOff) => modifyStats(playerStats, toggleOff, 'livesModifier', -1),
-    activateActive: (
-      k,
-      data,
-      _,
-      targetData,
-      setTileStatuses,
-      scale
-    ) =>
-      shootPower({
-        data,
-        dataIndex: k,
-        targetData,
-        scale,
-        count: 30,
-        bounceCount: 10,
-        statusKey: "isGhosted",
-        numTiles: 1,
-        setTileStatuses
-      }),
     displayLookup: "abilityDeath",
     elementUppercase: "Death",
     element: "death",
@@ -1773,25 +1654,6 @@ export const PLAYER_ABILITIES = {
     type: ["defensive"],
     // numTilesModifier: true,
     tileCountModifier: true,
-    togglePassive: (playerStats, toggleOff) => modifyStats(playerStats, toggleOff, 'tileCountModifier', 1),// 'numTilesModifier', .5),
-    activateActive: (
-      k,
-      data,
-      _,
-      targetData,
-      setTileStatuses,
-      scale
-    ) =>
-      shootPower({
-        data,
-        dataIndex: k,
-        targetData,
-        scale,
-        count: 7,
-        statusKey: "isBubble",
-        numTiles: 6,
-        setTileStatuses
-      }),
     range: 4,
     displayLookup: "abilityBubble",
     elementUppercase: "Bubble",
@@ -1810,25 +1672,6 @@ export const PLAYER_ABILITIES = {
     type: ["defensive"],
     // numTilesModifier: true,
     tileCountModifier: true,
-    togglePassive: (playerStats, toggleOff) => modifyStats(playerStats, toggleOff, 'tileCountModifier', 1),// 'numTilesModifier', .5),
-    activateActive: (
-      k,
-      data,
-      _,
-      targetData,
-      setTileStatuses,
-      scale
-    ) =>
-      shootPower({
-        data,
-        dataIndex: k,
-        targetData,
-        scale,
-        count: 2,
-        statusKey: "isShielded",
-        numTiles: 6,
-        setTileStatuses
-      }),
     range: 4,
     displayLookup: "abilityMetal",
     elementUppercase: "Metal",
@@ -1847,18 +1690,6 @@ export const PLAYER_ABILITIES = {
     range: 5,
     type: ["escape"],
     moveSpeedModifier: true,
-    // togglePassive: (playerStats, toggleOff) => modifyStats(playerStats, toggleOff, 'moveSpeedModifier', -4),
-    togglePassive: (playerStats, toggleOff) => modifyStats(playerStats, toggleOff, 'numTilesModifier', 2),
-    activateActive: (
-      k,
-      data,
-      setTeleportData,
-      targetData,
-      setTileStatuses,
-      scale
-    ) =>
-      setTeleportData(_teleportData => [..._teleportData, k])
-    ,
     getPlayerIndex: k => k,
     displayLookup: "abilityGlass",
     elementUppercase: "Glass",
@@ -1876,25 +1707,6 @@ export const PLAYER_ABILITIES = {
     activeName: "Heal",
     type: ["heal"],
     tileCountModifier: true,
-    togglePassive: (playerStats, toggleOff) => modifyStats(playerStats, toggleOff, 'tileCountModifier', 1),
-    activateActive: (
-      k,
-      data,
-      _,
-      targetData,
-      setTileStatuses,
-      scale
-    ) =>
-      shootPower({
-        data,
-        dataIndex: k,
-        targetData,
-        scale,
-        count: 20,
-        statusKey: "isHealing",
-        numTiles: 1,
-        setTileStatuses
-      }),
     range: 5,
     displayLookup: "abilityLove",
     elementUppercase: "Love",
@@ -1912,24 +1724,6 @@ export const PLAYER_ABILITIES = {
     activeName: "",
     range: 30,
     type: ["offensive"],
-    activateActive: (
-      k,
-      data,
-      _,
-      targetData,
-      setTileStatuses,
-      scale
-    ) =>
-      shootPower({
-        data,
-        dataIndex: k,
-        targetData,
-        scale,
-        count: 15,
-        statusKey: "isOnKaijuFire",
-        numTiles: 3,
-        setTileStatuses
-      }),
     displayLookup: "",
     elementUppercase: "",
     element: "kaijuFire",
@@ -2520,6 +2314,34 @@ export const PIECES_INFO = {
 };
 
 
+/*
+  The tile-status hierarchy: when statuses meet on a tile, the lowest rank wins.
+  Equal ranks are settled at random.
+*/
+export const TILE_STATUS_RANKS = {
+  isTeleportTile: 0,
+  isHealing: 1,
+  isBubble: 2,
+  isGhosted: 3,
+  isElectrified: 4,
+  isCold: 5,
+  isShielded: 6,
+  isOnFire: 7,
+  isOnKaijuFire: 7,
+  isWet: 8,
+  isWooded: 9
+};
+
+/*
+  How often the game updates, in milliseconds of game time.
+  maxCatchUpMs caps how much game time one frame can run.
+*/
+export const GAME_TICK = {
+  pieceMs: 110,
+  tileMs: 160,
+  maxCatchUpMs: 500
+};
+
 export const TILE_STATUSES = ['isTeleportTile', 'isHealing', 'isBubble', 'isGhosted', 'isElectrified', 'isCold', 'isShielded', 'isOnFire', 'isOnKaijuFire', 'isWet', 'isWooded'];
 
 const ABILITY_ON_COOLDOWN_ICON = "fa-spinner";
@@ -2528,8 +2350,6 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
   {
     // TILE STATUS data - - - - - - - - - - - - - - - - -
     appliedStatus: 'isCold',
-    beats: { isShielded: true, isWooded: true },
-
     range: 25, // count / startCount / totalCount
     area: 6, // numTiles
     dmgAmt: 1, // amt of dmg done to Piece when piece is on a tile with the status
@@ -2549,7 +2369,7 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
 
     // TICK RANGES -
     isRotating: [{ tickFrom: 1, tickTo: 7 }],
-    isConserveDirections: [{ tickFrom: 0, tickTo: 0 }],
+    isConserveDirections: [],
     isTracking: [{ tickFrom: 8, tickTo: 25 }],
     // - - - - - - -
 
@@ -2597,8 +2417,6 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
   {
     // TILE STATUS data - - - - - - - - - - - - - - - - -
     appliedStatus: 'isOnFire',
-    beats: { isCold: true, isWooded: true },
-
     range: 25, // count / startCount / totalCount
     area: 3, // numTiles
     dmgAmt: 1, // amt of dmg done to Piece when piece is on a tile with the status
@@ -2633,6 +2451,7 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     // TICK EVENTS - 
     isSpread: [],
     isReverseDirection: [],
+    isWall: true,
     // - - - - - - - - - - - - - - - - - - - - - - - - - 
 
     // AI data - - - -
@@ -2645,7 +2464,7 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
 
     // PASSIVE ability data
     isTriggerPassiveImmediately: true,
-    modifierVal: 1,
+    modifierVal: 0, // off for now: needs a different passive
     fieldToModify: 'tileCountModifier',
     // - - - - - - - - - - -
 
@@ -2665,7 +2484,7 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
 
     passiveName: "Uncontrolled Burn",
     passiveDesc: "You've cleared a path...",
-    passiveEffect1: "+1 range",
+    passiveEffect1: "No effect for now",
 
     activeEffect2: '',
     passiveEffect2: '',
@@ -2674,8 +2493,6 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
   {
     // TILE STATUS data - - - - - - - - - - - - - - - - -
     appliedStatus: 'isWet',
-    beats: { isOnFire: true, isOnKaijuFire: true },
-
     range: 15, // count / startCount / totalCount
     area: 3, // numTiles
     dmgAmt: 1, // amt of dmg done to Piece when piece is on a tile with the status
@@ -2695,13 +2512,14 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
 
     // TICK RANGES -
     isRotating: [],
-    isConserveDirections: [{ tickFrom: 1, tickTo: 4 }, { tickFrom: 6, tickTo: 15 }],
+    isConserveDirections: [{ tickFrom: 0, tickTo: 15 }],
     isTracking: [],
     // - - - - - - -
 
     // TICK EVENTS - 
     isSpread: [],
-    isReverseDirection: [0, 5], // send backward at tick 0, then reverse at tick 5 (like a building wave...)
+    isReverseDirection: [0, 5],
+    isWall: true,
     // - - - - - - - - - - - - - - - - - - - - - - - - - 
 
     // AI data - - - -
@@ -2744,8 +2562,6 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     // TILE STATUS data - - - - - - - - - - - - - - - - -
     appliedStatus: 'isWooded',
 
-    beats: { isShielded: true, isWet: true },
-
     range: 25, // count / startCount / totalCount
     area: 6, // numTiles
     dmgAmt: 1, // amt of dmg done to Piece when piece is on a tile with the status
@@ -2777,13 +2593,15 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     // TICK RANGES -
     isRotating: [],
     // shoot in all (6) directions at TICK 0
-    isConserveDirections: [{ tickFrom: 2, tickTo: 3 }], // at TICK 2, conserve single direction of each 6 tiles.
-    isTracking: [{ tickFrom: 4, tickTo: 25 }], // at TICK 3+ track enemy. 6 ivy trails condense to 1.
+    isConserveDirections: [],
+    isTracking: [{ tickFrom: 2, tickTo: 25 }],
     // - - - - - - -
 
     // TICK EVENTS - 
-    isSpread: [{ tick: 1, area: 1 }], // at TICK 1, reduce directions to 1 tile. 
+    isSpread: [],
     isReverseDirection: [],
+    trailTicks: 25,
+    branchCount: 3,
     // - - - - - - - - - - - - - - - - - - - - - - - - - 
 
     // AI data - - - -
@@ -2826,13 +2644,11 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     // TILE STATUS data - - - - - - - - - - - - - - - - -
     appliedStatus: 'isElectrified',
 
-    beats: { isShielded: true, isWet: true },
-
     range: 15, // count / startCount / totalCount
     area: 3, // numTiles
     dmgAmt: 1, // amt of dmg done to Piece when piece is on a tile with the status
 
-    bounceCountResetVal: 8, // after status reflection, set the count to this number if greater than this number
+    bounceCountResetVal: 3,
 
     isPersistent: false, // do not delete status from if 'currCount' is 0
     isBouncy: true, // reflect status back onto gameboard if status goes off board
@@ -2852,7 +2668,7 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     // - - - - - - -
 
     // TICK EVENTS - 
-    isSpread: [{ tick: 1, area: 3 }, { tick: 3, area: 3 }],
+    isSpread: [{ tick: 0, area: 3 }, { tick: 3, area: 3 }],
     isReverseDirection: [],
     // - - - - - - - - - - - - - - - - - - - - - - - - - 
 
@@ -2895,16 +2711,6 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
   {
     // TILE STATUS data - - - - - - - - - - - - - - - - -
     appliedStatus: 'isGhosted',
-
-    beats: {
-      isElectrified: true,
-      isCold: true,
-      isShielded: true,
-      isOnFire: true,
-      isOnKaijuFire: true,
-      isWet: true,
-      isWooded: true
-    },
 
     range: 30, // count / startCount / totalCount
     area: 1, // numTiles
@@ -2974,18 +2780,6 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     // TILE STATUS data - - - - - - - - - - - - - - - - -
     appliedStatus: 'isBubble',
 
-    beats: {
-      isGhosted: true,
-      isElectrified: true,
-      isCold: true,
-      isShielded: true, // ???
-      isHealing: true, // ???
-      isOnFire: true,
-      isOnKaijuFire: true,
-      isWet: true,
-      isWooded: true
-    },
-
     range: 7, // count / startCount / totalCount
     area: 6, // numTiles
     dmgAmt: 0, // amt of dmg done to Piece when piece is on a tile with the status
@@ -2993,7 +2787,7 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     bounceCountResetVal: 3, // after status reflection, set the count to this number if greater than this number
 
     isPersistent: false, // do not delete status from if 'currCount' is 0
-    isBouncy: true, // reflect status back onto gameboard if status goes off board
+    isBouncy: false,
 
     /*
       if true, when status moves to adjacent tile,
@@ -3005,12 +2799,12 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
 
     // TICK RANGES -
     isRotating: [],
-    isConserveDirections: [{ tickFrom: 2, tickTo: 7 }],
+    isConserveDirections: [{ tickFrom: 0, tickTo: 0 }],
     isTracking: [],
     // - - - - - - -
 
     // TICK EVENTS - 
-    isSpread: [{ tick: 1, area: 6 }],
+    isSpread: [],
     isReverseDirection: [],
     // - - - - - - - - - - - - - - - - - - - - - - - - - 
 
@@ -3024,7 +2818,7 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
 
     // PASSIVE ability data
     isTriggerPassiveImmediately: true,
-    modifierVal: 1,
+    modifierVal: 0, // off for now: needs a different passive
     fieldToModify: 'tileCountModifier',
     // - - - - - - - - - - -
 
@@ -3044,7 +2838,7 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
 
     passiveName: "Like My Dreams",
     passiveDesc: "...they fade and die.",
-    passiveEffect1: "+1 range", // TO-DO: determine better passive...
+    passiveEffect1: "No effect for now",
 
     activeEffect2: '',
     passiveEffect2: '',
@@ -3053,12 +2847,6 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
   {
     // TILE STATUS data - - - - - - - - - - - - - - - - -
     appliedStatus: 'isShielded',
-
-    beats: {
-      isOnFire: true,
-      isOnKaijuFire: true,
-      isWet: true,
-    },
 
     range: 2, // count / startCount / totalCount
     area: 6, // numTiles
@@ -3079,7 +2867,7 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
 
     // TICK RANGES -
     isRotating: [],
-    isConserveDirections: [{ tickFrom: 0, tickTo: 2 }],
+    isConserveDirections: [],
     isTracking: [],
     // - - - - - - -
 
@@ -3098,7 +2886,7 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
 
     // PASSIVE ability data
     isTriggerPassiveImmediately: true,
-    modifierVal: 1,
+    modifierVal: 0, // off for now: needs a different passive
     fieldToModify: 'tileCountModifier',
     // - - - - - - - - - - -
 
@@ -3118,7 +2906,7 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
 
     passiveName: "Seasoned Builder",
     passiveDesc: "You are prolific",
-    passiveEffect1: "+1 range", // TO-DO: determine better passive...
+    passiveEffect1: "No effect for now",
 
     activeEffect2: '',
     passiveEffect2: '',
@@ -3127,19 +2915,6 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
   {
     // TILE STATUS data - - - - - - - - - - - - - - - - -
     appliedStatus: 'isTeleportTile',
-
-    beats: {
-      isHealing: true,
-      isBubble: true,
-      isGhosted: true,
-      isElectrified: true,
-      isCold: true,
-      isShielded: true,
-      isOnFire: true,
-      isOnKaijuFire: true,
-      isWet: true,
-      isWooded: true,
-    },
 
     range: 0, // count / startCount / totalCount
     area: 0, // numTiles
@@ -3179,8 +2954,8 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
 
     // PASSIVE ability data
     isTriggerPassiveImmediately: false,
-    modifierVal: true, // TO-DO: make this work... activate power to begin "click teleport tile". on click, activate passive: shouldTeleport = true
-    fieldToModify: 'shouldTeleport',
+    modifierVal: 2,
+    fieldToModify: 'numTilesModifier',
     // - - - - - - - - - - -
 
     // UI data - - - - - - - - - -
@@ -3209,18 +2984,6 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
   {
     // TILE STATUS data - - - - - - - - - - - - - - - - -
     appliedStatus: 'isHealing',
-
-    beats: {
-      // isBubble: true,
-      isGhosted: true,
-      isElectrified: true,
-      isCold: true,
-      isShielded: true,
-      isOnFire: true,
-      isOnKaijuFire: true,
-      isWet: true,
-      isWooded: true,
-    },
 
     range: 20, // count / startCount / totalCount
     area: 1, // numTiles
@@ -3260,7 +3023,7 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
 
     // PASSIVE ability data
     isTriggerPassiveImmediately: true,
-    modifierVal: 1,
+    modifierVal: 0, // off for now: needs a different passive
     fieldToModify: 'tileCountModifier',
     // - - - - - - - - - - -
 
@@ -3280,7 +3043,7 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
 
     passiveName: "Long Distance",
     passiveDesc: "You're in a long distance relationship.",
-    passiveEffect1: "+1 range", // TO-DO: determine better passive...
+    passiveEffect1: "No effect for now",
 
     activeEffect2: '',
     passiveEffect2: '',
@@ -3289,8 +3052,6 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
   {
     // TILE STATUS data - - - - - - - - - - - - - - - - -
     appliedStatus: 'isOnKaijuFire',
-    beats: { isCold: true, isWooded: true },
-
     range: 15, // count / startCount / totalCount
     area: 3, // numTiles
     dmgAmt: 1, // amt of dmg done to Piece when piece is on a tile with the status
@@ -3325,6 +3086,7 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     // TICK EVENTS - 
     isSpread: [],
     isReverseDirection: [],
+    isWall: true,
     // - - - - - - - - - - - - - - - - - - - - - - - - - 
 
     // AI data - - - -
@@ -3337,7 +3099,7 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
 
     // PASSIVE ability data
     isTriggerPassiveImmediately: true,
-    modifierVal: 1,
+    modifierVal: 0, // off for now: needs a different passive
     fieldToModify: 'tileCountModifier',
     // - - - - - - - - - - -
 
@@ -3357,7 +3119,7 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
 
     passiveName: "Uncontrolled Burn",
     passiveDesc: "You've cleared a path...",
-    passiveEffect1: "+1 range",
+    passiveEffect1: "No effect for now",
 
     activeEffect2: '',
     passiveEffect2: '',
@@ -3367,66 +3129,22 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
 
 export const ABILITY_KEY_MAPPINGS = [
   // PLAYER ABILITIES - - -
-  `Digit1`, // '1'
-  `Digit2`, // '2'
-  `Digit3`, // '3'
+  `Digit1`,
+  `Digit2`,
+  `Digit3`,
 
   // TEAMMATE_1 ABILITIES - - -
-  `KeyQ`, // '4'
-  `KeyW`, // '5'
-  `KeyE`, // '6'
+  `Digit4`,
+  `Digit5`,
+  `Digit6`,
 
   // TEAMMATE_2 ABILITIES - - -
-  `KeyA`, // '7'
-  `KeyS`, // '8'
-  `KeyD`, // '9'
+  `Digit7`,
+  `Digit8`,
+  `Digit9`,
 
   // TEAMMATE_3 ABILITIES - - -
-  `KeyZ`, // '10'
-  `KeyX`, // '11'
-  `KeyC`, // '12'
+  `KeyZ`,
+  `KeyX`,
+  `KeyC`,
 ];
-
-
-
-
-// TESTING import/export for ".ts" file...
-
-// 1. A TypeScript-exclusive feature: An Enum
-export enum GameDifficulty {
-  Easy = "EASY",
-  Normal = "NORMAL",
-  KaijuMode = "KAIJU_MODE"
-}
-
-// 2. A TypeScript Type Definition
-export type WeatherCondition = "晴れ" | "Rainy" | "AcidStorm";
-
-// 3. A TypeScript Interface to enforce your data structure
-export interface KaijuState {
-  id: string;
-  name: string;
-  health: number;
-  isEnraged: boolean;
-  difficultySetting: GameDifficulty; // Using the enum above
-  currentWeather: WeatherCondition;  // Using the type above
-}
-
-// 4. Test Data applying the interface
-export const initialBossState: KaijuState = {
-  id: "kj-09",
-  name: "Gojira",
-  health: 5000,
-  isEnraged: false,
-  difficultySetting: GameDifficulty.KaijuMode,
-  currentWeather: "AcidStorm"
-};
-
-// 5. A TypeScript Typed Function to test compilation of explicit arguments
-export function damageKaiju(state: KaijuState, damageAmount: number): KaijuState {
-  return {
-    ...state,
-    health: Math.max(0, state.health - damageAmount),
-    isEnraged: state.health - damageAmount < 1500
-  };
-}
