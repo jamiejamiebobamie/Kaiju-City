@@ -113,6 +113,18 @@ type Rival = {
   spot: { x: number; y: number }; // where the fight starts from, in scene pixels
 };
 
+// Agents who walk in along a catwalk and drop to the floor, one after another
+type AgentDrops = {
+  abilities: Array<string>; // ability elements
+  maxLives: number;
+  moveSpeed: number;
+  firstDropMs: number;
+  dropIntervalMs: number;
+  catwalkY: number; // in scene pixels
+  floorY: number; // where they land, in scene pixels
+  drops: Array<{ x: number; isFromLeft: boolean }>; // one for each Agent. x is where they drop, in scene pixels.
+};
+
 export type LevelConfig = {
   id: string;
   name: string;
@@ -136,6 +148,7 @@ export type LevelConfig = {
   hasTrainSchedule: boolean;
   shakePhases: Array<string>; // phases that shake the whole scene
   rival?: Rival;
+  agentDrops?: AgentDrops;
   cameraZoom: number; // how close the camera sits during play. at 1, the whole scene fits the frame.
   wideShots?: Record<string, number>; // phases the camera pulls out to show, and how long it holds there in ms
   tileTone: TileTone;
@@ -440,6 +453,16 @@ const STREET_SCENE = {
 const agentClone = (id, x) => ({ ...npc(id, 'agent', x, 170, 95), phase: 'clones' });
 
 const LAB_SCENE = {
+  agentDrops: {
+    abilities: ['death', 'glass', 'metal'],
+    maxLives: 4,
+    moveSpeed: 5,
+    firstDropMs: 1500,
+    dropIntervalMs: 7000,
+    catwalkY: 130,
+    floorY: 450,
+    drops: [{ x: 700, isFromLeft: true }, { x: 1000, isFromLeft: false }, { x: 400, isFromLeft: true }]
+  },
   phases: [{ id: 'clones', label: 'Agent clones' }],
   sceneElements: [
     agentClone('clone1', 97),

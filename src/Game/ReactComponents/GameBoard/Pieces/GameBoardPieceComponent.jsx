@@ -40,6 +40,17 @@ const Bar = styled.div`
   margin-top: -15px;
 `;
 
+// a single frame in place of the run cycle, sized to match it
+const FallingFrame = styled.img`
+  position: absolute;
+  left: 2px;
+  top: 12px;
+  width: 43px;
+  height: 53px;
+  pointer-events: none;
+  image-rendering: pixelated;
+`;
+
 const SpriteSheet = styled.div`
   position: relative;
   pointer-events: none;
@@ -348,6 +359,7 @@ export const GameBoardPieceComponent = ({
   isHealed,
   isCharmed, // future feature...
   isTeleported,
+  isFalling,
   dir,
   spriteSheetSrc,
   lives,
@@ -423,14 +435,14 @@ export const GameBoardPieceComponent = ({
       {modifierText}
       <HealthBarWrapper lives={lives}>{bars}</HealthBarWrapper>
       <Character isDamaged={isDamaged}>
-        <SpriteSheet
+        {isFalling ? <FallingFrame src="/levels/npcs/agentFalling.png" /> : <SpriteSheet
           avatar={avatar}
           spriteSheetSrc={spriteSheetSrc}
           isGoingToSpewFire={isGoingToSpewFire} // Kaiju-only
           lives={lives}
           anim={anim}
           color={color}
-        />
+        />}
       </Character>
     </Wrapper>
   );

@@ -561,6 +561,78 @@ describe('the Lab catwalk', () => {
   });
 });
 
+describe('the Agents in the Lab', () => {
+  const makeLab = () => {
+    const settingsManager = new SettingsManager();
+    settingsManager.setSortedPlayerChosenAbilityElementsString(['Fire', 'Ice', 'Water']);
+    settingsManager.setIsTeammate(false);
+    const gm = new GameManager({ level: LEVELS.lab, settingsManager });
+    gm.initGame();
+    const [player] = gm.getPieces();
+    player.maxLives = 1000;
+    player.lives = 1000;
+    return { gm, player };
+  };
+  const run = (gm, ticks) => {
+    for (let k = 0; k < ticks; k++) gm.stepPieces();
+  };
+  const getAgents = gm => gm.getPieces().filter(({ avatar }) => avatar == 'agent');
+
+  it('come in one at a time, three in all', () => {
+    const { gm } = makeLab();
+    expect(getAgents(gm).length).toBe(0);
+    run(gm, 20);
+    expect(getAgents(gm).length).toBe(1);
+    run(gm, 400);
+    expect(getAgents(gm).length).toBe(3);
+  });
+
+  it('walk the catwalk from off-shot, drop, and land on the floor to fight', () => {
+    const { gm } = makeLab();
+    while (!getAgents(gm).length) gm.stepPieces();
+    const [agent] = getAgents(gm);
+    const { y } = agent.charLocation;
+    expect(agent.charLocation.x).toBeLessThan(0);
+    expect(agent.isOnTiles).toBe(false);
+    let hasFallen = false;
+    for (let k = 0; k < 200 && !agent.isOnTiles; k++) {
+      gm.stepPieces();
+      hasFallen = hasFallen || agent.isFalling;
+    }
+    expect(hasFallen).toBe(true);
+    expect(agent.isOnTiles).toBe(true);
+    expect(agent.isFalling).toBe(false);
+    expect(agent.charLocation.y).toBeGreaterThan(y);
+    expect(gm.getIsWalkable(agent.getTileIndex())).toBe(true);
+    expect(agent.lives).toBe(4);
+  });
+
+  it('never teleport somewhere they could not walk back from', () => {
+    const { gm } = makeLab();
+    while (getAgents(gm).length < 1 || !getAgents(gm)[0].isOnTiles) gm.stepPieces();
+    const [agent] = getAgents(gm);
+    const board = gm.gameBoardManager;
+    for (let k = 0; k < 40; k++) {
+      const tile = board.getSafeTileIndex(agent.pieceIndex);
+      expect(getTileCenter(LEVELS.lab.grid, tile).y).toBeGreaterThan(300);
+    }
+  });
+
+  it('winning takes all three', () => {
+    const { gm } = makeLab();
+    run(gm, 400);
+    const agents = getAgents(gm);
+    agents.slice(0, 2).forEach(agent => {
+      gm.accTime += 5000;
+      agent.decrementHealth(gm.accTime, agent.maxLives);
+    });
+    expect(gm.getGameResult()).toBe(null);
+    gm.accTime += 5000;
+    agents[2].decrementHealth(gm.accTime, agents[2].maxLives);
+    expect(gm.getGameResult()).toBe(GameResult.PlayerWon);
+  });
+});
+
 describe('clicks', () => {
   const makeGame = () => {
     const settingsManager = new SettingsManager();

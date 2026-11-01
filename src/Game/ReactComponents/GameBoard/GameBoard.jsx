@@ -279,6 +279,7 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
       isHealed={p.isHealed}
       isCharmed={p.isCharmed}
       isTeleported={p.isTeleported}
+      isFalling={p.isFalling}
       dir={p.dir}
       facingDir={p.getFacingDir()}
       pieceScale={pieceScale}

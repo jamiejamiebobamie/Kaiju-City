@@ -385,6 +385,18 @@ export class GameBoardManager {
 
     // the tile the player can walk to that is closest to a spot on the level. tiles cut off from the player don't count.
     getClosestReachableTile(fromTile, { x, y }) {
+        const reachable = this.getReachableTiles(fromTile);
+        const getDistance = tile => {
+            const center = getTileCenter(this.grid, tile);
+            return Math.hypot(center.x - x, center.y - y);
+        };
+        // teleporting goes anywhere walkable, even tiles no path leads to
+        if (this.gameManagerProxy.getPlayerPiece().shouldTeleport) reachable.push(...this.walkableTiles);
+        const open = reachable.filter(this.getIsInBounds);
+        return (open.length ? open : reachable).reduce((closest, tile) => getDistance(tile) < getDistance(closest) ? tile : closest);
+    }
+
+    getReachableTiles(fromTile) {
         const seen = new Set([`${fromTile.i} ${fromTile.j}`]);
         const reachable = [fromTile];
         const getNextTiles = this.getPathStepsFrom(fromTile);
@@ -396,14 +408,7 @@ export class GameBoardManager {
                 reachable.push(next);
             });
         }
-        const getDistance = tile => {
-            const center = getTileCenter(this.grid, tile);
-            return Math.hypot(center.x - x, center.y - y);
-        };
-        // teleporting goes anywhere walkable, even tiles no path leads to
-        if (this.gameManagerProxy.getPlayerPiece().shouldTeleport) reachable.push(...this.walkableTiles);
-        const open = reachable.filter(this.getIsInBounds);
-        return (open.length ? open : reachable).reduce((closest, tile) => getDistance(tile) < getDistance(closest) ? tile : closest);
+        return reachable;
     }
 
     getIsClosedTile = ({ i, j }) => {
@@ -610,13 +615,15 @@ export class GameBoardManager {
 
         const avgLocation = { x: sumLocations.x / otherTeamsPieces.length, y: sumLocations.y / otherTeamsPieces.length };
 
+        // only tiles the piece could walk from: a teleport must not strand it, eg. on the Lab's catwalk
+        const reachableTiles = this.getReachableTiles(this.gameManagerProxy.getPieceTileIndex(pieceIndex));
         let safeTileObj = {
             distance: Number.MIN_SAFE_INTEGER,
-            tileIndex: this.getRandomTileIndexOnBoard()
+            tileIndex: reachableTiles[getRandomIntInRange({ max: reachableTiles.length - 1 })]
         };
 
         const teamIndex = this.gameManagerProxy.getPieceTeamIndex(pieceIndex);
-        this.walkableTiles.forEach(tileIndex => {
+        reachableTiles.forEach(tileIndex => {
             const currTileXY = this.getCharXAndYFromTileIndex(tileIndex);
             const testDist = getDistanceToFrom(currTileXY, avgLocation);
             if (testDist > safeTileObj.distance) {

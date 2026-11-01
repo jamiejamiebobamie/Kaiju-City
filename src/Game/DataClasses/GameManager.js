@@ -8,6 +8,7 @@ import { KaijuManager } from './KaijuManager';
 import { GameBoardManager } from './GameBoard/GameBoardManager';
 import { PENINSULA, RIVAL_IN_PHASE } from 'Game/DataClasses/Levels/levels';
 import { TrainSchedule, TRAIN_HIT } from './TrainSchedule';
+import { GameBoardPieceAgent } from './GameBoard/Pieces/GameBoardPieceAgent';
 import { WIDE_SHOT } from './Camera';
 
 export const GameResult = Object.freeze({
@@ -23,6 +24,7 @@ export class GameManager {
         this.isPaused = false;
         this.tutorialIndex = 0;
         this.boardRevision = 0;
+        this.agentsDropped = 0;
         this.wideShotMs = 0; // what is left of the current wide shot. the game holds still during it.
         this.isEditingTiles = false; // dev: the game holds still and shows the whole level
         this.level = level;
@@ -227,7 +229,36 @@ export class GameManager {
         this.setPhase(RIVAL_IN_PHASE, true);
     }
 
+    updateAgentDrops() {
+        const { drops, firstDropMs, dropIntervalMs } = this.level.agentDrops;
+        const isDue = this.accTime >= firstDropMs + this.agentsDropped * dropIntervalMs;
+        if (this.agentsDropped < drops.length && isDue) this.addAgent(drops[this.agentsDropped]);
+    }
+
+    addAgent({ x, isFromLeft }) {
+        const { abilities, maxLives, moveSpeed, catwalkY, floorY } = this.level.agentDrops;
+        const piece = this.gameBoardPiecesManager.addPiece({
+            pieceClass: GameBoardPieceAgent,
+            pieceInfo: {
+                ...PIECES_INFO.agent,
+                abilities: this.settingsManager.getAbilitiesFromElements(abilities),
+                maxLives,
+                moveSpeed
+            },
+            teamIndex: 1
+        });
+        const offShot = 60;
+        piece.startEntrance({
+            startLocation: { x: isFromLeft ? -offShot : this.level.world.width + offShot },
+            dropTile: this.gameBoardManager.getClosestWalkableTileToLocation({ x, y: catwalkY }),
+            landingTile: this.gameBoardManager.getClosestWalkableTileToLocation({ x, y: floorY }),
+            walkDir: isFromLeft ? 'downRight' : 'downLeft'
+        });
+        this.agentsDropped += 1;
+    }
+
     getKillsToWin() {
+        if (this.level.agentDrops) return this.level.agentDrops.drops.length;
         return this.level.rival ? 1 : this.gameManagerProxy.determineKaijuDetails().MAX_TO_WIN;
     }
 
@@ -242,6 +273,7 @@ export class GameManager {
         if (this.trainSchedule) this.trainSchedule.update(this.accTime);
         if (this.level.kaijuEntry) this.kaijuManager.update(this.accTime, this.score);
         if (this.level.rival) this.updateRival();
+        if (this.level.agentDrops) this.updateAgentDrops();
         this.gameBoardPiecesManager.movePieces({ accTime: this.accTime, playerInputHandler: this.playerInputHandler });
     }
 
