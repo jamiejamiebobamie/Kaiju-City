@@ -3,11 +3,11 @@ import styled, { css, keyframes } from "styled-components";
 import { DeadPlayer } from "./Pieces/DeadPlayerPiece";
 import { ExplodingKaiju } from "./Pieces/ExplodingKaijuPiece";
 import { PauseModal } from "./PauseModal";
-import { GameBoardPieceComponent } from 'Game/GameBoard/Pieces/GameBoardPieceComponent'
-import { TileCanvas } from 'Game/GameBoard/Tile/TileCanvas';
-import { SceneElements } from 'Game/GameBoard/SceneElements';
-import { getSortZIndex, getTileTone } from 'Game/Levels/levels';
-import { WakeCanvas } from 'Game/GameBoard/WakeCanvas';
+import { GameBoardPieceComponent } from 'Game/ReactComponents/GameBoard/Pieces/GameBoardPieceComponent'
+import { TileCanvas } from 'Game/ReactComponents/GameBoard/Tile/TileCanvas';
+import { SceneElements } from 'Game/ReactComponents/GameBoard/SceneElements';
+import { getSortZIndex, getTileTone } from 'Game/DataClasses/Levels/levels';
+import { WakeCanvas } from 'Game/ReactComponents/GameBoard/WakeCanvas';
 import { Camera, CAMERA, getCloseZoom, getFitZoom, WIDE_SHOT } from 'Game/DataClasses/Camera';
 import { getHexRadius, getTileIndexAtLocation } from 'Game/DataClasses/GameBoard/hexGrid';
 
@@ -89,9 +89,16 @@ const WindowSize = styled.div`
   background: rgba(0, 0, 0, 0.75);
 `;
 
+const getClosestEnemy = ([player, ...others]) => {
+  const getDistance = ({ charLocation: { x, y } }) => Math.hypot(x - player.charLocation.x, y - player.charLocation.y);
+  return others
+    .filter(piece => piece.getTeamIndex() != player.getTeamIndex() && !piece.isDead && piece.isOnTiles)
+    .reduce((closest, piece) => !closest || getDistance(piece) < getDistance(closest) ? piece : closest, undefined);
+};
+
 const getIsTouchScreen = () => window.matchMedia("(pointer: coarse)").matches;
 
-export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeScene, playWindow, isShowingWindowSize, isEditingTiles, isMouseLook }) => {
+export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeScene, playWindow, isShowingWindowSize, isEditingTiles, isMouseLook, isEnemyZoom }) => {
   // redraws the pieces when the game updates. the tiles draw themselves.
   useSyncExternalStore(gameManager.subscribeToBoard, gameManager.getBoardRevision);
   const pieces = gameManager.getPieces();
@@ -101,6 +108,7 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
   const worldRef = useRef(null);
   const mouseAim = useRef({ x: 0, y: 0 }); // where the mouse is in the view: -1 to 1, with 0 in the middle
   const [frame, setFrame] = useState({ width: 1, height: 1 });
+  const isFrameMeasured = frame.width > 1;
   const { grid, world, contentOffset, pieceScale } = level;
   const getWorldLocation = ({ x, y }) => ({ x: x + contentOffset.x, y: y + contentOffset.y });
 
@@ -162,14 +170,19 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
       if (!isWide) {
         // the keys are in charge when the mouse's hover is hidden
         const isLooking = isMouseLook && !!gameManager.getHoveredTileIndex();
-        closeCamera.lookToward(getWorldLocation(player.charLocation), isLooking ? mouseAim.current : { x: 0, y: 0 });
+        const closestEnemy = isEnemyZoom ? getClosestEnemy(gameManager.getPieces()) : undefined;
+        closeCamera.lookToward(
+          getWorldLocation(player.charLocation),
+          isLooking ? mouseAim.current : { x: 0, y: 0 },
+          closestEnemy ? getWorldLocation(closestEnemy.charLocation) : undefined
+        );
       }
       worldRef.current.style.transform = (isWide ? wideCamera : closeCamera).getTransform();
     };
     closeCamera.centerOn(getWorldLocation(gameManager.getPieces()[0].charLocation));
     moveCamera();
     return gameManager.subscribeToBoard(moveCamera);
-  }, [gameManager, closeCamera, wideCamera, isMouseLook]);
+  }, [gameManager, closeCamera, wideCamera, isMouseLook, isEnemyZoom]);
 
   const getLocationFromEvent = e => {
     // includes the camera's pan and zoom
@@ -308,8 +321,9 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
         {foregroundLayers}
         <SceneElements level={level} activePhases={activePhases} isPaused={isPaused} />
         <WorldContent style={{ left: `${contentOffset.x}px`, top: `${contentOffset.y}px` }}>
-          <TileCanvas gameManager={gameManager} level={level} tone={getTileTone(level, activePhases)} isVisible={!isPaused && !isEditingTiles} zoom={closeCamera.zoom} />
-          <WakeCanvas gameManager={gameManager} level={level} zoom={closeCamera.zoom} isActive={!!level.flood && activePhases.includes(level.flood.phase)} />
+          {/* canvases are sized from the zoom, which means nothing until the frame has been measured */}
+          {isFrameMeasured && <TileCanvas gameManager={gameManager} level={level} tone={getTileTone(level, activePhases)} isVisible={!isPaused && !isEditingTiles} zoom={closeCamera.zoom} />}
+          {isFrameMeasured && <WakeCanvas gameManager={gameManager} level={level} zoom={closeCamera.zoom} isActive={!!level.flood && activePhases.includes(level.flood.phase)} />}
           {piecesComponents}
           {deathPiecesComponents}
         </WorldContent>

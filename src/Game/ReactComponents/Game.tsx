@@ -2,18 +2,18 @@ import React, { useState, useEffect, useRef, useContext } from "react";
 import styled from "styled-components";
 import { useSnapshot } from "valtio";
 import { GlobalSettingsContext } from "Home";
-import { GameBoard } from "../GameBoard/GameBoard";
-import { FULL_WINDOW, loadPlayWindow, PlayWindow, PORTRAIT_WINDOW, savePlayWindow } from "../GameBoard/PlayWindow";
-import { UI } from "../UI/UI";
+import { GameBoard } from "./GameBoard/GameBoard";
+import { FULL_WINDOW, loadPlayWindow, PlayWindow, PORTRAIT_WINDOW, savePlayWindow } from "./GameBoard/PlayWindow";
+import { UI } from "./UI/UI";
 import { AbilityPicker } from "./AbilityPicker";
 import { useKeyPress } from "Utils/utils";
 import { ABILITY_KEY_MAPPINGS, GAME_TICK } from "Utils/gameState";
 import { FullscreenPage } from "Components/FullscreenPage.jsx";
 import { GameManager, GameResult } from '../DataClasses/GameManager';
 import { GameLoop } from '../DataClasses/GameLoop';
-import { applyLevelFile, LEVELS, PENINSULA } from '../Levels/levels';
-import { TileEditor } from '../Levels/TileEditor';
-import { gameUiStore, publishGameUi, resetGameUi } from '../gameUiStore';
+import { applyLevelFile, LEVELS, PENINSULA } from '../DataClasses/Levels/levels';
+import { TileEditor } from './Levels/TileEditor';
+import { gameUiStore, publishGameUi, resetGameUi } from '../DataClasses/gameUiStore';
 
 const GameArea = styled.div`
   position: relative;
@@ -116,6 +116,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const [isTeammate, setIsTeammate] = useState(true);
   const [isWholeScene, setIsWholeScene] = useState(false);
   const [isMouseLook, setIsMouseLook] = useState(true);
+  const [isEnemyZoom, setIsEnemyZoom] = useState(true);
   const [isAdjustingWindow, setIsAdjustingWindow] = useState(false);
   const [playWindow, setPlayWindow] = useState(() => import.meta.env.DEV ? loadPlayWindow() : FULL_WINDOW);
   const updatePlayWindow = next => {
@@ -295,6 +296,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 isShowingWindowSize={isAdjustingWindow}
                 isEditingTiles={isEditingTiles}
                 isMouseLook={isMouseLook}
+                isEnemyZoom={isEnemyZoom}
               />
             </PlayWindow>
             {import.meta.env.DEV && (
@@ -312,6 +314,9 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 </label>
                 <label>
                   <input type="checkbox" checked={isMouseLook} onChange={() => setIsMouseLook(!isMouseLook)} /> Mouse look
+                </label>
+                <label>
+                  <input type="checkbox" checked={isEnemyZoom} onChange={() => setIsEnemyZoom(!isEnemyZoom)} /> Enemy zoom
                 </label>
                 <label>
                   <input type="checkbox" checked={isAdjustingWindow} onChange={() => setIsAdjustingWindow(!isAdjustingWindow)} /> Adjust window

@@ -15,8 +15,8 @@ const TILE_LOOK = {
   fadeEndTiles: 13,
   fadeMinOpacity: 0.12, // the grid never quite vanishes, so the walkable floor can still be found
   fadeMaskScale: 0.25, // the fade is soft, so it can be worked out on a much smaller canvas
-  hoverFadeStartTiles: 3, // the grid also shows around the tile under the mouse
-  hoverFadeEndTiles: 7,
+  hoverFadeStartTiles: 0.5, // the grid also shows around the tile under the mouse: that tile fully, then falling away
+  hoverFadeEndTiles: 3,
   // a hard line along the edge of the walkable tiles, which comes into view as the player gets close
   perimeterColor: "255, 255, 255", // r, g, b: the same on every level
   perimeterOpacity: 0.8, // at its strongest, right beside the player

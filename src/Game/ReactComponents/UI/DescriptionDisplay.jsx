@@ -2,7 +2,7 @@ import React from "react";
 import { PLAYER_CLASSES } from "Utils/gameState";
 import { getAbilityPickerDescription } from "Utils/utils";
 import styled from "styled-components";
-import { Logo } from "../../Components/Logo";
+import { Logo } from "../../../Components/Logo";
 
 const AbilityIcon = styled.i`
   z-index: ${props => props.i};

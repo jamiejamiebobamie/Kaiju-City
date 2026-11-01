@@ -13,6 +13,11 @@ export const CAMERA = {
   lookPan: 0.3, // with the mouse at the edge of the view, how far the view shifts, as a fraction of the view
   lookZoomStart: 0.7, // how far from the middle of the view the mouse gets before the camera eases out, from 0 to 1
   lookZoomOut: 0.2, // with the mouse at the edge of the view, how much of the zoom is given up
+  maxLean: 0.38, // how far from the player the view can shift in all, as a fraction of the view
+  maxZoomStep: 0.03, // the most the zoom changes in one update, as a fraction of the zoom, so it glides
+  // the camera eases out to keep the closest enemy in view
+  enemyZoomOut: 0.6, // it stops at this fraction of the level's zoom. past that, the enemy's caret takes over.
+  enemyViewMargin: 0.14, // room kept around the player and the enemy, as a fraction of the view
   edgeMargin: 0.42, // how close to the edge of the view a piece gets before the view pans, as a fraction of the view
   minMouseTilePx: 20, // with a mouse, zoom in until tiles are at least this wide
   minTouchTilePx: 50, // on touch screens, zoom in until tiles are at least this wide
@@ -91,15 +96,33 @@ export class Camera {
     this.viewHeight = this.viewPxHeight / zoom;
   }
 
+  // the zoom that fits the player and the enemy in the view, as far as the camera will go
+  private getZoomToShow(player: Point, enemy: Point) {
+    const usedView = 1 - CAMERA.enemyViewMargin * 2;
+    const zoom = Math.min(
+      (this.viewPxWidth * usedView) / Math.max(Math.abs(enemy.x - player.x), 1),
+      (this.viewPxHeight * usedView) / Math.max(Math.abs(enemy.y - player.y), 1)
+    );
+    return Math.max(Math.min(zoom, this.baseZoom), this.baseZoom * CAMERA.enemyZoomOut);
+  }
+
   // 'aim' is where the mouse is in the view: from -1 to 1 across, and down, with 0 in the middle
-  lookToward({ x, y }: Point, aim: Point) {
+  // 'enemy' is the closest enemy, if there is one
+  lookToward(player: Point, aim: Point, enemy?: Point) {
     const reach = Math.min(Math.max(Math.abs(aim.x), Math.abs(aim.y)), 1);
     const easeOut = Math.max((reach - CAMERA.lookZoomStart) / (1 - CAMERA.lookZoomStart), 0);
-    this.setZoom(Math.max(this.baseZoom * (1 - CAMERA.lookZoomOut * easeOut), this.minZoom));
-    this.follow({
-      x: x + aim.x * this.viewWidth * CAMERA.lookPan,
-      y: y + aim.y * this.viewHeight * CAMERA.lookPan
-    });
+    const lookZoom = this.baseZoom * (1 - CAMERA.lookZoomOut * easeOut);
+    const enemyZoom = enemy ? this.getZoomToShow(player, enemy) : this.baseZoom;
+    const targetZoom = Math.max(Math.min(lookZoom, enemyZoom), this.minZoom);
+    const maxStep = this.zoom * CAMERA.maxZoomStep;
+    this.setZoom(this.zoom + Math.max(Math.min(targetZoom - this.zoom, maxStep), -maxStep));
+
+    const getLean = (axis: 'x' | 'y', viewSize: number) => {
+      const toEnemy = enemy ? (enemy[axis] - player[axis]) / 2 : 0;
+      const lean = aim[axis] * viewSize * CAMERA.lookPan + Math.max(Math.min(toEnemy, viewSize * CAMERA.lookPan), -viewSize * CAMERA.lookPan);
+      return Math.max(Math.min(lean, viewSize * CAMERA.maxLean), -viewSize * CAMERA.maxLean);
+    };
+    this.follow({ x: player.x + getLean('x', this.viewWidth), y: player.y + getLean('y', this.viewHeight) });
   }
 
   getTransform() {

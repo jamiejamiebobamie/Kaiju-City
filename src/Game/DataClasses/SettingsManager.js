@@ -80,6 +80,13 @@ export class SettingsManager {
         });
     }
 
+    getAbilitiesFromElements(elements) {
+        return elements.map(element => {
+            const gameBoardPieceAbilityData = Object.values(this.abilityAndTileStatusData).find(ability => ability.element == element);
+            return new GameBoardPieceAbility({ gameBoardPieceAbilityData });
+        });
+    }
+
     getThreeRandomAbilities() {
         const attackAbilities = Object.values(this.abilityAndTileStatusData).filter(({ type }) => type[0] == 'offensive');
         const defensiveAbilities = Object.values(this.abilityAndTileStatusData).filter(({ type }) => type[0] == 'defensive');

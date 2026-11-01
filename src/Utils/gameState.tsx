@@ -2310,6 +2310,24 @@ export const PIECES_INFO = {
     spriteSheetSrc: 'spritesheet/agent.png',
     deadSpriteSrc:  'dead_teammate.png',
     avatar: 'agent'
+  },
+  'punk': {
+    color: "#57E931",
+    spriteSheetSrc: 'spritesheet/punk.png',
+    deadSpriteSrc: 'dead_teammate.png',
+    avatar: 'punk'
+  },
+  'black_female': {
+    color: "#ff1a0d",
+    spriteSheetSrc: 'spritesheet/black_female.png',
+    deadSpriteSrc: 'dead_teammate.png',
+    avatar: 'black_female'
+  },
+  'mermaid': {
+    color: "#ff1464",
+    spriteSheetSrc: 'spritesheet/mermaid.png',
+    deadSpriteSrc: 'dead_teammate.png',
+    avatar: 'mermaid'
   }
 };
 

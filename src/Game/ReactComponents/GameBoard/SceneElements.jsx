@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import styled, { keyframes } from "styled-components";
-import { getSortZIndex } from "Game/Levels/levels";
+import { getSortZIndex } from "Game/DataClasses/Levels/levels";
 
 /*
   Moving art in a level. Each level's 'sceneElements', in levels.ts, hold the look-and-feel numbers.
@@ -498,6 +498,7 @@ export const SceneElements = ({ level, activePhases, isPaused }) => (
       };
 
       if (type == "npc") {
+        if (activePhases.includes(element.hidePhase)) return null;
         const isGlowing = activePhases.includes(element.glowPhase);
         return <NpcElement key={id} src={src} style={{
           ...style,

@@ -93,7 +93,7 @@ const TransitionStrip = styled.div`
 
 // a tool for making levels. it is not part of the built game.
 const isLevelEditor = import.meta.env.DEV && window.location.pathname == "/level-editor";
-const LevelEditor = import.meta.env.DEV ? lazy(() => import("./Game/Levels/LevelEditor").then(({ LevelEditor }) => ({ default: LevelEditor }))) : null;
+const LevelEditor = import.meta.env.DEV ? lazy(() => import("./Game/ReactComponents/Levels/LevelEditor").then(({ LevelEditor }) => ({ default: LevelEditor }))) : null;
 
 const App = () => {
   const ANIM_DELAY_MILLI = 1500;

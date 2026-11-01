@@ -1,5 +1,7 @@
 import type { HexGrid } from 'Game/DataClasses/GameBoard/hexGrid';
 import aquarium from './data/aquarium.json';
+import lab from './data/lab.json';
+import labIntro from './data/labIntro.json';
 import peninsula from './data/peninsula.json';
 import rapidTransit from './data/rapidTransit.json';
 import rooftop from './data/rooftop.json';
@@ -76,6 +78,7 @@ export type SceneElement = {
   color?: string; // light: its color
   glowPhase?: string; // npc: the phase that lights up its glowing outline
   lines?: Array<string>; // speech: what the character says, in turn
+  hidePhase?: string; // npc: the phase that takes it off the scene
   comesFrom?: { x: number; y: number }; // sprite: leaps here from this point, after 'appearSeconds'
   appearSeconds?: number; // sprite
   flashColor?: string; // part: the whole screen flashes this color when it is touched
@@ -99,6 +102,17 @@ export const TILE_TONES = {
 
 type TileTone = keyof typeof TILE_TONES;
 
+// the empowered bystander fought on a side level. the level starts with them standing as an NPC.
+type Rival = {
+  avatar: string;
+  abilities: Array<string>; // ability elements
+  maxLives: number;
+  moveSpeed: number;
+  touchPhase: string; // the phase where they touch the Kaiju part. the fight starts once it plays out.
+  touchDelayMs: number; // how long after the level starts they touch it
+  spot: { x: number; y: number }; // where the fight starts from, in scene pixels
+};
+
 export type LevelConfig = {
   id: string;
   name: string;
@@ -121,6 +135,7 @@ export type LevelConfig = {
   sceneElements: Array<SceneElement>;
   hasTrainSchedule: boolean;
   shakePhases: Array<string>; // phases that shake the whole scene
+  rival?: Rival;
   cameraZoom: number; // how close the camera sits during play. at 1, the whole scene fits the frame.
   wideShots?: Record<string, number>; // phases the camera pulls out to show, and how long it holds there in ms
   tileTone: TileTone;
@@ -133,20 +148,21 @@ export type LevelConfig = {
 };
 
 const PENINSULA_ROW_HEIGHT = 21.6; // in world pixels
-
-// characters stand this many rows tall in the level mockups
-const CHARACTER_HEIGHT_IN_ROWS = 2.9;
 const CHARACTER_HEIGHT = 80; // in pixels, at a 'pieceScale' of 1
+export const RUN_SPEED_SCALE = 1.25; // everyone's run speed together, so who is faster than who stays the same
+
+// Peninsula sets how large characters look against the tiles, on every level
+const CHARACTER_HEIGHT_IN_ROWS = CHARACTER_HEIGHT / PENINSULA_ROW_HEIGHT;
 
 // from the top-left of a character at 'pieceScale' 1 to the center of the tile it stands on
 const CHARACTER_TILE_CENTER = { x: 4, y: 7.5 };
 const CHARACTER_LEFT_SHIFT = 3.5;
 
 // the files made by the level editor: /level-editor can import these to change them
-const buildLevel = (editorFile, name, accentColor, characterHeightInRows = CHARACTER_HEIGHT_IN_ROWS, foregroundLayers = [], isWalkingLevel = false): LevelConfig => {
+const buildLevel = (editorFile, name, accentColor, foregroundLayers = [], isWalkingLevel = false): LevelConfig => {
   const { id, sceneWidth, sceneHeight, grid, tileLinks = [], cameraZoom = 1 } = editorFile;
   const { spawn = [], goal = [], kaijuEntry, ...tileSets } = editorFile.tileSets;
-  const pieceScale = (grid.rowStep * characterHeightInRows) / CHARACTER_HEIGHT;
+  const pieceScale = (grid.rowStep * CHARACTER_HEIGHT_IN_ROWS) / CHARACTER_HEIGHT;
   return {
     id,
     name,
@@ -154,7 +170,7 @@ const buildLevel = (editorFile, name, accentColor, characterHeightInRows = CHARA
     world: { width: sceneWidth, height: sceneHeight },
     contentOffset: { x: 0, y: 0 },
     pieceScale,
-    moveSpeedScale: grid.rowStep / PENINSULA_ROW_HEIGHT,
+    moveSpeedScale: (grid.rowStep / PENINSULA_ROW_HEIGHT) * RUN_SPEED_SCALE,
     cameraZoom,
     grid: {
       ...grid,
@@ -195,6 +211,15 @@ const npc = (id, pose, x, y, height, glowPhase = undefined, glowColor = undefine
 
 const RECRUIT_GLOW_COLOR = '#57E931';
 
+const RIVAL_LOOK = { maxLives: 6, moveSpeed: 5, touchDelayMs: 3000 };
+
+// the bystander standing in the scene, until the fight starts and their piece takes over
+export const RIVAL_IN_PHASE = 'rivalIn';
+const bystander = (pose, x, y, height, touchPhase, color, sortY) => ({
+  ...npc('recruit', pose, x, y, height, touchPhase, color, sortY),
+  hidePhase: RIVAL_IN_PHASE
+});
+
 const signalLight = (id, x) => [
   { id: `${id}Off`, type: 'sprite' as const, src: '/levels/rapidTransit/lights-spritesheet.png', x, y: 3, width: 48, height: 94, zIndex: -2, firstFrame: 0, frames: 1, fps: 1 },
   { id, type: 'sprite' as const, phase: 'trainLights', src: '/levels/rapidTransit/lights-spritesheet.png', x, y: 3, width: 48, height: 94, zIndex: -2, firstFrame: 1, frames: 2, fps: 2 }
@@ -211,12 +236,13 @@ const SHATTER_HOLD_MS = 2500;
 
 const RAPID_TRANSIT_SCENE = {
   hasTrainSchedule: true,
+  rival: { ...RIVAL_LOOK, avatar: 'punk', abilities: ['wood', 'glass', 'bubble'], touchPhase: 'eyeTouched', spot: { x: 1213, y: 530 } },
   shakePhases: ['train'],
   wideShots: { eyeTouched: PART_TOUCH_HOLD_MS, trainLights: TRAIN_WARNING_HOLD_MS },
   phases: [{ id: 'eye', label: 'Kaiju eye' }, { id: 'eyeTouched', label: 'Touch part' }, { id: 'train', label: 'Train' }],
   defaultPhases: ['eye'],
   sceneElements: [
-    npc('recruit', 'mohawkBack', 1213, 530, 130, 'eyeTouched', '#57E931', 640), // stands in front of the eye
+    bystander('mohawkBack', 1213, 530, 99, 'eyeTouched', '#57E931', 640), // stands in front of the eye
     { id: 'godRaysAll', type: 'image' as const, src: '/levels/rapidTransit/god-rays-all.png', x: 0, y: 0, width: 1380, height: 752, sortY: ABOVE_CHARACTERS },
     subwayRay(1, 7.3, 0),
     subwayRay(2, 9.1, -2.4),
@@ -248,10 +274,11 @@ const RAPID_TRANSIT_SCENE = {
 
 const ROOFTOP_SCENE = {
   wideShots: { headTouched: PART_TOUCH_HOLD_MS },
+  rival: { ...RIVAL_LOOK, avatar: 'black_female', abilities: ['death', 'glass', 'metal'], touchPhase: 'headTouched', spot: { x: 733, y: 542 } },
   phases: [{ id: 'head', label: 'Kaiju head' }, { id: 'headTouched', label: 'Touch part' }],
   defaultPhases: ['head'],
   sceneElements: [
-    npc('recruit', 'blackFemaleBack', 733, 542, 72, 'headTouched', '#ff1a0d', 600), // stands in front of the head
+    bystander('blackFemaleBack', 733, 542, 55, 'headTouched', '#ff1a0d', 600), // stands in front of the head
     { id: 'head', type: 'part' as const, phase: 'head', touchPhase: 'headTouched', src: '/levels/rooftop/head-spritesheet.png', x: 255, y: 233, width: 959, height: 519, sortY: 573, seconds: 4.5, flashColor: '#ff1a0d' }
   ]
 };
@@ -297,6 +324,7 @@ const fish = (id, x, y, width, height, flip, fps, panelId) => {
 
 const AQUARIUM_SCENE = {
   wideShots: { tongueTouched: PART_TOUCH_HOLD_MS, shattered: SHATTER_HOLD_MS },
+  rival: { ...RIVAL_LOOK, avatar: 'mermaid', abilities: ['glass', 'bubble'], touchPhase: 'tongueTouched', spot: { x: 905, y: 690 } }, // Charm joins these once it exists
   tileTone: 'dark' as const,
   phaseTileTones: { shattered: 'white' as const }, // the shattered hall is much darker
   flood: { phase: 'shattered', top: 530 }, // pieces below this line, in scene pixels, walk through water
@@ -308,7 +336,7 @@ const AQUARIUM_SCENE = {
   ],
   defaultPhases: ['tongue', 'shards'],
   sceneElements: [
-    npc('recruit', 'mermaid', 905, 690, 100, 'tongueTouched', '#ff1464'),
+    bystander('mermaid', 905, 690, 68, 'tongueTouched', '#ff1464', 690),
     { id: 'shattered', type: 'image' as const, phase: 'shattered', src: '/levels/aquarium/shattered.png', x: 0, y: 0, width: 1408, height: 768, zIndex: -3, fadeSeconds: 1.2, delaySeconds: 0.8 },
     ...GLASS_PANELS,
     aquariumRay(1, 234, -16, 349, 463, 7, 0, 0.9),
@@ -408,10 +436,24 @@ const STREET_SCENE = {
   ]
 };
 
+// the Agent's clones, stepped out of the tanks behind them
+const agentClone = (id, x) => ({ ...npc(id, 'agent', x, 170, 95), phase: 'clones' });
+
+const LAB_SCENE = {
+  phases: [{ id: 'clones', label: 'Agent clones' }],
+  sceneElements: [
+    agentClone('clone1', 97),
+    agentClone('clone2', 233),
+    agentClone('clone3', 1053),
+    agentClone('clone4', 1172),
+    agentClone('clone5', 1310)
+  ]
+};
+
 // everything about a level that isn't in its file
 const LEVEL_BUILDERS: Record<string, (file) => LevelConfig> = {
   peninsula: file => ({
-    ...buildLevel(file, 'Peninsula', '#5a8a7a', CHARACTER_HEIGHT / PENINSULA_ROW_HEIGHT),
+    ...buildLevel(file, 'Peninsula', '#5a8a7a'),
     layers: [
       { src: '/Map.gif', zIndex: -4 },
       { src: '/landDimmer.png', zIndex: -3 }
@@ -421,26 +463,35 @@ const LEVEL_BUILDERS: Record<string, (file) => LevelConfig> = {
       bounds: { minX: -5, minY: 0, maxX: 485, maxY: 770 }
     }
   }),
-  rapidTransit: file => ({ ...buildLevel(file, 'Rapid Transit Station', '#57E931', 3.7), ...RAPID_TRANSIT_SCENE }),
+  rapidTransit: file => ({ ...buildLevel(file, 'Rapid Transit Station', '#57E931'), ...RAPID_TRANSIT_SCENE }),
   rooftop: file => ({
-    ...buildLevel(file, 'Rooftop Cemetary', '#880808', undefined, [
+    ...buildLevel(file, 'Rooftop Cemetary', '#880808', [
       { src: '/levels/rooftop-crane.png', x: 0, y: 0, width: 515, height: 376, sortY: ABOVE_CHARACTERS }
     ]),
     ...ROOFTOP_SCENE
   }),
   aquarium: file => ({
-    ...buildLevel(file, 'Kaiju City Aquarium', '#C5063F', undefined, [
+    ...buildLevel(file, 'Kaiju City Aquarium', '#C5063F', [
       { src: '/levels/aquarium-railing.png', x: 0, y: 219, width: 1408, height: 161, sortY: 267 },
       { src: '/levels/aquarium-tank.png', x: 549, y: 575, width: 305, height: 145, sortY: 726 }
     ]),
     ...AQUARIUM_SCENE
   }),
-  sewer1: file => ({ ...buildLevel(file, 'Sewer 1', '#7a8a3a', undefined, [], true), ...SEWER1_SCENE }),
-  sewer2: file => ({ ...buildLevel(file, 'Sewer 2', '#7a8a3a', undefined, [], true), ...SEWER2_SCENE }),
-  street: file => ({ ...buildLevel(file, 'Street', '#7a8a3a', undefined, [], true), ...STREET_SCENE })
+  labIntro: file => buildLevel(file, 'Lab', '#4a8fb0', [], true),
+  lab: file => ({
+    ...buildLevel(file, 'Lab Window', '#4a8fb0'),
+    ...LAB_SCENE,
+    layers: [
+      { src: '/levels/lab-window.png', zIndex: -5 }, // seen through the window. a placeholder until there is landscape art.
+      { src: '/levels/lab.png', zIndex: -4 }
+    ]
+  }),
+  sewer1: file => ({ ...buildLevel(file, 'Sewer 1', '#7a8a3a', [], true), ...SEWER1_SCENE }),
+  sewer2: file => ({ ...buildLevel(file, 'Sewer 2', '#7a8a3a', [], true), ...SEWER2_SCENE }),
+  street: file => ({ ...buildLevel(file, 'Street', '#7a8a3a', [], true), ...STREET_SCENE })
 };
 
-export const LEVEL_FILES = { peninsula, rapidTransit, rooftop, aquarium, sewer1, sewer2, street };
+export const LEVEL_FILES = { peninsula, rapidTransit, rooftop, aquarium, labIntro, lab, sewer1, sewer2, street };
 
 export const LEVELS: Record<string, LevelConfig> = Object.fromEntries(
   Object.entries(LEVEL_FILES).map(([id, file]) => [id, LEVEL_BUILDERS[id](file)])

@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import styled from "styled-components";
-import { useHover } from "../../../../Utils/utils";
+import { useHover } from "../../../../../Utils/utils";
 const Wrapper = styled.div`
   display: flex;
   padding-top: 10px;

@@ -2,7 +2,7 @@
   "id": "peninsula",
   "sceneWidth": 450,
   "sceneHeight": 720,
-  "cameraZoom": 1.42,
+  "cameraZoom": 1.79,
   "sceneSrc": "/Map.gif",
   "grid": {
     "columns": 25,

@@ -1,7 +1,7 @@
 import React, { useState, useContext } from "react";
 import styled from "styled-components";
 import { Abilities } from "Tutorial/Components/Abilities";
-import { DescriptionDisplay } from "../UI/DescriptionDisplay";
+import { DescriptionDisplay } from "./UI/DescriptionDisplay";
 import {
   ButtonsWrapper,
   Button,

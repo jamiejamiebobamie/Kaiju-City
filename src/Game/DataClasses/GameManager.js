@@ -1,4 +1,4 @@
-import { GameMode, GAME_TICK, ZoomLvl } from 'Utils/gameState';
+import { GameMode, GAME_TICK, PIECES_INFO, ZoomLvl } from 'Utils/gameState';
 import { TimeoutHandler } from './TimeoutHandler';
 import { GameManagerProxy } from './GameManagerProxy';
 import { PlayerInputHandler } from './PlayerInputHandler';
@@ -6,7 +6,7 @@ import { SettingsManager } from './SettingsManager';
 import { GameBoardPiecesManager } from './GameBoard/Pieces/GameBoardPiecesManager';
 import { KaijuManager } from './KaijuManager';
 import { GameBoardManager } from './GameBoard/GameBoardManager';
-import { PENINSULA } from 'Game/Levels/levels';
+import { PENINSULA, RIVAL_IN_PHASE } from 'Game/DataClasses/Levels/levels';
 import { TrainSchedule, TRAIN_HIT } from './TrainSchedule';
 import { WIDE_SHOT } from './Camera';
 
@@ -203,6 +203,34 @@ export class GameManager {
         this.gameBoardPiecesManager.initPlayerLocationsOnBoard(this.level.spawnTiles);
     }
 
+    // the bystander touches the Kaiju part, and once that has played out the fight starts
+    updateRival() {
+        const { touchPhase, touchDelayMs } = this.level.rival;
+        if (this.activePhases.has(RIVAL_IN_PHASE)) return;
+        if (this.activePhases.has(touchPhase)) this.addRival();
+        else if (this.accTime >= touchDelayMs) this.setPhase(touchPhase, true);
+    }
+
+    addRival() {
+        const { avatar, abilities, maxLives, moveSpeed, spot } = this.level.rival;
+        const piece = this.gameBoardPiecesManager.addPiece({
+            pieceInfo: {
+                ...PIECES_INFO[avatar],
+                abilities: this.settingsManager.getAbilitiesFromElements(abilities),
+                maxLives,
+                moveSpeed
+            },
+            teamIndex: 1
+        });
+        piece.isShowHealthBarOnComponent = true;
+        piece.initCharLocation(true, this.gameBoardManager.getClosestWalkableTileToLocation(spot));
+        this.setPhase(RIVAL_IN_PHASE, true);
+    }
+
+    getKillsToWin() {
+        return this.level.rival ? 1 : this.gameManagerProxy.determineKaijuDetails().MAX_TO_WIN;
+    }
+
     stepPieces() {
         if (this.isPaused || this.isEditingTiles || this.getGameResult() !== null) return;
         if (this.wideShotMs > 0) {
@@ -213,6 +241,7 @@ export class GameManager {
         this.timeoutHandler.update(this.accTime);
         if (this.trainSchedule) this.trainSchedule.update(this.accTime);
         if (this.level.kaijuEntry) this.kaijuManager.update(this.accTime, this.score);
+        if (this.level.rival) this.updateRival();
         this.gameBoardPiecesManager.movePieces({ accTime: this.accTime, playerInputHandler: this.playerInputHandler });
     }
 
@@ -223,8 +252,7 @@ export class GameManager {
     }
 
     getGameResult() {
-        const { MAX_TO_WIN } = this.gameManagerProxy.determineKaijuDetails();
-        if (this.score >= MAX_TO_WIN) return GameResult.PlayerWon;
+        if (this.score >= this.getKillsToWin()) return GameResult.PlayerWon;
         if (this.gameBoardPiecesManager.getIsPlayerTeamDead()) return GameResult.PlayerLost;
         return null;
     }

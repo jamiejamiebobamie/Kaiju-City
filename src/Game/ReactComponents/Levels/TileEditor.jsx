@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import styled from "styled-components";
-import { LEVEL_FILES } from "./levels";
+import { LEVEL_FILES } from "../../DataClasses/Levels/levels";
 import { drawTileSet, LINKS_MODE, useLevelEditing, withFittedGrid } from "./useLevelEditing";
 
 /*

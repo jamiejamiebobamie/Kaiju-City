@@ -1,10 +1,10 @@
-import { LEVELS } from 'Game/Levels/levels';
-import type { LevelConfig } from 'Game/Levels/levels';
+import { LEVELS } from 'Game/DataClasses/Levels/levels';
+import type { LevelConfig } from 'Game/DataClasses/Levels/levels';
 import master from './__fixtures__/masterPeninsulaTiles.json';
 
 /*
   For tests: Peninsula exactly as it was on master, in master's own numbers.
-  The real level is in Levels/data/peninsula.json, and can be edited without changing these tests.
+  The real level is in DataClasses/Levels/data/peninsula.json, and can be edited without changing these tests.
 */
 export const MASTER_PENINSULA_TILES = master.tiles;
 

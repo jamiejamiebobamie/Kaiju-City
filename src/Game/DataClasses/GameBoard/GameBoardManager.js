@@ -338,6 +338,7 @@ export class GameBoardManager {
             // show clicked or hovered path
             const playerTileIndex = player.getTileIndex();
             highlightedTileIndices = this.findPathFromTo(playerTileIndex, toTileIndex);
+            if (!highlightedTileIndices.length && player.shouldTeleport) highlightedTileIndices = [toTileIndex];
             highlightedTileIndices.forEach(({ i, j }) => lookup.add(`${i} ${j}`));
         } else if (!!moveToTiles.length) {
             // show next tile from move with <WASD/arrow> keys
@@ -368,6 +369,14 @@ export class GameBoardManager {
         return this.walkableRevision;
     }
 
+    getClosestWalkableTileToLocation({ x, y }) {
+        const getDistance = tile => {
+            const center = getTileCenter(this.grid, tile);
+            return Math.hypot(center.x - x, center.y - y);
+        };
+        return this.walkableTiles.reduce((closest, tile) => getDistance(tile) < getDistance(closest) ? tile : closest);
+    }
+
     getClosestWalkableTile(tileIndex) {
         const { x, y } = this.getCharXAndYFromTileIndex(tileIndex);
         const getDistance = tile => getDistanceToFrom(this.getCharXAndYFromTileIndex(tile), { x, y });
@@ -391,6 +400,8 @@ export class GameBoardManager {
             const center = getTileCenter(this.grid, tile);
             return Math.hypot(center.x - x, center.y - y);
         };
+        // teleporting goes anywhere walkable, even tiles no path leads to
+        if (this.gameManagerProxy.getPlayerPiece().shouldTeleport) reachable.push(...this.walkableTiles);
         const open = reachable.filter(this.getIsInBounds);
         return (open.length ? open : reachable).reduce((closest, tile) => getDistance(tile) < getDistance(closest) ? tile : closest);
     }

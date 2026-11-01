@@ -1,9 +1,9 @@
 import fs from 'node:fs';
-import { applyLevelFile, getTileTone, LEVEL_FILES, LEVELS, TILE_TONES } from 'Game/Levels/levels';
-import { rescaleLevelTiles } from 'Game/Levels/levelScale';
-import aquarium from 'Game/Levels/data/aquarium.json';
-import rapidTransit from 'Game/Levels/data/rapidTransit.json';
-import { GameManager } from './GameManager';
+import { applyLevelFile, getTileTone, LEVEL_FILES, LEVELS, RUN_SPEED_SCALE, TILE_TONES } from 'Game/DataClasses/Levels/levels';
+import { rescaleLevelTiles } from 'Game/DataClasses/Levels/levelScale';
+import aquarium from 'Game/DataClasses/Levels/data/aquarium.json';
+import rapidTransit from 'Game/DataClasses/Levels/data/rapidTransit.json';
+import { GameManager, GameResult } from './GameManager';
 import { SettingsManager } from './SettingsManager';
 import { TRAIN_HIT } from './TrainSchedule';
 import { GameBoardPieceKaiju } from './GameBoard/Pieces/GameBoardPieceKaiju';
@@ -367,9 +367,9 @@ describe('levels', () => {
     expect(new GameManager({ level: LEVELS.aquarium, settingsManager: new SettingsManager() }).getActivePhases()).toContain('tongue');
   });
 
-  it('walking levels are the street and sewers', () => {
+  it('walking levels are the street, sewers and the first Lab visit', () => {
     const walking = Object.values(LEVELS).filter(level => level.isWalkingLevel).map(({ id }) => id).sort();
-    expect(walking).toEqual(['sewer1', 'sewer2', 'street']);
+    expect(walking).toEqual(['labIntro', 'sewer1', 'sewer2', 'street']);
   });
 
   it('no level has a goal for now', () => {
@@ -451,7 +451,7 @@ describe('peninsula level file', () => {
   it('keeps its size, speed and way in for Kaiju', () => {
     const { pieceScale, moveSpeedScale, kaijuEntry } = LEVELS.peninsula;
     expect(pieceScale).toBeCloseTo(1);
-    expect(moveSpeedScale).toBeCloseTo(1);
+    expect(moveSpeedScale).toBeCloseTo(RUN_SPEED_SCALE);
     expect(kaijuEntry.perimeterTiles.length).toBe(PENINSULA.kaijuEntry.perimeterTiles.length);
   });
 
@@ -476,6 +476,88 @@ describe('saving a level from the editor', () => {
     expect(LEVELS.street.isWalkingLevel).toBe(level.isWalkingLevel);
     expect(LEVELS.street.sceneElements).toEqual(level.sceneElements);
     applyLevelFile(before);
+  });
+});
+
+describe('rivals', () => {
+  const makeFight = levelId => {
+    const settingsManager = new SettingsManager();
+    settingsManager.setSortedPlayerChosenAbilityElementsString(['Fire', 'Ice', 'Water']);
+    settingsManager.setIsTeammate(false);
+    const gm = new GameManager({ level: LEVELS[levelId], settingsManager });
+    gm.initGame();
+    return gm;
+  };
+  const stepUntilRival = gm => {
+    for (let k = 0; k < 400 && gm.getPieces().length < 2; k++) gm.stepPieces();
+    return gm.getPieces()[1];
+  };
+
+  ['rapidTransit', 'rooftop', 'aquarium'].forEach(levelId => {
+    it(`${levelId}: the bystander touches the part, then fights as an opposing piece`, () => {
+      const gm = makeFight(levelId);
+      expect(gm.getPieces().length).toBe(1);
+      const rival = stepUntilRival(gm);
+      const { avatar, abilities, touchPhase, maxLives } = LEVELS[levelId].rival;
+      expect(gm.getActivePhases()).toContain(touchPhase);
+      expect(rival.avatar).toBe(avatar);
+      expect(rival.teamIndex).not.toBe(gm.getPieces()[0].teamIndex);
+      expect(rival.isNpc).toBe(true);
+      expect(rival.maxLives).toBe(maxLives);
+      expect(rival.abilities.length).toBe(abilities.length);
+      expect(gm.getIsWalkable(rival.getTileIndex())).toBe(true);
+    });
+  });
+
+  it('defeating the rival wins the level', () => {
+    const gm = makeFight('rooftop');
+    const rival = stepUntilRival(gm);
+    expect(gm.getGameResult()).toBe(null);
+    gm.accTime += 5000;
+    rival.decrementHealth(gm.accTime, rival.maxLives);
+    expect(gm.getGameResult()).toBe(GameResult.PlayerWon);
+  });
+
+  it('Peninsula has no rival, and still needs its Kaiju kills', () => {
+    expect(LEVELS.peninsula.rival).toBeUndefined();
+    expect(makeFight('peninsula').getKillsToWin()).toBeGreaterThan(1);
+  });
+
+  it('every level draws characters the same size against its tiles', () => {
+    const getRowsTall = ({ pieceScale, grid }) => pieceScale / grid.rowStep;
+    Object.values(LEVELS).forEach(level => expect(getRowsTall(level)).toBeCloseTo(getRowsTall(LEVELS.peninsula)));
+  });
+});
+
+describe('the Lab catwalk', () => {
+  const makeLab = () => {
+    const settingsManager = new SettingsManager();
+    settingsManager.setSortedPlayerChosenAbilityElementsString(['Fire', 'Ice', 'Glass']);
+    settingsManager.setIsTeammate(false);
+    const gm = new GameManager({ level: LEVELS.lab, settingsManager });
+    gm.initGame();
+    return { gm, player: gm.getPieces()[0], input: gm.getPlayerInputHandler() };
+  };
+  const catwalkSpot = { x: 700, y: 130 };
+
+  it('cannot be walked to', () => {
+    const { gm, player } = makeLab();
+    expect(LEVELS.lab.tileLinks).toEqual([]);
+    const tile = gm.getClosestReachableTile(catwalkSpot);
+    expect(getTileCenter(LEVELS.lab.grid, tile).y).toBeGreaterThan(300);
+    expect(gm.gameBoardManager.findPathFromTo(player.getTileIndex(), { i: 27, j: 4 })).toEqual([]);
+  });
+
+  it('can be reached with Teleport', () => {
+    const { gm, player, input } = makeLab();
+    player.setShouldTeleport(true);
+    const tile = gm.getClosestReachableTile(catwalkSpot);
+    expect(getTileCenter(LEVELS.lab.grid, tile).y).toBeLessThan(200);
+    input.updatePlayerDestinationAndClickedTileFromClick(tile);
+    gm.accTime += 110;
+    player.movePiece({ accTime: gm.accTime, playerInputHandler: input });
+    expect(player.getTileIndex()).toEqual(tile);
+    expect(player.shouldTeleport).toBe(false);
   });
 });
 
@@ -644,6 +726,68 @@ describe('close camera', () => {
   });
 });
 
+const settle = (camera, player, aim, enemy = undefined) => {
+  for (let k = 0; k < 60; k++) camera.lookToward(player, aim, enemy);
+};
+
+describe('enemy zoom', () => {
+  const makeCamera = () => new Camera({ viewWidth: 400, viewHeight: 400, worldWidth: 4000, worldHeight: 4000, zoom: 2 });
+  const player = { x: 2000, y: 2000 };
+  const still = { x: 0, y: 0 };
+
+  it('stays put while the enemy is already in view', () => {
+    const camera = makeCamera();
+    camera.centerOn(player);
+    settle(camera, player, still, { x: 2050, y: 2000 });
+    expect(camera.zoom).toBe(2);
+  });
+
+  it('eases out to show a farther enemy, with both in view', () => {
+    const camera = makeCamera();
+    camera.centerOn(player);
+    const enemy = { x: 2190, y: 2000 };
+    settle(camera, player, still, enemy);
+    expect(camera.zoom).toBeLessThan(2);
+    const viewWidth = 400 / camera.zoom;
+    [player.x, enemy.x].forEach(x => {
+      expect(x).toBeGreaterThan(camera.x);
+      expect(x).toBeLessThan(camera.x + viewWidth);
+    });
+  });
+
+  it('stops at its limit for a far enemy, keeping the player in view and giving that enemy a caret', () => {
+    const camera = makeCamera();
+    camera.centerOn(player);
+    const enemy = { x: 3500, y: 2000 };
+    settle(camera, player, still, enemy);
+    expect(camera.zoom).toBeCloseTo(2 * CAMERA.enemyZoomOut);
+    const viewWidth = 400 / camera.zoom;
+    expect(player.x).toBeGreaterThan(camera.x);
+    expect(player.x).toBeLessThan(camera.x + viewWidth);
+    expect(camera.getEdgeCaret(enemy, player, 20)).toBeDefined();
+  });
+
+  it('zooms back in when the enemy is gone', () => {
+    const camera = makeCamera();
+    camera.centerOn(player);
+    settle(camera, player, still, { x: 3500, y: 2000 });
+    settle(camera, player, still);
+    expect(camera.zoom).toBeCloseTo(2);
+  });
+});
+
+describe('Rooftop', () => {
+  it('matches Peninsula: tile size, character size, and tiles on screen', () => {
+    const frame = { width: 1600, height: 900 };
+    const getTilePx = ({ world, grid, cameraZoom }) => grid.rowStep * cameraZoom * Math.min(frame.width / world.width, frame.height / world.height);
+    ['rooftop'].forEach(id => {
+      expect(LEVELS[id].grid.rowStep).toBeCloseTo(LEVELS.peninsula.grid.rowStep);
+      expect(LEVELS[id].pieceScale).toBeCloseTo(LEVELS.peninsula.pieceScale);
+      expect(getTilePx(LEVELS[id]) / getTilePx(LEVELS.peninsula)).toBeCloseTo(1, 1);
+    });
+  });
+});
+
 describe('mouse look', () => {
   const makeCamera = (zoom = 2) => new Camera({ viewWidth: 400, viewHeight: 300, worldWidth: 2000, worldHeight: 1500, zoom });
   const player = { x: 1000, y: 750 };
@@ -670,7 +814,7 @@ describe('mouse look', () => {
   it('eases out when the mouse is far out, and keeps the player in view', () => {
     const camera = makeCamera();
     camera.centerOn(player);
-    camera.lookToward(player, { x: 1, y: 1 });
+    settle(camera, player, { x: 1, y: 1 });
     expect(camera.zoom).toBeCloseTo(2 * (1 - CAMERA.lookZoomOut));
     const viewWidth = 400 / camera.zoom;
     expect(player.x).toBeGreaterThan(camera.x);
@@ -679,7 +823,7 @@ describe('mouse look', () => {
 
   it('never zooms out past the whole level', () => {
     const camera = new Camera({ viewWidth: 1400, viewHeight: 787, worldWidth: 1408, worldHeight: 768, zoom: 1.05 });
-    camera.lookToward({ x: 700, y: 400 }, { x: 1, y: 0 });
+    settle(camera, { x: 700, y: 400 }, { x: 1, y: 0 });
     expect(camera.zoom).toBeCloseTo(1400 / 1408);
   });
 });

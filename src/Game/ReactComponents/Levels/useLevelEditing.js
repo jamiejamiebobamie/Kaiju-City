@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { getHexRadius, getTileCenter, getTileIndexAtLocation } from "Game/DataClasses/GameBoard/hexGrid";
-import { rescaleLevelTiles } from "./levelScale";
+import { rescaleLevelTiles } from "../../DataClasses/Levels/levelScale";
 
 /*
   Painting a level's tiles, for both level editors: /level-editor and 'Edit tiles' in the game.

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
-import { LEVEL_FILES as GAME_LEVELS } from "./levels";
+import { LEVEL_FILES as GAME_LEVELS } from "../../DataClasses/Levels/levels";
 import { drawTileSet, LINKS_MODE, useLevelEditing, withFittedGrid } from "./useLevelEditing";
 
 /*
