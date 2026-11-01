@@ -4,6 +4,7 @@ import { BlinkFadeEffect } from 'Components/AvatarSelection';
 
 const Wrapper = styled.div`
   position: absolute;
+  top: 45%;
   display: flex;
   z-index: 1111111111;
   flex-direction: column;

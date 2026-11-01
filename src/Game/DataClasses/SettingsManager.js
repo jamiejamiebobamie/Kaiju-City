@@ -88,27 +88,20 @@ export class SettingsManager {
     }
 
     getThreeRandomAbilities() {
-        const attackAbilities = Object.values(this.abilityAndTileStatusData).filter(({ type }) => type[0] == 'offensive');
-        const defensiveAbilities = Object.values(this.abilityAndTileStatusData).filter(({ type }) => type[0] == 'defensive');
-        const utilityAbilities = Object.values(this.abilityAndTileStatusData).filter(({ type }) => type[0] != 'defensive' && type[0] != 'offensive');
+        // Kaiju Fire belongs to the Kaiju
+        const available = Object.values(this.abilityAndTileStatusData).filter(({ element }) => element != 'kaijuFire');
+        const takeFrom = abilities => {
+            const unpicked = abilities.filter(ability => available.includes(ability));
+            const ability = unpicked[getRandomIntInRange({ max: unpicked.length - 1 })];
+            available.splice(available.indexOf(ability), 1);
+            return ability;
+        };
 
-        const firstAbility = attackAbilities[getRandomIntInRange({ max: attackAbilities.length - 1 })];
-        const secondAbility = defensiveAbilities[getRandomIntInRange({ max: defensiveAbilities.length - 1 })];
-        let thirdAbility;
-
-        // TO-DO: do fisher-yates shuffle for: 'attackAbilities' and 'defensiveAbilities' to NOT pick the same ability twice
-        const rand = getRandomIntInRange({ max: 2 });
-        switch (rand) {
-            case 0:
-                thirdAbility = attackAbilities[getRandomIntInRange({ max: attackAbilities.length - 1 })];
-                break;
-            case 1:
-                thirdAbility = defensiveAbilities[getRandomIntInRange({ max: defensiveAbilities.length - 1 })];
-                break;
-            case 2:
-                thirdAbility = utilityAbilities[getRandomIntInRange({ max: utilityAbilities.length - 1 })];
-                break;
-        }
+        const attackAbilities = available.filter(({ type }) => type[0] == 'offensive');
+        const defensiveAbilities = available.filter(({ type }) => type[0] == 'defensive');
+        const firstAbility = takeFrom(attackAbilities);
+        const secondAbility = takeFrom(defensiveAbilities);
+        const thirdAbility = takeFrom(available);
 
         return [firstAbility, secondAbility, thirdAbility].map(abilityData => {
             return new GameBoardPieceAbility({ gameBoardPieceAbilityData: abilityData });

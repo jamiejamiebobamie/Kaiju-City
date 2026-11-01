@@ -11,6 +11,10 @@ export const gameUiStore = proxy({
   isPaused: false,
   activePhases: [],
   isWideShot: false,
+  unlockMessage: '',
+  unlockImage: '',
+  speech: null,
+  recruitScene: null,
   winner: null,
   isPlayerDead: false
 });
@@ -37,6 +41,10 @@ export const resetGameUi = () => {
   gameUiStore.isPaused = false;
   gameUiStore.activePhases = [];
   gameUiStore.isWideShot = false;
+  gameUiStore.unlockMessage = '';
+  gameUiStore.unlockImage = '';
+  gameUiStore.speech = null;
+  gameUiStore.recruitScene = null;
   gameUiStore.winner = null;
   gameUiStore.isPlayerDead = false;
 };

@@ -16,7 +16,7 @@ export const CAMERA = {
   maxLean: 0.38, // how far from the player the view can shift in all, as a fraction of the view
   maxZoomStep: 0.03, // the most the zoom changes in one update, as a fraction of the zoom, so it glides
   // the camera eases out to keep the closest enemy in view
-  enemyZoomOut: 0.6, // it stops at this fraction of the level's zoom. past that, the enemy's caret takes over.
+  enemyZoomOut: 0.82, // it stops at this fraction of the level's zoom. past that, the enemy's caret takes over.
   enemyViewMargin: 0.14, // room kept around the player and the enemy, as a fraction of the view
   edgeMargin: 0.42, // how close to the edge of the view a piece gets before the view pans, as a fraction of the view
   minMouseTilePx: 20, // with a mouse, zoom in until tiles are at least this wide

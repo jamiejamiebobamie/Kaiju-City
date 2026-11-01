@@ -1,0 +1,25 @@
+const UNLOCKS_KEY = 'kaiju-unlocks';
+const CHOICES_KEY = 'kaiju-recruit-choices';
+
+// saved in the browser. these are simply not remembered if storage isn't available.
+const load = (key: string, fallback: string) => {
+  try {
+    return JSON.parse(localStorage.getItem(key) || fallback);
+  } catch {
+    return JSON.parse(fallback);
+  }
+};
+
+const save = (key: string, value: unknown) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch { /* (not remembered) */ }
+};
+
+export const getUnlocks = (): Array<string> => load(UNLOCKS_KEY, '[]');
+
+export const addUnlock = (id: string) => save(UNLOCKS_KEY, [...new Set([...getUnlocks(), id])]);
+
+export const getRecruitChoices = (): Record<string, string> => load(CHOICES_KEY, '{}');
+
+export const saveRecruitChoice = (id: string, choice: string) => save(CHOICES_KEY, { ...getRecruitChoices(), [id]: choice });

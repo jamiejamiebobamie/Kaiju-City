@@ -1,3 +1,4 @@
+import { getTileCenter } from 'Game/DataClasses/GameBoard/hexGrid';
 import type { HexGrid } from 'Game/DataClasses/GameBoard/hexGrid';
 import aquarium from './data/aquarium.json';
 import lab from './data/lab.json';
@@ -50,7 +51,7 @@ export type LevelPhase = {
 */
 export type SceneElement = {
   id: string;
-  type: 'image' | 'sprite' | 'pulse' | 'light' | 'sequence' | 'part' | 'moth' | 'whiteout' | 'npc' | 'speech';
+  type: 'image' | 'sprite' | 'pulse' | 'light' | 'sequence' | 'part' | 'moth' | 'whiteout' | 'npc' | 'speech' | 'walker' | 'door';
   x: number;
   y: number;
   width: number;
@@ -79,6 +80,11 @@ export type SceneElement = {
   glowPhase?: string; // npc: the phase that lights up its glowing outline
   lines?: Array<string>; // speech: what the character says, in turn
   hidePhase?: string; // npc: the phase that takes it off the scene
+  route?: Array<Array<number>>; // walker: the [x, y] spots it runs between, in turn
+  isSweeping?: boolean; // npc
+  label?: string; // door
+  walkSeconds?: number;
+  idleSeconds?: number;
   comesFrom?: { x: number; y: number }; // sprite: leaps here from this point, after 'appearSeconds'
   appearSeconds?: number; // sprite
   flashColor?: string; // part: the whole screen flashes this color when it is touched
@@ -111,6 +117,13 @@ type Rival = {
   touchPhase: string; // the phase where they touch the Kaiju part. the fight starts once it plays out.
   touchDelayMs: number; // how long after the level starts they touch it
   spot: { x: number; y: number }; // where the fight starts from, in scene pixels
+  pose: string; // how they look once beaten
+  pronoun: string;
+  intro: {
+    focus: { x: number; y: number }; // what the camera pulls in on, in scene pixels
+    zoomScale: number;
+    lines: Array<{ name: string; text: string; x: number; y: number }>;
+  };
 };
 
 // Agents who walk in along a catwalk and drop to the floor, one after another
@@ -148,8 +161,13 @@ export type LevelConfig = {
   hasTrainSchedule: boolean;
   shakePhases: Array<string>; // phases that shake the whole scene
   rival?: Rival;
+  exit?: { spot: { x: number; y: number }; afterMs?: number; afterPhase?: string }; // opens after a time or a phase. reaching it ends the level.
+  talk?: { spot: { x: number; y: number }; phase: string }; // walking here starts a phase
+  goalColor?: string; // the goal tile's color, if not the usual gold light
   agentDrops?: AgentDrops;
   cameraZoom: number; // how close the camera sits during play. at 1, the whole scene fits the frame.
+  liveWideShots?: Record<string, number>; // the same, for phases the game keeps running through
+  unlock?: { id: string; label: string; spot: { x: number; y: number } }; // a hidden tile, in scene pixels
   wideShots?: Record<string, number>; // phases the camera pulls out to show, and how long it holds there in ms
   tileTone: TileTone;
   phaseTileTones?: Record<string, TileTone>; // phases that change the floor enough to need another tone
@@ -162,6 +180,8 @@ export type LevelConfig = {
 
 const PENINSULA_ROW_HEIGHT = 21.6; // in world pixels
 const CHARACTER_HEIGHT = 80; // in pixels, at a 'pieceScale' of 1
+export const EXIT_OPEN_PHASE = 'exitOpen';
+
 export const RUN_SPEED_SCALE = 1.25; // everyone's run speed together, so who is faster than who stays the same
 
 // Peninsula sets how large characters look against the tiles, on every level
@@ -218,13 +238,21 @@ const subwayRay = (n, seconds, delaySeconds) =>
   godRay(`godRay${n}`, `/levels/rapidTransit/god-rays-${n}.png`, 0, 0, 1380, 752, seconds, delaySeconds, { isUneven: true, lowOpacity: 0.15, highOpacity: 0.85 });
 
 // a character standing in a scene. x is the middle of its feet, and y the ground under them, so it sorts with the pieces.
+// the Street's perspective: how tall a worker stands, for how far down the scene their feet are
+const getWorkerHeight = y => 80 + 0.592 * (y - 372);
+
+// a worker who runs between spots beside other workers, and stands at each for a while
+const hazmatRunner = (id, route, walkSeconds, idleSeconds) => ({
+  id, type: 'walker' as const, src: '/spritesheet/hazmat.png', x: route[0][0], y: route[0][1], width: 0, height: 0, sortY: Math.max(...route.map(([, y]) => y)), route: route.map(([x, y]) => [x, y, getWorkerHeight(y)]), walkSeconds, idleSeconds
+});
+
+const hazmatSweeper = (id, pose, x, y) => ({ ...npc(id, pose, x, y, getWorkerHeight(y)), isSweeping: true });
+
 const npc = (id, pose, x, y, height, glowPhase = undefined, glowColor = undefined, sortY = y) => ({
   id, type: 'npc' as const, src: `/levels/npcs/${pose}.png`, x, y, width: 0, height, sortY, glowPhase, glowColor
 });
 
-const RECRUIT_GLOW_COLOR = '#57E931';
-
-const RIVAL_LOOK = { maxLives: 6, moveSpeed: 5, touchDelayMs: 3000 };
+const RIVAL_LOOK = { maxLives: 6, moveSpeed: 5, touchDelayMs: 0 };
 
 // the bystander standing in the scene, until the fight starts and their piece takes over
 export const RIVAL_IN_PHASE = 'rivalIn';
@@ -249,9 +277,22 @@ const SHATTER_HOLD_MS = 2500;
 
 const RAPID_TRANSIT_SCENE = {
   hasTrainSchedule: true,
-  rival: { ...RIVAL_LOOK, avatar: 'punk', abilities: ['wood', 'glass', 'bubble'], touchPhase: 'eyeTouched', spot: { x: 1213, y: 530 } },
+  rival: {
+    ...RIVAL_LOOK,
+    avatar: 'punk',
+    abilities: ['wood', 'glass', 'metal'], touchPhase: 'eyeTouched', spot: { x: 1213, y: 530 }, pose: 'mohawkFront', pronoun: 'him',
+    intro: {
+      focus: { x: 1090, y: 430 },
+      zoomScale: 1.6,
+      lines: [
+        { name: 'Punk', text: 'Ooo... pretty...', x: 1150, y: 425 },
+        { name: 'Teammate', text: "No, don't touch it!", x: 960, y: 300 }
+      ]
+    }
+  },
   shakePhases: ['train'],
-  wideShots: { eyeTouched: PART_TOUCH_HOLD_MS, trainLights: TRAIN_WARNING_HOLD_MS },
+  wideShots: { eyeTouched: PART_TOUCH_HOLD_MS },
+  liveWideShots: { trainLights: TRAIN_WARNING_HOLD_MS },
   phases: [{ id: 'eye', label: 'Kaiju eye' }, { id: 'eyeTouched', label: 'Touch part' }, { id: 'train', label: 'Train' }],
   defaultPhases: ['eye'],
   sceneElements: [
@@ -287,7 +328,19 @@ const RAPID_TRANSIT_SCENE = {
 
 const ROOFTOP_SCENE = {
   wideShots: { headTouched: PART_TOUCH_HOLD_MS },
-  rival: { ...RIVAL_LOOK, avatar: 'black_female', abilities: ['death', 'glass', 'metal'], touchPhase: 'headTouched', spot: { x: 733, y: 542 } },
+  rival: {
+    ...RIVAL_LOOK,
+    avatar: 'black_female',
+    abilities: ['death', 'glass', 'metal'], touchPhase: 'headTouched', spot: { x: 733, y: 542 }, pose: 'blackFemaleBack', pronoun: 'her',
+    intro: {
+      focus: { x: 733, y: 470 },
+      zoomScale: 1.5,
+      lines: [
+        { name: 'Bystander', text: 'Is someone there? I can hear them...', x: 640, y: 480 },
+        { name: 'Teammate', text: 'Step away from that!', x: 560, y: 340 }
+      ]
+    }
+  },
   phases: [{ id: 'head', label: 'Kaiju head' }, { id: 'headTouched', label: 'Touch part' }],
   defaultPhases: ['head'],
   sceneElements: [
@@ -335,9 +388,23 @@ const fish = (id, x, y, width, height, flip, fps, panelId) => {
   };
 };
 
+const TANK_SORT_Y = 650; // the middle of the round tank: characters south of it stand in front of it
+
 const AQUARIUM_SCENE = {
   wideShots: { tongueTouched: PART_TOUCH_HOLD_MS, shattered: SHATTER_HOLD_MS },
-  rival: { ...RIVAL_LOOK, avatar: 'mermaid', abilities: ['glass', 'bubble'], touchPhase: 'tongueTouched', spot: { x: 905, y: 690 } }, // Charm joins these once it exists
+  rival: {
+    ...RIVAL_LOOK,
+    avatar: 'mermaid',
+    abilities: ['glass', 'bubble'], touchPhase: 'tongueTouched', spot: { x: 872, y: 655 }, pose: 'mermaid', pronoun: 'her', // Charm joins these once it exists
+    intro: {
+      focus: { x: 780, y: 590 },
+      zoomScale: 1.6,
+      lines: [
+        { name: 'Mermaid', text: "I'M A MERMAID!!", x: 760, y: 600 },
+        { name: 'Teammate', text: "Ma'am, put that down!", x: 640, y: 480 }
+      ]
+    }
+  },
   tileTone: 'dark' as const,
   phaseTileTones: { shattered: 'white' as const }, // the shattered hall is much darker
   flood: { phase: 'shattered', top: 530 }, // pieces below this line, in scene pixels, walk through water
@@ -349,7 +416,7 @@ const AQUARIUM_SCENE = {
   ],
   defaultPhases: ['tongue', 'shards'],
   sceneElements: [
-    bystander('mermaid', 905, 690, 68, 'tongueTouched', '#ff1464', 690),
+    bystander('mermaid', 872, 655, 68, 'tongueTouched', '#ff1464', 655),
     { id: 'shattered', type: 'image' as const, phase: 'shattered', src: '/levels/aquarium/shattered.png', x: 0, y: 0, width: 1408, height: 768, zIndex: -3, fadeSeconds: 1.2, delaySeconds: 0.8 },
     ...GLASS_PANELS,
     aquariumRay(1, 234, -16, 349, 463, 7, 0, 0.9),
@@ -362,7 +429,7 @@ const AQUARIUM_SCENE = {
     fish('fish1', 1062, 613, 81, 100, 1, 6, 'right2'),
     fish('fish2', 900, 571, 46, 57, -1, 8, 'right3'),
     fish('fish3', 470, 590, 62, 76, -1, 7, 'left3'),
-    { id: 'tongue', type: 'part' as const, phase: 'tongue', touchPhase: 'tongueTouched', src: '/levels/aquarium/tongue-spritesheet.png', x: 549, y: 516, width: 305, height: 161, sortY: 726, seconds: 3.5, flashColor: '#ff1464' }
+    { id: 'tongue', type: 'part' as const, phase: 'tongue', touchPhase: 'tongueTouched', src: '/levels/aquarium/tongue-spritesheet.png', x: 549, y: 516, width: 305, height: 161, sortY: TANK_SORT_Y, seconds: 3.5, flashColor: '#ff1464' }
   ]
 };
 
@@ -375,12 +442,6 @@ const SEWER1_SCENE = {
   tileTone: 'faint' as const,
   phases: [{ id: 'glow', label: 'Glow' }],
   sceneElements: [
-    npc('recruit1', 'mohawkFront', 415, 410, 110, 'glow', RECRUIT_GLOW_COLOR),
-    npc('recruit2', 'mohawkFrontAlt', 664, 515, 112, 'glow', RECRUIT_GLOW_COLOR),
-    npc('recruit3', 'mohawkFront', 520, 672, 112, 'glow', RECRUIT_GLOW_COLOR),
-    npc('recruit4', 'mohawkFrontAlt', 1097, 428, 110, 'glow', RECRUIT_GLOW_COLOR),
-    npc('recruit5', 'mohawkFront', 1207, 530, 110, 'glow', RECRUIT_GLOW_COLOR),
-    npc('recruit6', 'mohawkFrontAlt', 1347, 610, 110, 'glow', RECRUIT_GLOW_COLOR),
     // two smooth fades on different beats drift in and out of step, so it never settles into a pattern
     { id: 'glow', type: 'pulse' as const, phase: 'glow', src: '/levels/sewer1/glow.png', x: 193, y: 274, width: 244, height: 176, zIndex: -3, seconds: 3.7, lowOpacity: 0.1, highOpacity: 0.7 },
     { id: 'glowEcho', type: 'pulse' as const, phase: 'glow', src: '/levels/sewer1/glow.png', x: 193, y: 274, width: 244, height: 176, zIndex: -3, seconds: 5.9, delaySeconds: 1.3, lowOpacity: 0, highOpacity: 0.6 },
@@ -400,12 +461,6 @@ const SEWER2_SCENE = {
   tileTone: 'faint' as const,
   phases: [{ id: 'blinding', label: 'Blinding light' }],
   sceneElements: [
-    npc('recruit1', 'mohawkFront', 842, 655, 230, 'blinding', RECRUIT_GLOW_COLOR),
-    npc('recruit2', 'mohawkFrontAlt', 907, 615, 230, 'blinding', RECRUIT_GLOW_COLOR),
-    npc('recruit3', 'mohawkFront', 970, 725, 225, 'blinding', RECRUIT_GLOW_COLOR),
-    npc('recruit4', 'mohawkFrontAlt', 1033, 635, 250, 'blinding', RECRUIT_GLOW_COLOR),
-    npc('recruit5', 'mohawkFront', 1105, 725, 225, 'blinding', RECRUIT_GLOW_COLOR),
-    npc('recruit6', 'mohawkFrontAlt', 1238, 725, 225, 'blinding', RECRUIT_GLOW_COLOR),
     sewerPart('eye', 601, 133, 284, 369, 3.1, 0, '#e6ff3a'),
     sewerPart('tail', 28, 96, 455, 349, 5.3, 1.1, '#b13cff'),
     sewerPart('tooth', 458, 330, 165, 179, 2.3, 0.4, '#2a9cff'),
@@ -420,24 +475,26 @@ const streetGlow = (id, x, y, width, height, seconds, delaySeconds) => ({
   id, type: 'pulse' as const, isUneven: true, blend: 'screen' as const, src: `/levels/street/${id}-glow.png`, x, y, width, height, zIndex: -3, seconds, delaySeconds, lowOpacity: 0.05, highOpacity: 0.9
 });
 
+const STREET_LINE_SECONDS = 4.2;
+const STREET_LINE_COUNT = 4;
+
 const STREET_SCENE = {
   tileTone: 'dark' as const,
   sceneElements: [
     npc('agent', 'agent', 335, 682, 224),
-    npc('hazmat1', 'hazmatBroomLeft', 740, 600, 215),
-    npc('hazmat2', 'hazmatFront', 845, 420, 112),
-    npc('hazmat3', 'hazmatBroomRight', 1005, 372, 80),
-    npc('hazmat4', 'hazmatLeft', 1155, 376, 78),
-    npc('hazmat5', 'hazmatLeft', 1228, 475, 155),
+    hazmatSweeper('hazmat1', 'hazmatBroomLeft', 740, 600),
+    hazmatSweeper('hazmat3', 'hazmatBroomRight', 1005, 372),
+    hazmatRunner('hazmat2', [[845, 420], [800, 612], [1050, 392]], 2.6, 6),
+    hazmatRunner('hazmat4', [[1155, 376], [1062, 400], [1228, 475]], 2.2, 7),
+    hazmatRunner('hazmat5', [[1228, 500], [850, 440]], 3, 8),
+    { id: 'exit', type: 'door' as const, phase: EXIT_OPEN_PHASE, x: 135, y: 660, width: 0, height: 0, sortY: ABOVE_CHARACTERS, label: 'Go To Peninsula' },
     {
-      id: 'agentSpeech', type: 'speech' as const, x: 372, y: 452, width: 0, height: 0, sortY: ABOVE_CHARACTERS, seconds: 4.2,
+      id: 'agentSpeech', type: 'speech' as const, x: 372, y: 452, width: 0, height: 0, sortY: ABOVE_CHARACTERS, seconds: STREET_LINE_SECONDS,
       lines: [
-        'Nothing to see here. Move along.',
-        "Don't touch anything. Especially the glowing ones.",
-        'The cleanup crew has it handled.',
-        "Those parts are classified. So is this conversation.",
-        'Good work out there. The city owes you.',
-        'Report to the Lab. That is an order.'
+        'Good work out there. You beat them back.',
+        'Careful. Fallen Kaiju parts are hazardous.',
+        'We have word of growing bystander interest at West Rapid Transit Station.',
+        'Get there fast, before someone touches a fallen part. Go.'
       ]
     },
     streetGlow('hand', 586, 0, 168, 129, 4.7, 0),
@@ -452,6 +509,26 @@ const STREET_SCENE = {
 // the Agent's clones, stepped out of the tanks behind them
 const agentClone = (id, x) => ({ ...npc(id, 'agent', x, 170, 95), phase: 'clones' });
 
+const LAB_TALK_PHASE = 'labTalk';
+
+const LAB_INTRO_SCENE = {
+  talk: { spot: { x: 560, y: 740 }, phase: LAB_TALK_PHASE },
+  exit: { spot: { x: 1060, y: 740 }, afterPhase: LAB_TALK_PHASE },
+  sceneElements: [
+    npc('agent', 'agent', 720, 660, 130),
+    { id: 'walkHere', type: 'light' as const, color: '#57E931', x: 505, y: 685, width: 110, height: 110, zIndex: -2, seconds: 1.8, lowOpacity: 0.3, highOpacity: 0.9, hidePhase: LAB_TALK_PHASE },
+    {
+      id: 'agentWelcome', type: 'speech' as const, x: 757, y: 530, width: 0, height: 0, sortY: ABOVE_CHARACTERS, seconds: 4.2, hidePhase: LAB_TALK_PHASE,
+      lines: ['Welcome to the Lab.', 'Have a look around.']
+    },
+    {
+      id: 'agentNervous', type: 'speech' as const, phase: LAB_TALK_PHASE, x: 757, y: 530, width: 0, height: 0, sortY: ABOVE_CHARACTERS, seconds: 4.2,
+      lines: ['*nervous* Oh, those?', 'Nothing to worry about...', 'Just some R&D. Cryo-chimeric epigenetics.']
+    },
+    { id: 'exit', type: 'door' as const, phase: EXIT_OPEN_PHASE, x: 1060, y: 700, width: 0, height: 0, sortY: ABOVE_CHARACTERS, label: 'Exit' }
+  ]
+};
+
 const LAB_SCENE = {
   agentDrops: {
     abilities: ['death', 'lightning', 'glass'],
@@ -461,7 +538,7 @@ const LAB_SCENE = {
     dropIntervalMs: 7000,
     catwalkY: 130,
     floorY: 450,
-    drops: [{ x: 700, isFromLeft: true }, { x: 1000, isFromLeft: false }, { x: 400, isFromLeft: true }]
+    drops: [{ x: 330, isFromLeft: true }, { x: 1080, isFromLeft: false }, { x: 520, isFromLeft: true }]
   },
   phases: [{ id: 'clones', label: 'Agent clones' }],
   sceneElements: [
@@ -496,11 +573,11 @@ const LEVEL_BUILDERS: Record<string, (file) => LevelConfig> = {
   aquarium: file => ({
     ...buildLevel(file, 'Kaiju City Aquarium', '#C5063F', [
       { src: '/levels/aquarium-railing.png', x: 0, y: 219, width: 1408, height: 161, sortY: 267 },
-      { src: '/levels/aquarium-tank.png', x: 549, y: 575, width: 305, height: 145, sortY: 726 }
+      { src: '/levels/aquarium-tank.png', x: 549, y: 575, width: 305, height: 145, sortY: TANK_SORT_Y }
     ]),
     ...AQUARIUM_SCENE
   }),
-  labIntro: file => buildLevel(file, 'Lab', '#4a8fb0', [], true),
+  labIntro: file => ({ ...buildLevel(file, 'Lab', '#4a8fb0', [], true), ...LAB_INTRO_SCENE }),
   lab: file => ({
     ...buildLevel(file, 'Lab Window', '#4a8fb0'),
     ...LAB_SCENE,
@@ -511,7 +588,42 @@ const LEVEL_BUILDERS: Record<string, (file) => LevelConfig> = {
   }),
   sewer1: file => ({ ...buildLevel(file, 'Sewer 1', '#7a8a3a', [], true), ...SEWER1_SCENE }),
   sewer2: file => ({ ...buildLevel(file, 'Sewer 2', '#7a8a3a', [], true), ...SEWER2_SCENE }),
-  street: file => ({ ...buildLevel(file, 'Street', '#7a8a3a', [], true), ...STREET_SCENE })
+  street: file => ({
+    ...buildLevel(file, 'Street', '#7a8a3a', [], true),
+    ...STREET_SCENE,
+    unlock: { id: 'hazmat', label: 'Hazmat worker', image: '/levels/portraits/hazmat.png', spot: { x: 1010, y: 690 } },
+    exit: { spot: { x: 112, y: 690 }, afterMs: STREET_LINE_COUNT * STREET_LINE_SECONDS * 1000 } // after one full loop of the Agent's words
+  })
+};
+
+const getSpotDistance = ({ grid }, tile, { x, y }) => {
+  const center = getTileCenter(grid, tile);
+  return Math.hypot(center.x - x, center.y - y);
+};
+
+// the mist drifting around a site on the map, relative to the site
+const MIST_PUFFS = [[0, 0, 120, 3.1], [-34, 18, 90, 4.3], [36, -14, 100, 5.2], [14, 34, 80, 3.7], [-22, -30, 84, 6.1]];
+
+// walking the map to the next site, from one spot to another, in scene pixels. the site's mist will sit around its miniature.
+const buildMapWalk = (id, name, color, start, spot) => {
+  const level = LEVEL_BUILDERS.peninsula(peninsula);
+  const getClosest = target => level.walkableTiles.reduce((closest, tile) => getSpotDistance(level, tile, target) < getSpotDistance(level, closest, target) ? tile : closest);
+  return {
+    ...level,
+    id,
+    name,
+    isWalkingLevel: true,
+    cameraZoom: 1,
+    kaijuEntry: undefined,
+    goalColor: color,
+    goalTiles: [getClosest(spot)],
+    spawnTiles: [start, { x: start.x + 25, y: start.y }].map(getClosest),
+    phases: [],
+    defaultPhases: [],
+    sceneElements: MIST_PUFFS.map(([x, y, size, seconds], n) => ({
+      id: `mist${n}`, type: 'light' as const, color, x: spot.x + x - size / 2, y: spot.y + y - size / 2, width: size, height: size, zIndex: -2, seconds, delaySeconds: -n, lowOpacity: 0.2, highOpacity: 0.75
+    }))
+  };
 };
 
 export const LEVEL_FILES = { peninsula, rapidTransit, rooftop, aquarium, labIntro, lab, sewer1, sewer2, street };
@@ -519,6 +631,14 @@ export const LEVEL_FILES = { peninsula, rapidTransit, rooftop, aquarium, labIntr
 export const LEVELS: Record<string, LevelConfig> = Object.fromEntries(
   Object.entries(LEVEL_FILES).map(([id, file]) => [id, LEVEL_BUILDERS[id](file)])
 );
+
+// sites are placed as in the mission map mockup
+const CITY_END = { x: 230, y: 160 };
+const FOOT = { x: 230, y: 660 };
+LEVELS.mapSubway = buildMapWalk('mapSubway', 'Map to Subway', '#57E931', CITY_END, { x: 126, y: 279 });
+LEVELS.mapRooftop = buildMapWalk('mapRooftop', 'Map to Rooftop', '#ff2a2a', FOOT, { x: 238, y: 122 });
+LEVELS.mapAquarium = buildMapWalk('mapAquarium', 'Map to Aquarium', '#C5063F', CITY_END, { x: 297, y: 594 });
+LEVELS.mapLab = buildMapWalk('mapLab', 'Map to Lab', '#4a8fb0', CITY_END, { x: 150, y: 680 });
 
 export const PENINSULA = LEVELS.peninsula;
 

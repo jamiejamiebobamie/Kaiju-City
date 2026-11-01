@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import styled, { keyframes } from "styled-components";
+import styled, { css, keyframes } from "styled-components";
 import { getSortZIndex } from "Game/DataClasses/Levels/levels";
 
 /*
@@ -342,9 +342,16 @@ const KaijuPart = ({ element, activePhases, style }) => {
 };
 
 // a recruit's glowing outline comes on when they touch a Kaiju part
+const sweepRock = keyframes`
+  0%, 100% { transform: translateX(-50%) rotate(-3deg); }
+  50% { transform: translateX(-46%) rotate(3deg); }
+`;
+
 const NpcElement = styled(ImageElement)`
   transform: translateX(-50%);
+  transform-origin: 50% 100%;
   transition: filter 0.8s;
+  ${props => props.$isSweeping && css`animation: ${sweepRock} 0.9s ease-in-out infinite;`}
 `;
 
 const SPEECH_LOOK = {
@@ -353,7 +360,7 @@ const SPEECH_LOOK = {
   outlineColor: "#101018",
   fillColor: "#fbfbf0",
   labelColor: "#ffe600",
-  width: 290
+  width: 420
 };
 
 const speechPop = keyframes`
@@ -362,8 +369,19 @@ const speechPop = keyframes`
   100% { transform: translate(-22%, -100%) scale(1); }
 `;
 
+// placed and sized from outside: the pop inside of it has its own transform
+const SpeechAnchor = styled.div`
+  position: absolute;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  transform-origin: 0 0;
+`;
+
 const SpeechBubbleElement = styled.div`
   position: absolute;
+  left: 0;
+  top: 0;
   width: ${SPEECH_LOOK.width}px;
   pointer-events: none;
   transform-origin: 22% 100%;
@@ -379,7 +397,7 @@ const SpeechContent = styled.div`
   position: relative;
   padding: 26px 20px 20px;
   font-family: gameboy;
-  font-size: 15px;
+  font-size: 21px;
   line-height: 1.5;
   text-transform: uppercase;
   color: ${SPEECH_LOOK.outlineColor};
@@ -431,6 +449,25 @@ const getPixelTail = inset => {
 };
 
 // after Jet Set Radio Future's comic balloons, drawn in pixels
+export const SpeechBalloon = ({ name, text, x, y, zIndex, scale = 1 }) => {
+  const { pixel, outlineColor, fillColor } = SPEECH_LOOK;
+  const getLayer = (background, shape) => <SpeechLayer style={{ background, clipPath: shape }} />;
+  return (
+    <SpeechAnchor style={{ left: `${x}px`, top: `${y - 32 * scale}px`, zIndex, transform: `scale(${scale})` }}>
+      <SpeechBubbleElement key={text}>
+        {getLayer(outlineColor, getPixelBox(0))}
+        {getLayer(fillColor, getPixelBox(pixel))}
+        <SpeechTail>
+          {getLayer(outlineColor, getPixelTail(0))}
+          {getLayer(fillColor, getPixelTail(pixel))}
+        </SpeechTail>
+        <SpeechLabel>{name}</SpeechLabel>
+        <SpeechContent>{text}</SpeechContent>
+      </SpeechBubbleElement>
+    </SpeechAnchor>
+  );
+};
+
 const SpeechBubble = ({ element, style }) => {
   const { lines, seconds, x, y } = element;
   const [lineIndex, setLineIndex] = useState(0);
@@ -440,20 +477,87 @@ const SpeechBubble = ({ element, style }) => {
     return () => clearInterval(interval);
   }, [lines, seconds]);
 
-  const { pixel, outlineColor, fillColor } = SPEECH_LOOK;
-  const getLayer = (background, shape) => <SpeechLayer style={{ background, clipPath: shape }} />;
-  return (
-    <SpeechBubbleElement key={lineIndex} style={{ left: `${x}px`, top: `${y - 32}px`, zIndex: style.zIndex, width: `${SPEECH_LOOK.width}px`, height: "auto" }}>
-      {getLayer(outlineColor, getPixelBox(0))}
-      {getLayer(fillColor, getPixelBox(pixel))}
-      <SpeechTail>
-        {getLayer(outlineColor, getPixelTail(0))}
-        {getLayer(fillColor, getPixelTail(pixel))}
-      </SpeechTail>
-      <SpeechLabel>Agent</SpeechLabel>
-      <SpeechContent>{lines[lineIndex]}</SpeechContent>
-    </SpeechBubbleElement>
-  );
+  return <SpeechBalloon name="Agent" text={lines[lineIndex]} x={x} y={y} zIndex={style.zIndex} />;
+};
+
+const doorPulse = keyframes`
+  0%, 100% { box-shadow: 0 0 0 4px #101018, 0 0 12px white; }
+  50% { box-shadow: 0 0 0 4px #101018, 0 0 30px white; }
+`;
+
+const DoorElement = styled.div`
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+  font-family: gameboy;
+  font-size: 16px;
+  white-space: nowrap;
+  color: #101018;
+  background: ${SPEECH_LOOK.fillColor};
+  animation: ${doorPulse} 1.6s ease-in-out infinite;
+`;
+
+const DoorIcon = styled.i`
+  font-size: 38px;
+`;
+
+const WALKER_LOOK = {
+  cellWidth: 1673 / 11,
+  cellHeight: 230,
+  feetX: 77, // the middle of the feet, in a cell
+  feetY: 180,
+  figureHeight: 138,
+  rightRow: 1,
+  leftRow: 3,
+  frames: 10,
+  fps: 10
+};
+
+const WalkerSprite = styled.div`
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  transform-origin: 0 0;
+`;
+
+// walks between two spots and idles at each. moved here each frame, as its size changes with the depth of the scene.
+const WalkerElement = ({ element, isPaused, zIndex }) => {
+  const { src, route, walkSeconds, idleSeconds } = element;
+  const ref = useRef(null);
+  const isPausedRef = useRef(isPaused);
+  isPausedRef.current = isPaused;
+
+  useEffect(() => {
+    const { cellWidth, cellHeight, feetX, feetY, figureHeight, rightRow, leftRow, frames, fps } = WALKER_LOOK;
+    const legSeconds = walkSeconds + idleSeconds;
+    let frameRef;
+    const draw = nowMs => {
+      frameRef = requestAnimationFrame(draw);
+      if (isPausedRef.current || !ref.current) return;
+      const seconds = (nowMs / 1000) % (legSeconds * route.length);
+      const legIndex = Math.floor(seconds / legSeconds);
+      const legTime = seconds - legIndex * legSeconds;
+      const start = route[legIndex];
+      const end = route[(legIndex + 1) % route.length];
+      const isRunning = legTime < walkSeconds;
+      const progress = Math.min(legTime / walkSeconds, 1);
+      const [x, y, height] = start.map((value, n) => value + (end[n] - value) * progress);
+      const frame = isRunning ? 1 + Math.floor((nowMs / 1000) * fps) % frames : 0;
+      const scale = height / figureHeight;
+      ref.current.style.transform = `translate(${x - feetX * scale}px, ${y - feetY * scale}px) scale(${scale})`;
+      ref.current.style.backgroundPosition = `${-frame * cellWidth}px ${-(end[0] > start[0] ? rightRow : leftRow) * cellHeight}px`;
+    };
+    frameRef = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(frameRef);
+  }, [element]);
+
+  return <WalkerSprite ref={ref} style={{ width: `${WALKER_LOOK.cellWidth}px`, height: `${WALKER_LOOK.cellHeight}px`, backgroundImage: `url(${src})`, zIndex }} />;
 };
 
 export const SceneElements = ({ level, activePhases, isPaused }) => (
@@ -486,7 +590,7 @@ export const SceneElements = ({ level, activePhases, isPaused }) => (
           transition: isActive ? `opacity ${PART_CRESCENDO.whiteoutSeconds}s ease-in ${PART_CRESCENDO.whiteoutDelaySeconds}s` : "none"
         }} />;
       }
-      if (!isActive) return null;
+      if (!isActive || activePhases.includes(element.hidePhase)) return null;
 
       const spriteStyle = {
         ...style,
@@ -498,14 +602,17 @@ export const SceneElements = ({ level, activePhases, isPaused }) => (
       };
 
       if (type == "npc") {
-        if (activePhases.includes(element.hidePhase)) return null;
         const isGlowing = activePhases.includes(element.glowPhase);
-        return <NpcElement key={id} src={src} style={{
+        return <NpcElement key={id} src={src} $isSweeping={element.isSweeping} style={{
           ...style,
           width: "auto",
           top: `${y - height}px`,
           filter: isGlowing ? `drop-shadow(0 0 4px ${element.glowColor}) drop-shadow(0 0 10px ${element.glowColor})` : "none"
         }} />;
+      }
+      if (type == "walker") return <WalkerElement key={id} element={element} isPaused={isPaused} zIndex={style.zIndex} />;
+      if (type == "door") {
+        return <DoorElement key={id} style={{ left: `${x}px`, top: `${y}px`, zIndex: style.zIndex }}><DoorIcon className="fa fa-sign-out" />{element.label}</DoorElement>;
       }
       if (type == "speech") return <SpeechBubble key={id} element={element} style={style} />;
       if (type == "part") return <KaijuPart key={id} element={element} activePhases={activePhases} style={style} />;

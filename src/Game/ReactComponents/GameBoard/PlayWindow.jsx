@@ -48,6 +48,17 @@ const Outline = styled.div`
   outline: 0.15cqw dashed ${WINDOW_LOOK.handleColor};
 `;
 
+// grey plating around the window, like the player HUDs
+const Plating = styled.div`
+  position: absolute;
+  inset: -0.9cqw;
+  z-index: 2147483000;
+  pointer-events: none;
+  border: 0.9cqw solid;
+  border-image: linear-gradient(135deg, #74777e, #26282c 22%, #55585f 48%, #1c1d21 72%, #6a6d74) 1;
+  box-shadow: 0 0 0 0.12cqw #08080a, inset 0 0 0 0.12cqw #08080a, 0 0 1cqw black;
+`;
+
 const Handle = styled.div`
   position: absolute;
   z-index: 2147483647;
@@ -108,6 +119,7 @@ export const PlayWindow = ({ playWindow, setPlayWindow, isAdjusting, isOpen, chi
       transition: isAdjusting ? "none" : `left ${WIDE_SHOT.pullMs}ms ease-in-out, top ${WIDE_SHOT.pullMs}ms ease-in-out, width ${WIDE_SHOT.pullMs}ms ease-in-out, height ${WIDE_SHOT.pullMs}ms ease-in-out`
     }}>
       {children}
+      {!isOpen && <Plating />}
       {isAdjusting && <Outline />}
       {isAdjusting && HANDLES.map(handle => (
         <Handle

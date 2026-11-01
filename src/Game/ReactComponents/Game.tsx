@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
-import styled from "styled-components";
+import styled, { keyframes } from "styled-components";
 import { useSnapshot } from "valtio";
 import { GlobalSettingsContext } from "Home";
 import { GameBoard } from "./GameBoard/GameBoard";
 import { FULL_WINDOW, loadPlayWindow, PlayWindow, PORTRAIT_WINDOW, savePlayWindow } from "./GameBoard/PlayWindow";
 import { UI } from "./UI/UI";
+import { RadioCall } from "./RadioCall";
 import { AbilityPicker } from "./AbilityPicker";
 import { useKeyPress } from "Utils/utils";
 import { ABILITY_KEY_MAPPINGS, GAME_TICK } from "Utils/gameState";
 import { FullscreenPage } from "Components/FullscreenPage.jsx";
 import { GameManager, GameResult } from '../DataClasses/GameManager';
+import { addUnlock, getRecruitChoices, saveRecruitChoice } from '../DataClasses/Unlocks';
 import { CAMPAIGN_SECTIONS, getIsLastSection } from '../DataClasses/Campaign';
 import { GameLoop } from '../DataClasses/GameLoop';
 import { applyLevelFile, LEVELS, PENINSULA } from '../DataClasses/Levels/levels';
@@ -70,6 +72,100 @@ const ContinueButton = styled.button`
   cursor: pointer;
 `;
 
+const cardFade = keyframes`
+  0% { opacity: 0; }
+  8%, 80% { opacity: 1; }
+  100% { opacity: 0; }
+`;
+
+// a notice that comes and goes on its own, in the style of the speech bubbles
+const UnlockCard = styled.div`
+  position: absolute;
+  top: 1.2cqw;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483646;
+  display: flex;
+  align-items: center;
+  gap: 1cqw;
+  padding: 0.7cqw 1.2cqw;
+  font-family: gameboy;
+  font-size: 1.3cqw;
+  white-space: nowrap;
+  pointer-events: none;
+  color: #101018;
+  background: #fbfbf0;
+  border: 0.3cqw solid #101018;
+  box-shadow: 0.35cqw 0.35cqw 0 rgba(0, 0, 0, 0.5);
+  animation: ${cardFade} 5s linear forwards;
+`;
+
+const UnlockPortrait = styled.img`
+  width: 3cqw;
+  height: 4cqw;
+  object-fit: cover;
+  object-position: 50% 0;
+  image-rendering: pixelated;
+`;
+
+const EndScreen = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 2147483645;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3cqw;
+`;
+
+const titleArrive = keyframes`
+  from { opacity: 0; transform: scale(1.25); }
+  to { opacity: 1; transform: scale(1); }
+`;
+
+const EndTitle = styled.div`
+  font-family: gameboy;
+  font-size: 6.5cqw;
+  text-transform: uppercase;
+  text-align: center;
+  color: #ff2a4d;
+  -webkit-text-stroke: 0.12cqw #ffb3c4;
+  text-shadow: 0 0 0.6cqw #ff5c8a, 0.25cqw 0.25cqw 0 #5c0013, 0 0 2.5cqw #ff0040;
+  animation: ${titleArrive} 1.4s ease-out both;
+`;
+
+const EndButtons = styled.div`
+  display: flex;
+  gap: 1cqw;
+`;
+
+const EndButton = styled.button`
+  padding: 0.7cqw 1.6cqw;
+  font-family: gameboy;
+  font-size: 1.4cqw;
+  cursor: pointer;
+  color: #fbfbf0;
+  background: #5c0013;
+  border: 0.2cqw solid #ff5c8a;
+`;
+
+const fadeIn = keyframes`
+  from { opacity: 0; }
+  to { opacity: 1; }
+`;
+
+const FadeToBlack = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: black;
+  animation: ${fadeIn} 0.9s ease-in both;
+`;
+
 const LevelPicker = styled.select`
   position: fixed;
   top: 8px;
@@ -110,11 +206,23 @@ export const FloatingEffect = styled.div<{ styles?: string; duration?: string }>
   }
 }`;
 
-const MATCH_END_DELAY_MS = 2000;
+const MATCH_END_DELAY_MS = 700;
+
+const RECRUIT_TIMING = {
+  titleMs: 2800, // how long the title and slow motion last before the choice
+  confirmMs: 900,
+  cardMs: 3800
+};
+
+const RECRUIT_CARDS = {
+  punk: { avatar: 'punk', label: 'Punk' },
+  black_female: { avatar: 'black_female', label: 'New recruit' },
+  mermaid: { avatar: 'mermaid', label: 'Mermaid' }
+};
 
 export const Game = ({ handleClickHome, triggerTransition }) => {
   const { selectedAvatar, selectedDifficulty, settingsManager } = useContext(GlobalSettingsContext);
-  const { isPaused, winner, isPlayerDead, players, kaijuKillCount, kaijuToWin, activePhases, isWideShot } = useSnapshot(gameUiStore);
+  const { isPaused, winner, isPlayerDead, players, kaijuKillCount, kaijuToWin, activePhases, isWideShot, unlockMessage, unlockImage, speech, recruitScene } = useSnapshot(gameUiStore);
 
   const startingLevelId = new URLSearchParams(window.location.search).get('level');
   const [levelId, setLevelId] = useState(startingLevelId || PENINSULA.id);
@@ -144,6 +252,10 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const [pickedAbilities, setPickedAbilities] = useState([]);
   const [isPlayingGame, setIsPlayingGame] = useState(false);
   const [fullScreenPageData, setFullScreenPageData] = useState(undefined);
+  const [radioLines, setRadioLines] = useState(undefined);
+  const [matchEnd, setMatchEnd] = useState(undefined); // the title over the board once a match is decided
+  const [recruitChoice, setRecruitChoice] = useState(undefined);
+  const [fadeCard, setFadeCard] = useState(undefined); // the screen is fading to black, and this is the unlock shown on it
 
   const endMatch = () => {
     if (gameLoop.current) gameLoop.current.stop();
@@ -154,12 +266,12 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   // the game stops when the player leaves the page
   useEffect(() => endMatch, []);
 
-  const startMatch = (matchLevel = level) => {
+  const startMatch = (matchLevel = level, hasArrival = false) => {
     settingsManager.updatePlayerAvatar(selectedAvatar);
     settingsManager.setDifficulty(selectedDifficulty);
     settingsManager.setIsTeammate(isTeammate);
 
-    const gm = new GameManager({ level: matchLevel, settingsManager });
+    const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival });
     gm.initGame();
     gameManager.current = gm;
     resetGameUi();
@@ -180,6 +292,10 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     setIsEditingTiles(false);
     setMatchCount(count => count + 1);
     setFullScreenPageData(undefined);
+    setRadioLines(undefined);
+    setMatchEnd(undefined);
+    setRecruitChoice(undefined);
+    setFadeCard(undefined);
   };
 
   // dev testing: changes level, and a match in progress restarts on it with the same powers
@@ -222,20 +338,33 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     setFullScreenPageData(undefined);
   };
 
+  const getRadioContext = () => {
+    settingsManager.initAbilityStatusData(); // the first call comes before any match has loaded the powers
+    const [ability] = settingsManager.getPlayerChosenAbilities();
+    return {
+      powerName: ability ? ability.gameBoardPieceAbilityData.activeName : "powers",
+      choices: getRecruitChoices()
+    };
+  };
+
   const showSection = index => {
-    const { levelId: sectionLevelId, text } = CAMPAIGN_SECTIONS[index];
+    const { levelId: sectionLevelId, radio } = CAMPAIGN_SECTIONS[index];
     endMatch();
     resetGameUi();
     setCampaignIndex(index);
-    if (sectionLevelId) setLevelId(sectionLevelId);
-    setFullScreenPageData({
-      text,
-      buttons: [{
-        text: sectionLevelId ? "Go!" : "Continue",
-        onClick: () => sectionLevelId ? startMatch(LEVELS[sectionLevelId]) : showSection(index + 1)
-      }],
-      image: { src: './story_images/match_start.png', width: '535px', height: '535px' }
-    });
+    setLevelId(sectionLevelId);
+    setFullScreenPageData(undefined);
+    setMatchEnd(undefined);
+    setRecruitChoice(undefined);
+    setFadeCard(undefined);
+    if (radio) setRadioLines(radio(getRadioContext()));
+    else startMatch(LEVELS[sectionLevelId]);
+  };
+
+  // goes back through the ability picker, which returns to this section's call
+  const handleChangePowers = () => {
+    setRadioLines(undefined);
+    setIsPlayingGame(false);
   };
 
   const handleClickPlay = () => {
@@ -251,15 +380,39 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     triggerTransition(() => setIsPlayingGame(true));
   };
 
-  const getCampaignEndPage = isWon => {
-    const image = { src: `./story_images/match_${isWon ? 'won' : 'lost'}.png`, width: '535px', height: '535px' };
+  const getWinTitle = () => {
+    if (level.rival) return "Target Subdued";
+    return level.agentDrops ? "Agents Terminated" : "Kaiju Terminated";
+  };
+
+  const getMatchEnd = isWon => {
+    const title = isWon ? getWinTitle() : "You Lost";
+    if (campaignIndex === null) {
+      return { title, buttons: [{ text: "Play again", onClick: () => triggerTransition(resetMatch) }, { text: "Leave", onClick: handleClickHome }] };
+    }
     if (!isWon) {
-      return { text: ["You lost..."], buttons: [{ text: "Try again", onClick: () => showSection(campaignIndex) }, { text: "Leave", onClick: handleClickHome }], image };
+      return { title, buttons: [{ text: "Try again", onClick: () => showSection(campaignIndex) }, { text: "Leave", onClick: handleClickHome }] };
     }
     if (getIsLastSection(campaignIndex)) {
-      return { text: ["You saved the city!", "Play again ?"], buttons: [{ text: "Yes", onClick: () => { setCampaignIndex(0); triggerTransition(resetMatch); } }, { text: "No", onClick: handleClickHome }], image };
+      return { title: "You saved the city!", buttons: [{ text: "Play again", onClick: () => { setCampaignIndex(0); triggerTransition(resetMatch); } }, { text: "Leave", onClick: handleClickHome }] };
     }
-    return { text: ["Section clear!"], buttons: [{ text: "Continue", onClick: () => showSection(campaignIndex + 1) }], image };
+    return { title, buttons: [{ text: "Continue", onClick: () => showSection(campaignIndex + 1) }] };
+  };
+
+  const leaveLevel = () => {
+    if (campaignIndex !== null) showSection(campaignIndex + 1);
+    else triggerTransition(resetMatch);
+  };
+
+  // confirmed, then fade to black, then the recruit's avatar: unlocked whichever way the player chose
+  const handleChooseRecruit = choice => {
+    if (recruitChoice) return;
+    const { avatar, label } = RECRUIT_CARDS[level.rival.avatar];
+    setRecruitChoice(choice);
+    saveRecruitChoice(level.rival.avatar, choice);
+    addUnlock(level.rival.avatar);
+    setTimeout(() => setFadeCard({ label: `${label} unlocked!`, image: `/levels/portraits/${avatar}.png` }), RECRUIT_TIMING.confirmMs);
+    setTimeout(leaveLevel, RECRUIT_TIMING.confirmMs + RECRUIT_TIMING.cardMs);
   };
 
   const handleClickPause = () => {
@@ -296,12 +449,23 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
 
   useEffect(() => {
     if (winner === null || !isPlayingGame) return;
-    const playAgainButtons = [{ text: "Yes", onClick: () => triggerTransition(resetMatch) }, { text: "No", onClick: handleClickHome }];
-    const page = campaignIndex !== null ? getCampaignEndPage(winner === GameResult.PlayerWon) : winner === GameResult.PlayerWon ?
-      { text: ["You saved the city!", "Play again ?"], buttons: playAgainButtons, image: { src: './story_images/match_won.png', width: '535px', height: '535px' } }
-      : { text: ["You lost...", "Play again ?"], buttons: playAgainButtons, image: { src: './story_images/match_lost.png', width: '535px', height: '535px' } };
-    const timeoutRef = setTimeout(() => setFullScreenPageData(page), MATCH_END_DELAY_MS);
-    return () => clearTimeout(timeoutRef);
+    if (level.isWalkingLevel) {
+      leaveLevel();
+      return;
+    }
+    const isWon = winner === GameResult.PlayerWon;
+    const titleTimeoutRef = setTimeout(() => setMatchEnd(getMatchEnd(isWon)), MATCH_END_DELAY_MS);
+    if (!isWon || !level.rival) return () => clearTimeout(titleTimeoutRef);
+
+    const sceneTimeoutRef = setTimeout(() => {
+      setMatchEnd(undefined);
+      gameManager.current.startRecruitScene();
+      publishGameUi(gameManager.current.getUiState());
+    }, MATCH_END_DELAY_MS + RECRUIT_TIMING.titleMs);
+    return () => {
+      clearTimeout(titleTimeoutRef);
+      clearTimeout(sceneTimeoutRef);
+    };
   }, [winner, isPlayingGame, campaignIndex]);
 
   return (
@@ -323,6 +487,14 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
         setIsTeammate={setIsTeammate}
       />
       </>
+      : radioLines ?
+        <RadioCall
+          key={campaignIndex}
+          lines={radioLines}
+          playerAvatar={selectedAvatar}
+          onGo={() => startMatch(LEVELS[CAMPAIGN_SECTIONS[campaignIndex].levelId], CAMPAIGN_SECTIONS[campaignIndex].hasArrival)}
+          onChangePowers={handleChangePowers}
+        />
       : fullScreenPageData ?
         <FullscreenPage
           text={fullScreenPageData.text}
@@ -344,6 +516,11 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 isEditingTiles={isEditingTiles}
                 isMouseLook={isMouseLook}
                 isEnemyZoom={isEnemyZoom}
+                isSlowMotion={winner === GameResult.PlayerWon && !level.isWalkingLevel}
+                speech={speech}
+                recruitScene={recruitScene}
+                recruitChoice={recruitChoice}
+                onChooseRecruit={handleChooseRecruit}
               />
             </PlayWindow>
             {import.meta.env.DEV && (
@@ -390,7 +567,21 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 )}
               </PhaseToggles>
             )}
-            {campaignIndex !== null && level.isWalkingLevel && !isEditingTiles && (
+            {unlockMessage && <UnlockCard><UnlockPortrait src={unlockImage} />{unlockMessage}</UnlockCard>}
+            {matchEnd && !level.rival && (
+              <EndScreen>
+                <EndTitle>{matchEnd.title}</EndTitle>
+                <EndButtons>{matchEnd.buttons.map(({ text, onClick }) => <EndButton key={text} onClick={onClick}>{text}</EndButton>)}</EndButtons>
+              </EndScreen>
+            )}
+            {matchEnd && level.rival && (
+              <EndScreen>
+                <EndTitle>{matchEnd.title}</EndTitle>
+                {winner !== GameResult.PlayerWon && <EndButtons>{matchEnd.buttons.map(({ text, onClick }) => <EndButton key={text} onClick={onClick}>{text}</EndButton>)}</EndButtons>}
+              </EndScreen>
+            )}
+            {fadeCard && <FadeToBlack><UnlockCard style={{ position: "static", transform: "none" }}><UnlockPortrait src={fadeCard.image} />{fadeCard.label}</UnlockCard></FadeToBlack>}
+            {campaignIndex !== null && level.isWalkingLevel && !level.goalTiles.length && !level.exit && !isEditingTiles && (
               <ContinueButton onClick={() => showSection(campaignIndex + 1)}>Continue</ContinueButton>
             )}
             {!isEditingTiles && <UI

@@ -242,6 +242,28 @@ export class GameBoardPieceBase {
         this.moveToLocation = this.gameManagerProxy.getCharXAndYFromTileIndex(nextTileIndex);
     }
 
+    // starts off-shot, and runs to where it was standing
+    startArrival(startX) {
+        this.moveToLocation = this.charLocation;
+        this.charLocation = { ...this.charLocation, x: startX };
+        this.moveFromLocation = this.charLocation;
+        this.setDir('downLeft');
+    }
+
+    // says whether it has got there
+    stepArrival() {
+        const { newLocation, hasArrived } = this.gameManagerProxy.moveTo({
+            currentLocation: this.charLocation,
+            moveFromLocation: this.moveFromLocation,
+            moveToLocation: this.moveToLocation,
+            moveSpeed: this.moveSpeed
+        });
+        this.charLocation = newLocation;
+        this.moveFromLocation = newLocation;
+        if (hasArrived) this.setDir('idle');
+        return hasArrived;
+    }
+
     // the tiles changed: the piece doesn't walk onto tiles that have gone
     trimPathToWalkableTiles() {
         if (this.gameManagerProxy.getIsClosedTile(this.tileIndex)) return; // the path may be its way off
@@ -295,7 +317,9 @@ export class GameBoardPieceBase {
         if (this.isThere && playerInputHandler.getIsPastPlayerInput() && !playerInputHandler.getIsCurrentPlayerInput()) {
             playerInputHandler.setIsPastPlayerInput(false);
             playerInputHandler.setPathPressedDir('idle');
-            this.stopMoving();
+            // it walks on to the tile it is assigned, and stops there
+            this.moveToTiles = [];
+            this.isThere = false;
         } else if (playerInputHandler.getIsCurrentPlayerInput() && playerInputHandler.getIsChangeOfDirection()) {
             /*
                 a new direction was pressed: turn right away.

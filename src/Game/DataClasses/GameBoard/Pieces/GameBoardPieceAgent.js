@@ -1,6 +1,7 @@
 import { GameBoardPieceBase } from './GameBoardPieceBase';
 
-const FALL_SPEED_SCALE = 3; // how much faster than he walks
+const WALK_IN_SPEED_SCALE = 1.5;
+const FALL_SPEED_SCALE = 3;
 
 /*
     Walks in from off-shot along a catwalk, drops to the floor, then fights like any other piece.
@@ -11,6 +12,7 @@ export class GameBoardPieceAgent extends GameBoardPieceBase {
         super(params);
         this.isOnTiles = false;
         this.isFalling = false;
+        this.isEntering = true;
         this.isShowHealthBarOnComponent = true;
         this.pieceClass = 'Agent';
     }
@@ -34,7 +36,7 @@ export class GameBoardPieceAgent extends GameBoardPieceBase {
             currentLocation: this.charLocation,
             moveFromLocation: this.moveFromLocation,
             moveToLocation: this.moveToLocation,
-            moveSpeed: this.isFalling ? this.moveSpeed * FALL_SPEED_SCALE : this.moveSpeed
+            moveSpeed: this.moveSpeed * (this.isFalling ? FALL_SPEED_SCALE : WALK_IN_SPEED_SCALE)
         });
         this.charLocation = newLocation;
         this.moveFromLocation = newLocation;
@@ -42,6 +44,7 @@ export class GameBoardPieceAgent extends GameBoardPieceBase {
 
         if (this.isFalling) {
             this.isFalling = false;
+            this.isEntering = false;
             this.initCharLocation(true, this.tileIndex);
         } else {
             this.isFalling = true;

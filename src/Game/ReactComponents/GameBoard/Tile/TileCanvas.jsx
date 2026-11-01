@@ -247,7 +247,7 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom }) => {
 
     const tileSize = grid.rowStep * grid.scale;
     const getPlayerCenter = () => {
-      const { x, y } = gameManager.getPieces()[0].charLocation;
+      const { x, y } = gameManager.getFocusPiece().charLocation;
       return { x: x - grid.charOffsetX * grid.scale, y: y - grid.charOffsetY * grid.scale };
     };
 
@@ -316,8 +316,8 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom }) => {
       ctx.globalAlpha = TILE_LOOK.goalMinOpacity + (1 - TILE_LOOK.goalMinOpacity) * pulse;
       level.goalTiles.forEach(tileIndex => {
         const center = getTileCenter(grid, tileIndex);
-        drawGoalBeam(ctx, center, radius);
-        drawSprite(ctx, getSoftSprite(TILE_LOOK.goalColor, TILE_LOOK.statusTintOpacity), center, pixelRatio);
+        if (!level.goalColor) drawGoalBeam(ctx, center, radius);
+        drawSprite(ctx, getSoftSprite(level.goalColor || TILE_LOOK.goalColor, TILE_LOOK.statusTintOpacity), center, pixelRatio);
       });
       ctx.globalAlpha = 1;
 
