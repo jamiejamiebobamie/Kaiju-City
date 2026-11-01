@@ -15,6 +15,7 @@ const LogoGif = styled.img`
   height: 350px;
 
   pointer-events: none;
+  filter: drop-shadow(0 0 45px rgba(150, 60, 255, 0.9)) drop-shadow(0 0 110px rgba(130, 40, 255, 0.75));
 
   -webkit-animation-name: fadeInLogo;
   animation-name: fadeInLogo;

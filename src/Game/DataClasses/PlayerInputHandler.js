@@ -1,5 +1,18 @@
 import { ABILITY_KEY_MAPPINGS } from 'Utils/gameState';
 
+// a charmed player's keys go the other way
+const REVERSED_DIRS = {
+    idle: 'idle',
+    up: 'down',
+    down: 'up',
+    left: 'right',
+    right: 'left',
+    'up left': 'down right',
+    'up right': 'down left',
+    'down left': 'up right',
+    'down right': 'up left'
+};
+
 export class PlayerInputHandler {
     constructor({ gameManagerProxy }) {
         this.pressedKeys = [];
@@ -23,6 +36,11 @@ export class PlayerInputHandler {
 
     // the pressed direction, eg. 'up', 'up right', 'left'. 'idle' if no keys are pressed.
     getPressedDir() {
+        const pressedDir = this.getHeldDir();
+        return this.gameManagerProxy.getPlayerPiece().isCharmed ? REVERSED_DIRS[pressedDir] : pressedDir;
+    }
+
+    getHeldDir() {
         if (!this.pressedKeys.length) return 'idle';
 
         const sortLookup = {

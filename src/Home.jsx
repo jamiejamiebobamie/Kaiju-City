@@ -3,6 +3,7 @@ import { MainMenu } from "./MainMenu";
 import { Game } from "./Game/ReactComponents/Game";
 import { Settings } from "./Settings/Settings";
 import { SettingsManager } from "./Game/DataClasses/SettingsManager";
+import { loadTeamAvatars } from "./Game/DataClasses/Avatars";
 
 const PAGES = Object.freeze({
   Home: 'Home',
@@ -20,7 +21,9 @@ export const Difficulty = Object.freeze({
 export const GlobalSettingsContext = createContext({
   settingsManager: undefined,
   selectedAvatar: "guy",
-  setSelectedAvatar: () => { },
+  setSelectedAvatar: _avatar => { },
+  selectedTeammate: "girl",
+  setSelectedTeammate: _avatar => { },
   isAvatarChangedOnce: false,
   setIsAvatarChangedOnce: () => { },
   selectedDifficulty: Difficulty.Hard,//Medium,
@@ -29,7 +32,8 @@ export const GlobalSettingsContext = createContext({
 
 export const Home = ({ triggerTransition }) => {
   const [settingsManager] = useState(() => new SettingsManager());
-  const [selectedAvatar, setSelectedAvatar] = useState("guy");
+  const [selectedAvatar, setSelectedAvatar] = useState(() => loadTeamAvatars().player || "guy");
+  const [selectedTeammate, setSelectedTeammate] = useState(() => loadTeamAvatars().teammate || "girl");
   const [selectedDifficulty, setSelectedDifficulty] = useState(Difficulty.Hard);
   const [isAvatarChangedOnce, setIsAvatarChangedOnce] = useState(false);
   const [currPage, setCurrPage] = useState(PAGES.Home);
@@ -66,6 +70,8 @@ export const Home = ({ triggerTransition }) => {
               settingsManager,
               selectedAvatar,
               setSelectedAvatar,
+              selectedTeammate,
+              setSelectedTeammate,
               isAvatarChangedOnce,
               setIsAvatarChangedOnce,
               selectedDifficulty,

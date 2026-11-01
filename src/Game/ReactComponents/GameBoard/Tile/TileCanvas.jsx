@@ -17,6 +17,8 @@ const TILE_LOOK = {
   fadeMaskScale: 0.25, // the fade is soft, so it can be worked out on a much smaller canvas
   hoverFadeStartTiles: 0.5, // the grid also shows around the tile under the mouse: that tile fully, then falling away
   hoverFadeEndTiles: 3,
+  siteFadeStartTiles: 2, // the tiles around a site on the map always show
+  siteFadeEndTiles: 4,
   // a hard line along the edge of the walkable tiles, which comes into view as the player gets close
   perimeterColor: "255, 255, 255", // r, g, b: the same on every level
   perimeterOpacity: 0.8, // at its strongest, right beside the player
@@ -26,7 +28,8 @@ const TILE_LOOK = {
   statusTintOpacity: 0.62,
   statusRimOpacity: 0.95,
   statusBackingOpacity: 0.35, // darkens the floor under status tiles, so they stand out on any floor
-  highlightColor: "#bfe6f0",
+  highlightGrey: 0.55, // how far the player's color is washed out, for their path
+  highlightLight: 0.3,
   highlightTintOpacity: 0.34,
   pieceTintOpacity: 0.3,
   softRimOpacity: 0.6,
@@ -147,6 +150,17 @@ const drawGoalBeam = (ctx, { x, y }, radius) => {
   ctx.restore();
 };
 
+// toward grey, then toward white, so that even a dark color reads on the map
+const getHighlightColor = hex => {
+  const channels = [1, 3, 5].map(start => parseInt(hex.slice(start, start + 2), 16));
+  const grey = channels.reduce((total, channel) => total + channel, 0) / 3;
+  const washOut = channel => {
+    const greyed = channel + (grey - channel) * TILE_LOOK.highlightGrey;
+    return Math.round(greyed + (255 - greyed) * TILE_LOOK.highlightLight).toString(16).padStart(2, "0");
+  };
+  return `#${channels.map(washOut).join("")}`;
+};
+
 const drawIcon = (ctx, tile, center, radius, color, lineScale) => {
   const iconClass = tile.getActiveIcon();
   if (!iconClass) return;
@@ -164,6 +178,12 @@ const drawIcon = (ctx, tile, center, radius, color, lineScale) => {
   ctx.shadowColor = color;
   ctx.shadowBlur = TILE_LOOK.iconGlow * lineScale;
   ctx.fillText(getIconGlyph(iconClass), 0, 0);
+  if (iconClass == "fa-two-hearts") {
+    // a little heart beside the big one
+    ctx.font = `${radius * TILE_LOOK.iconSizeRatio * 1.1}px FontAwesome`;
+    ctx.strokeText(getIconGlyph(iconClass), radius * 0.55, -radius * 0.4);
+    ctx.fillText(getIconGlyph(iconClass), radius * 0.55, -radius * 0.4);
+  }
   ctx.restore();
 };
 
@@ -276,6 +296,7 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom }) => {
       addLight(playerCenter, TILE_LOOK.fadeStartTiles, TILE_LOOK.fadeEndTiles);
       const hoveredTile = gameManager.getHoveredTileIndex();
       if (hoveredTile) addLight(getTileCenter(grid, hoveredTile), TILE_LOOK.hoverFadeStartTiles, TILE_LOOK.hoverFadeEndTiles);
+      (level.sites || []).forEach(({ spot }) => addLight(spot, TILE_LOOK.siteFadeStartTiles, TILE_LOOK.siteFadeEndTiles));
 
       ctx.globalCompositeOperation = "destination-in";
       ctx.drawImage(fadeMask, 0, 0, width, height);
@@ -328,7 +349,7 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom }) => {
         if (!color && !isHighlighted && !pieceColor) return;
 
         const center = getTileCenter(grid, tile.tileIndex);
-        if (isHighlighted) drawSprite(ctx, getSoftSprite(TILE_LOOK.highlightColor, TILE_LOOK.highlightTintOpacity), center, pixelRatio);
+        if (isHighlighted) drawSprite(ctx, getSoftSprite(getHighlightColor(gameManager.getPlayerColor()), TILE_LOOK.highlightTintOpacity), center, pixelRatio);
         else if (pieceColor && !color) drawSprite(ctx, getSoftSprite(pieceColor, TILE_LOOK.pieceTintOpacity), center, pixelRatio);
         if (color) {
           if (!isHighlighted) drawSprite(ctx, getStatusSprite(pieceColor || color), center, pixelRatio);

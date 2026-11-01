@@ -6,11 +6,15 @@ import { SettingsManager } from './SettingsManager';
 import { GameBoardPiecesManager } from './GameBoard/Pieces/GameBoardPiecesManager';
 import { KaijuManager } from './KaijuManager';
 import { GameBoardManager } from './GameBoard/GameBoardManager';
-import { EXIT_OPEN_PHASE, PENINSULA, RIVAL_IN_PHASE } from 'Game/DataClasses/Levels/levels';
+import { EXIT_OPEN_PHASE, getSortZIndex, PENINSULA, RIVAL_IN_PHASE } from 'Game/DataClasses/Levels/levels';
 import { TrainSchedule, TRAIN_HIT } from './TrainSchedule';
 import { GameBoardPieceAgent } from './GameBoard/Pieces/GameBoardPieceAgent';
+import { GameBoardPieceExtra } from './GameBoard/Pieces/GameBoardPieceExtra';
 import { WIDE_SHOT } from './Camera';
-import { addUnlock, getUnlocks } from './Unlocks';
+import { addUnlock, getRecruitChoices, getUnlocks } from './Unlocks';
+import { ROSTER } from './Avatars';
+import { getSpeechMs } from './speechTiming';
+import { getTileCenter } from './GameBoard/hexGrid';
 
 export const GameResult = Object.freeze({
     PlayerWon: 0,
@@ -18,20 +22,36 @@ export const GameResult = Object.freeze({
 });
 
 // timing of the moments the game holds still for
+const TRIGGER_ROWS = 2; // how close a door or a walk-here spot has to be
+const SITE_ROWS = 3; // how close a site on the map has to be
+
 export const CUTSCENE = {
   wideMs: 1800,
   pullInMs: 1500,
-  lineMs: 2800,
   touchMs: 4200, // long enough for the part's whole transformation and flash
   arrivalPanMs: 3200,
-  offShotPx: 40,
+  // Peninsula's opening, in scene pixels: the base of the Peninsula is off-shot from the player
+  arrivalPlayerSpot: { x: 200, y: 300 },
+  arrivalTeammateSpot: { x: 245, y: 325 },
+  arrivalTeammateStart: { x: 195, y: 590 },
   slowMotionSpeed: 0.2,
+  chaseSlowSpeed: 0.35,
+  chaseSlowMs: 2800,
+  mapWideMs: 2400,
   recruitZoomScale: 1.3,
-  recruitSpeechRows: 3.4 // how far above the teammate their words sit
+  recruitSpeechRows: 3.4, // how far above a character their words sit
+  speechTopY: 150, // words sit no higher than this, or they would go off the top of a wide shot
+  shotHeadRows: 1.5,
+  recruitStandRows: 2, // how far north of the beaten bystander they stand
+  recruitShotRows: 3, // how far north of the bystander the camera looks
+  recruitButtonRows: 3.6 // how far above the player the buttons sit
 };
 
+const ARRIVAL_LINE = "Heads-up, teammate. They're coming!";
+
 export class GameManager {
-    constructor({ level = PENINSULA, settingsManager, hasArrival = false }) {
+    constructor({ level = PENINSULA, settingsManager, hasArrival = false, killsToWin = undefined }) {
+        this.killsToWin = killsToWin;
         this.zoomLvl = ZoomLvl.NoZoom;
         this.accTime = 0;
         this.score = 0;
@@ -43,6 +63,11 @@ export class GameManager {
         this.speech = null; // { name, text, x, y }
         this.recruitScene = null;
         this.isSlowMotion = false;
+        this.isChaseSlowed = false;
+        this.chaseSlowEndsAt = 0;
+        this.followers = []; // recruits walking with the team
+        this.extras = []; // people standing in the scene
+        this.isSceneOver = false; // a scripted scene has played out, and the level ends
         this.agentsDropped = 0;
         this.wideShotMs = 0; // what is left of the current wide shot. the game holds still during it.
         this.liveWideShotMs = 0; // what is left of a wide shot the game keeps running through
@@ -210,7 +235,7 @@ export class GameManager {
         ]
         // - does player want a teammate?
         if (mandatoryTeammateGamemodes.includes(gameMode) && this.settingsManager.getIsTeammate()) {
-            const teammateAvatar = playerAvatar == 'guy' ? 'girl' : 'guy'; // TO-DO: hook this up to selection screen...
+            const teammateAvatar = this.settingsManager.getTeammateAvatar();
             const teammateAbilities = this.settingsManager.getThreeRandomAbilities();
 
             // add teammate abilities to input handler to be triggered by keyboard keys
@@ -229,20 +254,28 @@ export class GameManager {
 
         this.gameBoardPiecesManager.initPlayerLocationsOnBoard(this.level.spawnTiles);
 
+        if (this.level.hasRecruitFollowers) this.addRecruitFollowers();
+        if (this.level.extras) this.level.extras.forEach(extra => this.addExtra(extra));
+
         if (this.hasArrival) this.startArrival();
         else if (this.level.rival) this.startRivalIntro();
+        else if (this.level.isMapWalk) this.startMapIntro();
+        else if (this.level.trap) this.startTrapScene();
+        else if (this.level.showdown) this.startShowdown();
+        else if (this.level.walkIn) this.startWalkInScene();
     }
 
-    // the bystander touches the Kaiju part, and once that has played out the fight starts
+    // the bystander has touched the Kaiju part in the intro, and now the fight starts
     updateRival() {
-        const { touchPhase, touchDelayMs } = this.level.rival;
         if (this.activePhases.has(RIVAL_IN_PHASE)) return;
-        if (this.activePhases.has(touchPhase)) this.addRival();
-        else if (this.accTime >= touchDelayMs) this.setPhase(touchPhase, true);
+        this.setPhase(RIVAL_IN_PHASE, true);
+        this.rivalPiece.isShowHealthBarOnComponent = true;
+        this.rivalPiece.introZIndex = undefined;
     }
 
+    // from the start: the bystander in the scene is the piece they fight
     addRival() {
-        const { avatar, abilities, maxLives, moveSpeed, spot } = this.level.rival;
+        const { avatar, abilities, maxLives, moveSpeed, spot, startFacing, introSortY } = this.level.rival;
         const piece = this.gameBoardPiecesManager.addPiece({
             pieceInfo: {
                 ...PIECES_INFO[avatar],
@@ -252,10 +285,33 @@ export class GameManager {
             },
             teamIndex: 1
         });
-        piece.isShowHealthBarOnComponent = true;
         piece.initCharLocation(true, this.gameBoardManager.getClosestWalkableTileToLocation(spot));
+        piece.isPlain = true; // no glow until they touch the part
+        piece.isTileHidden = true;
+        piece.facingDir = startFacing;
+        piece.introZIndex = getSortZIndex(this.level, introSortY);
         this.rivalPiece = piece;
-        this.setPhase(RIVAL_IN_PHASE, true);
+    }
+
+    // placed by their feet, wherever they stand, tile or no tile
+    addExtra({ avatar, spot, facingDir }) {
+        const piece = this.gameBoardPiecesManager.addPiece({
+            pieceClass: GameBoardPieceExtra,
+            pieceInfo: { ...PIECES_INFO[avatar], abilities: [] },
+            teamIndex: 1
+        });
+        const tileIndex = this.gameBoardManager.getClosestWalkableTileToLocation(spot);
+        const center = getTileCenter(this.level.grid, tileIndex);
+        const { x, y } = this.gameBoardManager.getCharXAndYFromTileIndex(tileIndex);
+        piece.place({ charLocation: { x: x + spot.x - center.x, y: y + spot.y - center.y }, tileIndex, facingDir });
+        this.extras.push(piece);
+    }
+
+    addRecruitFollowers() {
+        const playerTile = this.gameBoardPiecesManager.getPlayerPiece().getTileIndex();
+        Object.entries(getRecruitChoices())
+            .filter(([, choice]) => choice == 'recruit')
+            .forEach(([avatar]) => this.followers.push(this.gameBoardPiecesManager.addFollower(avatar, playerTile)));
     }
 
     getCameraShot() {
@@ -275,36 +331,53 @@ export class GameManager {
         if (!step) {
             this.cutscene = undefined;
             this.speech = null;
+            this.getPieces().forEach(piece => { piece.isTileHidden = false; });
             return;
         }
         cutscene.msLeft = step.ms;
         this.speech = step.speech || null;
+        if (step.onStart) step.onStart();
+        if (step.arrivals) step.arrivals.forEach(arrival => this.startPieceArrival(arrival));
         if (step.phase) this.activePhases.add(step.phase);
+    }
+
+    // a piece walks to where it stands, from a tile, or from where it is to a new tile
+    startPieceArrival({ piece, startTile, toTile, dir }) {
+        const start = startTile ? this.gameBoardManager.getCharXAndYFromTileIndex(startTile) : piece.charLocation;
+        if (toTile) piece.initCharLocation(true, toTile);
+        piece.startArrival(start, dir);
     }
 
     updateCutscene() {
         const { cutscene } = this;
-        const { arrivingPiece } = cutscene.steps[cutscene.index];
-        if (arrivingPiece) {
-            if (arrivingPiece.stepArrival()) this.nextCutsceneStep();
+        const step = cutscene.steps[cutscene.index];
+        if (step.arrivals) {
+            step.arrivals = step.arrivals.filter(({ piece }) => !piece.stepArrival());
+            if (!step.arrivals.length) this.nextCutsceneStep();
             return;
         }
         cutscene.msLeft -= GAME_TICK.pieceMs;
         if (cutscene.msLeft <= 0) this.nextCutsceneStep();
     }
 
-    // the whole map, a slow pull in on the player that speeds up, then the teammate runs in
+    // the whole map, a slow pull in on the player that speeds up, then the teammate runs up from the base of the Peninsula
     startArrival() {
         const [player, teammate] = this.getPieces();
+        const getTile = spot => this.gameBoardManager.getClosestWalkableTileToLocation(spot);
+        player.initCharLocation(true, getTile(CUTSCENE.arrivalPlayerSpot));
+
         const closeShot = { point: player.charLocation, zoomScale: this.level.cameraZoom, panMs: CUTSCENE.arrivalPanMs, ease: 'cubic-bezier(0.8, 0, 1, 0.6)' };
         const steps = [{ shot: { isWide: true }, ms: CUTSCENE.wideMs }, { shot: closeShot, ms: CUTSCENE.arrivalPanMs }];
         if (teammate) {
-            teammate.startArrival(this.level.world.width + CUTSCENE.offShotPx);
-            const { x, y } = teammate.moveToLocation;
+            teammate.initCharLocation(true, getTile(CUTSCENE.arrivalTeammateSpot));
+            teammate.isVisible = false; // off-shot until the camera has pulled in
+            teammate.isTileHidden = true;
+            const { x, y } = teammate.charLocation;
+            const { rowStep, scale } = this.level.grid;
             const heldShot = { ...closeShot, panMs: undefined };
             steps.push(
-                { shot: heldShot, arrivingPiece: teammate },
-                { shot: heldShot, ms: CUTSCENE.lineMs, speech: { name: 'Teammate', text: "Heads-up, teammate. They're coming!", x, y } }
+                { shot: heldShot, arrivals: [{ piece: teammate, startTile: getTile(CUTSCENE.arrivalTeammateStart) }] },
+                { shot: heldShot, ms: getSpeechMs(ARRIVAL_LINE), speech: { name: 'Teammate', text: ARRIVAL_LINE, x, y: y - CUTSCENE.recruitSpeechRows * rowStep * scale } }
             );
         }
         this.startCutscene(steps);
@@ -313,13 +386,161 @@ export class GameManager {
     // the whole level, a pull in on the bystander and the part, their words, then the touch
     startRivalIntro() {
         const { touchPhase, intro: { focus, zoomScale, lines } } = this.level.rival;
+        this.addRival();
+        const rival = this.rivalPiece;
+        const [, teammate] = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
+        const { rowStep, scale } = this.level.grid;
         const shot = { point: focus, zoomScale };
+
+        // the camera goes to the teammate for their line, then back to the part
+        const getTeammateSteps = text => {
+            if (!teammate) return [];
+            const { x, y } = teammate.charLocation;
+            const teammateShot = { point: { x, y: y - CUTSCENE.shotHeadRows * rowStep * scale }, zoomScale };
+            const speech = { name: 'Teammate', text, x, y: y - CUTSCENE.recruitSpeechRows * rowStep * scale };
+            return [
+                { shot: teammateShot, ms: CUTSCENE.pullInMs },
+                { shot: teammateShot, ms: getSpeechMs(text), speech },
+                { shot, ms: CUTSCENE.pullInMs }
+            ];
+        };
+
         this.startCutscene([
             { shot: { isWide: true }, ms: CUTSCENE.wideMs },
             { shot, ms: CUTSCENE.pullInMs },
-            ...lines.map(speech => ({ shot, ms: CUTSCENE.lineMs, speech })),
-            { shot, ms: CUTSCENE.touchMs, phase: touchPhase }
+            ...lines.flatMap(({ isTeammate, name, text, isFlipped }) => isTeammate ? getTeammateSteps(text) : [
+                { shot, ms: getSpeechMs(text), speech: { ...this.getSpeechOver(rival, name, text), isFlipped } }
+            ]),
+            { shot, ms: CUTSCENE.touchMs, phase: touchPhase, onStart: () => { rival.isPlain = false; } }
         ]);
+    }
+
+    // the whole map, to show where to go, then in on the player as in a battle
+    startMapIntro() {
+        const [player] = this.getPieces();
+        this.startCutscene([
+            { shot: { isWide: true }, ms: CUTSCENE.mapWideMs },
+            { shot: { point: player.charLocation, zoomScale: this.level.cameraZoom }, ms: CUTSCENE.pullInMs }
+        ]);
+    }
+
+    // back in the Lab: the Agent's reveal, each line once, and then he is gone and the fight is on
+    startShowdown() {
+        const { script, speechSpot } = this.level.showdown;
+        const [player, teammate] = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
+        const playerName = ROSTER.find(({ id }) => id == player.avatar).name;
+        const getSpeech = ({ who, text }) => {
+            if (who == 'agent') return { name: 'Agent', text, ...speechSpot };
+            return who == 'teammate' ? this.getSpeechOver(teammate, 'Teammate', text) : this.getSpeechOver(player, playerName, text);
+        };
+        this.getPieces().forEach(piece => { piece.facingDir = 'up'; });
+        const shot = { isWide: true };
+        this.startCutscene([
+            ...script
+                .filter(({ who }) => who != 'teammate' || !!teammate)
+                .map(line => ({ shot, ms: getSpeechMs(line.text), speech: getSpeech(line) })),
+            { shot, ms: 0, onStart: () => this.extras.forEach(extra => extra.leave()) }
+        ]);
+    }
+
+    // everyone stands facing the Agent while he has his say, each line once, and then the chase is on
+    startTrapScene() {
+        const { lines, speechSpot } = this.level.trap;
+        this.getPieces().forEach(piece => { piece.facingDir = 'up'; });
+        const shot = { isWide: true };
+        this.startCutscene([
+            ...lines.map(text => ({ shot, ms: getSpeechMs(text), speech: { name: 'Agent', text, ...speechSpot } })),
+            { shot, ms: 0, onStart: this.startChase }
+        ]);
+    }
+
+    // words over someone's head, with the balloon opening toward the middle of the scene
+    getSpeechOver(piece, name, text) {
+        const { x, y } = piece.charLocation;
+        const { rowStep, scale } = this.level.grid;
+        return { name, text, x, y: Math.max(y - CUTSCENE.recruitSpeechRows * rowStep * scale, CUTSCENE.speechTopY), isFlipped: x > this.level.world.width / 2 };
+    }
+
+    // the teammate may have gone on ahead. after a beat the recruits catch up, the script plays, and it may end with the team walking on.
+    startWalkInScene() {
+        const { teammateSpot, doorTile, standSpots, script, ending } = this.level.walkIn;
+        const [player, teammate] = this.getPieces();
+        const hasTeammate = !!teammate && !this.followers.includes(teammate);
+        const getTile = spot => this.gameBoardManager.getClosestWalkableTileToLocation(spot);
+        const shot = { isWide: true };
+        const getName = ({ avatar }) => ROSTER.find(({ id }) => id == avatar).name;
+
+        if (hasTeammate && teammateSpot) {
+            teammate.initCharLocation(true, getTile(teammateSpot));
+            teammate.facingDir = 'down';
+        }
+        const arrivals = this.followers.map((piece, index) => {
+            piece.initCharLocation(true, getTile(standSpots[index % standSpots.length]));
+            piece.isVisible = false;
+            piece.isTileHidden = true;
+            return { shot, arrivals: [{ piece, startTile: doorTile, dir: 'downLeft' }] };
+        });
+
+        // recruits take turns. with no recruits, their lines are the player's.
+        const speakers = this.followers.length ? this.followers : [player];
+        let recruitLines = 0;
+        const getSpeech = ({ who, text }) => {
+            if (who == 'teammate') return this.getSpeechOver(teammate, 'Teammate', text);
+            const speaker = who == 'player' ? player : speakers[recruitLines++ % speakers.length];
+            return this.getSpeechOver(speaker, getName(speaker), text);
+        };
+
+        const endingSteps = !ending ? [] : [
+            { shot, arrivals: [player, teammate].filter(piece => !!piece && (piece == player || hasTeammate)).map((piece, index) => ({ piece, toTile: getTile(ending.spots[index]), dir: 'downLeft' })) },
+            { shot, ms: ending.climaxMs, phase: ending.phase },
+            { shot, ms: 0, onStart: () => { this.isSceneOver = true; } }
+        ];
+
+        this.startCutscene([
+            { shot, ms: CUTSCENE.pullInMs },
+            ...arrivals,
+            ...script
+                .filter(({ who }) => who != 'teammate' || hasTeammate)
+                .map(line => ({ shot, ms: getSpeechMs(line.text), speech: getSpeech(line) })),
+            ...endingSteps
+        ]);
+    }
+
+    // the Agents burst in from below, in slow motion at first. the powers are gone, so the only way out is the door.
+    startChase = () => {
+        const { chasers: { xs, startY, landingY, moveSpeed, abilities } } = this.level.trap;
+        const team = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
+        team.forEach(piece => { piece.abilities = []; });
+        xs.forEach(x => {
+            const piece = this.gameBoardPiecesManager.addPiece({
+                pieceClass: GameBoardPieceAgent,
+                pieceInfo: { ...PIECES_INFO.agent, abilities: this.settingsManager.getAbilitiesFromElements(abilities), maxLives: 4, moveSpeed },
+                teamIndex: 1
+            });
+            piece.startChase({ startLocation: { x, y: startY }, landingTile: this.gameBoardManager.getClosestWalkableTileToLocation({ x, y: landingY }) });
+        });
+        this.gameBoardManager.moveSpeedScale *= CUTSCENE.chaseSlowSpeed;
+        this.isChaseSlowed = true;
+        this.chaseSlowEndsAt = this.accTime + CUTSCENE.chaseSlowMs;
+    }
+
+    updateChaseSlowMotion() {
+        if (this.accTime < this.chaseSlowEndsAt) return;
+        this.gameBoardManager.moveSpeedScale /= CUTSCENE.chaseSlowSpeed;
+        this.isChaseSlowed = false;
+    }
+
+    getPlayerColor() {
+        return this.gameBoardPiecesManager.getPlayerPiece().getColor();
+    }
+
+    // dev and Lab: changes who is on the team, right away
+    changeTeamAvatars(player, teammate) {
+        const [playerPiece, teammatePiece] = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
+        this.settingsManager.updatePlayerAvatar(player);
+        this.settingsManager.setTeammateAvatar(teammate);
+        this.gameBoardPiecesManager.changeAvatar(playerPiece, player);
+        if (teammatePiece) this.gameBoardPiecesManager.changeAvatar(teammatePiece, teammate);
     }
 
     updateSlowMotion() {
@@ -327,14 +548,21 @@ export class GameManager {
         if (!this.isSlowMotion) {
             this.isSlowMotion = true;
             this.gameBoardManager.moveSpeedScale *= CUTSCENE.slowMotionSpeed;
+            if (this.trainSchedule) this.stopTrains();
         }
         if (this.getGameResult() === GameResult.PlayerWon) this.gameBoardPiecesManager.movePieces({ accTime: this.accTime, playerInputHandler: this.playerInputHandler });
     }
 
+    // the fight is over: the train leaves, and no other comes
+    stopTrains() {
+        this.handleTrainStage('idle', this.accTime);
+        this.gameBoardManager.setWalkableTiles(this.level.walkableTiles);
+    }
+
     // the player and teammate stand over the beaten bystander: the player's choice, with the teammate back and to the left
     startRecruitScene() {
-        const { pose, pronoun } = this.level.rival;
-        const { x, y } = this.rivalPiece.charLocation;
+        const { avatar, pronoun, recruitSpot } = this.level.rival;
+        const { x, y } = recruitSpot;
         const { rowStep, colStep, scale } = this.level.grid;
         const getTileNear = (columns, rows) => this.gameBoardManager.getClosestWalkableTileToLocation({ x: x + columns * colStep * scale, y: y + rows * rowStep * scale });
         const [player, teammate] = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
@@ -344,20 +572,22 @@ export class GameManager {
             piece.initCharLocation(true, tile);
             piece.facingDir = 'down';
         };
-        stand(player, getTileNear(0, -3));
-        if (teammate) stand(teammate, getTileNear(-3, -3));
+        stand(player, getTileNear(0, -CUTSCENE.recruitStandRows));
+        if (teammate) stand(teammate, getTileNear(-3, -CUTSCENE.recruitStandRows));
+        this.gameBoardManager.getTilesInFlatArray().forEach(tile => tile.clearTileStatus());
 
         const zoomScale = this.level.cameraZoom * CUTSCENE.recruitZoomScale;
         this.speech = teammate ? {
             name: 'Teammate',
             text: `Do you think we can use ${pronoun}?`,
             x: teammate.charLocation.x,
-            y: teammate.charLocation.y - CUTSCENE.recruitSpeechRows * rowStep * scale
+            y: teammate.charLocation.y - CUTSCENE.recruitSpeechRows * rowStep * scale,
+            isFlipped: true
         } : null;
         this.recruitScene = {
-            shot: { point: { x, y: y - 40 }, zoomScale, isFollowingMouse: true },
-            body: { x, y, pose },
-            prompt: player.charLocation
+            shot: { point: { x, y: y - CUTSCENE.recruitShotRows * rowStep * scale }, zoomScale, isFollowingMouse: true, isCut: true },
+            body: { x, y, avatar },
+            prompt: { x: player.charLocation.x, y: player.charLocation.y - CUTSCENE.recruitButtonRows * rowStep * scale }
         };
     }
 
@@ -373,21 +603,16 @@ export class GameManager {
         this.unlockImage = image;
     }
 
-    updateTalk() {
-        if (this.activePhases.has(this.level.talk.phase)) return;
-        if (this.getIsPlayerNear(this.level.talk.spot)) this.setPhase(this.level.talk.phase, true);
-    }
-
     updateExit() {
         const { afterMs, afterPhase } = this.level.exit;
         if (this.accTime >= afterMs || this.activePhases.has(afterPhase)) this.setPhase(EXIT_OPEN_PHASE, true);
     }
 
-    getIsPlayerNear(spot) {
-        const { i, j } = this.gameBoardManager.getClosestWalkableTileToLocation(spot);
-        const piece = this.gameBoardPiecesManager.getPlayerPiece();
-        const tile = piece.getTileIndex();
-        return piece.isThere && tile.i == i && tile.j == j;
+    // anywhere within a few rows counts: the spot is a place, not one exact tile
+    getIsPlayerNear(spot, rows = TRIGGER_ROWS) {
+        const { x, y } = getTileCenter(this.level.grid, this.gameBoardPiecesManager.getPlayerPiece().getTileIndex());
+        const { rowStep, scale } = this.level.grid;
+        return Math.hypot(x - spot.x, y - spot.y) <= rows * rowStep * scale;
     }
 
     // who the camera stays with: the player, then their teammate once the player is down
@@ -397,8 +622,14 @@ export class GameManager {
     }
 
     getIsAtGoal() {
-        const { goalTiles, exit } = this.level;
+        const { goalTiles, exit, sites = [] } = this.level;
         if (!this.getPieces().length) return false;
+        if (this.isSceneOver) return true;
+        const site = sites.find(({ spot }) => this.getIsPlayerNear(spot, SITE_ROWS));
+        if (site) {
+            this.reachedSite = site;
+            return true;
+        }
         if (exit && this.activePhases.has(EXIT_OPEN_PHASE) && this.getIsPlayerNear(exit.spot)) return true;
         const piece = this.gameBoardPiecesManager.getPlayerPiece();
         const { i, j } = piece.getTileIndex();
@@ -435,7 +666,8 @@ export class GameManager {
 
     getKillsToWin() {
         if (this.level.agentDrops) return this.level.agentDrops.drops.length;
-        return this.level.rival ? 1 : this.gameManagerProxy.determineKaijuDetails().MAX_TO_WIN;
+        if (this.level.rival) return 1;
+        return this.killsToWin || this.gameManagerProxy.determineKaijuDetails().MAX_TO_WIN;
     }
 
     stepPieces() {
@@ -454,13 +686,13 @@ export class GameManager {
         }
         this.accTime += GAME_TICK.pieceMs;
         this.liveWideShotMs = Math.max(this.liveWideShotMs - GAME_TICK.pieceMs, 0);
+        if (this.isChaseSlowed) this.updateChaseSlowMotion();
         this.timeoutHandler.update(this.accTime);
         if (this.trainSchedule) this.trainSchedule.update(this.accTime);
         if (this.level.kaijuEntry) this.kaijuManager.update(this.accTime, this.score);
         if (this.level.rival) this.updateRival();
         if (this.level.agentDrops) this.updateAgentDrops();
         if (this.level.unlock) this.updateUnlock();
-        if (this.level.talk) this.updateTalk();
         if (this.level.exit) this.updateExit();
         this.gameBoardPiecesManager.movePieces({ accTime: this.accTime, playerInputHandler: this.playerInputHandler });
     }
@@ -479,14 +711,14 @@ export class GameManager {
     }
 
     getUiState() {
-        const { MAX_TO_WIN } = this.gameManagerProxy.determineKaijuDetails();
         return {
             players: this.gameBoardPiecesManager.getPlayerTeamUiState(),
             kaijuKillCount: this.score,
-            kaijuToWin: MAX_TO_WIN,
+            kaijuToWin: this.getKillsToWin(),
             isPaused: this.isPaused,
             activePhases: this.getActivePhases(),
             isWideShot: this.getIsWideShot(),
+            isCutscene: !!this.cutscene,
             unlockMessage: this.unlockMessage,
             unlockImage: this.unlockImage,
             speech: this.speech,
@@ -526,9 +758,16 @@ export class GameManager {
             getAccTime: this.getAccTime,
             getAbilityAndTileStatusData: this.settingsManager.getAbilityAndTileStatusData,
             getKaijuAbilities: this.settingsManager.getKaijuAbilities,
-            determineKaijuDetails: () => this.kaijuManager.determineKaijuDetailsFromDifficulty(this.settingsManager.getDifficulty()),
+            determineKaijuDetails: () => ({
+                ...this.kaijuManager.determineKaijuDetailsFromDifficulty(this.settingsManager.getDifficulty()),
+                ...(this.killsToWin ? { MAX_TO_WIN: this.killsToWin } : {})
+            }),
+            getTilesAround: tile => this.gameBoardManager.getAdjacentTileIndices(tile),
             getFlattenedArrayIndex: this.gameBoardManager.getFlattenedArrayIndex,
             getDmg: this.gameBoardManager.getDmg,
+            getCharmingTeam: this.gameBoardManager.getCharmingTeam,
+            clearTileStatusUnderPiece: this.gameBoardManager.clearTileStatusUnderPiece,
+            getHasAllyOnBoard: this.gameBoardPiecesManager.getHasAllyOnBoard,
             getPathToClosestEnemy: this.gameBoardManager.getPathToClosestEnemy,
             getClosestEnemy: this.gameBoardManager.getClosestEnemy,
             getCharXAndYFromTileIndex: this.gameBoardManager.getCharXAndYFromTileIndex,

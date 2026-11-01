@@ -11,6 +11,7 @@ export const gameUiStore = proxy({
   isPaused: false,
   activePhases: [],
   isWideShot: false,
+  isCutscene: false,
   unlockMessage: '',
   unlockImage: '',
   speech: null,
@@ -41,6 +42,7 @@ export const resetGameUi = () => {
   gameUiStore.isPaused = false;
   gameUiStore.activePhases = [];
   gameUiStore.isWideShot = false;
+  gameUiStore.isCutscene = false;
   gameUiStore.unlockMessage = '';
   gameUiStore.unlockImage = '';
   gameUiStore.speech = null;

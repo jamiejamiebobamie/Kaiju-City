@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import styled, { css, keyframes } from "styled-components";
 import { getSortZIndex } from "Game/DataClasses/Levels/levels";
+import { getSpeechMs, SPEECH_TIMING } from "Game/DataClasses/speechTiming";
 
 /*
   Moving art in a level. Each level's 'sceneElements', in levels.ts, hold the look-and-feel numbers.
@@ -360,7 +361,9 @@ const SPEECH_LOOK = {
   outlineColor: "#101018",
   fillColor: "#fbfbf0",
   labelColor: "#ffe600",
-  width: 420
+  width: 470,
+  tailOffset: 59, // from where the balloon is placed to the tip of its tail
+  flippedTailOffset: 103
 };
 
 const speechPop = keyframes`
@@ -397,8 +400,8 @@ const SpeechContent = styled.div`
   position: relative;
   padding: 26px 20px 20px;
   font-family: gameboy;
-  font-size: 21px;
-  line-height: 1.5;
+  font-size: 27px;
+  line-height: 1.45;
   text-transform: uppercase;
   color: ${SPEECH_LOOK.outlineColor};
 `;
@@ -448,36 +451,52 @@ const getPixelTail = inset => {
   return `polygon(${steps.map(([x, y]) => `calc(${x}% ${x > 50 ? "-" : "+"} ${inset}px) calc(${y}% ${y > 50 ? "-" : "+"} ${inset}px)`).join(", ")})`;
 };
 
+// the letters still to come take up their space, so the words don't jump to a new line as they type
+const TypedText = ({ text }) => {
+  const [letterCount, setLetterCount] = useState(0);
+
+  useEffect(() => {
+    setLetterCount(0);
+    const interval = setInterval(() => setLetterCount(count => {
+      if (count >= text.length) clearInterval(interval);
+      return count + 1;
+    }), SPEECH_TIMING.typeMsPerLetter);
+    return () => clearInterval(interval);
+  }, [text]);
+
+  return <>{text.slice(0, letterCount)}<span style={{ visibility: "hidden" }}>{text.slice(letterCount)}</span></>;
+};
+
 // after Jet Set Radio Future's comic balloons, drawn in pixels
-export const SpeechBalloon = ({ name, text, x, y, zIndex, scale = 1 }) => {
-  const { pixel, outlineColor, fillColor } = SPEECH_LOOK;
+export const SpeechBalloon = ({ name, text, x, y, zIndex, scale = 1, isFlipped = false }) => {
+  const { pixel, outlineColor, fillColor, tailOffset, flippedTailOffset } = SPEECH_LOOK;
   const getLayer = (background, shape) => <SpeechLayer style={{ background, clipPath: shape }} />;
   return (
-    <SpeechAnchor style={{ left: `${x}px`, top: `${y - 32 * scale}px`, zIndex, transform: `scale(${scale})` }}>
-      <SpeechBubbleElement key={text}>
+    <SpeechAnchor style={{ left: `${x + (isFlipped ? flippedTailOffset : tailOffset) * scale}px`, top: `${y - 32 * scale}px`, zIndex, transform: `scale(${scale})` }}>
+      <SpeechBubbleElement key={text} style={isFlipped ? { left: `${80 - SPEECH_LOOK.width}px` } : undefined}>
         {getLayer(outlineColor, getPixelBox(0))}
         {getLayer(fillColor, getPixelBox(pixel))}
-        <SpeechTail>
+        <SpeechTail style={isFlipped ? { left: "auto", right: "44px" } : undefined}>
           {getLayer(outlineColor, getPixelTail(0))}
           {getLayer(fillColor, getPixelTail(pixel))}
         </SpeechTail>
         <SpeechLabel>{name}</SpeechLabel>
-        <SpeechContent>{text}</SpeechContent>
+        <SpeechContent><TypedText text={text} /></SpeechContent>
       </SpeechBubbleElement>
     </SpeechAnchor>
   );
 };
 
 const SpeechBubble = ({ element, style }) => {
-  const { lines, seconds, x, y } = element;
+  const { lines, x, y } = element;
   const [lineIndex, setLineIndex] = useState(0);
 
   useEffect(() => {
-    const interval = setInterval(() => setLineIndex(index => (index + 1) % lines.length), seconds * 1000);
-    return () => clearInterval(interval);
-  }, [lines, seconds]);
+    const timeoutRef = setTimeout(() => setLineIndex((lineIndex + 1) % lines.length), getSpeechMs(lines[lineIndex]));
+    return () => clearTimeout(timeoutRef);
+  }, [lines, lineIndex]);
 
-  return <SpeechBalloon name="Agent" text={lines[lineIndex]} x={x} y={y} zIndex={style.zIndex} />;
+  return <SpeechBalloon name={element.name || "Agent"} text={lines[lineIndex]} x={x} y={y} zIndex={style.zIndex} />;
 };
 
 const doorPulse = keyframes`
@@ -485,15 +504,16 @@ const doorPulse = keyframes`
   50% { box-shadow: 0 0 0 4px #101018, 0 0 30px white; }
 `;
 
-const DoorElement = styled.div`
+const DoorElement = styled.button`
   position: absolute;
+  cursor: pointer;
+  border: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
   padding: 12px 14px;
   transform: translate(-50%, -100%);
-  pointer-events: none;
   font-family: gameboy;
   font-size: 16px;
   white-space: nowrap;
@@ -560,7 +580,46 @@ const WalkerElement = ({ element, isPaused, zIndex }) => {
   return <WalkerSprite ref={ref} style={{ width: `${WALKER_LOOK.cellWidth}px`, height: `${WALKER_LOOK.cellHeight}px`, backgroundImage: `url(${src})`, zIndex }} />;
 };
 
-export const SceneElements = ({ level, activePhases, isPaused }) => (
+const hotspotPulse = keyframes`
+  0%, 100% { filter: drop-shadow(0 0 2px white); }
+  50% { filter: drop-shadow(0 0 9px white) drop-shadow(0 0 3px white); }
+`;
+
+const HotspotOutline = styled.img`
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  image-rendering: pixelated;
+  animation: ${hotspotPulse} 1.6s ease-in-out infinite;
+`;
+
+const HotspotElement = styled.button`
+  position: absolute;
+  padding: 0;
+  cursor: pointer;
+  background: none;
+  border: 0;
+`;
+
+const HotspotLabel = styled.div`
+  position: absolute;
+  transform: translate(-50%, -100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: gameboy;
+  font-size: 18px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 1;
+  color: white;
+  text-shadow: 0 0 4px black, 2px 2px 0 black;
+`;
+
+export const SceneElements = ({ level, activePhases, isPaused, onHotspot }) => (
   <>
     {level.sceneElements.map(element => {
       const {
@@ -611,8 +670,25 @@ export const SceneElements = ({ level, activePhases, isPaused }) => (
         }} />;
       }
       if (type == "walker") return <WalkerElement key={id} element={element} isPaused={isPaused} zIndex={style.zIndex} />;
+      if (type == "hotspot") {
+        return (
+          <React.Fragment key={id}>
+            <HotspotOutline src={element.outline} style={{ zIndex: style.zIndex }} />
+            <HotspotLabel style={{ left: `${x + width / 2}px`, top: `${element.labelY || y - 14}px`, zIndex: style.zIndex }}>
+              {element.label}
+              <i className="fa fa-caret-down" />
+            </HotspotLabel>
+            <HotspotElement
+              data-scene-button
+              aria-label={element.label}
+              style={{ left: `${x}px`, top: `${y}px`, width: `${width}px`, height: `${height}px`, zIndex: style.zIndex, transform: `rotate(${element.rotate || 0}deg)` }}
+              onClick={() => onHotspot(element.action)}
+            />
+          </React.Fragment>
+        );
+      }
       if (type == "door") {
-        return <DoorElement key={id} style={{ left: `${x}px`, top: `${y}px`, zIndex: style.zIndex }}><DoorIcon className="fa fa-sign-out" />{element.label}</DoorElement>;
+        return <DoorElement key={id} data-scene-button onClick={() => onHotspot("exit")} style={{ left: `${x}px`, top: `${y}px`, zIndex: style.zIndex }}><DoorIcon className="fa fa-sign-out" />{element.label}</DoorElement>;
       }
       if (type == "speech") return <SpeechBubble key={id} element={element} style={style} />;
       if (type == "part") return <KaijuPart key={id} element={element} activePhases={activePhases} style={style} />;

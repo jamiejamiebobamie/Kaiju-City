@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
+import { createPortal } from "react-dom";
 import styled, { keyframes } from "styled-components";
 import { useSnapshot } from "valtio";
 import { GlobalSettingsContext } from "Home";
@@ -6,15 +7,19 @@ import { GameBoard } from "./GameBoard/GameBoard";
 import { FULL_WINDOW, loadPlayWindow, PlayWindow, PORTRAIT_WINDOW, savePlayWindow } from "./GameBoard/PlayWindow";
 import { UI } from "./UI/UI";
 import { RadioCall } from "./RadioCall";
+import { AvatarRoster } from "./AvatarRoster";
+import { IrradiationVat } from "./IrradiationVat";
+import { RecruitCalls } from "./RecruitCalls";
+import { getAvatarColor, saveAvatarColor, saveTeamAvatars, unlockRecruitSkill, unlockTool } from "../DataClasses/Avatars";
 import { AbilityPicker } from "./AbilityPicker";
 import { useKeyPress } from "Utils/utils";
 import { ABILITY_KEY_MAPPINGS, GAME_TICK } from "Utils/gameState";
 import { FullscreenPage } from "Components/FullscreenPage.jsx";
 import { GameManager, GameResult } from '../DataClasses/GameManager';
-import { addUnlock, getRecruitChoices, saveRecruitChoice } from '../DataClasses/Unlocks';
+import { addUnlock, getRecruitChoices, resetUnlocks, saveRecruitChoice } from '../DataClasses/Unlocks';
 import { CAMPAIGN_SECTIONS, getIsLastSection } from '../DataClasses/Campaign';
 import { GameLoop } from '../DataClasses/GameLoop';
-import { applyLevelFile, LEVELS, PENINSULA } from '../DataClasses/Levels/levels';
+import { applyLevelFile, LAB_TALK_PHASE, LEVEL_FILES, LEVELS, PENINSULA } from '../DataClasses/Levels/levels';
 import { TileEditor } from './Levels/TileEditor';
 import { gameUiStore, publishGameUi, resetGameUi } from '../DataClasses/gameUiStore';
 
@@ -25,19 +30,21 @@ const GameArea = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #0a1224;
+  background: #0b0c0e;
 `;
 
 // everything in the game sits in this box, and scales with it
 const GameFrame = styled.div`
   position: relative;
   aspect-ratio: 16 / 9;
+  min-width: 0;
   width: 100%;
   max-width: calc(100dvh * 16 / 9);
   max-height: 100dvh;
   overflow: hidden;
   container-type: inline-size;
   background: #000;
+  transition: transform 0.9s ease-in, opacity 0.9s ease-in;
   @media (orientation: portrait) {
     aspect-ratio: auto;
     height: 100dvh;
@@ -45,19 +52,20 @@ const GameFrame = styled.div`
   }
 `;
 
+// dev only, and beside the game rather than over it
 const PhaseToggles = styled.div`
-  position: absolute;
-  top: 4.5cqw;
-  left: 1cqw;
-  z-index: 2147483646;
+  flex: 0 0 200px;
+  box-sizing: border-box;
+  align-self: stretch;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.3cqw;
-  padding: 0.5cqw 0.8cqw;
-  border-radius: 0.4cqw;
-  font-size: 1.2cqw;
+  gap: 4px;
+  padding: 8px;
+  font-size: 10px;
+  text-align: left;
   color: #dfe;
-  background: rgba(0, 0, 0, 0.6);
+  background: #16181c;
 `;
 
 // moves on from a walking scene, until scenes have their own triggers
@@ -108,6 +116,7 @@ const UnlockPortrait = styled.img`
   image-rendering: pixelated;
 `;
 
+// in the play window, sized from it
 const EndScreen = styled.div`
   position: absolute;
   inset: 0;
@@ -117,6 +126,7 @@ const EndScreen = styled.div`
   align-items: center;
   justify-content: center;
   gap: 3cqw;
+  container-type: inline-size;
 `;
 
 const titleArrive = keyframes`
@@ -126,7 +136,7 @@ const titleArrive = keyframes`
 
 const EndTitle = styled.div`
   font-family: gameboy;
-  font-size: 6.5cqw;
+  font-size: min(5.2cqw, 4.3vw);
   text-transform: uppercase;
   text-align: center;
   color: #ff2a4d;
@@ -141,9 +151,9 @@ const EndButtons = styled.div`
 `;
 
 const EndButton = styled.button`
-  padding: 0.7cqw 1.6cqw;
+  padding: 0.7em 1.6em;
   font-family: gameboy;
-  font-size: 1.4cqw;
+  font-size: min(2cqw, 1.4vw);
   cursor: pointer;
   color: #fbfbf0;
   background: #5c0013;
@@ -164,6 +174,56 @@ const FadeToBlack = styled.div`
   justify-content: center;
   background: black;
   animation: ${fadeIn} 0.9s ease-in both;
+`;
+
+// between scenes. the clouds pass over these.
+const SCENE_FADE = {
+  outMs: 450,
+  blackMs: 250, // the screen stays black this long before the new scene comes up
+  inMs: 800
+};
+
+const SceneCover = styled.div`
+  position: fixed;
+  inset: 0;
+  z-index: 2147483646;
+  pointer-events: none;
+  background: black;
+`;
+
+const fadeOutOfBlack = keyframes`
+  from { opacity: 1; }
+  to { opacity: 0; }
+`;
+
+const SceneFadeOut = styled(SceneCover)`
+  animation: ${fadeIn} ${SCENE_FADE.outMs}ms ease-in both;
+`;
+
+const SceneFadeIn = styled(SceneCover)`
+  animation: ${fadeOutOfBlack} ${SCENE_FADE.inMs}ms ease-out ${SCENE_FADE.blackMs}ms both;
+`;
+
+const WIPE_MS = 1800;
+
+// black rises up from the bottom edge, holds, and carries on up to show the next shot.
+// the band is 260% of the screen's height, with 40% of it black, or 104% of the screen.
+const blackWipe = keyframes`
+  from { transform: translateY(38.5%); }
+  40%, 60% { transform: translateY(-30.8%); }
+  to { transform: translateY(-100%); }
+`;
+
+const BlackWipe = styled.div`
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 260%;
+  z-index: 2147483647;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, black 30%, black 70%, transparent);
+  animation: ${blackWipe} ${WIPE_MS}ms ease-in-out both;
 `;
 
 const LevelPicker = styled.select`
@@ -207,6 +267,25 @@ export const FloatingEffect = styled.div<{ styles?: string; duration?: string }>
 }`;
 
 const MATCH_END_DELAY_MS = 700;
+const SCENE_SLIDE_MS = 900;
+
+// a rising pair of notes, for finding something
+const playUnlockDing = () => {
+  try {
+    const audio = new AudioContext();
+    [[880, 0], [1320, 0.12]].forEach(([frequency, startSeconds]) => {
+      const tone = audio.createOscillator();
+      const volume = audio.createGain();
+      tone.frequency.value = frequency;
+      tone.type = "square";
+      volume.gain.setValueAtTime(0.08, audio.currentTime + startSeconds);
+      volume.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + startSeconds + 0.35);
+      tone.connect(volume).connect(audio.destination);
+      tone.start(audio.currentTime + startSeconds);
+      tone.stop(audio.currentTime + startSeconds + 0.35);
+    });
+  } catch { /* (no sound) */ }
+};
 
 const RECRUIT_TIMING = {
   titleMs: 2800, // how long the title and slow motion last before the choice
@@ -215,14 +294,14 @@ const RECRUIT_TIMING = {
 };
 
 const RECRUIT_CARDS = {
-  punk: { avatar: 'punk', label: 'Punk' },
-  black_female: { avatar: 'black_female', label: 'New recruit' },
+  punk: { avatar: 'punk', label: 'Punk Guy' },
+  black_female: { avatar: 'black_female', label: 'Punk Girl' },
   mermaid: { avatar: 'mermaid', label: 'Mermaid' }
 };
 
 export const Game = ({ handleClickHome, triggerTransition }) => {
-  const { selectedAvatar, selectedDifficulty, settingsManager } = useContext(GlobalSettingsContext);
-  const { isPaused, winner, isPlayerDead, players, kaijuKillCount, kaijuToWin, activePhases, isWideShot, unlockMessage, unlockImage, speech, recruitScene } = useSnapshot(gameUiStore);
+  const { selectedAvatar, setSelectedAvatar, selectedTeammate, setSelectedTeammate, selectedDifficulty, settingsManager } = useContext(GlobalSettingsContext);
+  const { isPaused, winner, isPlayerDead, players, kaijuKillCount, kaijuToWin, activePhases, isWideShot, isCutscene, unlockMessage, unlockImage, speech, recruitScene } = useSnapshot(gameUiStore);
 
   const startingLevelId = new URLSearchParams(window.location.search).get('level');
   const [levelId, setLevelId] = useState(startingLevelId || PENINSULA.id);
@@ -247,7 +326,6 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     savePlayWindow(next);
   };
   const [isEditingTiles, setIsEditingTiles] = useState(false);
-  const [isEditorPanelOnRight, setIsEditorPanelOnRight] = useState(false);
   const [matchCount, setMatchCount] = useState(0); // the board starts fresh with each match
   const [pickedAbilities, setPickedAbilities] = useState([]);
   const [isPlayingGame, setIsPlayingGame] = useState(false);
@@ -255,23 +333,48 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const [radioLines, setRadioLines] = useState(undefined);
   const [matchEnd, setMatchEnd] = useState(undefined); // the title over the board once a match is decided
   const [recruitChoice, setRecruitChoice] = useState(undefined);
+  const [leavingFor, setLeavingFor] = useState(undefined); // the Lab screen the scene is sliding away for
+  const [isResumingRadio, setIsResumingRadio] = useState(false);
+  const isOnLabDetour = useRef(false);
+  const [labScreen, setLabScreen] = useState(undefined); // 'avatars' or 'colors'
+  const [labCover, setLabCover] = useState(undefined); // 'in' or 'out': the Lab screen's fade from or to black
   const [fadeCard, setFadeCard] = useState(undefined); // the screen is fading to black, and this is the unlock shown on it
+  const [isFadingOut, setIsFadingOut] = useState(false);
+  const [isWiping, setIsWiping] = useState(false);
+  const isLeavingScene = useRef(false);
 
   const endMatch = () => {
     if (gameLoop.current) gameLoop.current.stop();
     gameLoop.current = null;
     gameManager.current = null;
+    isLeavingScene.current = false;
+    setIsFadingOut(false);
+    setIsWiping(false);
+  };
+
+  // the next scene only ever comes up out of a black screen
+  const fadeOutThen = callback => {
+    if (isLeavingScene.current) return;
+    isLeavingScene.current = true;
+    setIsFadingOut(true);
+    setTimeout(callback, SCENE_FADE.outMs);
+  };
+
+  const leaveWithClouds = callback => {
+    fadeOutThen(callback);
+    triggerTransition();
   };
 
   // the game stops when the player leaves the page
   useEffect(() => endMatch, []);
 
-  const startMatch = (matchLevel = level, hasArrival = false) => {
+  const startMatch = (matchLevel = level, hasArrival = false, killsToWin = undefined) => {
     settingsManager.updatePlayerAvatar(selectedAvatar);
+    settingsManager.setTeammateAvatar(selectedTeammate);
     settingsManager.setDifficulty(selectedDifficulty);
     settingsManager.setIsTeammate(isTeammate);
 
-    const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival });
+    const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival, killsToWin });
     gm.initGame();
     gameManager.current = gm;
     resetGameUi();
@@ -289,6 +392,9 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
       }
     });
     gameLoop.current.start();
+    isLeavingScene.current = false;
+    setIsFadingOut(false);
+    if (matchLevel.id == 'labIntro') unlockTool('abilityEditor');
     setIsEditingTiles(false);
     setMatchCount(count => count + 1);
     setFullScreenPageData(undefined);
@@ -328,6 +434,16 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     switchLevel(ids[(ids.indexOf(level.id) + step + ids.length) % ids.length]);
   };
 
+  useEffect(() => {
+    if (unlockMessage) playUnlockDing();
+  }, [unlockMessage]);
+
+  // a mock-up: in dev, everyone shows until the player has recruited someone
+  const getCallableRecruits = () => {
+    const recruited = Object.entries(getRecruitChoices()).filter(([, choice]) => choice == "recruit").map(([avatar]) => avatar);
+    return recruited.length || !import.meta.env.DEV ? recruited : ["punk", "black_female", "mermaid"];
+  };
+
   const levelOptions = Object.values(LEVELS).map(({ id, name }) => <option key={id} value={id}>{name}</option>);
 
   const resetMatch = () => {
@@ -348,7 +464,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   };
 
   const showSection = index => {
-    const { levelId: sectionLevelId, radio } = CAMPAIGN_SECTIONS[index];
+    const { levelId: sectionLevelId, radio, kills } = CAMPAIGN_SECTIONS[index];
     endMatch();
     resetGameUi();
     setCampaignIndex(index);
@@ -357,18 +473,22 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     setMatchEnd(undefined);
     setRecruitChoice(undefined);
     setFadeCard(undefined);
+    setIsResumingRadio(false);
     if (radio) setRadioLines(radio(getRadioContext()));
-    else startMatch(LEVELS[sectionLevelId]);
+    else startMatch(LEVELS[sectionLevelId], false, kills);
   };
 
   // goes back through the ability picker, which returns to this section's call
-  const handleChangePowers = () => {
-    setRadioLines(undefined);
+  const handleChangePowers = lastLine => {
+    setRadioLines([lastLine]);
+    setIsResumingRadio(true);
     setIsPlayingGame(false);
   };
 
   const handleClickPlay = () => {
-    if (campaignIndex !== null) {
+    if (isResumingRadio) {
+      // back to the end of the call
+    } else if (campaignIndex !== null) {
       showSection(campaignIndex);
     } else {
       setFullScreenPageData({
@@ -391,17 +511,68 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
       return { title, buttons: [{ text: "Play again", onClick: () => triggerTransition(resetMatch) }, { text: "Leave", onClick: handleClickHome }] };
     }
     if (!isWon) {
-      return { title, buttons: [{ text: "Try again", onClick: () => showSection(campaignIndex) }, { text: "Leave", onClick: handleClickHome }] };
+      return { title, buttons: [{ text: "Try again", onClick: () => fadeOutThen(() => showSection(campaignIndex)) }, { text: "Leave", onClick: handleClickHome }] };
     }
     if (getIsLastSection(campaignIndex)) {
       return { title: "You saved the city!", buttons: [{ text: "Play again", onClick: () => { setCampaignIndex(0); triggerTransition(resetMatch); } }, { text: "Leave", onClick: handleClickHome }] };
     }
-    return { title, buttons: [{ text: "Continue", onClick: () => showSection(campaignIndex + 1) }] };
+    return { title, buttons: [{ text: "Continue", onClick: () => fadeOutThen(() => showSection(campaignIndex + 1)) }] };
+  };
+
+  const visitLab = () => {
+    isOnLabDetour.current = true;
+    setLevelId('labIntro');
+    endMatch();
+    startMatch(LEVELS.labIntro);
+  };
+
+  const openLabScreen = screen => {
+    if (screen == "exit") {
+      leaveWithClouds(leaveLevel);
+      return;
+    }
+    if (screen == "agentTalk") {
+      gameManager.current.setPhase(LAB_TALK_PHASE, true);
+      return;
+    }
+    unlockTool(screen);
+    setLeavingFor(screen);
+    setTimeout(() => {
+      setLabScreen(screen);
+      setLabCover("in");
+    }, SCENE_SLIDE_MS);
+  };
+
+  const closeLabScreen = () => {
+    setLabCover("out");
+    setTimeout(() => {
+      setLabScreen(undefined);
+      setLabCover(undefined);
+      setLeavingFor(undefined);
+    }, SCENE_FADE.outMs);
+  };
+
+  const chooseTeam = (player, teammate) => {
+    setSelectedAvatar(player);
+    setSelectedTeammate(teammate);
+    saveTeamAvatars(player, teammate);
+    if (gameManager.current) gameManager.current.changeTeamAvatars(player, teammate);
+  };
+
+  const irradiate = color => {
+    saveAvatarColor(selectedAvatar, color);
+    gameManager.current.getPieces()[0].setColor(color);
   };
 
   const leaveLevel = () => {
-    if (campaignIndex !== null) showSection(campaignIndex + 1);
-    else triggerTransition(resetMatch);
+    if (isOnLabDetour.current) {
+      isOnLabDetour.current = false;
+      const { levelId: mapLevelId } = CAMPAIGN_SECTIONS[campaignIndex];
+      setLevelId(mapLevelId);
+      endMatch();
+      startMatch(LEVELS[mapLevelId]);
+    } else if (campaignIndex !== null) showSection(campaignIndex + 1);
+    else resetMatch();
   };
 
   // confirmed, then fade to black, then the recruit's avatar: unlocked whichever way the player chose
@@ -411,7 +582,9 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     setRecruitChoice(choice);
     saveRecruitChoice(level.rival.avatar, choice);
     addUnlock(level.rival.avatar);
-    setTimeout(() => setFadeCard({ label: `${label} unlocked!`, image: `/levels/portraits/${avatar}.png` }), RECRUIT_TIMING.confirmMs);
+    const skill = choice == "terminate" ? unlockRecruitSkill(level.rival.avatar) : undefined;
+    const reward = skill ? ` ${skill.name} power unlocked!` : "";
+    setTimeout(() => setFadeCard({ label: `${label} unlocked!${reward}`, image: `/levels/portraits/${avatar}.png` }), RECRUIT_TIMING.confirmMs);
     setTimeout(leaveLevel, RECRUIT_TIMING.confirmMs + RECRUIT_TIMING.cardMs);
   };
 
@@ -449,26 +622,41 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
 
   useEffect(() => {
     if (winner === null || !isPlayingGame) return;
-    if (level.isWalkingLevel) {
-      leaveLevel();
+    const isWon = winner === GameResult.PlayerWon;
+    if (level.isWalkingLevel && isWon) {
+      const site = gameManager.current && gameManager.current.reachedSite;
+      leaveWithClouds(site && site.isDetour ? visitLab : leaveLevel);
       return;
     }
-    const isWon = winner === GameResult.PlayerWon;
+    if (isWon && level.agentDrops) unlockRecruitSkill("agent");
+    if (isWon && campaignIndex !== null && getIsLastSection(campaignIndex)) addUnlock("agent");
     const titleTimeoutRef = setTimeout(() => setMatchEnd(getMatchEnd(isWon)), MATCH_END_DELAY_MS);
     if (!isWon || !level.rival) return () => clearTimeout(titleTimeoutRef);
 
+    // black rises over the fight. the scene is set while it is dark, with everyone and the camera already in place.
+    const wipeTimeoutRef = setTimeout(() => setIsWiping(true), MATCH_END_DELAY_MS + RECRUIT_TIMING.titleMs);
     const sceneTimeoutRef = setTimeout(() => {
       setMatchEnd(undefined);
       gameManager.current.startRecruitScene();
       publishGameUi(gameManager.current.getUiState());
-    }, MATCH_END_DELAY_MS + RECRUIT_TIMING.titleMs);
+    }, MATCH_END_DELAY_MS + RECRUIT_TIMING.titleMs + WIPE_MS / 2);
+    const wipeEndRef = setTimeout(() => setIsWiping(false), MATCH_END_DELAY_MS + RECRUIT_TIMING.titleMs + WIPE_MS);
     return () => {
-      clearTimeout(titleTimeoutRef);
-      clearTimeout(sceneTimeoutRef);
+      [titleTimeoutRef, wipeTimeoutRef, sceneTimeoutRef, wipeEndRef].forEach(clearTimeout);
     };
   }, [winner, isPlayingGame, campaignIndex]);
 
-  return (
+  const sceneFades = isPlayingGame && createPortal(
+    <>
+      <SceneFadeIn key={radioLines ? `radio ${campaignIndex}` : `match ${matchCount}`} />
+      {isFadingOut && <SceneFadeOut />}
+      {labCover == "in" && <SceneFadeIn style={{ zIndex: 2147483647 }} />}
+      {labCover == "out" && <SceneFadeOut style={{ zIndex: 2147483647 }} />}
+    </>,
+    document.body
+  );
+
+  const screen = (
     !isPlayingGame ?
       <>
       {import.meta.env.DEV && (
@@ -481,8 +669,6 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
         pickedAbilities={pickedAbilities}
         setPickedAbilities={setPickedAbilities}
         handleClickPlay={handleClickPlay}
-        playerData={[]}
-        numAbilitiesToPick={3}
         isTeammate={isTeammate}
         setIsTeammate={setIsTeammate}
       />
@@ -492,7 +678,12 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
           key={campaignIndex}
           lines={radioLines}
           playerAvatar={selectedAvatar}
-          onGo={() => startMatch(LEVELS[CAMPAIGN_SECTIONS[campaignIndex].levelId], CAMPAIGN_SECTIONS[campaignIndex].hasArrival)}
+          teammateAvatar={settingsManager.getTeammateAvatar()}
+          isResuming={isResumingRadio}
+          onGo={() => {
+            const { levelId: sectionLevelId, hasArrival, kills } = CAMPAIGN_SECTIONS[campaignIndex];
+            fadeOutThen(() => startMatch(LEVELS[sectionLevelId], hasArrival, kills));
+          }}
           onChangePowers={handleChangePowers}
         />
       : fullScreenPageData ?
@@ -502,8 +693,54 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
           image={fullScreenPageData.image}
         />
         : !gameManager.current ? null : (<GameArea>
-          <GameFrame data-game-frame>
-            <PlayWindow playWindow={playWindow} setPlayWindow={updatePlayWindow} isAdjusting={isAdjustingWindow} isOpen={isWideShot || level.isWalkingLevel}>
+          {import.meta.env.DEV && (
+            <PhaseToggles>
+              <select aria-label="Level" value={level.id} onChange={e => { switchLevel(e.target.value); e.target.blur(); }}>
+                {levelOptions}
+              </select>
+              <select aria-label="Section" value={campaignIndex ?? ""} onChange={e => { showSection(Number(e.target.value)); e.target.blur(); }}>
+                {campaignIndex === null && <option value="">Campaign section</option>}
+                {CAMPAIGN_SECTIONS.map(({ label }, index) => <option key={label} value={index}>{index + 1}. {label}</option>)}
+              </select>
+              {campaignIndex !== null && !getIsLastSection(campaignIndex) && <button onClick={() => showSection(campaignIndex + 1)}>Skip section</button>}
+              {level.phases.map(({ id, label }) => (
+                <label key={id}>
+                  <input type="checkbox" checked={activePhases.includes(id)} onChange={() => togglePhase(id)} /> {label}
+                </label>
+              ))}
+              <label>
+                <input type="checkbox" checked={isWholeScene} onChange={() => setIsWholeScene(!isWholeScene)} /> Whole scene
+              </label>
+              <label>
+                <input type="checkbox" checked={isMouseLook} onChange={() => setIsMouseLook(!isMouseLook)} /> Mouse look
+              </label>
+              <label>
+                <input type="checkbox" checked={isEnemyZoom} onChange={() => setIsEnemyZoom(!isEnemyZoom)} /> Enemy zoom
+              </label>
+              <label>
+                <input type="checkbox" checked={isAdjustingWindow} onChange={() => setIsAdjustingWindow(!isAdjustingWindow)} /> Adjust window
+              </label>
+              {isAdjustingWindow && <button onClick={() => updatePlayWindow(PORTRAIT_WINDOW)}>Portrait window</button>}
+              {isAdjustingWindow && <button onClick={() => updatePlayWindow(FULL_WINDOW)}>Full window</button>}
+              {LEVEL_FILES[level.id] && (
+                <label>
+                  <input type="checkbox" checked={isEditingTiles} onChange={() => setIsEditing(!isEditingTiles)} /> Edit tiles
+                </label>
+              )}
+              <button onClick={resetUnlocks}>Reset unlocks</button>
+              {isEditingTiles && (
+                <TileEditor
+                  key={`${level.id} ${matchCount}`}
+                  levelId={level.id}
+                  playWindow={playWindow}
+                  onSaved={playSavedLevel}
+                  onCancel={() => setIsEditing(false)}
+                />
+              )}
+            </PhaseToggles>
+          )}
+          <GameFrame data-game-frame style={leavingFor ? { transform: `translateX(${leavingFor == "colors" ? -45 : 45}%)`, opacity: 0 } : undefined}>
+            <PlayWindow playWindow={playWindow} setPlayWindow={updatePlayWindow} isAdjusting={isAdjustingWindow} isOpen={isWideShot || (level.isWalkingLevel && !level.isMapWalk)} isCut={!!recruitScene}>
               <GameBoard
                 key={`${level.id} ${matchCount}`}
                 isPaused={isPaused}
@@ -521,75 +758,32 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 recruitScene={recruitScene}
                 recruitChoice={recruitChoice}
                 onChooseRecruit={handleChooseRecruit}
+                onHotspot={openLabScreen}
               />
+              {matchEnd && (
+                <EndScreen>
+                  <EndTitle>{matchEnd.title}</EndTitle>
+                  {(!level.rival || winner !== GameResult.PlayerWon) && <EndButtons>{matchEnd.buttons.map(({ text, onClick }) => <EndButton key={text} onClick={onClick}>{text}</EndButton>)}</EndButtons>}
+                </EndScreen>
+              )}
             </PlayWindow>
-            {import.meta.env.DEV && (
-              <PhaseToggles style={isEditingTiles && isEditorPanelOnRight ? { left: 'auto', right: '1cqw' } : undefined}>
-                <select aria-label="Level" value={level.id} onChange={e => { switchLevel(e.target.value); e.target.blur(); }}>
-                  {levelOptions}
-                </select>
-                <select aria-label="Section" value={campaignIndex ?? ""} onChange={e => { showSection(Number(e.target.value)); e.target.blur(); }}>
-                  {campaignIndex === null && <option value="">Campaign section</option>}
-                  {CAMPAIGN_SECTIONS.map(({ label }, index) => <option key={label} value={index}>{index + 1}. {label}</option>)}
-                </select>
-                {campaignIndex !== null && !getIsLastSection(campaignIndex) && <button onClick={() => showSection(campaignIndex + 1)}>Skip section</button>}
-                {level.phases.map(({ id, label }) => (
-                  <label key={id}>
-                    <input type="checkbox" checked={activePhases.includes(id)} onChange={() => togglePhase(id)} /> {label}
-                  </label>
-                ))}
-                <label>
-                  <input type="checkbox" checked={isWholeScene} onChange={() => setIsWholeScene(!isWholeScene)} /> Whole scene
-                </label>
-                <label>
-                  <input type="checkbox" checked={isMouseLook} onChange={() => setIsMouseLook(!isMouseLook)} /> Mouse look
-                </label>
-                <label>
-                  <input type="checkbox" checked={isEnemyZoom} onChange={() => setIsEnemyZoom(!isEnemyZoom)} /> Enemy zoom
-                </label>
-                <label>
-                  <input type="checkbox" checked={isAdjustingWindow} onChange={() => setIsAdjustingWindow(!isAdjustingWindow)} /> Adjust window
-                </label>
-                {isAdjustingWindow && <button onClick={() => updatePlayWindow(PORTRAIT_WINDOW)}>Portrait window</button>}
-                {isAdjustingWindow && <button onClick={() => updatePlayWindow(FULL_WINDOW)}>Full window</button>}
-                <label>
-                  <input type="checkbox" checked={isEditingTiles} onChange={() => setIsEditing(!isEditingTiles)} /> Edit tiles
-                </label>
-                {isEditingTiles && (
-                  <TileEditor
-                    key={`${level.id} ${matchCount}`}
-                    levelId={level.id}
-                    playWindow={playWindow}
-                    onSaved={playSavedLevel}
-                    onCancel={() => setIsEditing(false)}
-                    onMovePanel={() => setIsEditorPanelOnRight(!isEditorPanelOnRight)}
-                  />
-                )}
-              </PhaseToggles>
-            )}
+            {isWiping && <BlackWipe />}
             {unlockMessage && <UnlockCard><UnlockPortrait src={unlockImage} />{unlockMessage}</UnlockCard>}
-            {matchEnd && !level.rival && (
-              <EndScreen>
-                <EndTitle>{matchEnd.title}</EndTitle>
-                <EndButtons>{matchEnd.buttons.map(({ text, onClick }) => <EndButton key={text} onClick={onClick}>{text}</EndButton>)}</EndButtons>
-              </EndScreen>
-            )}
-            {matchEnd && level.rival && (
-              <EndScreen>
-                <EndTitle>{matchEnd.title}</EndTitle>
-                {winner !== GameResult.PlayerWon && <EndButtons>{matchEnd.buttons.map(({ text, onClick }) => <EndButton key={text} onClick={onClick}>{text}</EndButton>)}</EndButtons>}
-              </EndScreen>
-            )}
             {fadeCard && <FadeToBlack><UnlockCard style={{ position: "static", transform: "none" }}><UnlockPortrait src={fadeCard.image} />{fadeCard.label}</UnlockCard></FadeToBlack>}
-            {campaignIndex !== null && level.isWalkingLevel && !level.goalTiles.length && !level.exit && !isEditingTiles && (
+            {campaignIndex !== null && level.isWalkingLevel && !level.sites && !level.exit && !level.walkIn && !isEditingTiles && (
               <ContinueButton onClick={() => showSection(campaignIndex + 1)}>Continue</ContinueButton>
+            )}
+            {labScreen == "avatars" && <AvatarRoster player={selectedAvatar} teammate={selectedTeammate} onChoose={chooseTeam} onClose={closeLabScreen} />}
+            {labScreen == "colors" && <IrradiationVat avatar={selectedAvatar} startColor={getAvatarColor(selectedAvatar)} onIrradiate={irradiate} onClose={closeLabScreen} />}
+            {!level.isWalkingLevel && !isEditingTiles && !recruitScene && getCallableRecruits().length > 0 && (
+              <RecruitCalls key={matchCount} recruits={getCallableRecruits()} firstNumber={players.length * 3 + 1} isDisabled={isPaused} />
             )}
             {!isEditingTiles && <UI
               players={players}
               kaijuKillCount={kaijuKillCount}
               kaijuKilledToWin={kaijuToWin}
               isKaijuLevel={!!level.kaijuEntry}
-              isShowingHuds={!level.isWalkingLevel}
+              isShowingHuds={!level.isWalkingLevel && !isCutscene && !recruitScene}
               handleClickHome={handleClickHome}
               handleClickPause={handleClickPause}
               onUseAbility={handleUseAbility}
@@ -598,4 +792,6 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
           </GameFrame>
         </GameArea>)
   );
+
+  return <>{screen}{sceneFades}</>;
 };

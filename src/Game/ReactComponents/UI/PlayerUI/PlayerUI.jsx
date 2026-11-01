@@ -279,7 +279,7 @@ export const PlayerUI = ({
       )}
       <PlayerBorder isBlue={gender == "guy" ? true : false} isReversed={isTeammate ? true : false}>
         <PlayerPicture
-          src={gender == "guy" ? "player_avatar.png" : "teammate_avatar.png"}
+          src={gender == "guy" ? "player_avatar.png" : gender == "girl" ? "teammate_avatar.png" : `/levels/portraits/hud-${gender}.png`}
           className="fa fa-user-circle"
           isBlue={gender == "guy" ? true : false}
         />

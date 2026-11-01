@@ -1,205 +1,256 @@
 import React, { useState, useContext } from "react";
 import styled from "styled-components";
-import { Abilities } from "Tutorial/Components/Abilities";
-import { DescriptionDisplay } from "./UI/DescriptionDisplay";
-import {
-  ButtonsWrapper,
-  Button,
-  ButtonOutline
-} from "../../Components/StyledComponents";
 import { GlobalSettingsContext } from 'Home';
+import { getSciFiClass } from "../DataClasses/sciFiClasses";
+import { getIsSkillOpen, getSkillUnlock } from "../DataClasses/Avatars";
 
-const Wrapper = styled.div`
+const PICK_COUNT = 3;
+
+const GROUPS = [
+  { label: "Offense", getIsInGroup: ({ type }) => type[0] == "offensive" },
+  { label: "Defense", getIsInGroup: ({ type }) => type[0] == "defensive" },
+  { label: "Utility", getIsInGroup: ({ type }) => type[0] != "offensive" && type[0] != "defensive" }
+];
+
+const Backdrop = styled.div`
+  position: fixed;
+  inset: 0;
   display: flex;
-  height: auto;
-  width: auto;
-  background-color: #152642;
-  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  align-self: center;
-  align-items: center;
-  border-radius: 10px;
-  border-style: solid;
-  border-thickness: thin;
-  border-radius: 10px;
-  border-color: #db974f;
-  -webkit-animation-duration: 1s;
-  animation-duration: 1s;
-  -webkit-animation-name: fadeInUp;
-  animation-name: fadeInUp;
-  @keyframes fadeInUp {
-    0% {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    10% {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    100% {
-      opacity: 1;
-      transform: translateY(0);
-    }
+  background: radial-gradient(circle, #2b2d32, #0b0c0e 75%);
+
+  /* the circuit board, tinted, and melting away into the background in places */
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: url(/circuit-board.png);
+    image-rendering: pixelated;
+    -webkit-mask-image: radial-gradient(ellipse 45% 60% at 12% 25%, black, transparent), radial-gradient(ellipse 50% 55% at 88% 80%, black, transparent), radial-gradient(ellipse 30% 35% at 70% 8%, rgba(0, 0, 0, 0.7), transparent);
+    mask-image: radial-gradient(ellipse 45% 60% at 12% 25%, black, transparent), radial-gradient(ellipse 50% 55% at 88% 80%, black, transparent), radial-gradient(ellipse 30% 35% at 70% 8%, rgba(0, 0, 0, 0.7), transparent);
+  }
+
+  /* a plastic sheen across the board */
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(125deg, transparent 18%, rgba(255, 255, 255, 0.1) 26%, transparent 34%, transparent 62%, rgba(255, 255, 255, 0.07) 70%, transparent 78%),
+      linear-gradient(135deg, rgba(70, 120, 150, 0.16), transparent 45%, rgba(120, 90, 150, 0.14));
   }
 `;
-const AbilityButtonsWrapper = styled.div`
+
+const Panel = styled.div`
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
-  justify-content: space-around;
-  // border: 1px solid white;
-  width: 100%;
-  overflow: hidden;
-  overflow-x: hidden;
-  overflow-y: hidden;
-  &::-webkit-scrollbar {
-    display: none; /* for Chrome, Safari, and Opera */
-    width: 0; /* Remove scrollbar space */
-    background: transparent; /* Optional: just make scrollbar invisible */
-  }
+  gap: 16px;
+  width: min(880px, 92vw);
+  padding: 22px 26px;
+  color: #d9dade;
+  background: linear-gradient(160deg, #3a3c42, #1c1d21 45%, #2b2d32);
+  border: 3px solid #8d9097;
+  box-shadow: 0 0 0 2px #08080a, inset 0 0 0 2px #08080a, 0 10px 30px black;
 `;
-const Title = styled.div`
-  ${props =>
-    props.fontSize !== undefined
-      ? `font-size: ${props.fontSize}px;`
-      : "font-size: 29px;"}
-  font-alignment: 30px;
-  display: flex;
-  margin-left: 50px;
-  color: #db974f;
-  align-items: center;
-`;
-const DescriptionDisplayWrapper = styled.div`
-  display: flex;
-  position: relative;
-  justify-content: space-around;
-  width: 100%;
-  margin-top: 15px;
-`;
-export const ButtonGroup = styled.div`
-  /* position: absolute; */
-  /* z-index: 2; */
-  display: flex;
-  justify-content: flex-end;
-  // flex-direction: row;
-  align-items: center;
-  width: 80%;
-  height: 30px;
-  top: 20px;
-  right: 30px;
-  bottom: 30px;
-  transform: scale(1.2, 1.5);
 
-  ${props => props.margin ? `margin: ${props.margin}` : `margin-top: 80px; margin-bottom: 20px;`}
-  // /* background-color: orange; */
+const Title = styled.div`
+  font-size: 26px;
+  letter-spacing: 1px;
 `;
-const CheckboxWrapper = styled.div`
-  width: 100%;
+
+const Groups = styled.div`
   display: flex;
-  justify-content: space-between;
-  margin: 20px;
+  flex-wrap: wrap;
+  gap: 18px;
 `;
-const CheckboxText = styled.div`
+
+const Group = styled.div`
   display: flex;
-  width: 200px;
-  margin: 10px;
-  color: #db974f;
-  text-stroke: 0.5px black;
-  -webkit-text-stroke: 0.5px black;
+  flex-direction: column;
+  gap: 8px;
 `;
-const Checkbox = styled.div`
+
+const GroupLabel = styled.div`
+  font-size: 13px;
+  color: #8d9097;
+`;
+
+const Powers = styled.div`
   display: flex;
-  margin-top: 3px;
-  margin-left: 10px;
-  border-style: solid;
-  border-thickness: thin;
-  width: 10px;
-  height: 10px;
+  flex-wrap: wrap;
+  gap: 8px;
+`;
+
+const PowerButton = styled.button`
+  position: relative;
+  width: 64px;
+  height: 64px;
+  cursor: ${props => props.disabled ? "not-allowed" : "pointer"};
+  font-size: 26px;
+  background: ${props => props.$isPicked ? "#d9dade" : "linear-gradient(#4a4c52, #1f2024)"};
+  border: 2px solid ${props => props.$isPicked ? "white" : "#5a5d64"};
+  border-radius: 50%;
   &:hover {
-    background-color: #d064ed;
+    border-color: white;
   }
 `;
-const Checkmark = styled.i`
-  margin-left: -2px;
-  margin-top: -5px;
+
+const LockBadge = styled.i`
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  padding: 4px 5px;
+  font-size: 12px;
+  color: #d9dade;
+  background: #0b0c0e;
+  border-radius: 50%;
 `;
+
+const Description = styled.div`
+  min-height: 150px;
+  padding: 14px;
+  font-size: 13px;
+  line-height: 1.6;
+  background: #0f1012;
+  border: 2px solid #4a4c52;
+`;
+
+const ClassLine = styled.div`
+  min-height: 24px;
+  font-size: 13px;
+  line-height: 1.6;
+`;
+
+const ClassName = styled.span`
+  margin-right: 12px;
+  font-size: 18px;
+  color: white;
+`;
+
+const PowerName = styled.div`
+  margin-bottom: 8px;
+  font-size: 16px;
+`;
+
+const Footer = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 13px;
+`;
+
+const TeammateToggle = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+`;
+
+const Buttons = styled.div`
+  display: flex;
+  gap: 10px;
+`;
+
+const MetalButton = styled.button`
+  padding: 10px 22px;
+  font-family: gameboy;
+  font-size: 15px;
+  cursor: pointer;
+  color: #d9dade;
+  background: linear-gradient(#5a5d64, #2b2d32);
+  border: 2px solid #8d9097;
+  &:disabled {
+    cursor: default;
+    opacity: 0.45;
+  }
+`;
+
 export const AbilityPicker = ({
   handleClickHome,
   pickedAbilities,
   setPickedAbilities,
   handleClickPlay,
-  playerData,
-  numAbilitiesToPick,
   isTeammate,
   setIsTeammate
 }) => {
   const { settingsManager } = useContext(GlobalSettingsContext);
+  const [powers] = useState(() => {
+    settingsManager.initAbilityStatusData();
+    return Object.values(settingsManager.getAbilityAndTileStatusData()).filter(({ element }) => element != "kaijuFire");
+  });
+  const [shownPower, setShownPower] = useState(undefined);
 
-  const [displayString, setDisplayString] = useState(null);
-  const handleChange = element => {
-    let _pickedAbilities;
-    if (pickedAbilities.includes(element)) {
-      _pickedAbilities = [...pickedAbilities, element]
-        .filter(pickedElement => pickedElement !== element)
-        .sort((a1, a2) => a1.localeCompare(a2));
-      setPickedAbilities(_pickedAbilities);
-    } else if (pickedAbilities.length < numAbilitiesToPick) {
-      _pickedAbilities = [...pickedAbilities, element].sort((a1, a2) =>
-        a1.localeCompare(a2)
-      );
-      setPickedAbilities(_pickedAbilities);
-    }
-    if (_pickedAbilities) settingsManager.setSortedPlayerChosenAbilityElementsString(_pickedAbilities);
+  const togglePower = power => {
+    const element = power.getElementUppercase();
+    const isPicked = pickedAbilities.includes(element);
+    if (!isPicked && pickedAbilities.length >= PICK_COUNT) return;
+    const picked = (isPicked ? pickedAbilities.filter(other => other != element) : [...pickedAbilities, element]).sort((a, b) => a.localeCompare(b));
+    setPickedAbilities(picked);
+    settingsManager.setSortedPlayerChosenAbilityElementsString(picked);
   };
-  const isPlayButtonDisabled = Array.isArray(pickedAbilities) && pickedAbilities.length < 3;
+
+  const getLockedText = ({ element }) => `Terminate ${getSkillUnlock(element).recruitName} to unlock this power.`;
+  const isReady = pickedAbilities.length == PICK_COUNT;
+  const playerClass = isReady ? getSciFiClass(pickedAbilities) : undefined;
+
   return (
-    <>
-      <Wrapper>
-        <AbilityButtonsWrapper>
-          <div style={{ height: "75px" }}>
+    <Backdrop>
+    <Panel>
+      <Title>Choose your abilities</Title>
+      <Groups>
+        {GROUPS.map(({ label, getIsInGroup }) => (
+          <Group key={label}>
+            <GroupLabel>{label}</GroupLabel>
+            <Powers>
+              {powers.filter(getIsInGroup).map(power => {
+                const isOpen = getIsSkillOpen(power.element);
+                return (
+                  <PowerButton
+                    key={power.element}
+                    aria-label={power.activeName}
+                    disabled={!isOpen}
+                    $isPicked={pickedAbilities.includes(power.getElementUppercase())}
+                    onClick={() => togglePower(power)}
+                    onMouseEnter={() => setShownPower(power)}
+                  >
+                    <i className={`fa ${power.activeIcon}`} style={{ color: isOpen ? power.color : "#5a5d64" }} />
+                    {!isOpen && <LockBadge className="fa fa-lock" />}
+                  </PowerButton>
+                );
+              })}
+            </Powers>
+          </Group>
+        ))}
+      </Groups>
+      <Description>
+        {shownPower ? (
+          <>
+            <PowerName>{shownPower.activeName}</PowerName>
+            {getIsSkillOpen(shownPower.element) ? shownPower.activeDesc : getLockedText(shownPower)}
             <br />
-            <Title>Choose your abilities</Title>
-          </div>
-          <Abilities
-            handleChange={handleChange}
-            pickedAbilities={pickedAbilities}
-            setDisplayString={setDisplayString}
-          />
-        </AbilityButtonsWrapper>
-        <DescriptionDisplayWrapper>
-          <DescriptionDisplay
-            isClassWrapper={true}
-            displayString={displayString}
-            pickedAbilities={pickedAbilities}
-            playerData={playerData}
-            isTutorial={true}
-          />
-        </DescriptionDisplayWrapper>
-        <CheckboxWrapper>
-          <Title alignContent={"flex-start"} fontSize={15}>
-            Pick 3 abilities
-          </Title>
-          <CheckboxText>
-            Teammate?
-            <Checkbox onClick={() => setIsTeammate(_isT => !_isT)}>
-              {isTeammate && <Checkmark className="fa fa-check" />}
-            </Checkbox>
-          </CheckboxText>
-        </CheckboxWrapper>
-        <ButtonGroup margin={`60px 0px -10px 0px`}>
-          <ButtonsWrapper>
-            <Button disabled={isPlayButtonDisabled} onClick={isPlayButtonDisabled ? () => { } : handleClickPlay}>
-              <ButtonOutline zIndex={1} />
-              Play!
-            </Button>
-          </ButtonsWrapper>
-          <ButtonsWrapper>
-            <Button onClick={handleClickHome}>
-              <ButtonOutline zIndex={1} />
-              Back
-            </Button>
-          </ButtonsWrapper>
-        </ButtonGroup>
-      </Wrapper>
-    </>
+            {getIsSkillOpen(shownPower.element) && shownPower.activeEffect1}
+          </>
+        ) : "Hover over a power to read about it."}
+      </Description>
+      <ClassLine>
+        {playerClass ? <><ClassName>{playerClass[0]}</ClassName>{playerClass[1]}</> : "Pick 3 powers to find out your class."}
+      </ClassLine>
+      <Footer>
+        <span>{pickedAbilities.length} of {PICK_COUNT} picked</span>
+        <TeammateToggle>
+          <input type="checkbox" checked={isTeammate} onChange={() => setIsTeammate(value => !value)} /> Teammate
+        </TeammateToggle>
+        <Buttons>
+          <MetalButton disabled={!isReady} onClick={handleClickPlay}>Play!</MetalButton>
+          <MetalButton onClick={handleClickHome}>Back</MetalButton>
+        </Buttons>
+      </Footer>
+    </Panel>
+    </Backdrop>
   );
 };

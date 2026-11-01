@@ -33,11 +33,12 @@ const flicker = keyframes`
 const Page = styled.div`
   position: fixed;
   inset: 0;
-  z-index: 2147483647;
+  z-index: 2147483646;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: black;
+  background: linear-gradient(rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0.62)), url(/Map.gif) center / contain no-repeat, black;
+  image-rendering: pixelated;
   font-family: gameboy;
 `;
 
@@ -149,17 +150,16 @@ const getHoldMs = text => {
   return Math.min(holdMs, RADIO_LOOK.maxHoldMs);
 };
 
-export const RadioCall = ({ lines, playerAvatar, onGo, onChangePowers }) => {
+export const RadioCall = ({ lines, playerAvatar, teammateAvatar, isResuming, onGo, onChangePowers }) => {
   const [script, setScript] = useState(lines);
   const [lineIndex, setLineIndex] = useState(0);
-  const [letters, setLetters] = useState(0);
+  const [letters, setLetters] = useState(isResuming ? lines[0].text.length : 0);
 
   const line = script[lineIndex];
   const isChoice = !!line.choices;
   const text = line.text || "";
   const isTyped = letters >= text.length;
   const isLastLine = lineIndex == script.length - 1;
-  const teammateAvatar = playerAvatar == "guy" ? "girl" : "guy";
 
   const nextLine = () => {
     if (isLastLine || isChoice) return;
@@ -186,19 +186,19 @@ export const RadioCall = ({ lines, playerAvatar, onGo, onChangePowers }) => {
     <Page>
       <Panel onClick={() => isTyped ? nextLine() : setLetters(text.length)}>
         <Portrait src="/levels/portraits/agent.png" isLit={line.speaker == "agent"} />
-        <Middle>
+        <Middle style={isChoice ? { justifyContent: "center" } : undefined}>
           {isChoice ? <Words><Name>Your turn</Name></Words> : (
             <Words>
               <Name>{NAMES[line.speaker]}</Name>
               {text.slice(0, letters)}
             </Words>
           )}
-          <Buttons>
+          <Buttons style={isChoice ? { flexDirection: "column", alignItems: "flex-start" } : undefined}>
             {isChoice && line.choices.map(choice => (
               <RadioButton key={choice.text} onClick={event => choose(event, choice)}>{choice.text}</RadioButton>
             ))}
             {!isChoice && isLastLine && isTyped && <RadioButton onClick={onGo}>Go!</RadioButton>}
-            {!isChoice && isLastLine && isTyped && <RadioButton onClick={onChangePowers}>Change powers</RadioButton>}
+            {!isChoice && isLastLine && isTyped && <RadioButton onClick={() => onChangePowers(line)}>Change powers</RadioButton>}
           </Buttons>
         </Middle>
         <Portrait

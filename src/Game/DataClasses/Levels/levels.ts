@@ -1,3 +1,4 @@
+import { getSpeechMs } from '../speechTiming';
 import { getTileCenter } from 'Game/DataClasses/GameBoard/hexGrid';
 import type { HexGrid } from 'Game/DataClasses/GameBoard/hexGrid';
 import aquarium from './data/aquarium.json';
@@ -51,7 +52,7 @@ export type LevelPhase = {
 */
 export type SceneElement = {
   id: string;
-  type: 'image' | 'sprite' | 'pulse' | 'light' | 'sequence' | 'part' | 'moth' | 'whiteout' | 'npc' | 'speech' | 'walker' | 'door';
+  type: 'image' | 'sprite' | 'pulse' | 'light' | 'sequence' | 'part' | 'moth' | 'whiteout' | 'npc' | 'speech' | 'walker' | 'door' | 'hotspot';
   x: number;
   y: number;
   width: number;
@@ -82,7 +83,12 @@ export type SceneElement = {
   hidePhase?: string; // npc: the phase that takes it off the scene
   route?: Array<Array<number>>; // walker: the [x, y] spots it runs between, in turn
   isSweeping?: boolean; // npc
-  label?: string; // door
+  label?: string; // door, hotspot
+  name?: string; // speech: who is talking
+  outline?: string; // hotspot: its shape, drawn over the whole scene
+  action?: string; // hotspot: what clicking it opens
+  labelY?: number; // hotspot: where its label sits, if not just above it
+  rotate?: number; // hotspot: in degrees
   walkSeconds?: number;
   idleSeconds?: number;
   comesFrom?: { x: number; y: number }; // sprite: leaps here from this point, after 'appearSeconds'
@@ -115,14 +121,13 @@ type Rival = {
   maxLives: number;
   moveSpeed: number;
   touchPhase: string; // the phase where they touch the Kaiju part. the fight starts once it plays out.
-  touchDelayMs: number; // how long after the level starts they touch it
   spot: { x: number; y: number }; // where the fight starts from, in scene pixels
-  pose: string; // how they look once beaten
+  recruitSpot: { x: number; y: number }; // where they lie for the player's choice, in scene pixels
   pronoun: string;
   intro: {
     focus: { x: number; y: number }; // what the camera pulls in on, in scene pixels
     zoomScale: number;
-    lines: Array<{ name: string; text: string; x: number; y: number }>;
+    lines: Array<{ name?: string; text: string; x?: number; y?: number; isTeammate?: boolean; isFlipped?: boolean }>;
   };
 };
 
@@ -137,6 +142,8 @@ type AgentDrops = {
   floorY: number; // where they land, in scene pixels
   drops: Array<{ x: number; isFromLeft: boolean }>; // one for each Agent. x is where they drop, in scene pixels.
 };
+
+type MapSite = { spot: { x: number; y: number }; color: string; isDetour?: boolean };
 
 export type LevelConfig = {
   id: string;
@@ -162,7 +169,26 @@ export type LevelConfig = {
   shakePhases: Array<string>; // phases that shake the whole scene
   rival?: Rival;
   exit?: { spot: { x: number; y: number }; afterMs?: number; afterPhase?: string }; // opens after a time or a phase. reaching it ends the level.
-  talk?: { spot: { x: number; y: number }; phase: string }; // walking here starts a phase
+  walkIn?: { // the opening of a scene: who stands where, and who says what
+    teammateSpot?: { x: number; y: number };
+    doorTile: { i: number; j: number }; // where recruits walk in from
+    standSpots: Array<{ x: number; y: number }>;
+    script: Array<{ who: string; text: string }>; // 'who' is 'teammate', 'player', or 'recruit': a recruit, or the player if there are none
+    ending?: { spots: Array<{ x: number; y: number }>; phase: string; climaxMs: number }; // the player and teammate walk to these spots, and the phase ends the level
+  };
+  showdown?: { // the Agent and the team have words before the fight
+    script: Array<{ who: string; text: string }>; // 'who' is 'agent', 'teammate' or 'player'
+    speechSpot: { x: number; y: number };
+  };
+  extras?: Array<{ avatar: string; spot: { x: number; y: number }; facingDir: string }>; // people standing in the scene, drawn as pieces
+  trap?: { // the Agent has his say, then his clones chase the player to the door
+    lines: Array<string>;
+    speechSpot: { x: number; y: number };
+    chasers: { xs: Array<number>; startY: number; landingY: number; moveSpeed: number; abilities: Array<string> };
+  };
+  hasRecruitFollowers?: boolean; // recruited characters walk with the team
+  sites?: Array<MapSite>; // places on the map to walk to
+  isMapWalk?: boolean; // walked at the close camera, unlike other walking scenes
   goalColor?: string; // the goal tile's color, if not the usual gold light
   agentDrops?: AgentDrops;
   cameraZoom: number; // how close the camera sits during play. at 1, the whole scene fits the frame.
@@ -241,6 +267,8 @@ const subwayRay = (n, seconds, delaySeconds) =>
 // the Street's perspective: how tall a worker stands, for how far down the scene their feet are
 const getWorkerHeight = y => 80 + 0.592 * (y - 372);
 
+const standingAgent = (x, y) => ({ avatar: 'agent', spot: { x, y }, facingDir: 'down' });
+
 // a worker who runs between spots beside other workers, and stands at each for a while
 const hazmatRunner = (id, route, walkSeconds, idleSeconds) => ({
   id, type: 'walker' as const, src: '/spritesheet/hazmat.png', x: route[0][0], y: route[0][1], width: 0, height: 0, sortY: Math.max(...route.map(([, y]) => y)), route: route.map(([x, y]) => [x, y, getWorkerHeight(y)]), walkSeconds, idleSeconds
@@ -252,14 +280,10 @@ const npc = (id, pose, x, y, height, glowPhase = undefined, glowColor = undefine
   id, type: 'npc' as const, src: `/levels/npcs/${pose}.png`, x, y, width: 0, height, sortY, glowPhase, glowColor
 });
 
-const RIVAL_LOOK = { maxLives: 6, moveSpeed: 5, touchDelayMs: 0 };
+const RIVAL_LOOK = { maxLives: 6, moveSpeed: 5 };
 
-// the bystander standing in the scene, until the fight starts and their piece takes over
+// on once the bystander's piece starts to fight
 export const RIVAL_IN_PHASE = 'rivalIn';
-const bystander = (pose, x, y, height, touchPhase, color, sortY) => ({
-  ...npc('recruit', pose, x, y, height, touchPhase, color, sortY),
-  hidePhase: RIVAL_IN_PHASE
-});
 
 const signalLight = (id, x) => [
   { id: `${id}Off`, type: 'sprite' as const, src: '/levels/rapidTransit/lights-spritesheet.png', x, y: 3, width: 48, height: 94, zIndex: -2, firstFrame: 0, frames: 1, fps: 1 },
@@ -280,13 +304,15 @@ const RAPID_TRANSIT_SCENE = {
   rival: {
     ...RIVAL_LOOK,
     avatar: 'punk',
-    abilities: ['wood', 'glass', 'metal'], touchPhase: 'eyeTouched', spot: { x: 1213, y: 530 }, pose: 'mohawkFront', pronoun: 'him',
+    abilities: ['wood', 'glass', 'metal'], touchPhase: 'eyeTouched', spot: { x: 1213, y: 530 }, recruitSpot: { x: 690, y: 560 }, pronoun: 'him',
+    startFacing: 'up',
+    introSortY: 640, // stands in front of the eye
     intro: {
       focus: { x: 1090, y: 430 },
       zoomScale: 1.6,
       lines: [
-        { name: 'Punk', text: 'Ooo... pretty...', x: 1150, y: 425 },
-        { name: 'Teammate', text: "No, don't touch it!", x: 960, y: 300 }
+        { name: 'Punk Guy', text: 'Ooo... pretty...', isFlipped: true },
+        { isTeammate: true, text: "No, don't touch it!" }
       ]
     }
   },
@@ -296,7 +322,6 @@ const RAPID_TRANSIT_SCENE = {
   phases: [{ id: 'eye', label: 'Kaiju eye' }, { id: 'eyeTouched', label: 'Touch part' }, { id: 'train', label: 'Train' }],
   defaultPhases: ['eye'],
   sceneElements: [
-    bystander('mohawkBack', 1213, 530, 99, 'eyeTouched', '#57E931', 640), // stands in front of the eye
     { id: 'godRaysAll', type: 'image' as const, src: '/levels/rapidTransit/god-rays-all.png', x: 0, y: 0, width: 1380, height: 752, sortY: ABOVE_CHARACTERS },
     subwayRay(1, 7.3, 0),
     subwayRay(2, 9.1, -2.4),
@@ -331,20 +356,21 @@ const ROOFTOP_SCENE = {
   rival: {
     ...RIVAL_LOOK,
     avatar: 'black_female',
-    abilities: ['death', 'glass', 'metal'], touchPhase: 'headTouched', spot: { x: 733, y: 542 }, pose: 'blackFemaleBack', pronoun: 'her',
+    abilities: ['death', 'glass', 'metal'], touchPhase: 'headTouched', spot: { x: 733, y: 542 }, recruitSpot: { x: 735, y: 490 }, pronoun: 'her',
+    startFacing: 'up',
+    introSortY: 600, // stands in front of the head
     intro: {
       focus: { x: 733, y: 470 },
       zoomScale: 1.5,
       lines: [
-        { name: 'Bystander', text: 'Is someone there? I can hear them...', x: 640, y: 480 },
-        { name: 'Teammate', text: 'Step away from that!', x: 560, y: 340 }
+        { name: 'Punk Girl', text: 'Is someone there? I can hear them...', isFlipped: false },
+        { isTeammate: true, text: 'Step away from that!' }
       ]
     }
   },
   phases: [{ id: 'head', label: 'Kaiju head' }, { id: 'headTouched', label: 'Touch part' }],
   defaultPhases: ['head'],
   sceneElements: [
-    bystander('blackFemaleBack', 733, 542, 55, 'headTouched', '#ff1a0d', 600), // stands in front of the head
     { id: 'head', type: 'part' as const, phase: 'head', touchPhase: 'headTouched', src: '/levels/rooftop/head-spritesheet.png', x: 255, y: 233, width: 959, height: 519, sortY: 573, seconds: 4.5, flashColor: '#ff1a0d' }
   ]
 };
@@ -395,13 +421,15 @@ const AQUARIUM_SCENE = {
   rival: {
     ...RIVAL_LOOK,
     avatar: 'mermaid',
-    abilities: ['glass', 'bubble'], touchPhase: 'tongueTouched', spot: { x: 872, y: 655 }, pose: 'mermaid', pronoun: 'her', // Charm joins these once it exists
+    abilities: ['bubble', 'water', 'charm'], touchPhase: 'tongueTouched', spot: { x: 872, y: 655 }, recruitSpot: { x: 430, y: 700 }, pronoun: 'her',
+    startFacing: 'down',
+    introSortY: 655,
     intro: {
       focus: { x: 780, y: 590 },
       zoomScale: 1.6,
       lines: [
-        { name: 'Mermaid', text: "I'M A MERMAID!!", x: 760, y: 600 },
-        { name: 'Teammate', text: "Ma'am, put that down!", x: 640, y: 480 }
+        { name: 'Mermaid', text: "I'M A MERMAID!!", isFlipped: false },
+        { isTeammate: true, text: "Ma'am, put that down!" }
       ]
     }
   },
@@ -416,7 +444,6 @@ const AQUARIUM_SCENE = {
   ],
   defaultPhases: ['tongue', 'shards'],
   sceneElements: [
-    bystander('mermaid', 872, 655, 68, 'tongueTouched', '#ff1464', 655),
     { id: 'shattered', type: 'image' as const, phase: 'shattered', src: '/levels/aquarium/shattered.png', x: 0, y: 0, width: 1408, height: 768, zIndex: -3, fadeSeconds: 1.2, delaySeconds: 0.8 },
     ...GLASS_PANELS,
     aquariumRay(1, 234, -16, 349, 463, 7, 0, 0.9),
@@ -438,6 +465,31 @@ const sewerLight = (id, color, x, y, size, seconds, delaySeconds, highOpacity) =
   id, type: 'light' as const, phase: 'glow', color, x: x - size / 2, y: y - size / 2, width: size, height: size, zIndex: -3, seconds, delaySeconds, lowOpacity: 0, highOpacity
 });
 
+// draft words: what happened at the Lab, and why Kaiju parts are different
+const SEWER1_LINES = [
+  'Our powers are gone.',
+  'The Lab only ever lent them to us, using nano-tech.',
+  'Powers gained by touching Kaiju parts...',
+  'Those are different... Those powers last.',
+  'If we can find some Kaiju parts and touch them...',
+  'We could get our powers back, and fight back.'
+];
+
+const SEWER1_WALK_IN = {
+  teammateSpot: { x: 640, y: 530 }, // out on the catwalk
+  doorTile: { i: 37, j: 11 },
+  standSpots: [{ x: 1180, y: 520 }, { x: 1120, y: 480 }, { x: 1230, y: 560 }],
+  script: [
+    { who: 'recruit', text: 'Jumping into the sewers was quick thinking.' },
+    { who: 'recruit', text: 'That swanky Agent will never look for us down here.' },
+    ...SEWER1_LINES.map(text => ({ who: 'teammate', text }))
+  ]
+};
+
+const SEWER1_TALK = [
+  { id: 'exit', type: 'door' as const, phase: EXIT_OPEN_PHASE, x: 250, y: 420, width: 0, height: 0, sortY: ABOVE_CHARACTERS, label: 'Deeper' }
+];
+
 const SEWER1_SCENE = {
   tileTone: 'faint' as const,
   phases: [{ id: 'glow', label: 'Glow' }],
@@ -457,8 +509,30 @@ const sewerPart = (id, x, y, width, height, seconds, delaySeconds, glowColor) =>
   id, type: 'part' as const, src: `/levels/sewer2/${id}-spritesheet.png`, x, y, width, height, zIndex: -2, seconds, delaySeconds, brightPhase: 'blinding', glowColor
 });
 
+// draft words: the parts have been in the next room all along, and there's no going back from touching them
+const SEWER2_WALK_IN = {
+  doorTile: { i: 18, j: 4 },
+  standSpots: [{ x: 1100, y: 520 }, { x: 1040, y: 590 }, { x: 1170, y: 600 }],
+  script: [
+    { who: 'player', text: 'Are those... Kaiju parts?' },
+    { who: 'teammate', text: 'The one thing we need, and it was in the next room this whole time.' },
+    { who: 'player', text: 'That is crazy.' },
+    { who: 'teammate', text: 'They must be specimens from the Lab.' },
+    { who: 'teammate', text: 'Flushed down the pipes when the brains finished their morbid experiments.' },
+    { who: 'player', text: 'And now they are all we have left.' },
+    { who: 'teammate', text: "There's no taking this back. Whatever it does to us, it lasts." },
+    { who: 'player', text: 'I know.' },
+    { who: 'teammate', text: "I never said it, but... I'm glad it was you out there with me." },
+    { who: 'player', text: 'Me too.' },
+    { who: 'teammate', text: "OK... let's do this." },
+    { who: 'player', text: "Let's do this." }
+  ],
+  ending: { spots: [{ x: 720, y: 560 }, { x: 790, y: 500 }], phase: 'blinding', climaxMs: 8500 } // the climb to the whiteout, in SceneElements
+};
+
 const SEWER2_SCENE = {
   tileTone: 'faint' as const,
+  walkIn: SEWER2_WALK_IN,
   phases: [{ id: 'blinding', label: 'Blinding light' }],
   sceneElements: [
     sewerPart('eye', 601, 133, 284, 369, 3.1, 0, '#e6ff3a'),
@@ -475,13 +549,23 @@ const streetGlow = (id, x, y, width, height, seconds, delaySeconds) => ({
   id, type: 'pulse' as const, isUneven: true, blend: 'screen' as const, src: `/levels/street/${id}-glow.png`, x, y, width, height, zIndex: -3, seconds, delaySeconds, lowOpacity: 0.05, highOpacity: 0.9
 });
 
-const STREET_LINE_SECONDS = 4.2;
-const STREET_LINE_COUNT = 4;
+// short, so each bubble is one easy thought
+const STREET_LINES = [
+  'Good work out there. You beat them back.',
+  'Careful around those Kaiju parts. They are hazardous.',
+  'One touch, and a person is changed for good.',
+  'Word from West Rapid Transit: Bystanders are gathering.',
+  'Get there before someone touches one.',
+  'Oh, and if you need to: stop by the Lab on your way.',
+  'They can give you a boost of Kaiju Juice,',
+  'or change out your teammate.',
+  'Go.'
+];
 
 const STREET_SCENE = {
   tileTone: 'dark' as const,
+  extras: [standingAgent(335, 682)],
   sceneElements: [
-    npc('agent', 'agent', 335, 682, 224),
     hazmatSweeper('hazmat1', 'hazmatBroomLeft', 740, 600),
     hazmatSweeper('hazmat3', 'hazmatBroomRight', 1005, 372),
     hazmatRunner('hazmat2', [[845, 420], [800, 612], [1050, 392]], 2.6, 6),
@@ -489,13 +573,8 @@ const STREET_SCENE = {
     hazmatRunner('hazmat5', [[1228, 500], [850, 440]], 3, 8),
     { id: 'exit', type: 'door' as const, phase: EXIT_OPEN_PHASE, x: 135, y: 660, width: 0, height: 0, sortY: ABOVE_CHARACTERS, label: 'Go To Peninsula' },
     {
-      id: 'agentSpeech', type: 'speech' as const, x: 372, y: 452, width: 0, height: 0, sortY: ABOVE_CHARACTERS, seconds: STREET_LINE_SECONDS,
-      lines: [
-        'Good work out there. You beat them back.',
-        'Careful. Fallen Kaiju parts are hazardous.',
-        'We have word of growing bystander interest at West Rapid Transit Station.',
-        'Get there fast, before someone touches a fallen part. Go.'
-      ]
+      id: 'agentSpeech', type: 'speech' as const, x: 335, y: 372, width: 0, height: 0, sortY: ABOVE_CHARACTERS,
+      lines: STREET_LINES
     },
     streetGlow('hand', 586, 0, 168, 129, 4.7, 0),
     streetGlow('tail', 571, 126, 348, 266, 6.3, 1.4),
@@ -509,27 +588,44 @@ const STREET_SCENE = {
 // the Agent's clones, stepped out of the tanks behind them
 const agentClone = (id, x) => ({ ...npc(id, 'agent', x, 170, 95), phase: 'clones' });
 
-const LAB_TALK_PHASE = 'labTalk';
+export const LAB_TALK_PHASE = 'labTalk';
 
 const LAB_INTRO_SCENE = {
-  talk: { spot: { x: 560, y: 740 }, phase: LAB_TALK_PHASE },
-  exit: { spot: { x: 1060, y: 740 }, afterPhase: LAB_TALK_PHASE },
+  exit: { spot: { x: 1060, y: 740 }, afterMs: 0 },
+  extras: [standingAgent(720, 660)],
   sceneElements: [
-    npc('agent', 'agent', 720, 660, 130),
-    { id: 'walkHere', type: 'light' as const, color: '#57E931', x: 505, y: 685, width: 110, height: 110, zIndex: -2, seconds: 1.8, lowOpacity: 0.3, highOpacity: 0.9, hidePhase: LAB_TALK_PHASE },
     {
-      id: 'agentWelcome', type: 'speech' as const, x: 757, y: 530, width: 0, height: 0, sortY: ABOVE_CHARACTERS, seconds: 4.2, hidePhase: LAB_TALK_PHASE,
+      id: 'agentWelcome', type: 'speech' as const, x: 720, y: 445, width: 0, height: 0, sortY: ABOVE_CHARACTERS, hidePhase: LAB_TALK_PHASE,
       lines: ['Welcome to the Lab.', 'Have a look around.']
     },
     {
-      id: 'agentNervous', type: 'speech' as const, phase: LAB_TALK_PHASE, x: 757, y: 530, width: 0, height: 0, sortY: ABOVE_CHARACTERS, seconds: 4.2,
+      id: 'agentNervous', type: 'speech' as const, phase: LAB_TALK_PHASE, x: 720, y: 445, width: 0, height: 0, sortY: ABOVE_CHARACTERS,
       lines: ['*nervous* Oh, those?', 'Nothing to worry about...', 'Just some R&D. Cryo-chimeric epigenetics.']
     },
+    { id: 'avatarTank', type: 'hotspot' as const, action: 'avatars', label: 'Choose avatar', labelY: 345, outline: '/levels/lab-outline-avatars.png', x: 62, y: 235, width: 175, height: 440, rotate: -24, sortY: ABOVE_CHARACTERS },
+    { id: 'specimenTank', type: 'hotspot' as const, action: 'agentTalk', label: 'What is this?', labelY: 300, outline: '/levels/lab-outline-specimen.png', x: 290, y: 310, width: 170, height: 300, rotate: -24, sortY: ABOVE_CHARACTERS, hidePhase: LAB_TALK_PHASE },
+    { id: 'colorTank', type: 'hotspot' as const, action: 'colors', label: 'Choose color', labelY: 330, outline: '/levels/lab-outline-colors.png', x: 1225, y: 370, width: 170, height: 340, rotate: 34, sortY: ABOVE_CHARACTERS },
     { id: 'exit', type: 'door' as const, phase: EXIT_OPEN_PHASE, x: 1060, y: 700, width: 0, height: 0, sortY: ABOVE_CHARACTERS, label: 'Exit' }
   ]
 };
 
+// draft words: the Agent's reveal, before the fight
+const LAB_SHOWDOWN_SCRIPT = [
+  { who: 'agent', text: 'You came back here? With no powers?' },
+  { who: 'teammate', text: 'We found the parts you flushed. We touched them. We got our powers back.' },
+  { who: 'agent', text: 'Ha... ha ha...' },
+  { who: 'agent', text: 'HA HA HA HA HA HA HA!' },
+  { who: 'player', text: "What's so funny?" },
+  { who: 'agent', text: 'Powers from Kaiju parts are inherently unstable, soldier.' },
+  { who: 'agent', text: 'All these Kaiju... Where did you think they were coming from?' },
+  { who: 'teammate', text: 'No...' },
+  { who: 'agent', text: 'Every one of them used to be an Agent.' },
+  { who: 'agent', text: 'Failed experiments.' }
+];
+
 const LAB_SCENE = {
+  showdown: { script: LAB_SHOWDOWN_SCRIPT, speechSpot: { x: 700, y: 365 } },
+  extras: [standingAgent(700, 480)],
   agentDrops: {
     abilities: ['death', 'lightning', 'glass'],
     maxLives: 4,
@@ -586,13 +682,16 @@ const LEVEL_BUILDERS: Record<string, (file) => LevelConfig> = {
       { src: '/levels/lab.png', zIndex: -4 }
     ]
   }),
-  sewer1: file => ({ ...buildLevel(file, 'Sewer 1', '#7a8a3a', [], true), ...SEWER1_SCENE }),
-  sewer2: file => ({ ...buildLevel(file, 'Sewer 2', '#7a8a3a', [], true), ...SEWER2_SCENE }),
+  sewer1: file => {
+    const level = { ...buildLevel(file, 'Sewer 1', '#7a8a3a', [], true), ...SEWER1_SCENE, hasRecruitFollowers: true };
+    return { ...level, sceneElements: [...level.sceneElements, ...SEWER1_TALK], exit: { spot: { x: 250, y: 430 }, afterMs: 0 }, walkIn: SEWER1_WALK_IN };
+  },
+  sewer2: file => ({ ...buildLevel(file, 'Sewer 2', '#7a8a3a', [], true), ...SEWER2_SCENE, hasRecruitFollowers: true }),
   street: file => ({
     ...buildLevel(file, 'Street', '#7a8a3a', [], true),
     ...STREET_SCENE,
     unlock: { id: 'hazmat', label: 'Hazmat worker', image: '/levels/portraits/hazmat.png', spot: { x: 1010, y: 690 } },
-    exit: { spot: { x: 112, y: 690 }, afterMs: STREET_LINE_COUNT * STREET_LINE_SECONDS * 1000 } // after one full loop of the Agent's words
+    exit: { spot: { x: 112, y: 690 }, afterMs: STREET_LINES.reduce((total, line) => total + getSpeechMs(line), 0) } // after one full loop of the Agent's words
   })
 };
 
@@ -604,8 +703,28 @@ const getSpotDistance = ({ grid }, tile, { x, y }) => {
 // the mist drifting around a site on the map, relative to the site
 const MIST_PUFFS = [[0, 0, 120, 3.1], [-34, 18, 90, 4.3], [36, -14, 100, 5.2], [14, 34, 80, 3.7], [-22, -30, 84, 6.1]];
 
-// walking the map to the next site, from one spot to another, in scene pixels. the site's mist will sit around its miniature.
-const buildMapWalk = (id, name, color, start, spot) => {
+const MAP_ICONS = {
+  subway: { width: 111, height: 65 },
+  rooftop: { width: 62, height: 77 },
+  aquarium: { width: 90, height: 72 },
+  lab: { width: 104, height: 78 }
+};
+
+// the Lab can be visited from the map, and then the walk carries on
+const LAB_SPOT = { x: 150, y: 680 };
+const LAB_SITE = { spot: LAB_SPOT, color: '#4a8fb0', icon: 'lab', isDetour: true };
+
+const getSiteElements = ({ spot, color, icon }) => [
+  ...MIST_PUFFS.map(([x, y, size, seconds], n) => ({
+    id: `${icon}Mist${n}`, type: 'light' as const, color, x: spot.x + x - size / 2, y: spot.y + y - size / 2, width: size, height: size, zIndex: -2, seconds, delaySeconds: -n, lowOpacity: 0.2, highOpacity: 0.75
+  })),
+  {
+    id: `${icon}Icon`, type: 'image' as const, src: `/levels/map/${icon}.png`, x: spot.x - MAP_ICONS[icon].width / 2, y: spot.y - MAP_ICONS[icon].height / 2, width: MAP_ICONS[icon].width, height: MAP_ICONS[icon].height, zIndex: 5 // above the tiles
+  }
+];
+
+// walking the map to the next site, from one spot to another, in scene pixels
+const buildMapWalk = (id, name, start, sites) => {
   const level = LEVEL_BUILDERS.peninsula(peninsula);
   const getClosest = target => level.walkableTiles.reduce((closest, tile) => getSpotDistance(level, tile, target) < getSpotDistance(level, closest, target) ? tile : closest);
   return {
@@ -613,16 +732,13 @@ const buildMapWalk = (id, name, color, start, spot) => {
     id,
     name,
     isWalkingLevel: true,
-    cameraZoom: 1,
+    isMapWalk: true,
     kaijuEntry: undefined,
-    goalColor: color,
-    goalTiles: [getClosest(spot)],
+    sites,
     spawnTiles: [start, { x: start.x + 25, y: start.y }].map(getClosest),
     phases: [],
     defaultPhases: [],
-    sceneElements: MIST_PUFFS.map(([x, y, size, seconds], n) => ({
-      id: `mist${n}`, type: 'light' as const, color, x: spot.x + x - size / 2, y: spot.y + y - size / 2, width: size, height: size, zIndex: -2, seconds, delaySeconds: -n, lowOpacity: 0.2, highOpacity: 0.75
-    }))
+    sceneElements: sites.flatMap(getSiteElements)
   };
 };
 
@@ -635,10 +751,31 @@ export const LEVELS: Record<string, LevelConfig> = Object.fromEntries(
 // sites are placed as in the mission map mockup
 const CITY_END = { x: 230, y: 160 };
 const FOOT = { x: 230, y: 660 };
-LEVELS.mapSubway = buildMapWalk('mapSubway', 'Map to Subway', '#57E931', CITY_END, { x: 126, y: 279 });
-LEVELS.mapRooftop = buildMapWalk('mapRooftop', 'Map to Rooftop', '#ff2a2a', FOOT, { x: 238, y: 122 });
-LEVELS.mapAquarium = buildMapWalk('mapAquarium', 'Map to Aquarium', '#C5063F', CITY_END, { x: 297, y: 594 });
-LEVELS.mapLab = buildMapWalk('mapLab', 'Map to Lab', '#4a8fb0', CITY_END, { x: 150, y: 680 });
+LEVELS.mapSubway = buildMapWalk('mapSubway', 'Map to Subway', CITY_END, [{ spot: { x: 126, y: 279 }, color: '#57E931', icon: 'subway' }, LAB_SITE]);
+LEVELS.mapRooftop = buildMapWalk('mapRooftop', 'Map to Rooftop', FOOT, [{ spot: { x: 238, y: 122 }, color: '#ff2a2a', icon: 'rooftop' }, LAB_SITE]);
+LEVELS.mapAquarium = buildMapWalk('mapAquarium', 'Map to Aquarium', CITY_END, [{ spot: { x: 297, y: 594 }, color: '#C5063F', icon: 'aquarium' }, LAB_SITE]);
+LEVELS.mapLab = buildMapWalk('mapLab', 'Map to Lab', CITY_END, [{ ...LAB_SITE, isDetour: false }]);
+
+// the Lab's fight scene, before the fight: where the Agent takes the player's powers back
+LEVELS.labTrap = {
+  ...LEVELS.lab,
+  id: 'labTrap',
+  name: 'Lab Trap',
+  isWalkingLevel: true,
+  cameraZoom: 1,
+  agentDrops: undefined,
+  phases: [],
+  exit: { spot: { x: 1290, y: 480 }, afterMs: 0 },
+  trap: {
+    lines: ['You did well, soldier.', 'But those powers were only on loan.', 'Lab property. We are taking them back.', 'Seize them!'],
+    speechSpot: { x: 700, y: 365 },
+    chasers: { xs: [480, 700, 920], startY: 830, landingY: 640, moveSpeed: 5, abilities: [] }
+  },
+  extras: [standingAgent(700, 480)],
+  sceneElements: [
+    { id: 'exit', type: 'door' as const, phase: EXIT_OPEN_PHASE, x: 1290, y: 470, width: 0, height: 0, sortY: ABOVE_CHARACTERS, label: 'Escape!' }
+  ]
+};
 
 export const PENINSULA = LEVELS.peninsula;
 

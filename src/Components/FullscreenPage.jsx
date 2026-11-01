@@ -23,7 +23,7 @@ const Wrapper = styled.div`
 //   max-width: 2200px;
   max-height: 1100px;
 
-  background-color: #152642;
+  background-color: #0b0c0e;
 
   -webkit-animation-duration: 1s;
   animation-duration: 1s;

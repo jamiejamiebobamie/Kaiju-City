@@ -25,13 +25,12 @@ const Control = styled.label`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 0.5cqw;
+  gap: 6px;
 `;
 
 const Status = styled.span`
-  max-width: 22cqw;
   font-family: sans-serif;
-  font-size: 0.9cqw;
+  font-size: 11px;
   line-height: 1.3;
 `;
 
@@ -47,7 +46,7 @@ const drawViewGuide = (ctx, { sceneWidth, sceneHeight, cameraZoom = 1 }, playWin
   ctx.setLineDash([]);
 };
 
-export const TileEditor = ({ levelId, playWindow, onSaved, onCancel, onMovePanel }) => {
+export const TileEditor = ({ levelId, playWindow, onSaved, onCancel }) => {
   const editing = useLevelEditing(() => withFittedGrid(LEVEL_FILES[levelId]));
   const { level, tileSetName, linkStart } = editing;
   const canvasRef = useRef(null);
@@ -111,7 +110,6 @@ export const TileEditor = ({ levelId, playWindow, onSaved, onCancel, onMovePanel
       {editing.saveMessage && <Status>{editing.saveMessage}</Status>}
       <button onClick={saveAndPlay}>Save and play</button>
       <button onClick={onCancel}>Cancel</button>
-      <button onClick={onMovePanel}>Move this panel</button>
     </>
   );
 };

@@ -5,7 +5,10 @@ import aquarium from 'Game/DataClasses/Levels/data/aquarium.json';
 import rapidTransit from 'Game/DataClasses/Levels/data/rapidTransit.json';
 import { CAMPAIGN_SECTIONS, getIsLastSection } from './Campaign';
 import { GameManager, GameResult } from './GameManager';
-import { getUnlocks } from './Unlocks';
+import { addUnlock, getUnlocks, saveRecruitChoice } from './Unlocks';
+import { getIsAvatarOpen, getIsSkillOpen, ROSTER, saveAvatarColor, unlockRecruitSkill } from './Avatars';
+import { PIECES_INFO as ROSTER_PIECES } from 'Utils/gameState';
+import { getSciFiClass, SCI_FI_CLASSES } from './sciFiClasses';
 import { SettingsManager } from './SettingsManager';
 import { TRAIN_HIT } from './TrainSchedule';
 import { GameBoardPieceKaiju } from './GameBoard/Pieces/GameBoardPieceKaiju';
@@ -371,11 +374,11 @@ describe('levels', () => {
 
   it('walking levels are the street, sewers and the first Lab visit', () => {
     const walking = Object.values(LEVELS).filter(level => level.isWalkingLevel).map(({ id }) => id).sort();
-    expect(walking).toEqual(['labIntro', 'mapAquarium', 'mapLab', 'mapRooftop', 'mapSubway', 'sewer1', 'sewer2', 'street']);
+    expect(walking).toEqual(['labIntro', 'labTrap', 'mapAquarium', 'mapLab', 'mapRooftop', 'mapSubway', 'sewer1', 'sewer2', 'street']);
   });
 
-  it('only the map walks have goals', () => {
-    Object.values(LEVELS).forEach(({ id, goalTiles }) => expect(goalTiles.length).toBe(id.startsWith('map') ? 1 : 0));
+  it('no level has goal tiles: map walks have sites instead', () => {
+    Object.values(LEVELS).forEach(({ goalTiles }) => expect(goalTiles).toEqual([]));
   });
 
   it('the peninsula has tiles down to the bottom of the map', () => {
@@ -491,15 +494,18 @@ describe('rivals', () => {
     return gm;
   };
   const stepUntilRival = gm => {
-    for (let k = 0; k < 400 && gm.getPieces().length < 2; k++) gm.stepPieces();
-    return gm.getPieces()[1];
+    while (gm.cutscene) gm.stepPieces();
+    gm.stepPieces();
+    return gm.rivalPiece;
   };
 
   ['rapidTransit', 'rooftop', 'aquarium'].forEach(levelId => {
     it(`${levelId}: the bystander touches the part, then fights as an opposing piece`, () => {
       const gm = makeFight(levelId);
-      expect(gm.getPieces().length).toBe(1);
+      expect(gm.rivalPiece.isShowHealthBarOnComponent).toBeFalsy();
       const rival = stepUntilRival(gm);
+      expect(rival.isShowHealthBarOnComponent).toBe(true);
+      expect(rival.isPlain).toBe(false);
       const { avatar, abilities, touchPhase, maxLives } = LEVELS[levelId].rival;
       expect(gm.getActivePhases()).toContain(touchPhase);
       expect(rival.avatar).toBe(avatar);
@@ -570,6 +576,7 @@ describe('the Agents in the Lab', () => {
     settingsManager.setIsTeammate(false);
     const gm = new GameManager({ level: LEVELS.lab, settingsManager });
     gm.initGame();
+    while (gm.cutscene) gm.stepPieces();
     const [player] = gm.getPieces();
     player.maxLives = 1000;
     player.lives = 1000;
@@ -578,7 +585,7 @@ describe('the Agents in the Lab', () => {
   const run = (gm, ticks) => {
     for (let k = 0; k < ticks; k++) gm.stepPieces();
   };
-  const getAgents = gm => gm.getPieces().filter(({ avatar }) => avatar == 'agent');
+  const getAgents = gm => gm.getPieces().filter(piece => piece.avatar == 'agent' && !gm.extras.includes(piece));
 
   it('come in one at a time, three in all', () => {
     const { gm } = makeLab();
@@ -656,8 +663,19 @@ describe('campaign', () => {
     });
   });
 
-  it('the Lab comes before the Sewers, which lead to the Lab fight', () => {
-    expect(levelIds.slice(levelIds.indexOf('labIntro'), levelIds.indexOf('lab') + 1)).toEqual(['labIntro', 'sewer1', 'sewer2', 'lab']);
+  it('the battleground Lab comes before the Sewers, which lead to the Lab fight', () => {
+    expect(levelIds.slice(levelIds.indexOf('mapLab'), levelIds.indexOf('lab') + 1)).toEqual(['mapLab', 'labTrap', 'sewer1', 'sewer2', 'lab']);
+  });
+
+  it('the walking Lab is an optional stop on the earlier map walks', () => {
+    ['mapSubway', 'mapRooftop', 'mapAquarium'].forEach(id => expect(LEVELS[id].sites.some(({ isDetour }) => isDetour)).toBe(true));
+    expect(levelIds).not.toContain('labIntro');
+  });
+
+  it('each Peninsula fight has more Kaiju than the last', () => {
+    const kills = CAMPAIGN_SECTIONS.filter(({ levelId }) => levelId == 'peninsula').map(section => section.kills);
+    expect(kills.slice(0, 3)).toEqual([10, 15, 20]);
+    kills.forEach((count, index) => index && expect(count).toBeGreaterThan(kills[index - 1]));
   });
 
   it('ends on the Peninsula', () => {
@@ -693,17 +711,23 @@ describe('cutscenes', () => {
     expect(gm.getPieces().some(({ avatar }) => avatar == 'punk')).toBe(true);
   });
 
-  it('on arrival the teammate runs in from off-shot and calls out', () => {
+  it('on arrival the teammate stays hidden, runs up from the base into the shot, and calls out beside the player', () => {
     const gm = makeGame(LEVELS.peninsula, true);
-    const [, teammate] = gm.getPieces();
-    expect(teammate.charLocation.x).toBeGreaterThan(LEVELS.peninsula.world.width);
-    let heard = '';
+    const [player, teammate] = gm.getPieces();
+    expect(teammate.isVisible).toBe(false);
+    while (gm.cutscene && !gm.cutscene.steps[gm.cutscene.index].arrivals) gm.stepPieces();
+    expect(teammate.isVisible).toBe(true);
+    const { world, cameraZoom } = LEVELS.peninsula;
+    const viewHeight = world.height / cameraZoom;
+    expect(teammate.charLocation.y - player.charLocation.y).toBeGreaterThan(viewHeight / 2);
+    let speech = null;
     while (gm.cutscene) {
       gm.stepPieces();
-      heard = (gm.speech && gm.speech.text) || heard;
+      speech = gm.speech || speech;
     }
-    expect(heard).toContain('Heads-up');
-    expect(teammate.charLocation.x).toBeLessThanOrEqual(LEVELS.peninsula.world.width);
+    expect(speech.text).toContain('Heads-up');
+    expect(Math.abs(teammate.charLocation.y - player.charLocation.y)).toBeLessThan(viewHeight / 4);
+    expect(gm.getIsWalkable(teammate.getTileIndex())).toBe(true);
   });
 
   it('after the fight the player stands over the rival, and the teammate is offset', () => {
@@ -718,7 +742,7 @@ describe('cutscenes', () => {
     expect(gm.isSlowMotion).toBe(true);
     gm.startRecruitScene();
     const [player, teammate] = gm.getPieces();
-    expect(player.charLocation.y).toBeLessThan(rival.charLocation.y);
+    expect(player.charLocation.y).toBeLessThan(gm.recruitScene.body.y);
     expect(teammate.charLocation.x).toBeLessThan(player.charLocation.x);
     expect(gm.speech.text).toBe('Do you think we can use her?');
     expect(gm.getCameraShot().isFollowingMouse).toBe(true);
@@ -737,18 +761,339 @@ describe('cutscenes', () => {
     expect(gm.getGameResult()).toBe(GameResult.PlayerWon);
   });
 
-  it('the Lab door only opens once the Agent has been spoken to', () => {
-    const gm = makeGame(LEVELS.labIntro);
+  it('the Lab fight opens with the Agent\'s reveal, each line once, and his Agents only drop afterward', () => {
+    const gm = makeGame(LEVELS.lab);
+    const seenLines = [];
+    while (gm.cutscene) {
+      if (gm.speech && seenLines.at(-1) != gm.speech.text) seenLines.push(gm.speech.text);
+      gm.stepPieces();
+    }
+    const { script } = LEVELS.lab.showdown;
+    expect(seenLines).toEqual(script.filter(({ who }) => who != 'teammate' || gm.getPieces().length > 1).map(({ text }) => text));
+    expect(script.at(-1).text).toBe('Failed experiments.');
+    expect(gm.extras.every(({ isVisible }) => !isVisible)).toBe(true);
+    expect(gm.agentsDropped).toBe(0);
+    expect(gm.accTime).toBe(0);
+  });
+
+  it('Sewer 2 plays its script, walks the team up to the parts, and ends in the light', () => {
+    const gm = makeGame(LEVELS.sewer2);
     const [player] = gm.getPieces();
-    const { talk, exit } = LEVELS.labIntro;
-    gm.accTime = 600000;
-    gm.stepPieces();
-    expect(gm.getActivePhases()).not.toContain('exitOpen');
-    player.initCharLocation(true, gm.gameBoardManager.getClosestWalkableTileToLocation(talk.spot));
-    gm.stepPieces();
+    const start = player.charLocation;
+    while (gm.cutscene) gm.stepPieces();
+    expect(player.charLocation).not.toEqual(start);
+    expect(gm.getActivePhases()).toContain('blinding');
+    expect(gm.getGameResult()).toBe(GameResult.PlayerWon);
+  });
+
+  it('people standing in a scene are pieces, but nothing aims at them', () => {
+    const gm = makeGame(LEVELS.street);
+    const [agent] = gm.extras;
+    expect(agent.avatar).toBe('agent');
+    expect(gm.getPieces()).toContain(agent);
+    expect(agent.isOnTiles).toBe(false);
+    expect(gm.gameManagerProxy.getClosestEnemy(0)).toBeUndefined();
+  });
+
+  it('the Lab door is always open', () => {
+    const gm = makeGame(LEVELS.labIntro);
     gm.stepPieces();
     expect(gm.getActivePhases()).toContain('exitOpen');
-    expect(gm.gameBoardManager.getIsInBounds(gm.gameBoardManager.getClosestWalkableTileToLocation(exit.spot))).toBe(true);
+    expect(gm.gameBoardManager.getIsInBounds(gm.gameBoardManager.getClosestWalkableTileToLocation(LEVELS.labIntro.exit.spot))).toBe(true);
+  });
+
+  it('in the Lab trap the team faces the Agent, then Agents give chase in slow motion and the door opens', () => {
+    const gm = makeGame(LEVELS.labTrap);
+    const [player] = gm.getPieces();
+    expect(player.getFacingDir()).toBe('up');
+    const seenLines = [];
+    while (gm.cutscene) {
+      if (gm.speech && seenLines.at(-1) != gm.speech.text) seenLines.push(gm.speech.text);
+      gm.stepPieces();
+    }
+    expect(seenLines).toEqual(LEVELS.labTrap.trap.lines);
+    expect(gm.getPieces().filter(piece => piece.isChaser).length).toBe(LEVELS.labTrap.trap.chasers.xs.length);
+    expect(gm.isChaseSlowed).toBe(true);
+    expect(gm.gameBoardManager.moveSpeedScale).toBeLessThan(LEVELS.labTrap.moveSpeedScale);
+    gm.stepPieces();
+    expect(gm.getActivePhases()).toContain('exitOpen');
+    gm.accTime = gm.chaseSlowEndsAt;
+    gm.stepPieces();
+    expect(gm.isChaseSlowed).toBe(false);
+    expect(gm.gameBoardManager.moveSpeedScale).toBeCloseTo(LEVELS.labTrap.moveSpeedScale);
+  });
+});
+
+describe('Charm', () => {
+  const makeFight = () => {
+    const settingsManager = new SettingsManager();
+    settingsManager.setSortedPlayerChosenAbilityElementsString(['Fire', 'Ice', 'Water']);
+    settingsManager.setIsTeammate(false);
+    const gm = new GameManager({ level: LEVELS.aquarium, settingsManager });
+    gm.initGame();
+    while (gm.cutscene) gm.stepPieces();
+    gm.stepPieces();
+    return { gm, player: gm.getPieces()[0], rival: gm.rivalPiece, board: gm.gameBoardManager };
+  };
+  const addSecondEnemy = gm => {
+    const second = gm.gameBoardPiecesManager.addPiece({ pieceInfo: { ...PIECES_INFO.punk, abilities: [], maxLives: 6, moveSpeed: 1 }, teamIndex: 1 });
+    second.initCharLocation(true, gm.gameBoardManager.getClosestWalkableTileToLocation({ x: 300, y: 700 }));
+    return second;
+  };
+  const charmTile = (gm, board, piece, teamIndex) => {
+    const { i, j } = piece.getTileIndex();
+    const status = gm.settingsManager.getAbilityAndTileStatusData().isCharming;
+    board.tiles[i][j].updateTileStatus({ updateKey: 0, tileStatus: status, currCount: 20, dirs: ['up'], teamIndex, targetIndex: piece.pieceIndex });
+  };
+
+  it('turns an enemy for five seconds, then lets them go', () => {
+    const { gm, player, rival, board } = makeFight();
+    addSecondEnemy(gm);
+    charmTile(gm, board, rival, player.teamIndex);
+    rival.updateCharm(1000);
+    expect(rival.isCharmed).toBe(true);
+    expect(rival.teamIndex).toBe(player.teamIndex);
+    rival.updateCharm(5999);
+    expect(rival.isCharmed).toBe(true);
+    rival.updateCharm(6000);
+    expect(rival.isCharmed).toBe(false);
+    expect(rival.teamIndex).toBe(rival.homeTeamIndex);
+  });
+
+  it('is spent on the enemy it touches', () => {
+    const { gm, player, rival, board } = makeFight();
+    addSecondEnemy(gm);
+    charmTile(gm, board, rival, player.teamIndex);
+    rival.updateCharm(1000);
+    const { i, j } = rival.getTileIndex();
+    expect(board.tiles[i][j].getTileStatus()).toBeFalsy();
+  });
+
+  it('hurts instead, and does not charm, an enemy with no allies on the board', () => {
+    const { gm, player, rival, board } = makeFight();
+    const { lives } = rival;
+    charmTile(gm, board, rival, player.teamIndex);
+    rival.updateCharm(5000);
+    expect(rival.isCharmed).toBe(false);
+    expect(rival.teamIndex).toBe(rival.homeTeamIndex);
+    expect(rival.lives).toBe(lives - 1);
+    const { i, j } = rival.getTileIndex();
+    expect(board.tiles[i][j].getTileStatus()).toBeFalsy();
+  });
+
+  it('ends early once a charmed enemy has no old allies left', () => {
+    const { gm, player, rival, board } = makeFight();
+    const second = addSecondEnemy(gm);
+    charmTile(gm, board, rival, player.teamIndex);
+    rival.updateCharm(1000);
+    expect(rival.isCharmed).toBe(true);
+    second.setIsDead(true);
+    rival.updateCharm(1100);
+    expect(rival.isCharmed).toBe(false);
+  });
+
+  it('a charmed enemy that dies still counts as a kill', () => {
+    const { gm, player, rival, board } = makeFight();
+    addSecondEnemy(gm);
+    charmTile(gm, board, rival, player.teamIndex);
+    rival.updateCharm(gm.accTime);
+    gm.accTime += 500;
+    rival.decrementHealth(gm.accTime, rival.maxLives);
+    expect(gm.score).toBe(1);
+  });
+
+  it('does not charm its own side, and reverses a charmed player\'s keys', () => {
+    const { gm, player, rival, board } = makeFight();
+    charmTile(gm, board, rival, rival.teamIndex);
+    rival.updateCharm(gm.accTime);
+    expect(rival.isCharmed).toBe(false);
+    const input = gm.getPlayerInputHandler();
+    input.addKey('KeyW');
+    expect(input.getPressedDir()).toBe('up');
+    charmTile(gm, board, player, rival.teamIndex);
+    player.updateCharm(gm.accTime);
+    expect(player.teamIndex).toBe(player.homeTeamIndex);
+    expect(input.getPressedDir()).toBe('down');
+  });
+
+  it('the Mermaid fights with Bubble, Water and Charm', () => {
+    expect(LEVELS.aquarium.rival.abilities).toEqual(['bubble', 'water', 'charm']);
+    expect(makeFight().rival.abilities.length).toBe(3);
+  });
+});
+
+describe('roster and unlocks', () => {
+  const useStorage = () => {
+    const saved = {};
+    vi.stubGlobal('localStorage', { getItem: key => saved[key] ?? null, setItem: (key, value) => { saved[key] = value; } });
+  };
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('seven characters, each with a sprite sheet, a portrait and a death sprite', () => {
+    expect(ROSTER.length).toBe(7);
+    ROSTER.forEach(({ id }) => {
+      expect(fs.existsSync(`public/${ROSTER_PIECES[id].spriteSheetSrc}`)).toBe(true);
+      expect(id == 'guy' || fs.existsSync(`public/levels/portraits/${id}.png`)).toBe(true);
+      expect(fs.existsSync(`public/levels/dead/${id}.png`)).toBe(true);
+    });
+  });
+
+  it('every combination of three powers has a class', () => {
+    const powers = ['Bubble', 'Charm', 'Death', 'Fire', 'Glass', 'Ice', 'Lightning', 'Love', 'Metal', 'Water', 'Wood'];
+    expect(Object.keys(SCI_FI_CLASSES).length).toBe(165);
+    powers.forEach(a => powers.forEach(b => powers.forEach(c => {
+      if (a < b && b < c) expect(getSciFiClass([c, a, b])).toBeDefined();
+    })));
+  });
+
+  it('secret characters stay closed until they are unlocked', () => {
+    useStorage();
+    const hazmat = ROSTER.find(({ id }) => id == 'hazmat');
+    expect(getIsAvatarOpen(hazmat)).toBe(false);
+    addUnlock('hazmat');
+    expect(getIsAvatarOpen(hazmat)).toBe(true);
+    expect(getIsAvatarOpen(ROSTER[0])).toBe(true);
+  });
+
+  it('a recruit\'s power opens when they are terminated', () => {
+    useStorage();
+    expect(getIsSkillOpen('charm')).toBe(false);
+    expect(getIsSkillOpen('fire')).toBe(true);
+    expect(unlockRecruitSkill('mermaid').name).toBe('Charm');
+    expect(getIsSkillOpen('charm')).toBe(true);
+  });
+
+  it('Teleport opens by beating the Agents', () => {
+    useStorage();
+    expect(getIsSkillOpen('glass')).toBe(false);
+    expect(unlockRecruitSkill('agent').name).toBe('Teleport');
+    expect(getIsSkillOpen('glass')).toBe(true);
+  });
+
+  it('a chosen teammate joins the team, and locked powers stay out of their kit', () => {
+    useStorage();
+    const settingsManager = new SettingsManager();
+    settingsManager.setSortedPlayerChosenAbilityElementsString(['Fire', 'Ice', 'Water']);
+    settingsManager.setIsTeammate(true);
+    settingsManager.setTeammateAvatar('punk');
+    const gm = new GameManager({ level: LEVELS.peninsula, settingsManager });
+    gm.initGame();
+    expect(gm.getPieces()[1].avatar).toBe('punk');
+    for (let k = 0; k < 200; k++) {
+      const elements = settingsManager.getThreeRandomAbilities().map(({ gameBoardPieceAbilityData }) => gameBoardPieceAbilityData.element);
+      ['wood', 'death', 'charm', 'glass'].forEach(element => expect(elements).not.toContain(element));
+    }
+  });
+
+  it('a color from the vat stays with the character', () => {
+    useStorage();
+    saveAvatarColor('guy', '#123456');
+    const settingsManager = new SettingsManager();
+    settingsManager.setSortedPlayerChosenAbilityElementsString(['Fire', 'Ice', 'Water']);
+    settingsManager.setIsTeammate(false);
+    const gm = new GameManager({ level: LEVELS.peninsula, settingsManager });
+    gm.initGame();
+    expect(gm.getPieces()[0].color).toBe('#123456');
+  });
+
+  it('recruits walk with the team in the Sewers, and only recruits', () => {
+    useStorage();
+    saveRecruitChoice('punk', 'recruit');
+    saveRecruitChoice('mermaid', 'terminate');
+    const settingsManager = new SettingsManager();
+    settingsManager.setSortedPlayerChosenAbilityElementsString(['Fire', 'Ice', 'Water']);
+    settingsManager.setIsTeammate(true);
+    const gm = new GameManager({ level: LEVELS.sewer1, settingsManager });
+    gm.initGame();
+    expect(gm.getPieces().map(({ avatar }) => avatar)).toEqual(['guy', 'girl', 'punk']);
+    const [player, , punk] = gm.getPieces();
+    expect(punk.teamIndex).toBe(player.teamIndex);
+    for (let k = 0; k < 40; k++) gm.stepPieces();
+    expect(punk.isDead).toBe(false);
+  });
+});
+
+describe('fourth playtest', () => {
+  const makeGame = (level, options = {}) => {
+    const settingsManager = new SettingsManager();
+    settingsManager.setSortedPlayerChosenAbilityElementsString(['Fire', 'Ice', 'Water']);
+    settingsManager.setIsTeammate(true);
+    const gm = new GameManager({ level, settingsManager, ...options });
+    gm.initGame();
+    return gm;
+  };
+
+  it('a teammate with no spawn tile of their own starts beside the player', () => {
+    const [player, teammate] = makeGame(LEVELS.rapidTransit).getPieces();
+    expect(Math.abs(teammate.tileIndex.i - player.tileIndex.i)).toBeLessThanOrEqual(1);
+    expect(Math.abs(teammate.tileIndex.j - player.tileIndex.j)).toBeLessThanOrEqual(1);
+  });
+
+  it('the camera goes to the teammate for their line, and back to the part', () => {
+    const gm = makeGame(LEVELS.rapidTransit);
+    const { focus } = LEVELS.rapidTransit.rival.intro;
+    const seen = [];
+    while (gm.cutscene) {
+      const { point } = gm.getCameraShot();
+      if (point && seen[seen.length - 1] != point) seen.push(point);
+      gm.stepPieces();
+    }
+    expect(seen.length).toBe(3);
+    expect(seen[0]).toBe(focus);
+    expect(seen[1].x).toBeLessThan(focus.x / 2);
+    expect(seen[2]).toBe(focus);
+  });
+
+  it('the arriving teammate has no tile highlight until their line is done', () => {
+    const gm = makeGame(LEVELS.peninsula, { hasArrival: true });
+    const [, teammate] = gm.getPieces();
+    const getKey = ({ i, j }) => `${i} ${j}`;
+    expect(gm.getPieceColorsLookup()[getKey(teammate.tileIndex)]).toBeUndefined();
+    while (gm.cutscene) gm.stepPieces();
+    expect(gm.getPieceColorsLookup()[getKey(teammate.tileIndex)]).toBeDefined();
+  });
+
+  it('winning sends the train away for good', () => {
+    const gm = makeGame(LEVELS.rapidTransit);
+    while (gm.cutscene) gm.stepPieces();
+    gm.stepPieces();
+    gm.trainSchedule.setStage('train', gm.accTime);
+    gm.accTime += 5000;
+    gm.rivalPiece.decrementHealth(gm.accTime, gm.rivalPiece.maxLives);
+    for (let k = 0; k < 200; k++) gm.stepPieces();
+    expect(gm.getActivePhases()).not.toContain('train');
+    expect(gm.getActivePhases()).not.toContain('trainLights');
+  });
+
+  it('the Peninsula Kaiju target comes from the section', () => {
+    expect(makeGame(LEVELS.peninsula, { killsToWin: 15 }).getUiState().kaijuToWin).toBe(15);
+  });
+
+  it('every recruit lies at their own fixed spot on walkable ground, with room around them', () => {
+    ['rapidTransit', 'rooftop', 'aquarium'].forEach(id => {
+      const gm = makeGame(LEVELS[id]);
+      const { recruitSpot } = LEVELS[id].rival;
+      const tile = gm.gameBoardManager.getClosestWalkableTileToLocation(recruitSpot);
+      const { x, y } = getTileCenter(LEVELS[id].grid, tile);
+      expect(Math.hypot(x - recruitSpot.x, y - recruitSpot.y)).toBeLessThan(LEVELS[id].grid.rowStep * 2);
+    });
+  });
+
+  it('swapping avatars changes the pieces already in the scene', () => {
+    const gm = makeGame(LEVELS.labIntro);
+    gm.changeTeamAvatars('punk', 'mermaid');
+    expect(gm.getPieces().slice(0, 2).map(({ avatar }) => avatar)).toEqual(['punk', 'mermaid']);
+    expect(gm.getPieces()[0].spriteSheetSrc).toContain('punk');
+  });
+
+  it('a door opens from a nearby tile, not one exact tile', () => {
+    const gm = makeGame(LEVELS.labIntro);
+    const [player] = gm.getPieces();
+    const { exit } = LEVELS.labIntro;
+    gm.activePhases.add('exitOpen');
+    const { rowStep } = LEVELS.labIntro.grid;
+    player.initCharLocation(true, gm.gameBoardManager.getClosestWalkableTileToLocation({ x: exit.spot.x - rowStep, y: exit.spot.y }));
+    expect(gm.getGameResult()).toBe(GameResult.PlayerWon);
   });
 });
 
@@ -801,9 +1146,10 @@ describe('playtest fixes', () => {
 
   it('the camera stays pulled out while an Agent enters, and the game keeps going', () => {
     const { gm } = makeGame(LEVELS.lab);
-    for (let k = 0; k < 20 && gm.getPieces().length < 2; k++) gm.stepPieces();
+    while (gm.cutscene) gm.stepPieces();
+    for (let k = 0; k < 20 && gm.getPieces().length < 3; k++) gm.stepPieces();
     expect(gm.getIsWideShot()).toBe(true);
-    const [, agent] = gm.getPieces();
+    const agent = gm.getPieces().at(-1);
     const { accTime } = gm;
     for (let k = 0; k < 200 && !agent.isOnTiles; k++) gm.stepPieces();
     expect(gm.accTime).toBeGreaterThan(accTime);
@@ -821,8 +1167,10 @@ describe('playtest fixes', () => {
   it('reaching the site ends a map walk', () => {
     const { gm, player } = makeGame(LEVELS.mapRooftop);
     expect(gm.getGameResult()).toBe(null);
-    player.initCharLocation(true, LEVELS.mapRooftop.goalTiles[0]);
+    const [site] = LEVELS.mapRooftop.sites;
+    player.initCharLocation(true, gm.gameBoardManager.getClosestWalkableTileToLocation({ x: site.spot.x + 30, y: site.spot.y }));
     expect(gm.getGameResult()).toBe(GameResult.PlayerWon);
+    expect(gm.reachedSite).toBe(site);
   });
 
   it('stepping on the hidden Street tile unlocks the hazmat worker', () => {
@@ -987,7 +1335,7 @@ describe('close camera', () => {
   });
 
   it('walking scenes sit at the whole scene', () => {
-    Object.values(LEVELS).filter(({ isWalkingLevel }) => isWalkingLevel).forEach(({ cameraZoom }) => expect(cameraZoom).toBe(1));
+    Object.values(LEVELS).filter(({ isWalkingLevel, isMapWalk }) => isWalkingLevel && !isMapWalk).forEach(({ cameraZoom }) => expect(cameraZoom).toBe(1));
   });
 
   it('every level file sets a camera zoom', () => {
@@ -1101,10 +1449,10 @@ describe('mouse look', () => {
     expect(player.x).toBeLessThan(camera.x + viewWidth);
   });
 
-  it('never zooms out past the whole level', () => {
+  it('never zooms out past the edges of the level', () => {
     const camera = new Camera({ viewWidth: 1400, viewHeight: 787, worldWidth: 1408, worldHeight: 768, zoom: 1.05 });
     settle(camera, { x: 700, y: 400 }, { x: 1, y: 0 });
-    expect(camera.zoom).toBeCloseTo(1400 / 1408);
+    expect(camera.zoom).toBeCloseTo(787 / 768);
   });
 });
 

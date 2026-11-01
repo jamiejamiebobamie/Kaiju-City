@@ -725,6 +725,20 @@ export class GameBoardManager {
         return isContactDmg ? Math.max(statusDmg, 1) : statusDmg;
     }
 
+    // the team whose Charm is on this piece's tile, if it isn't the piece's own
+    getCharmingTeam = (pieceIndex) => {
+        const { i, j } = this.gameManagerProxy.getPieceTileIndex(pieceIndex);
+        const tile = this.tiles[i][j];
+        const status = tile.getTileStatus();
+        const isCharm = !!status && status.getAppliedStatus() == 'isCharming';
+        return isCharm && tile.teamIndex != this.gameManagerProxy.getPieceTeamIndex(pieceIndex) ? tile.teamIndex : undefined;
+    }
+
+    clearTileStatusUnderPiece = (pieceIndex) => {
+        const { i, j } = this.gameManagerProxy.getPieceTileIndex(pieceIndex);
+        this.tiles[i][j].clearTileStatus();
+    }
+
     getTileOffsetFromDir = (dir, tileIndex) => {
         switch (dir) {
             case "up":

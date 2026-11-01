@@ -56,7 +56,8 @@ export class Camera {
 
   constructor({ viewWidth, viewHeight, worldWidth, worldHeight, zoom }: CameraProps) {
     this.baseZoom = zoom;
-    this.minZoom = Math.min(zoom, viewWidth / worldWidth, viewHeight / worldHeight);
+    // the level always fills the view: no easing out past its edges
+    this.minZoom = Math.min(zoom, Math.max(viewWidth / worldWidth, viewHeight / worldHeight));
     this.viewPxWidth = viewWidth;
     this.viewPxHeight = viewHeight;
     this.viewWidth = viewWidth / zoom;

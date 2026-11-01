@@ -1,4 +1,8 @@
 import { PIECES_INFO } from 'Utils/gameState';
+import { getAvatarColor } from 'Game/DataClasses/Avatars';
+
+// with the color they came out of the Lab's vat with
+const getPieceInfo = avatar => ({ ...PIECES_INFO[avatar], color: getAvatarColor(avatar) || PIECES_INFO[avatar].color });
 import { GameBoardPieceBase } from './GameBoardPieceBase';
 import { Team } from './Team';
 
@@ -34,6 +38,11 @@ export class GameBoardPiecesManager {
 
     getPlayerTeamUiState() {
         return this.getTeamPieces(this.getPlayerTeamIndex()).map(piece => piece.getUiState());
+    }
+
+    // is anyone else on this side, on the board and alive?
+    getHasAllyOnBoard = (pieceIndex, teamIndex) => {
+        return this.pieces.some(piece => piece.pieceIndex != pieceIndex && piece.teamIndex == teamIndex && !piece.isDead && piece.isOnTiles);
     }
 
     getIsPieceOnTile = ({ i, j }) => {
@@ -92,9 +101,16 @@ export class GameBoardPiecesManager {
         return teamIndex;
     }
 
+    // with too few spawn tiles, the rest of the team starts beside the first
     initPlayerLocationsOnBoard(spawnTiles = []) {
         const isOnTiles = true;
-        this.pieces.forEach((p, i) => p.initCharLocation(isOnTiles, spawnTiles[i]));
+        const [firstTile] = spawnTiles;
+        const spareTiles = firstTile ? this.gameManagerProxy.getTilesAround(firstTile) : [];
+        this.pieces.forEach((p, i) => p.initCharLocation(isOnTiles, spawnTiles[i] || spareTiles[i - spawnTiles.length]));
+    }
+
+    changeAvatar(piece, avatar) {
+        piece.applyAvatar(getPieceInfo(avatar));
     }
 
     getTeamLeaderPiece = (pieceIndex) => {
@@ -140,13 +156,20 @@ export class GameBoardPiecesManager {
         this.pieces.forEach(p => p.movePiece({ accTime, playerInputHandler }));
     }
 
+    // recruits walk with the team, and have no powers of their own here
+    addFollower(avatar, tileIndex) {
+        const piece = this.addPiece({ pieceInfo: { ...getPieceInfo(avatar), abilities: [] } });
+        piece.initCharLocation(true, tileIndex);
+        return piece;
+    }
+
     addPlayer({ playerAvatar, playerAbilities }) {
-        const pieceInfo = { ...PIECES_INFO[playerAvatar], isNpc: false, abilities: playerAbilities };
+        const pieceInfo = { ...getPieceInfo(playerAvatar), isNpc: false, abilities: playerAbilities };
         this.addPiece({ pieceInfo });
     }
 
     addTeammate({ teammateAvatar, teammateAbilities }) {
-        const pieceInfo = { ...PIECES_INFO[teammateAvatar], abilities: teammateAbilities };
+        const pieceInfo = { ...getPieceInfo(teammateAvatar), abilities: teammateAbilities };
         this.addPiece({ pieceInfo });
     }
 
@@ -218,7 +241,7 @@ export class GameBoardPiecesManager {
     }
     getPieceColorsLookup() {
         // create lookup of tileindex string: '0 1' to GamePiece color for 'redrawTiles' method
-        return this.pieces.filter(p => p.isOnTiles && !p.isDead).reduce((lookup, piece) => {
+        return this.pieces.filter(p => p.isOnTiles && !p.isDead && !p.isTileHidden).reduce((lookup, piece) => {
             lookup[`${piece.tileIndex.i} ${piece.tileIndex.j}`] = piece.getColor();
             return lookup;
         }, {});

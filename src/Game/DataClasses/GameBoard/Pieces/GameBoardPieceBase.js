@@ -1,3 +1,6 @@
+const CHARM_MS = 5000;
+const CHARM_ALONE_DMG = 1;
+
 export class GameBoardPieceBase {
     constructor({
         pieceIndex = 0,
@@ -24,6 +27,9 @@ export class GameBoardPieceBase {
         this.isTeamLeader = isTeamLeader;
         this.isNpc = isNpc;
         this.isCharmed = false;
+        this.isTileHidden = false; // its tile isn't highlighted, while it makes an entrance
+        this.charmEndsAt = 0;
+        this.homeTeamIndex = teamIndex; // the team it goes back to, and the team its death counts against
 
         // aesthetics
         this.avatar = avatar; // enum?
@@ -173,6 +179,7 @@ export class GameBoardPieceBase {
         if (this.isDead) return;
 
         this.accTime = accTime;
+        this.updateCharm(accTime);
 
         // intention: even the player can be Charmed and lose control for a moment of his piece....
         if (this.isNpc && this.isOnTiles) {
@@ -219,6 +226,35 @@ export class GameBoardPieceBase {
         }
     }
 
+    // a charmed piece fights for the other team for a while. the player keeps their piece, but its keys are reversed.
+    updateCharm(accTime) {
+        const hasNoOneToFight = this.isNpc && this.isCharmed && !this.gameManagerProxy.getHasAllyOnBoard(this.pieceIndex, this.homeTeamIndex);
+        if (this.isCharmed && (accTime >= this.charmEndsAt || hasNoOneToFight)) {
+            this.isCharmed = false;
+            this.setTeamIndex(this.homeTeamIndex);
+            return;
+        }
+        if (!this.isOnTiles) return;
+        const charmingTeam = this.gameManagerProxy.getCharmingTeam(this.pieceIndex);
+        if (charmingTeam === undefined) return;
+
+        // a Charm is spent on the first enemy it touches
+        this.gameManagerProxy.clearTileStatusUnderPiece(this.pieceIndex);
+        if (this.isCharmed) return;
+
+        // with no one left on their old side to turn on, it hurts them instead
+        if (this.isNpc && !this.gameManagerProxy.getHasAllyOnBoard(this.pieceIndex, this.teamIndex)) {
+            this.decrementHealth(accTime, CHARM_ALONE_DMG);
+            return;
+        }
+        this.isCharmed = true;
+        this.charmEndsAt = accTime + CHARM_MS;
+        if (this.isNpc) {
+            this.setTeamIndex(charmingTeam);
+            this.moveToTiles = [];
+        }
+    }
+
     getMoveToTiles() {
         return this.moveToTiles;
     }
@@ -242,12 +278,19 @@ export class GameBoardPieceBase {
         this.moveToLocation = this.gameManagerProxy.getCharXAndYFromTileIndex(nextTileIndex);
     }
 
-    // starts off-shot, and runs to where it was standing
-    startArrival(startX) {
+    applyAvatar({ avatar, color, spriteSheetSrc }) {
+        this.avatar = avatar;
+        this.color = color;
+        this.spriteSheetSrc = spriteSheetSrc;
+    }
+
+    // starts off-shot, and runs up to where it was standing
+    startArrival(startLocation, dir = 'up') {
         this.moveToLocation = this.charLocation;
-        this.charLocation = { ...this.charLocation, x: startX };
-        this.moveFromLocation = this.charLocation;
-        this.setDir('downLeft');
+        this.charLocation = startLocation;
+        this.moveFromLocation = startLocation;
+        this.isVisible = true;
+        this.setDir(dir);
     }
 
     // says whether it has got there
@@ -589,9 +632,8 @@ export class GameBoardPieceBase {
     handleDeath() {
         this.setIsDead(true);
         this.spawnDeathPiece();
-        if (!this.isCharmed) { // TO-DO: think about this...
-            this.gameManagerProxy.updateScore(this.teamIndex);
-        }
+        // a Kaiju charmed onto the player's team still counts as a kill
+        this.gameManagerProxy.updateScore(this.homeTeamIndex);
     }
 
     spawnDeathPiece() {
@@ -628,6 +670,8 @@ export class GameBoardPieceBase {
     }
 
     respawn(accTime) {
+        this.isCharmed = false;
+        this.setTeamIndex(this.homeTeamIndex);
         this.lives = this.maxLives;
         this.isDead = false;
         // TO-DO: remove dead game piece

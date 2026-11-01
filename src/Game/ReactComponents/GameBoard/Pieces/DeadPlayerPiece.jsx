@@ -14,18 +14,13 @@ const Wrapper = styled.i`
 const SpriteSheet = styled.div`
   pointer-events: none;
 
-  ${props =>
-    props.isPlayerOne
-      ? 'background: url("dead_player.png");'
-      : 'background: url("dead_teammate.png");'}
-
   background-position: center;
   background-repeat: no-repeat;
-  background-size: 80px 80px;
+  background-size: 100px 100px;
 
-  transform: translate(-15px, 18px);
-  height: 80px;
-  width: 80px;
+  transform: translate(-25px, 8px);
+  height: 100px;
+  width: 100px;
 
   ${props => `filter: drop-shadow(0 0 20px ${props.color});`}
 `;
@@ -45,9 +40,10 @@ export const DeadPlayer = ({
   charLocation,
   color,
   zIndex,
-  i = 0
-}) => <Wrapper zIndex={zIndex} charLocation={charLocation}>
+  avatar,
+  pieceScale
+}) => <Wrapper zIndex={zIndex} charLocation={charLocation} style={{ transform: `scale(${pieceScale})`, transformOrigin: "0 0" }}>
     <Character>
-      <SpriteSheet isPlayerOne={i === 0} color={color} />
+      <SpriteSheet color={color} style={{ backgroundImage: `url(/levels/dead/${avatar}.png)` }} />
     </Character>
   </Wrapper>

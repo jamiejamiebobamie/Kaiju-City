@@ -41,6 +41,22 @@ export class GameManagerProxy {
         return this.props.getTeamLeaderPiece(pieceIndex);
     }
 
+    getTilesAround(tileIndex) {
+        return this.props.getTilesAround(tileIndex);
+    }
+
+    getCharmingTeam(pieceIndex) {
+        return this.props.getCharmingTeam(pieceIndex);
+    }
+
+    clearTileStatusUnderPiece(pieceIndex) {
+        return this.props.clearTileStatusUnderPiece(pieceIndex);
+    }
+
+    getHasAllyOnBoard(pieceIndex, teamIndex) {
+        return this.props.getHasAllyOnBoard(pieceIndex, teamIndex);
+    }
+
     getDmg(pieceIndex, tileIndex) {
         return this.props.getDmg(pieceIndex, tileIndex);
     }

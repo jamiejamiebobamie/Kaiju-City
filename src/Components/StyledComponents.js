@@ -225,7 +225,7 @@ export const Rectangle = styled.div`
   margin-top: -257px;
   width: 400px;
   height: 150px;
-  background-color: #152642;
+  background-color: #0b0c0e;
 `;
 // export const Cloud = styled.img`
 //   position: absolute;

@@ -10,6 +10,7 @@ import { SceneElements } from 'Game/ReactComponents/GameBoard/SceneElements';
 import { getSortZIndex, getTileTone } from 'Game/DataClasses/Levels/levels';
 import { WakeCanvas } from 'Game/ReactComponents/GameBoard/WakeCanvas';
 import { Camera, CAMERA, getCloseZoom, getFitZoom, WIDE_SHOT } from 'Game/DataClasses/Camera';
+import { CUTSCENE } from 'Game/DataClasses/GameManager';
 import { SpeechBubbleScale } from 'Game/ReactComponents/GameBoard/recruitLook';
 import { getHexRadius, getTileIndexAtLocation } from 'Game/DataClasses/GameBoard/hexGrid';
 
@@ -92,8 +93,10 @@ const WindowSize = styled.div`
 `;
 
 const SLOW_MOTION_RATE = 0.2;
-const RECRUIT_BODY_HEIGHT = 60; // at a 'pieceScale' of 1
-const RECRUIT_PROMPT_ROWS = 6; // how far above the player the buttons sit, clear of the teammate's words
+const CHARM_COLOR = "#ff7ad9";
+const RECRUIT_BODY_SIZE = 100; // at a 'pieceScale' of 1: the body in the art is then as long as a character is tall
+const RECRUIT_LOOK_LEAN = 0.08; // how far the choice's camera leans with the mouse
+const RECRUIT_PROMPT_SHIFT = 130; // to the right of the player, clear of the teammate's words
 
 const WinDimmer = styled.div`
   position: absolute;
@@ -108,9 +111,8 @@ const WinDimmer = styled.div`
 const RecruitBody = styled.img`
   position: absolute;
   z-index: 19000;
-  transform: translate(-50%, -50%) rotate(80deg);
+  transform: translate(-50%, -50%);
   pointer-events: none;
-  filter: brightness(0.75);
 `;
 
 const RecruitPrompt = styled.div`
@@ -145,7 +147,7 @@ const MOVEMENT_KEYS = ["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowLeft", "
 
 const getIsTouchScreen = () => window.matchMedia("(pointer: coarse)").matches;
 
-export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeScene, playWindow, isShowingWindowSize, isEditingTiles, isMouseLook, isEnemyZoom, isSlowMotion, speech, recruitScene, recruitChoice, onChooseRecruit }) => {
+export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeScene, playWindow, isShowingWindowSize, isEditingTiles, isMouseLook, isEnemyZoom, isSlowMotion, speech, recruitScene, recruitChoice, onChooseRecruit, onHotspot }) => {
   // redraws the pieces when the game updates. the tiles draw themselves.
   useSyncExternalStore(gameManager.subscribeToBoard, gameManager.getBoardRevision);
   const pieces = gameManager.getPieces();
@@ -197,7 +199,7 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
   }, [level, frame]);
 
   // walking scenes are made to be seen whole
-  const getIsWholeLevelInView = () => level.isWalkingLevel || gameManager.getIsWideShot();
+  const getIsWholeLevelInView = () => (level.isWalkingLevel && !level.isMapWalk) || gameManager.getIsWideShot();
   const isWideShot = getIsWholeLevelInView();
   const camera = isWideShot ? wideCamera : closeCamera;
 
@@ -205,7 +207,7 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
   const fullFrameSizes = { worldWidth: world.width, worldHeight: world.height, viewWidth: frame.width, viewHeight: frame.height };
   const getShotCamera = ({ point, zoomScale, isFollowingMouse }) => {
     const shotCamera = new Camera({ ...fullFrameSizes, zoom: getFitZoom(fullFrameSizes) * zoomScale });
-    const lean = isFollowingMouse ? frame.width / shotCamera.zoom * CAMERA.lookPan : 0;
+    const lean = isFollowingMouse ? frame.width / shotCamera.zoom * RECRUIT_LOOK_LEAN : 0;
     shotCamera.centerOn({ x: point.x + mouseAim.current.x * lean, y: point.y + mouseAim.current.y * lean });
     return shotCamera;
   };
@@ -216,6 +218,7 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
     let pullEndMs = 0;
     let pullMs = WIDE_SHOT.pullMs;
     let pullEase = "ease-in-out";
+    let isCutting = false; // the camera is already there when the shot starts
     const moveCamera = () => {
       const player = gameManager.getFocusPiece();
       if (!player || !worldRef.current) return;
@@ -228,10 +231,12 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
         lastShot = shot;
         pullMs = shot && shot.panMs || WIDE_SHOT.pullMs;
         pullEase = shot && shot.ease || "ease-in-out";
-        pullEndMs = nowMs + pullMs;
+        pullEndMs = shot && shot.isCut ? 0 : nowMs + pullMs;
+        isCutting = !!shot && !!shot.isCut;
       }
       const isFollowingMouse = !!shot && shot.isFollowingMouse && nowMs >= pullEndMs;
-      worldRef.current.style.transition = isFollowingMouse ? `transform ${CAMERA.panTransitionMs}ms linear` : nowMs < pullEndMs ? `transform ${pullMs}ms ${pullEase}` : "";
+      worldRef.current.style.transition = isCutting ? "none" : isFollowingMouse ? `transform ${CAMERA.panTransitionMs}ms linear` : nowMs < pullEndMs ? `transform ${pullMs}ms ${pullEase}` : "";
+      isCutting = false;
       if (shot && !shot.isWide) {
         worldRef.current.style.transform = getShotCamera(shot).getTransform();
         return;
@@ -254,13 +259,17 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
   }, [gameManager, closeCamera, wideCamera, isMouseLook, isEnemyZoom]);
 
   // everything animated plays in slow motion once the match is won
+  const slowRate = isSlowMotion ? SLOW_MOTION_RATE : gameManager.isChaseSlowed ? CUTSCENE.chaseSlowSpeed : undefined;
   useEffect(() => {
-    if (!isSlowMotion) return;
-    const slowDown = () => worldRef.current && worldRef.current.getAnimations({ subtree: true }).forEach(animation => { animation.playbackRate = SLOW_MOTION_RATE; });
-    slowDown();
-    const interval = setInterval(slowDown, 100);
-    return () => clearInterval(interval);
-  }, [isSlowMotion]);
+    if (!slowRate) return;
+    const setRate = rate => worldRef.current && worldRef.current.getAnimations({ subtree: true }).forEach(animation => { animation.playbackRate = rate; });
+    const interval = setInterval(() => setRate(slowRate), 100);
+    setRate(slowRate);
+    return () => {
+      clearInterval(interval);
+      setRate(1);
+    };
+  }, [slowRate]);
 
   const getLocationFromEvent = e => {
     // includes the camera's pan and zoom
@@ -276,12 +285,17 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
   const isPlayerDead = !!pieces[playerIndex] && pieces[playerIndex].isDead;
 
   const focusPiece = pieces.length ? gameManager.getFocusPiece() : undefined;
-  const edgeCarets = isWideShot || !focusPiece ? [] : pieces
-    .filter(p => p.getTeamIndex() != focusPiece.getTeamIndex() && !p.isDead)
-    .map(p => ({
-      key: p.pieceIndex,
-      color: p.color,
-      caret: closeCamera.getEdgeCaret(getWorldLocation(p.charLocation), getWorldLocation(focusPiece.charLocation), grid.rowStep * grid.scale)
+  const siteTargets = (level.sites || []).map(({ spot, color }) => ({ key: `${spot.x} ${spot.y}`, color, charLocation: spot }));
+  const edgeCarets = isWideShot || !focusPiece ? [] : [
+    ...pieces
+      .filter(p => p.getTeamIndex() != focusPiece.getTeamIndex() && !p.isDead)
+      .map(p => ({ key: p.pieceIndex, color: p.color, charLocation: p.charLocation })),
+    ...siteTargets
+  ]
+    .map(({ key, color, charLocation }) => ({
+      key,
+      color,
+      caret: closeCamera.getEdgeCaret(getWorldLocation(charLocation), getWorldLocation(focusPiece.charLocation), grid.rowStep * grid.scale)
     }))
     .filter(({ caret }) => !!caret)
     .map(({ key, color, caret: { left, top, size, degrees } }) => (
@@ -301,7 +315,7 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
 
   // on press rather than on release, so a click can't be lost, and it feels immediate
   const handlePress = e => {
-    if (isPlayerDead || isPaused || isEditingTiles || recruitScene || e.button != 0) return;
+    if (isPlayerDead || isPaused || isEditingTiles || recruitScene || e.button != 0 || e.target.closest("[data-scene-button]")) return;
     inputHandler.updatePlayerDestinationAndClickedTileFromClick(gameManager.getClosestReachableTile(getLocationFromEvent(e)));
   };
 
@@ -362,10 +376,10 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
   const piecesComponents = pieces.map(p =>
     <GameBoardPieceComponent
       key={p.pieceIndex}
-      zIndex={p.getZIndex()}
+      zIndex={p.introZIndex ?? p.getZIndex()}
       charLocation={p.charLocation}
       avatar={p.avatar}
-      color={p.color}
+      color={p.isPlain ? "transparent" : p.isCharmed ? CHARM_COLOR : p.color}
       isVisible={p.isVisible}
       isHealed={p.isHealed}
       isCharmed={p.isCharmed}
@@ -384,10 +398,10 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
   const shotZoom = getFitZoom(fullFrameSizes) * ((recruitScene && recruitScene.shot.zoomScale) || (gameManager.getCameraShot() || {}).zoomScale || 1);
   const overlayScale = SpeechBubbleScale / shotZoom;
 
-  const deathPiecesComponents = recruitScene ? [] : gameManager.getDeathPieces().map(({ key, avatar, charLocation, color, zIndex, pieceIndex }) => (
+  const deathPiecesComponents = recruitScene ? [] : gameManager.getDeathPieces().map(({ key, avatar, charLocation, color, zIndex }) => (
     avatar == 'kaiju' ?
       <ExplodingKaiju key={key} charLocation={charLocation} color={color} zIndex={zIndex} />
-      : <DeadPlayer key={key} i={pieceIndex} charLocation={charLocation} color={color} zIndex={zIndex} />
+      : <DeadPlayer key={key} avatar={avatar} pieceScale={pieceScale} charLocation={charLocation} color={color} zIndex={zIndex} />
   ));
 
   const foregroundLayers = level.foregroundLayers.map(({ src, x, y, width, height, sortY }) => (
@@ -414,20 +428,20 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
       <World ref={worldRef} data-game-world style={{ width: `${world.width}px`, height: `${world.height}px` }}>
         {levelLayers}
         {foregroundLayers}
-        <SceneElements level={level} activePhases={activePhases} isPaused={isPaused} />
+        <SceneElements level={level} activePhases={activePhases} isPaused={isPaused} onHotspot={onHotspot} />
         {isSlowMotion && !recruitScene && <WinDimmer />}
-        {recruitScene && <RecruitBody src={`/levels/npcs/${recruitScene.body.pose}.png`} style={{
+        {recruitScene && <RecruitBody src={`/levels/dead/${recruitScene.body.avatar}.png`} style={{
           left: `${recruitScene.body.x}px`,
           top: `${recruitScene.body.y}px`,
-          height: `${pieceScale * RECRUIT_BODY_HEIGHT}px`
+          height: `${pieceScale * RECRUIT_BODY_SIZE}px`
         }} />}
         {recruitScene && (
-          <RecruitPrompt style={{ left: `${recruitScene.prompt.x}px`, top: `${recruitScene.prompt.y - grid.rowStep * grid.scale * RECRUIT_PROMPT_ROWS}px`, transform: `translate(-50%, -100%) scale(${overlayScale})` }}>
+          <RecruitPrompt style={{ left: `${recruitScene.prompt.x}px`, top: `${recruitScene.prompt.y}px`, transform: `translate(-50%, -100%) scale(${overlayScale}) translateX(${RECRUIT_PROMPT_SHIFT}px)` }}>
             {(!recruitChoice || recruitChoice == "recruit") && <RecruitButton $isRecruit onClick={() => onChooseRecruit("recruit")}>{recruitChoice ? "Confirmed" : "Recruit"}</RecruitButton>}
             {(!recruitChoice || recruitChoice == "terminate") && <RecruitButton onClick={() => onChooseRecruit("terminate")}>{recruitChoice ? "Confirmed" : "Terminate"}</RecruitButton>}
           </RecruitPrompt>
         )}
-        {speech && <SpeechBalloon name={speech.name} text={speech.text} x={speech.x} y={speech.y} zIndex={2147482000} scale={overlayScale} />}
+        {speech && <SpeechBalloon name={speech.name} text={speech.text} x={speech.x} y={speech.y} isFlipped={speech.isFlipped} zIndex={2147482000} scale={overlayScale} />}
         <WorldContent style={{ left: `${contentOffset.x}px`, top: `${contentOffset.y}px` }}>
           {/* canvases are sized from the zoom, which means nothing until the frame has been measured */}
           {isFrameMeasured && <TileCanvas gameManager={gameManager} level={level} tone={getTileTone(level, activePhases)} isVisible={!isPaused && !isEditingTiles} zoom={closeCamera.zoom} />}

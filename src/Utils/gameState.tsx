@@ -2311,6 +2311,12 @@ export const PIECES_INFO = {
     deadSpriteSrc:  'dead_teammate.png',
     avatar: 'agent'
   },
+  'hazmat': {
+    color: "#e8eef2",
+    spriteSheetSrc: 'spritesheet/hazmat.png',
+    deadSpriteSrc: 'dead_teammate.png',
+    avatar: 'hazmat'
+  },
   'punk': {
     color: "#57E931",
     spriteSheetSrc: 'spritesheet/punk.png',
@@ -2340,6 +2346,7 @@ export const TILE_STATUS_RANKS = {
   isTeleportTile: 0,
   isHealing: 1,
   isBubble: 2,
+  isCharming: 2.5, // below Dispel, above Lightning
   isGhosted: 3,
   isElectrified: 4,
   isCold: 5,
@@ -2360,11 +2367,70 @@ export const GAME_TICK = {
   maxCatchUpMs: 500
 };
 
-export const TILE_STATUSES = ['isTeleportTile', 'isHealing', 'isBubble', 'isGhosted', 'isElectrified', 'isCold', 'isShielded', 'isOnFire', 'isOnKaijuFire', 'isWet', 'isWooded'];
+export const TILE_STATUSES = ['isTeleportTile', 'isHealing', 'isBubble', 'isCharming', 'isGhosted', 'isElectrified', 'isCold', 'isShielded', 'isOnFire', 'isOnKaijuFire', 'isWet', 'isWooded'];
 
 const ABILITY_ON_COOLDOWN_ICON = "fa-spinner";
 
 export const TILE_STATUSES_AND_ABILITY_DATA = [
+  {
+    // TILE STATUS data - - - - - - - - - - - - - - - - -
+    appliedStatus: 'isCharming',
+
+    range: 20, // count / startCount / totalCount
+    area: 1, // numTiles
+    dmgAmt: 0, // it does no dmg: it turns whoever it touches
+
+    bounceCountResetVal: 8, // after status reflection, set the count to this number if greater than this number
+
+    isPersistent: false, // do not delete status from if 'currCount' is 0
+    isBouncy: true, // reflect status back onto gameboard if status goes off board
+
+    isLeaveTrail: false,
+
+    // TICK RANGES -
+    isRotating: [],
+    isConserveDirections: [],
+    isTracking: [{ tickFrom: 0, tickTo: 20 }],
+    // - - - - - - -
+
+    // TICK EVENTS -
+    isSpread: [],
+    isReverseDirection: [],
+    // - - - - - - - - - - - - - - - - - - - - - - - - -
+
+    // AI data - - - -
+    type: ["offensive"],
+    desiredAIRange: 12,
+    cooldownTimePlayer: 12000,
+    cooldownTimeAI: 12000,
+    // - - - - - - - -
+
+    // PASSIVE ability data
+    isTriggerPassiveImmediately: true,
+    modifierVal: 0, // off for now: needs a passive
+    fieldToModify: '',
+    // - - - - - - - - - - -
+
+    // UI data - - - - - - - - - -
+    color: "#ff7ad9",
+    displayLookup: "abilityCharm",
+    element: "charm",
+
+    activeIcon: "fa-two-hearts",
+    passiveIcon: "fa-two-hearts",
+
+    activeName: "Charm",
+    activeDesc: "An enemy fights for you for a few seconds.",
+    activeEffect1: "Charm pursues its target and is spent when it touches an enemy. A target with no allies on the board takes 1 damage instead. A charmed enemy that dies still counts as your kill.",
+
+    passiveName: "None yet",
+    passiveDesc: "No passive for now.",
+    passiveEffect1: "No effect for now",
+
+    activeEffect2: '',
+    passiveEffect2: ''
+  },
+
   {
     // TILE STATUS data - - - - - - - - - - - - - - - - -
     appliedStatus: 'isCold',
@@ -3046,13 +3112,13 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     // - - - - - - - - - - -
 
     // UI data - - - - - - - - - -
-    color: "pink",
+    color: "#ff2a3c",
     displayLookup: "abilityLove",
     element: "love",
 
     rotationShift: 'add180',
 
-    activeIcon: "fa-heart",
+    activeIcon: "fa-plus",
     passiveIcon: "fa-gratipay",
 
     activeName: "Heal",

@@ -1,0 +1,74 @@
+import { addUnlock, getUnlocks } from './Unlocks';
+
+/*
+  Everyone the player can be, or have as a teammate.
+  'unlock' is the id that opens a character. Without one, they are open from the start.
+*/
+export const ROSTER = [
+  { id: 'guy', name: 'Guy' },
+  { id: 'girl', name: 'Girl' },
+  { id: 'punk', name: 'Punk Guy', unlock: 'punk' },
+  { id: 'black_female', name: 'Punk Girl', unlock: 'black_female' },
+  { id: 'mermaid', name: 'Mermaid', unlock: 'mermaid' },
+  { id: 'hazmat', name: 'Hazmat Worker', unlock: 'hazmat' },
+  { id: 'agent', name: 'Agent', unlock: 'agent' }
+];
+
+// powers that are closed until the recruit who wields them is terminated
+export const SKILL_UNLOCKS = [
+  { element: 'wood', name: 'Overgrowth', recruit: 'punk', recruitName: 'Punk Guy' },
+  { element: 'death', name: 'Haunt', recruit: 'black_female', recruitName: 'Punk Girl' },
+  { element: 'charm', name: 'Charm', recruit: 'mermaid', recruitName: 'the Mermaid' },
+  { element: 'glass', name: 'Teleport', recruit: 'agent', recruitName: 'the Agents' }
+];
+
+const getSkillId = (element: string) => `skill-${element}`;
+
+export const getSkillUnlock = (element: string) => SKILL_UNLOCKS.find(skill => skill.element == element);
+
+export const getIsSkillOpen = (element: string) => !getSkillUnlock(element) || getUnlocks().includes(getSkillId(element));
+
+export const unlockRecruitSkill = (recruit: string) => {
+  const skill = SKILL_UNLOCKS.find(({ recruit: id }) => id == recruit);
+  if (skill) addUnlock(getSkillId(skill.element));
+  return skill;
+};
+
+export const getIsAvatarOpen = ({ unlock }: { unlock?: string }) => !unlock || getUnlocks().includes(unlock);
+
+// the Lab's tools. each is listed on the home screen once the player has found it.
+export const TOOL_UNLOCKS = { avatars: 'tool-avatars', colors: 'tool-colors', abilityEditor: 'tool-ability-editor' };
+
+export const getIsToolOpen = (tool: string) => getUnlocks().includes(TOOL_UNLOCKS[tool]);
+
+export const unlockTool = (tool: string) => addUnlock(TOOL_UNLOCKS[tool]);
+
+const TEAM_KEY = 'kaiju-team-avatars';
+const COLORS_KEY = 'kaiju-avatar-colors';
+
+const load = (key: string) => {
+  try {
+    return JSON.parse(localStorage.getItem(key) || '{}');
+  } catch {
+    return {};
+  }
+};
+
+const save = (key: string, value: unknown) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch { /* (not remembered) */ }
+};
+
+export const loadTeamAvatars = () => {
+  const { player, teammate } = load(TEAM_KEY);
+  const getIsOnRoster = (id: string) => ROSTER.some(avatar => avatar.id == id);
+  return { player: getIsOnRoster(player) ? player : undefined, teammate: getIsOnRoster(teammate) ? teammate : undefined };
+};
+
+export const saveTeamAvatars = (player: string, teammate: string) => save(TEAM_KEY, { player, teammate });
+
+// the color a character came out of the vat with, if they have been in it
+export const getAvatarColor = (avatar: string): string | undefined => load(COLORS_KEY)[avatar];
+
+export const saveAvatarColor = (avatar: string, color: string) => save(COLORS_KEY, { ...load(COLORS_KEY), [avatar]: color });

@@ -5,6 +5,7 @@ const FALL_SPEED_SCALE = 3;
 
 /*
     Walks in from off-shot along a catwalk, drops to the floor, then fights like any other piece.
+    A chaser runs straight in from off-shot instead, and only wants to catch the player.
     He isn't on the tiles until he lands, so nothing can hit him before that.
 */
 export class GameBoardPieceAgent extends GameBoardPieceBase {
@@ -17,9 +18,19 @@ export class GameBoardPieceAgent extends GameBoardPieceBase {
         this.pieceClass = 'Agent';
     }
 
+    getIdealDistanceFromEnemy() {
+        return this.isChaser ? 0 : super.getIdealDistanceFromEnemy();
+    }
+
+    startChase({ startLocation, landingTile }) {
+        this.isChaser = true;
+        this.dealsContactDmg = true;
+        this.startEntrance({ startLocation, dropTile: landingTile, landingTile, walkDir: 'up' });
+    }
+
     startEntrance({ startLocation, dropTile, landingTile, walkDir }) {
         this.tileIndex = landingTile; // where the others aim for him
-        this.charLocation = { ...this.gameManagerProxy.getCharXAndYFromTileIndex(dropTile), x: startLocation.x };
+        this.charLocation = { ...this.gameManagerProxy.getCharXAndYFromTileIndex(dropTile), ...startLocation };
         this.moveFromLocation = this.charLocation;
         this.moveToLocation = this.gameManagerProxy.getCharXAndYFromTileIndex(dropTile);
         this.isThere = false;
@@ -42,7 +53,7 @@ export class GameBoardPieceAgent extends GameBoardPieceBase {
         this.moveFromLocation = newLocation;
         if (!hasArrived) return;
 
-        if (this.isFalling) {
+        if (this.isFalling || this.isChaser) {
             this.isFalling = false;
             this.isEntering = false;
             this.initCharLocation(true, this.tileIndex);

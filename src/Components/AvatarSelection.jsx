@@ -14,11 +14,11 @@ const AvatarSelectionWrapper = styled.div`
     display: flex;
     justify-content: space-around;
 
-    background-color: #18324c;
-    border-color: #18434c;
+    background-color: #141518;
+    border-color: #26282c;
     border-width: 1px;
     border-style: solid;
-    border-bottom: 1px solid #13142e;
+    border-bottom: 1px solid #26282c;
 `;
 
 const SpriteSheet = styled.div`
@@ -363,7 +363,7 @@ const useTranslationEffect = ({ STARTING_POSTIONS, show, setTranslations, active
   }, [show]);
 }
 
-const Doodads = ({ persistDisc, show, globalTranslation, isRed, opacity, setOpacity }) => {
+export const Doodads = ({ persistDisc, show, globalTranslation, isRed, opacity, setOpacity, hasPrompt = true }) => {
 
   const { isAvatarChangedOnce } = useContext(GlobalSettingsContext);
   const STARTING_POSTIONS = [
@@ -383,7 +383,8 @@ const Doodads = ({ persistDisc, show, globalTranslation, isRed, opacity, setOpac
   useOpacityEffect({ show, opacity, setOpacity, activeInterval: activeOpacityInterval });
 
   return <DoodadsWrapper translation={globalTranslation}>
-    {!isAvatarChangedOnce &&
+    {hasPrompt &&
+      !isAvatarChangedOnce &&
       !persistDisc &&
       <FadeInOutEffect opacity={1 - opacity}>
         <PopupSpan
@@ -394,12 +395,12 @@ const Doodads = ({ persistDisc, show, globalTranslation, isRed, opacity, setOpac
         />
       </FadeInOutEffect>}
     <FadeInOutEffect opacity={opacity}>
-      <PopupSpan
+      {hasPrompt && <PopupSpan
         msg={'Click to change avatar'}
         color={'#80EF80'}
         textAlign={'start'}
         fontSize={'13px'}
-      />
+      />}
       <BlinkFadeEffect high={69} low={40}>
         <DoodadTransform scale={`${STARTING_POSTIONS[0].scaleX}, ${STARTING_POSTIONS[0].scaleY}`} translation={`${translations[0].x}px, ${translations[0].y}px`}>
           <DoodadSpriteSheet

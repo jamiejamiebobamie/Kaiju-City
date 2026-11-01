@@ -20,6 +20,12 @@ export const getUnlocks = (): Array<string> => load(UNLOCKS_KEY, '[]');
 
 export const addUnlock = (id: string) => save(UNLOCKS_KEY, [...new Set([...getUnlocks(), id])]);
 
+// dev testing: everything unlocked is closed again
+export const resetUnlocks = () => {
+  save(UNLOCKS_KEY, []);
+  save(CHOICES_KEY, {});
+};
+
 export const getRecruitChoices = (): Record<string, string> => load(CHOICES_KEY, '{}');
 
 export const saveRecruitChoice = (id: string, choice: string) => save(CHOICES_KEY, { ...getRecruitChoices(), [id]: choice });

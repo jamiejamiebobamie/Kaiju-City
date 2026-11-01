@@ -25,7 +25,7 @@ body {
   margin: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #152642;
+  background-color: #0b0c0e;
   font-family: monospace;
   overflow: hidden;
 
@@ -37,4 +37,19 @@ body {
   -ms-user-select: none; /* Internet Explorer/Edge */
   user-select: none; /* Non-prefixed version, currently
                                   supported by Chrome, Edge, Opera and Firefox */
+}
+
+/* Charm's icon: a big heart and a little heart, as Font Awesome has no such icon */
+.fa-two-hearts {
+  position: relative;
+}
+.fa-two-hearts::before {
+  content: "\f004";
+}
+.fa-two-hearts::after {
+  content: "\f004";
+  position: absolute;
+  right: -0.4em;
+  top: -0.3em;
+  font-size: 0.55em;
 }

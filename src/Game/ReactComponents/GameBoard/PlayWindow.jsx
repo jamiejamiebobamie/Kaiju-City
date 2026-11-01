@@ -99,7 +99,7 @@ const moveEdge = (playWindow, edge, { x, y }) => {
 const getHandleSpot = fraction => `calc(${fraction * 100}% - ${fraction * WINDOW_LOOK.handleSize}cqw)`;
 
 // 'playWindow' is the window as set. 'isOpen' opens it up to the whole frame for a wide shot.
-export const PlayWindow = ({ playWindow, setPlayWindow, isAdjusting, isOpen, children }) => {
+export const PlayWindow = ({ playWindow, setPlayWindow, isAdjusting, isOpen, isCut = false, children }) => {
   const windowRef = useRef(null);
   const { left, top, right, bottom } = isOpen ? FULL_WINDOW : playWindow;
 
@@ -116,7 +116,7 @@ export const PlayWindow = ({ playWindow, setPlayWindow, isAdjusting, isOpen, chi
       top: `${top * 100}%`,
       width: `${(right - left) * 100}%`,
       height: `${(bottom - top) * 100}%`,
-      transition: isAdjusting ? "none" : `left ${WIDE_SHOT.pullMs}ms ease-in-out, top ${WIDE_SHOT.pullMs}ms ease-in-out, width ${WIDE_SHOT.pullMs}ms ease-in-out, height ${WIDE_SHOT.pullMs}ms ease-in-out`
+      transition: isAdjusting || isCut ? "none" : `left ${WIDE_SHOT.pullMs}ms ease-in-out, top ${WIDE_SHOT.pullMs}ms ease-in-out, width ${WIDE_SHOT.pullMs}ms ease-in-out, height ${WIDE_SHOT.pullMs}ms ease-in-out`
     }}>
       {children}
       {!isOpen && <Plating />}

@@ -1,3 +1,4 @@
+import { getIsSkillOpen } from './Avatars';
 import { Difficulty, GameMode, TILE_STATUSES_AND_ABILITY_DATA } from 'Utils/gameState';
 import { GameBoardTileStatusAndAbilityData } from 'Game/DataClasses/GameBoard/Tile/GameBoardTileStatusAndAbilityData';
 import { GameBoardPieceAbility } from 'Game/DataClasses/GameBoard/Pieces/GameBoardPieceAbility';
@@ -23,6 +24,15 @@ export class SettingsManager {
 
     getAbilityAndTileStatusData = () => {
         return this.abilityAndTileStatusData;
+    }
+
+    setTeammateAvatar(teammateAvatar) {
+        this.teammateAvatar = teammateAvatar;
+    }
+
+    getTeammateAvatar() {
+        if (this.teammateAvatar && this.teammateAvatar != this.playerAvatar) return this.teammateAvatar;
+        return this.playerAvatar == 'guy' ? 'girl' : 'guy';
     }
 
     getPlayerAvatar() {
@@ -89,7 +99,7 @@ export class SettingsManager {
 
     getThreeRandomAbilities() {
         // Kaiju Fire belongs to the Kaiju
-        const available = Object.values(this.abilityAndTileStatusData).filter(({ element }) => element != 'kaijuFire');
+        const available = Object.values(this.abilityAndTileStatusData).filter(({ element }) => element != 'kaijuFire' && getIsSkillOpen(element));
         const takeFrom = abilities => {
             const unpicked = abilities.filter(ability => available.includes(ability));
             const ability = unpicked[getRandomIntInRange({ max: unpicked.length - 1 })];

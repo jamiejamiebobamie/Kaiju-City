@@ -108,7 +108,7 @@ const SpriteSheet = styled.div`
   pointer-events: none;
   display: flex;
 
-  background-color: #101c30;
+  background-color: #0b0c0e;
 
   ${props => props.isSmoke ?
     "background: url('spritesheet/kaiju-walk-smoke.png');"
