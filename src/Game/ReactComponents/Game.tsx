@@ -10,6 +10,7 @@ import { useKeyPress } from "Utils/utils";
 import { ABILITY_KEY_MAPPINGS, GAME_TICK } from "Utils/gameState";
 import { FullscreenPage } from "Components/FullscreenPage.jsx";
 import { GameManager, GameResult } from '../DataClasses/GameManager';
+import { CAMPAIGN_SECTIONS, getIsLastSection } from '../DataClasses/Campaign';
 import { GameLoop } from '../DataClasses/GameLoop';
 import { applyLevelFile, LEVELS, PENINSULA } from '../DataClasses/Levels/levels';
 import { TileEditor } from './Levels/TileEditor';
@@ -55,6 +56,18 @@ const PhaseToggles = styled.div`
   font-size: 1.2cqw;
   color: #dfe;
   background: rgba(0, 0, 0, 0.6);
+`;
+
+// moves on from a walking scene, until scenes have their own triggers
+const ContinueButton = styled.button`
+  position: absolute;
+  bottom: 2cqw;
+  right: 2cqw;
+  z-index: 2147483646;
+  padding: 0.6cqw 1.4cqw;
+  font-family: gameboy;
+  font-size: 1.3cqw;
+  cursor: pointer;
 `;
 
 const LevelPicker = styled.select`
@@ -103,7 +116,9 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const { selectedAvatar, selectedDifficulty, settingsManager } = useContext(GlobalSettingsContext);
   const { isPaused, winner, isPlayerDead, players, kaijuKillCount, kaijuToWin, activePhases, isWideShot } = useSnapshot(gameUiStore);
 
-  const [levelId, setLevelId] = useState(new URLSearchParams(window.location.search).get('level') || PENINSULA.id);
+  const startingLevelId = new URLSearchParams(window.location.search).get('level');
+  const [levelId, setLevelId] = useState(startingLevelId || PENINSULA.id);
+  const [campaignIndex, setCampaignIndex] = useState(startingLevelId ? null : 0); // null: playing one level on its own
   const level = LEVELS[levelId] || PENINSULA;
   const togglePhase = id => {
     gameManager.current.togglePhase(id);
@@ -169,6 +184,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
 
   // dev testing: changes level, and a match in progress restarts on it with the same powers
   const switchLevel = id => {
+    setCampaignIndex(null);
     setLevelId(id);
     const url = new URL(window.location.href);
     url.searchParams.set('level', id);
@@ -206,13 +222,44 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     setFullScreenPageData(undefined);
   };
 
-  const handleClickPlay = () => {
+  const showSection = index => {
+    const { levelId: sectionLevelId, text } = CAMPAIGN_SECTIONS[index];
+    endMatch();
+    resetGameUi();
+    setCampaignIndex(index);
+    if (sectionLevelId) setLevelId(sectionLevelId);
     setFullScreenPageData({
-      text: ["Wild Kaiju have appeared!"],
-      buttons: [{ text: "Fight!", onClick: () => startMatch() }],
+      text,
+      buttons: [{
+        text: sectionLevelId ? "Go!" : "Continue",
+        onClick: () => sectionLevelId ? startMatch(LEVELS[sectionLevelId]) : showSection(index + 1)
+      }],
       image: { src: './story_images/match_start.png', width: '535px', height: '535px' }
     });
+  };
+
+  const handleClickPlay = () => {
+    if (campaignIndex !== null) {
+      showSection(campaignIndex);
+    } else {
+      setFullScreenPageData({
+        text: ["Wild Kaiju have appeared!"],
+        buttons: [{ text: "Fight!", onClick: () => startMatch() }],
+        image: { src: './story_images/match_start.png', width: '535px', height: '535px' }
+      });
+    }
     triggerTransition(() => setIsPlayingGame(true));
+  };
+
+  const getCampaignEndPage = isWon => {
+    const image = { src: `./story_images/match_${isWon ? 'won' : 'lost'}.png`, width: '535px', height: '535px' };
+    if (!isWon) {
+      return { text: ["You lost..."], buttons: [{ text: "Try again", onClick: () => showSection(campaignIndex) }, { text: "Leave", onClick: handleClickHome }], image };
+    }
+    if (getIsLastSection(campaignIndex)) {
+      return { text: ["You saved the city!", "Play again ?"], buttons: [{ text: "Yes", onClick: () => { setCampaignIndex(0); triggerTransition(resetMatch); } }, { text: "No", onClick: handleClickHome }], image };
+    }
+    return { text: ["Section clear!"], buttons: [{ text: "Continue", onClick: () => showSection(campaignIndex + 1) }], image };
   };
 
   const handleClickPause = () => {
@@ -250,12 +297,12 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   useEffect(() => {
     if (winner === null || !isPlayingGame) return;
     const playAgainButtons = [{ text: "Yes", onClick: () => triggerTransition(resetMatch) }, { text: "No", onClick: handleClickHome }];
-    const page = winner === GameResult.PlayerWon ?
+    const page = campaignIndex !== null ? getCampaignEndPage(winner === GameResult.PlayerWon) : winner === GameResult.PlayerWon ?
       { text: ["You saved the city!", "Play again ?"], buttons: playAgainButtons, image: { src: './story_images/match_won.png', width: '535px', height: '535px' } }
       : { text: ["You lost...", "Play again ?"], buttons: playAgainButtons, image: { src: './story_images/match_lost.png', width: '535px', height: '535px' } };
     const timeoutRef = setTimeout(() => setFullScreenPageData(page), MATCH_END_DELAY_MS);
     return () => clearTimeout(timeoutRef);
-  }, [winner, isPlayingGame]);
+  }, [winner, isPlayingGame, campaignIndex]);
 
   return (
     !isPlayingGame ?
@@ -304,6 +351,11 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 <select aria-label="Level" value={level.id} onChange={e => { switchLevel(e.target.value); e.target.blur(); }}>
                   {levelOptions}
                 </select>
+                <select aria-label="Section" value={campaignIndex ?? ""} onChange={e => { showSection(Number(e.target.value)); e.target.blur(); }}>
+                  {campaignIndex === null && <option value="">Campaign section</option>}
+                  {CAMPAIGN_SECTIONS.map(({ label }, index) => <option key={label} value={index}>{index + 1}. {label}</option>)}
+                </select>
+                {campaignIndex !== null && !getIsLastSection(campaignIndex) && <button onClick={() => showSection(campaignIndex + 1)}>Skip section</button>}
                 {level.phases.map(({ id, label }) => (
                   <label key={id}>
                     <input type="checkbox" checked={activePhases.includes(id)} onChange={() => togglePhase(id)} /> {label}
@@ -337,6 +389,9 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                   />
                 )}
               </PhaseToggles>
+            )}
+            {campaignIndex !== null && level.isWalkingLevel && !isEditingTiles && (
+              <ContinueButton onClick={() => showSection(campaignIndex + 1)}>Continue</ContinueButton>
             )}
             {!isEditingTiles && <UI
               players={players}

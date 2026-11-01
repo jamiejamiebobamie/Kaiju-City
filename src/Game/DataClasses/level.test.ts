@@ -3,6 +3,7 @@ import { applyLevelFile, getTileTone, LEVEL_FILES, LEVELS, RUN_SPEED_SCALE, TILE
 import { rescaleLevelTiles } from 'Game/DataClasses/Levels/levelScale';
 import aquarium from 'Game/DataClasses/Levels/data/aquarium.json';
 import rapidTransit from 'Game/DataClasses/Levels/data/rapidTransit.json';
+import { CAMPAIGN_SECTIONS, getIsLastSection } from './Campaign';
 import { GameManager, GameResult } from './GameManager';
 import { SettingsManager } from './SettingsManager';
 import { TRAIN_HIT } from './TrainSchedule';
@@ -630,6 +631,38 @@ describe('the Agents in the Lab', () => {
     gm.accTime += 5000;
     agents[2].decrementHealth(gm.accTime, agents[2].maxLives);
     expect(gm.getGameResult()).toBe(GameResult.PlayerWon);
+  });
+});
+
+describe('campaign', () => {
+  const levelIds = CAMPAIGN_SECTIONS.map(({ levelId }) => levelId);
+
+  it('every section is a real level, or a story page', () => {
+    levelIds.filter(Boolean).forEach(id => expect(LEVELS[id]).toBeDefined());
+  });
+
+  it('every label is its own, so the dev panel can tell them apart', () => {
+    expect(new Set(CAMPAIGN_SECTIONS.map(({ label }) => label)).size).toBe(CAMPAIGN_SECTIONS.length);
+  });
+
+  it('runs the side levels in order, each after a Peninsula fight and a walking scene', () => {
+    ['rapidTransit', 'rooftop', 'aquarium'].forEach((id, n) => {
+      const index = levelIds.indexOf(id);
+      expect(levelIds[index - 2]).toBe('peninsula');
+      expect(levelIds[index - 1]).toBe(n == 2 ? 'labIntro' : 'street');
+      if (n) expect(index).toBeGreaterThan(levelIds.indexOf(['rapidTransit', 'rooftop'][n - 1]));
+    });
+  });
+
+  it('the first Lab visit comes after the Rooftop, and the Sewers lead to the Lab fight', () => {
+    expect(levelIds.indexOf('labIntro')).toBeGreaterThan(levelIds.indexOf('rooftop'));
+    expect(levelIds.slice(levelIds.indexOf('sewer1'), levelIds.indexOf('lab') + 1)).toEqual(['sewer1', 'sewer2', 'lab']);
+  });
+
+  it('ends on the Peninsula', () => {
+    expect(levelIds[levelIds.length - 1]).toBe('peninsula');
+    expect(getIsLastSection(levelIds.length - 1)).toBe(true);
+    expect(getIsLastSection(0)).toBe(false);
   });
 });
 

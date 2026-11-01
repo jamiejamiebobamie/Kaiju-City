@@ -454,7 +454,7 @@ const agentClone = (id, x) => ({ ...npc(id, 'agent', x, 170, 95), phase: 'clones
 
 const LAB_SCENE = {
   agentDrops: {
-    abilities: ['death', 'glass', 'metal'],
+    abilities: ['death', 'lightning', 'glass'],
     maxLives: 4,
     moveSpeed: 5,
     firstDropMs: 1500,
