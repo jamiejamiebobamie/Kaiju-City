@@ -1,0 +1,56 @@
+{
+  "matches": 150,
+  "edits": {
+    "isShielded": {
+      "range": 1,
+      "desiredAIRange": 2
+    }
+  },
+  "versus": {
+    "winRate": {
+      "charm": 0.452,
+      "ice": 0.511,
+      "fire": 0.678,
+      "water": 0.509,
+      "wood": 0.579,
+      "lightning": 0.543,
+      "death": 0.442,
+      "bubble": 0.511,
+      "metal": 0.461,
+      "glass": 0.385,
+      "love": 0.513
+    },
+    "timeouts": 4
+  },
+  "kaiju": {
+    "kills": {
+      "charm": 15.031,
+      "ice": 15.689,
+      "fire": 17.51,
+      "water": 13.114,
+      "wood": 15.7,
+      "lightning": 15.047,
+      "death": 13.75,
+      "bubble": 15.588,
+      "metal": 12.875,
+      "glass": 14.551,
+      "love": 15.636
+    },
+    "winRate": {
+      "charm": 0.434,
+      "ice": 0.5,
+      "fire": 0.627,
+      "water": 0.271,
+      "wood": 0.48,
+      "lightning": 0.344,
+      "death": 0.265,
+      "bubble": 0.463,
+      "metal": 0.208,
+      "glass": 0.327,
+      "love": 0.5
+    },
+    "overallKills": 14.913333333333334,
+    "overallWinRate": 0.4
+  },
+  "seconds": 372
+}

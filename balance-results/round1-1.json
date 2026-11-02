@@ -1,0 +1,76 @@
+{
+  "matches": 300,
+  "edits": {
+    "isOnFire": {
+      "cooldownTimePlayer": 2600,
+      "cooldownTimeAI": 3250
+    },
+    "isTeleportTile": {
+      "cooldownTimePlayer": 10500,
+      "cooldownTimeAI": 11200
+    },
+    "isGhosted": {
+      "cooldownTimePlayer": 1600,
+      "cooldownTimeAI": 2000
+    },
+    "isShielded": {
+      "cooldownTimePlayer": 3200,
+      "cooldownTimeAI": 4000
+    },
+    "isCharming": {
+      "cooldownTimePlayer": 9000,
+      "cooldownTimeAI": 9000
+    },
+    "isWet": {
+      "cooldownTimePlayer": 1700,
+      "cooldownTimeAI": 2125
+    }
+  },
+  "versus": {
+    "winRate": {
+      "charm": 0.466,
+      "ice": 0.523,
+      "fire": 0.627,
+      "water": 0.472,
+      "wood": 0.508,
+      "lightning": 0.542,
+      "death": 0.455,
+      "bubble": 0.561,
+      "metal": 0.418,
+      "glass": 0.466,
+      "love": 0.531
+    },
+    "timeouts": 10
+  },
+  "kaiju": {
+    "kills": {
+      "charm": 14.677,
+      "ice": 15.723,
+      "fire": 17,
+      "water": 13.862,
+      "wood": 16.453,
+      "lightning": 15.467,
+      "death": 12.855,
+      "bubble": 14.432,
+      "metal": 13.901,
+      "glass": 14.437,
+      "love": 16.082
+    },
+    "winRate": {
+      "charm": 0.387,
+      "ice": 0.458,
+      "fire": 0.544,
+      "water": 0.327,
+      "wood": 0.526,
+      "lightning": 0.423,
+      "death": 0.267,
+      "bubble": 0.338,
+      "metal": 0.317,
+      "glass": 0.361,
+      "love": 0.575
+    },
+    "overallKills": 14.87,
+    "overallWinRate": 0.4033333333333333
+  },
+  "seconds": 599
+}

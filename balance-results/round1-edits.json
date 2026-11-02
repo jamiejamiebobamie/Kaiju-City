@@ -1,0 +1,8 @@
+{
+  "isOnFire": { "cooldownTimePlayer": 2600, "cooldownTimeAI": 3250 },
+  "isTeleportTile": { "cooldownTimePlayer": 10500, "cooldownTimeAI": 11200 },
+  "isGhosted": { "cooldownTimePlayer": 1600, "cooldownTimeAI": 2000 },
+  "isShielded": { "cooldownTimePlayer": 3200, "cooldownTimeAI": 4000 },
+  "isCharming": { "cooldownTimePlayer": 9000, "cooldownTimeAI": 9000 },
+  "isWet": { "cooldownTimePlayer": 1700, "cooldownTimeAI": 2125 }
+}
