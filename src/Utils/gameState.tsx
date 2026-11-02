@@ -2827,7 +2827,7 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     // AI data - - - -
     type: ["offensive"],
     desiredAIRange: 15,
-    cooldownTimePlayer: 2000,
+    cooldownTimePlayer: 2600,
     cooldownTimeAI: 2500,
     passiveDurationTime: 8000,
     // - - - - - - - -
