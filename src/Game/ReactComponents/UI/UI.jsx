@@ -48,6 +48,7 @@ export const UI = ({
   isShowingHuds,
   handleClickHome,
   handleClickPause,
+  handleClickControls,
   isPaused
 }) => {
   const hudsRef = useRef(null);
@@ -65,6 +66,7 @@ export const UI = ({
     <>
       <TopBar>
         <Button title="Pause" onClick={handleClickPause}>Pause</Button>
+        <Button title="How to play" onClick={handleClickControls}>Controls</Button>
         <Button title="Goodbye!" onClick={handleClickHome}>Leave</Button>
         {isKaijuLevel && <span>{`Kaiju: ${kaijuKillCount} / ${kaijuKilledToWin}`}</span>}
       </TopBar>

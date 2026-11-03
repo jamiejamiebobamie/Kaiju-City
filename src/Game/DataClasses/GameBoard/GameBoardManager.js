@@ -1,4 +1,5 @@
 import { TILE_DIRS, TILE_DIR_NORM_VECS, TILE_STATUS_RANKS } from 'Utils/gameState';
+import { BUBBLE_DRAWBACKS, getIsDrawbackOn } from 'Game/DataClasses/BubbleTest';
 import { getRandomIntInRange, getDistanceToFrom, getNormVecFromDestAndOrigin } from 'Game/utils'
 import { GameBoardTile } from 'Game/DataClasses/GameBoard/Tile/GameBoardTile'
 import { findPath } from 'Game/DataClasses/GameBoard/findPath'
@@ -29,6 +30,38 @@ export class GameBoardManager {
         this.closedTileKeys = new Set(); // tiles taken away for now, eg. the tracks while a train is due
         this.walkableTileKeys = new Set(level.walkableTiles.map(({ i, j }) => `${i} ${j}`));
         this.linkedTiles = new Map(level.tileLinks.flatMap(([a, b]) => [[`${a.i} ${a.j}`, b], [`${b.i} ${b.j}`, a]]));
+        this.wormholes = []; // links a teleport leaves behind for a while: { from, to, startsAt, endsAt }
+        this.soapUntil = new Map(); // Bubble's Suds: tiles a Dispel crossed, by tile, until when they are soapy
+    }
+
+    getIsSoapy = ({ i, j }) => {
+        return (this.soapUntil.get(`${i} ${j}`) || 0) > this.accTime;
+    }
+
+    getSoapyTiles() {
+        return [...this.soapUntil.entries()].filter(([, until]) => until > this.accTime).map(([key]) => {
+            const [i, j] = key.split(' ').map(Number);
+            return { i, j };
+        });
+    }
+
+    // anyone can go through, both ways, until it closes. a tile the level already links keeps its own link.
+    addWormhole = (from, to, accTime, durationMs) => {
+        const getKey = ({ i, j }) => `${i} ${j}`;
+        if (getKey(from) == getKey(to) || this.linkedTiles.has(getKey(from)) || this.linkedTiles.has(getKey(to))) return;
+        this.linkedTiles.set(getKey(from), to);
+        this.linkedTiles.set(getKey(to), from);
+        this.wormholes.push({ from, to, startsAt: accTime, endsAt: accTime + durationMs });
+    }
+
+    updateWormholes(accTime) {
+        const [open, closed] = [this.wormholes.filter(({ endsAt }) => endsAt > accTime), this.wormholes.filter(({ endsAt }) => endsAt <= accTime)];
+        closed.forEach(({ from, to }) => [from, to].forEach(({ i, j }) => this.linkedTiles.delete(`${i} ${j}`)));
+        this.wormholes = open;
+    }
+
+    getWormholes() {
+        return this.wormholes;
     }
 
     initTiles() {
@@ -96,7 +129,9 @@ export class GameBoardManager {
         accTime,
         pieceIndex,
         appliedStatus,
-        isBuffed = false
+        isBuffed = false,
+        stackRange = 0, // from casting the same power again and again
+        areaBonus = 0 // eg. Bubble's Fizz Out: below 0 makes it smaller
     }) => {
         const self = this.gameManagerProxy.getPiece(pieceIndex);
         const pieceTileIndex = self.getTileIndex();
@@ -125,7 +160,7 @@ export class GameBoardManager {
         }
 
         const targetTileIndex = target.getTileIndex();
-        const area = self.numTilesModifier ? Math.max(tileStatus.area + self.numTilesModifier, 1) : tileStatus.area;
+        const area = self.numTilesModifier || areaBonus ? Math.max(tileStatus.area + self.numTilesModifier + areaBonus, 1) : tileStatus.area;
 
         /*
             1. get the 'tileIndex' of the tile to update with the 'appliedStatus'
@@ -143,14 +178,21 @@ export class GameBoardManager {
         const teamIndex = self.getTeamIndex();
 
         // 'Dispel' keeps its size. it is not affected by the range modifier.
-        const range = tileStatus.range + (appliedStatus == 'isBubble' ? 0 : self.tileCountModifier) + (isBuffed ? tileStatus.buffedCastBonus.range : 0);
-        const trailBonus = isBuffed ? tileStatus.buffedCastBonus.trailTicks : 0;
+        const rangeBonus = (appliedStatus == 'isBubble' ? 0 : self.tileCountModifier) + (isBuffed ? tileStatus.buffedCastBonus.range : 0) + stackRange;
+        const range = tileStatus.range + rangeBonus;
+        const cast = {
+            casterIndex: pieceIndex,
+            trailBonus: isBuffed ? tileStatus.buffedCastBonus.trailTicks : 0,
+            isForwardWave: false,
+            rangeBonus,
+            isSmoke: false
+        };
 
         const castOnTile = (castTileIndex, isForwardWave) => {
             if (!this.getIsInBounds(castTileIndex)) return;
             const tile = this.tiles[castTileIndex.i][castTileIndex.j];
             if (tile.getCanApplyStatus(tileStatus)) {
-                tile.updateTileStatus({ updateKey: accTime, tileStatus, currCount: range, dirs: [...dirs], teamIndex, targetIndex, trailBonus, isForwardWave });
+                tile.updateTileStatus({ updateKey: accTime, tileStatus, currCount: range, dirs: [...dirs], teamIndex, targetIndex, cast: isForwardWave ? { ...cast, isForwardWave } : cast });
             }
         };
         castOnTile(tileIndex, false);
@@ -166,6 +208,8 @@ export class GameBoardManager {
         so the order of the update loops has no effect on where a status goes.
     */
     updateTileState(accTime) {
+        this.accTime = accTime;
+        const isSudsOn = getIsDrawbackOn('suds');
         const contenders = {};
         for (let i = 0; i < this.numTileColumns; i++) {
             for (let j = 0; j < this.numTileRows; j++) {
@@ -187,6 +231,7 @@ export class GameBoardManager {
                 tile.setUpdateKey(accTime);
                 if (winner) {
                     tile.updateTileStatus({ updateKey: accTime, ...winner.getTileStatusValues() });
+                    if (isSudsOn && winner.getAppliedStatus() == 'isBubble') this.soapUntil.set(key, accTime + BUBBLE_DRAWBACKS.suds.ms);
                 } else {
                     tile.clearTileStatus();
                 }
@@ -228,20 +273,22 @@ export class GameBoardManager {
         if (!tile.isVisible || !tileStatus) return;
 
         const currCount = tile.getCurrCount();
+        // ticks count from where the cast really started, which a range bonus moves
+        const tickCount = currCount - tile.cast.rangeBonus;
 
         // 1. persist curr tile's status on curr tile (a piece on the tile clears it)
         const trailAge = currCount == 0 ? tile.trailAge + 1 : 0;
         const isPersist = tileStatus.getIsPersistent() || (tileStatus.getIsLeaveTrail() && currCount != 0);
-        if (isPersist && !tileStatus.getIsTrailFaded(trailAge - tile.trailBonus) && !this.gameManagerProxy.getIsPieceOnTile(tileIndex)) {
+        if (isPersist && !tileStatus.getIsTrailFaded(trailAge - tile.cast.trailBonus) && !this.gameManagerProxy.getIsPieceOnTile(tileIndex)) {
             this.addContender(contenders, tileIndex, tile.getTileContenderFromTile({ currCount: 0, trailAge }));
         }
 
         if (currCount == 0) return;
 
         // 2. move curr tile's status to adjacent tiles based on dirs
-        const tick = tileStatus.getCurrTick(currCount);
+        const tick = tileStatus.getCurrTick(tickCount);
         const tileWall = this.getTileWall(tile, tick);
-        const isReversing = !tile.isForwardWave && tileStatus.getIsReverseDirection(currCount);
+        const isReversing = !tile.cast.isForwardWave && tileStatus.getIsReverseDirection(tickCount);
         const isWallReversing = !!tileWall && isReversing;
         const wall = isWallReversing ? this.getReversedWall(tileWall, tick) : tileWall;
         const dirs = isWallReversing ? tile.getDirs().map(d => tileStatus.reverseDir(d)[0]) : tile.getDirs();
@@ -251,15 +298,15 @@ export class GameBoardManager {
 
             let newDirs = [d];
             if (this.getIsInBounds(nextTileIndex)) {
-                if (tileStatus.getIsSpread(currCount)) {
-                    const area = tileStatus.getSpreadArea(currCount);
+                if (tileStatus.getIsSpread(tickCount)) {
+                    const area = tileStatus.getSpreadArea(tickCount);
                     const [_, dirs] = this.getNumAdjacentTilesInDirectionFromTileToTile({ fromTileIndex: tileIndex, toTileIndex: nextTileIndex, numTiles: area });
                     newDirs = dirs;
-                } else if (tileStatus.getIsRotating(currCount)) {
-                    newDirs = tileStatus.rotateStatus(currCount);
-                } else if (tileStatus.getIsConserveDirections(currCount)) {
+                } else if (tileStatus.getIsRotating(tickCount)) {
+                    newDirs = tileStatus.rotateStatus(tickCount);
+                } else if (tileStatus.getIsConserveDirections(tickCount)) {
                     newDirs = dirs;
-                } else if (tileStatus.getIsTracking(currCount)) {
+                } else if (tileStatus.getIsTracking(tickCount)) {
                     // with nothing to chase, keep going the same way
                     const target = this.gameManagerProxy.getPiece(tile.targetIndex);
                     if (!target.getIsDead() && (target.getTeamIndex() != tile.teamIndex || tileStatus.getDmgAmt() < 0)) {
@@ -284,10 +331,16 @@ export class GameBoardManager {
                 const reflectedOffset = this.getTileOffsetFromDir(rd[0], tileIndex);
                 const reflectedTileIndex = { i: tileIndex.i + reflectedOffset.i, j: tileIndex.j + reflectedOffset.j };
                 if (this.getIsInBounds(reflectedTileIndex)) {
-                    this.addContender(contenders, reflectedTileIndex, tile.getTileContenderFromTile({ currCount: tileStatus.getBounceCount(currCount), newDirs: rd, wall: false }));
+                    this.addContender(contenders, reflectedTileIndex, tile.getTileContenderFromTile({ currCount: tileStatus.getBounceCount(currCount), newDirs: rd, wall: false, cast: this.getBouncedCast(tile) }));
                 }
             }
         });
+    }
+
+    // a status that smokes turns to smoke where it hits an edge. its count is reset, so the range bonus no longer counts.
+    getBouncedCast(tile) {
+        const isSmoke = tile.cast.isSmoke || tile.getTileStatus().hasSmokeOnBounce;
+        return { ...tile.cast, isSmoke, rangeBonus: 0 };
     }
 
     /*
@@ -537,6 +590,10 @@ export class GameBoardManager {
     };
 
     getClosestEnemy = (pieceIndex) => {
+        // spurned, they go for the one who charmed them, near or far
+        const { spurnedBy } = this.gameManagerProxy.getPiece(pieceIndex);
+        const charmer = spurnedBy !== undefined && spurnedBy >= 0 ? this.gameManagerProxy.getPiece(spurnedBy) : undefined;
+        if (charmer && !charmer.getIsDead() && charmer.getTeamIndex() != this.gameManagerProxy.getPieceTeamIndex(pieceIndex)) return charmer;
         const otherTeamsPieces = this.gameManagerProxy.getOtherTeamsPieces(pieceIndex);
         const tileIndex = this.gameManagerProxy.getPieceTileIndex(pieceIndex);
         const enemyPiece = this.getClosestPieceFromTileIndex(otherTeamsPieces, tileIndex);
@@ -733,6 +790,12 @@ export class GameBoardManager {
         const statusDmg = tile.getIsDmgTile(teamIndex) ? tile.getDmgAmt() : 0;
         const isContactDmg = this.gameManagerProxy.getIsContactDmg(pieceIndex, tileIndex);
         return isContactDmg ? Math.max(statusDmg, 1) : statusDmg;
+    }
+
+    // who cast the status on a tile, or -1
+    getStatusCaster = ({ i, j }) => {
+        const tile = this.tiles[i] && this.tiles[i][j];
+        return tile && tile.getTileStatus() ? tile.cast.casterIndex : -1;
     }
 
     // the ways the status on a tile is travelling

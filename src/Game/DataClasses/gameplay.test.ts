@@ -6,6 +6,8 @@ import { TimeoutHandler } from './TimeoutHandler';
 import { findPath } from './GameBoard/findPath';
 import { CENTER_TILE, getLitTiles, makeGame, placePiece, putStatusOnTile } from './testHelpers';
 import { getThrowVec, startRagdoll, stepRagdoll } from './Ragdoll';
+import { KAIJU_SPEED, setKaijuSpeedMode } from './KaijuSpeedTest';
+import { BUBBLE_DRAWBACKS, setIsDrawbackOn } from './BubbleTest';
 
 const useAbility = ({ gm, player }, abilityIndex) => {
   const ability = player.abilities[abilityIndex];
@@ -160,7 +162,22 @@ describe('abilities', () => {
     player.moveToTiles = [{ i, j: j + 1 }, { i, j: j + 2 }];
     player.teleportPiece();
     expect(player.tileIndex).toEqual({ i, j: j + 2 });
-    expect(player.numTilesModifier).toBe(2);
+    // it leaves a wormhole behind, both ways, and doesn't fall straight back through it
+    expect(gm.gameBoardManager.getLinkedTile({ i, j })).toEqual({ i, j: j + 2 });
+    expect(gm.gameBoardManager.getLinkedTile({ i, j: j + 2 })).toEqual({ i, j });
+    player.movePiece({ accTime: 1100, playerInputHandler: input });
+    expect(player.tileIndex).toEqual({ i, j: j + 2 });
+  });
+
+  it('the wormhole closes after a while', () => {
+    const { i, j } = CENTER_TILE;
+    const { gm } = makeGame();
+    gm.gameBoardManager.addWormhole({ i, j }, { i, j: j + 3 }, 1000, 6000);
+    gm.gameBoardManager.updateWormholes(6999);
+    expect(gm.gameBoardManager.getLinkedTile({ i, j })).toEqual({ i, j: j + 3 });
+    gm.gameBoardManager.updateWormholes(7000);
+    expect(gm.gameBoardManager.getLinkedTile({ i, j })).toBeUndefined();
+    expect(gm.getWormholes()).toEqual([]);
   });
 });
 
@@ -374,11 +391,11 @@ describe('Shield', () => {
     castShield(game, 1000);
     const [plain] = getLitTiles(game.gm);
     expect(plain.getCurrCount()).toBe(2);
-    expect(plain.trailBonus).toBe(0);
+    expect(plain.cast.trailBonus).toBe(0);
     castShield(game, 5000);
     const [buffed] = getLitTiles(game.gm);
     expect(buffed.getCurrCount()).toBe(3);
-    expect(buffed.trailBonus).toBe(25);
+    expect(buffed.cast.trailBonus).toBe(25);
   });
 
   it('casting again restarts the passive instead of stacking it', () => {
@@ -406,11 +423,11 @@ describe('Water', () => {
     const game = makeGame({ abilities: ['Water', 'Fire', 'Ice'], kaijuTile: { i, j: j - 12 } });
     const index = game.player.abilities.findIndex(a => a.gameBoardPieceAbilityData.element == 'water');
     useAbility(game, index);
-    expect(getLitTiles(game.gm).map(tile => tile.isForwardWave).sort()).toEqual([false, true]);
+    expect(getLitTiles(game.gm).map(tile => tile.cast.isForwardWave).sort()).toEqual([false, true]);
     for (let k = 1; k <= 10; k++) game.gm.gameBoardManager.updateTileState(1 + k * 160);
     // in the player's column, the first wave has turned and trails the second
     const getRow = isForwardWave => getLitTiles(game.gm)
-      .find(tile => tile.tileIndex.i == i && tile.getCurrCount() > 0 && tile.isForwardWave == isForwardWave).tileIndex.j;
+      .find(tile => tile.tileIndex.i == i && tile.getCurrCount() > 0 && tile.cast.isForwardWave == isForwardWave).tileIndex.j;
     expect(getRow(false) - getRow(true)).toBeGreaterThanOrEqual(4);
   });
 });
@@ -452,5 +469,139 @@ describe('ragdolls', () => {
     expect(gm.getCameraShot()).toBe(shot); // the same shot, so the camera doesn't pull in again
     expect(shot.point).toEqual(gm.getDeathLocation(gm.getDeathPieces()[0]));
     expect(gm.getTimeScale()).toBeCloseTo(0.2);
+  });
+});
+
+describe('Fire', () => {
+  const castFire = (game, accTime) => {
+    game.gm.accTime = accTime;
+    game.gm.timeoutHandler.update(accTime);
+    game.gm.gameBoardManager.getTilesInFlatArray().forEach(tile => tile.clearTileStatus());
+    const index = game.player.abilities.findIndex(a => a.gameBoardPieceAbilityData.element == 'fire');
+    useAbility(game, index);
+    return getLitTiles(game.gm)[0];
+  };
+
+  it('starts at mid range, goes further with each cast soon after, to a cap, and starts over after a pause', () => {
+    const game = makeGame({ abilities: ['Fire', 'Ice', 'Water'] });
+    const counts = [1000, 3000, 5000, 7000, 9000, 11000].map(accTime => castFire(game, accTime).getCurrCount());
+    expect(counts).toEqual([16, 19, 22, 25, 28, 28]);
+    expect(castFire(game, 30000).getCurrCount()).toBe(16);
+  });
+
+  it('a longer cast still counts its ticks from where it started', () => {
+    const game = makeGame({ abilities: ['Fire', 'Ice', 'Water'] });
+    castFire(game, 1000);
+    const tile = castFire(game, 3000);
+    expect(tile.cast.rangeBonus).toBe(3);
+    expect(tile.getTileStatus().getCurrTick(tile.getCurrCount() - tile.cast.rangeBonus)).toBe(0);
+  });
+
+  it('turns to smoke where it bounces off the edge of the map', () => {
+    const game = makeGame({ abilities: ['Fire', 'Ice', 'Water'] });
+    castFire(game, 1000);
+    let hasSmoked = false;
+    for (let k = 1; k <= 40 && !hasSmoked; k++) {
+      game.gm.gameBoardManager.updateTileState(1000 + k * 160);
+      hasSmoked = getLitTiles(game.gm).some(tile => tile.cast.isSmoke);
+    }
+    expect(hasSmoked).toBe(true);
+  });
+});
+
+describe('Kaiju speed playtest', () => {
+  afterEach(() => setKaijuSpeedMode('rampage'));
+
+  it('rampage: faster for a moment after breathing fire', () => {
+    setKaijuSpeedMode('rampage');
+    const kaiju = makeGame().kaiju as any;
+    kaiju.rampageEndsAt = 4000;
+    kaiju.updateSpeedBoost(3000);
+    expect(kaiju.moveSpeedModifier).toBe(KAIJU_SPEED.boost);
+    kaiju.updateSpeedBoost(4000);
+    expect(kaiju.moveSpeedModifier).toBe(0);
+  });
+
+  it('wind-up: faster while it glows, before it breathes', () => {
+    setKaijuSpeedMode('windUp');
+    const kaiju = makeGame().kaiju as any;
+    kaiju.isGoingToSpewFire = true;
+    kaiju.updateSpeedBoost(1000);
+    expect(kaiju.moveSpeedModifier).toBe(KAIJU_SPEED.boost);
+    kaiju.isGoingToSpewFire = false;
+    kaiju.updateSpeedBoost(1100);
+    expect(kaiju.moveSpeedModifier).toBe(0);
+  });
+});
+
+describe('Bubble drawbacks playtest', () => {
+  const DRAWBACKS = ['suds', 'burst', 'cleanSlate', 'soaked', 'fizzOut'] as const;
+  const only = (...ids) => DRAWBACKS.forEach(id => setIsDrawbackOn(id, ids.includes(id)));
+  afterEach(() => only('fizzOut'));
+
+  const setUp = () => {
+    const game = makeGame({ abilities: ['Bubble', 'Ice', 'Water'] });
+    const bubble = game.player.abilities.find(a => a.gameBoardPieceAbilityData.element == 'bubble');
+    const dispel = accTime => {
+      game.gm.accTime = accTime;
+      game.gm.timeoutHandler.update(accTime);
+      game.gm.gameBoardManager.getTilesInFlatArray().forEach(tile => tile.clearTileStatus());
+      bubble.useAbility({ accTime, piece: game.player, registerTimeout: game.gm.gameManagerProxy.registerTimeout, updateTileWithAbilityStatus: game.gm.gameManagerProxy.updateTileWithAbilityStatus });
+    };
+    return { ...game, bubble, dispel };
+  };
+
+  it('Fizz Out: each quick Dispel asks for fewer tiles, and a pause resets it', () => {
+    only('fizzOut');
+    const { player, bubble } = setUp();
+    const areaBonuses = [];
+    const cast = accTime => bubble.useAbility({ accTime, piece: player, registerTimeout: () => 0, updateTileWithAbilityStatus: ({ areaBonus }) => areaBonuses.push(areaBonus) });
+    [1000, 2000, 3000, 10000].forEach(cast);
+    expect(areaBonuses).toEqual([-0, -1, -2, -0]);
+  });
+
+  it('Burst: the other powers wait after a Dispel', () => {
+    only('burst');
+    const { player, bubble, dispel } = setUp();
+    dispel(1000);
+    const others = player.abilities.filter(a => a !== bubble);
+    expect(others.every(a => a.getIsOnCooldown(2400, false))).toBe(true);
+    expect(others.every(a => !a.getIsOnCooldown(2500, false))).toBe(true);
+  });
+
+  it('Clean Slate: a Dispel ends the other powers\' passives', () => {
+    only('cleanSlate');
+    const game = setUp();
+    const ice = game.player.abilities.find(a => a.gameBoardPieceAbilityData.element == 'ice');
+    useAbility(game, game.player.abilities.indexOf(ice));
+    expect(game.player.moveSpeedModifier).toBe(-1);
+    game.dispel(1500);
+    expect(game.player.moveSpeedModifier).toBe(0);
+    game.gm.timeoutHandler.update(20000); // the ended passive's own timer does nothing now
+    expect(game.player.moveSpeedModifier).toBe(0);
+  });
+
+  it('Soaked: slower for a while, and casting again restarts it rather than stacking', () => {
+    only('soaked');
+    const { player, gm, dispel } = setUp();
+    dispel(1000);
+    dispel(2000);
+    expect(player.moveSpeedModifier).toBe(-1);
+    gm.timeoutHandler.update(4500); // the first cast's time is up, the second's isn't
+    expect(player.moveSpeedModifier).toBe(-1);
+    gm.timeoutHandler.update(5000);
+    expect(player.moveSpeedModifier).toBe(0);
+  });
+
+  it('Suds: tiles a Dispel crosses stay soapy for a while', () => {
+    only('suds');
+    const { gm, dispel } = setUp();
+    dispel(1000);
+    gm.gameBoardManager.updateTileState(1160);
+    const [soapy] = gm.getSoapyTiles();
+    expect(soapy).toBeDefined();
+    gm.gameBoardManager.getTilesInFlatArray().forEach(tile => tile.clearTileStatus()); // the Dispel has passed
+    gm.gameBoardManager.updateTileState(1160 + BUBBLE_DRAWBACKS.suds.ms + 1);
+    expect(gm.gameBoardManager.getIsSoapy(soapy)).toBe(false);
   });
 });

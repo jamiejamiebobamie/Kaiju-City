@@ -41,6 +41,18 @@ export class GameManagerProxy {
         return this.props.getTeamLeaderPiece(pieceIndex);
     }
 
+    addWormhole(from, to, accTime, durationMs) {
+        this.props.addWormhole(from, to, accTime, durationMs);
+    }
+
+    getIsSoapy(tileIndex) {
+        return this.props.getIsSoapy(tileIndex);
+    }
+
+    getStatusCaster(tileIndex) {
+        return this.props.getStatusCaster(tileIndex);
+    }
+
     getStatusDirs(tileIndex) {
         return this.props.getStatusDirs(tileIndex);
     }
@@ -201,13 +213,17 @@ export class GameManagerProxy {
         accTime,
         pieceIndex,
         appliedStatus,
-        isBuffed
+        isBuffed,
+        stackRange,
+        areaBonus
     }) => {
         this.props.updateTileWithAbilityStatus({
             accTime,
             pieceIndex,
             appliedStatus,
-            isBuffed
+            isBuffed,
+            stackRange,
+            areaBonus
         });
     }
 

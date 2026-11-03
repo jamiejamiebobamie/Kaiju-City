@@ -36,6 +36,13 @@ const TILE_LOOK = {
   // tiles linked to another tile
   linkColor: "#9b7bff",
   linkTintOpacity: 0.5,
+  // a Teleport's wormhole: Teleport's color, pulsing, and fading out as it closes
+  wormholeColor: "#8a2be2",
+  wormholePulseSeconds: 0.6,
+  wormholeFadeMs: 1500, // over its last moments
+  // Bubble's Suds: soapy tiles
+  soapColor: "#dff3ff",
+  soapTintOpacity: 0.45,
   // goal tiles: a glowing light shines upward from the tile
   goalColor: "#ffd24a",
   goalPulseSeconds: 1.4,
@@ -48,7 +55,35 @@ const TILE_LOOK = {
   iconGlow: 2,
   baseHexRadius: 12.6, // line widths are set for hexagons of this size, and scale with them
   maxPixelRatio: 1.5,
-  fadeSeconds: 2
+  fadeSeconds: 2,
+  // a status burning out at the edge of the map: it darkens to smoke, then fades fast once it is gone
+  smokeColor: "#000000",
+  smokeFadeMs: 350,
+  // where a status moves on, its icon leaves a fading ghost in the power's own color
+  iconGhostOpacity: 0.6,
+  iconGhostMs: 500
+};
+
+// any css color as [r, g, b]: the canvas turns names like 'tomato' into hex
+const colorCanvas = document.createElement("canvas").getContext("2d");
+const getRgb = color => {
+  colorCanvas.fillStyle = color;
+  const hex = colorCanvas.fillStyle;
+  return [1, 3, 5].map(start => parseInt(hex.slice(start, start + 2), 16));
+};
+
+// from one color to another, 'amount' of the way: in steps, so colored tiles still share a few sprites
+const SMOKE_STEPS = 6;
+const mixColors = (from, to, amount) => {
+  const step = Math.round(Math.min(Math.max(amount, 0), 1) * SMOKE_STEPS) / SMOKE_STEPS;
+  const [a, b] = [getRgb(from), getRgb(to)];
+  return `#${a.map((channel, k) => Math.round(channel + (b[k] - channel) * step).toString(16).padStart(2, "0")).join("")}`;
+};
+
+// smoke darkens as its count runs down
+const getSmokeColor = (tile, color) => {
+  const startCount = Math.max(tile.getTileStatus().bounceCountResetVal, 1);
+  return mixColors(color, TILE_LOOK.smokeColor, 1 - tile.getCurrCount() / startCount);
 };
 
 const StyledCanvas = styled.canvas`
@@ -161,12 +196,11 @@ const getHighlightColor = hex => {
   return `#${channels.map(washOut).join("")}`;
 };
 
-const drawIcon = (ctx, tile, center, radius, color, lineScale) => {
-  const iconClass = tile.getActiveIcon();
+const drawIcon = (ctx, { iconClass, rotation }, center, radius, color, lineScale) => {
   if (!iconClass) return;
   ctx.save();
   ctx.translate(center.x, center.y);
-  ctx.rotate((tile.getRotation() * Math.PI) / 180);
+  ctx.rotate((rotation * Math.PI) / 180);
   ctx.font = `${radius * 2 * TILE_LOOK.iconSizeRatio}px FontAwesome`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -189,7 +223,7 @@ const drawIcon = (ctx, tile, center, radius, color, lineScale) => {
 
 const getLineScale = grid => getHexRadius(grid) / TILE_LOOK.baseHexRadius;
 
-export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom }) => {
+export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamColors = false }) => {
   const canvasRef = useRef(null);
   const { grid, world, contentOffset } = level;
   const width = world.width - contentOffset.x;
@@ -317,6 +351,49 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom }) => {
 
     drawEmptyTiles();
 
+    /*
+      What was on the tiles last time, and what is still fading from tiles it has left, by tile.
+      Smoke that has gone out fades fast. An icon that has moved on leaves a ghost of itself.
+    */
+    let smokeTiles = new Map(); // { center, color }
+    let iconTiles = new Map(); // { center, icon, color }
+    const smokeFades = new Map();
+    const iconGhosts = new Map();
+    let fadeFrame = undefined;
+    const drawFades = () => {
+      const nowMs = performance.now();
+      const getOpacity = (fades, key, startMs, fadeMs) => {
+        const opacity = 1 - (nowMs - startMs) / fadeMs;
+        if (opacity <= 0) fades.delete(key);
+        return opacity;
+      };
+      smokeFades.forEach(({ center, color, startMs }, key) => {
+        const opacity = getOpacity(smokeFades, key, startMs, TILE_LOOK.smokeFadeMs);
+        if (opacity <= 0) return;
+        ctx.globalAlpha = opacity;
+        drawSprite(ctx, getStatusSprite(color), center, pixelRatio);
+      });
+      iconGhosts.forEach(({ center, icon, color, startMs }, key) => {
+        const opacity = getOpacity(iconGhosts, key, startMs, TILE_LOOK.iconGhostMs);
+        if (opacity <= 0) return;
+        ctx.globalAlpha = opacity * TILE_LOOK.iconGhostOpacity;
+        drawIcon(ctx, icon, center, radius, color, lineScale);
+      });
+      ctx.globalAlpha = 1;
+      // the fades are quicker than the game's ticks, so they draw on their own frames while they last
+      if ((smokeFades.size || iconGhosts.size) && fadeFrame === undefined) fadeFrame = requestAnimationFrame(() => {
+        fadeFrame = undefined;
+        draw();
+      });
+    };
+
+    // what is gone since last time starts to fade
+    const startFades = (lastTiles, nextTiles, fades) => {
+      lastTiles.forEach((last, key) => {
+        if (!nextTiles.has(key)) fades.set(key, { ...last, startMs: performance.now() });
+      });
+    };
+
     const draw = () => {
       if (drawnWalkableRevision != gameManager.getWalkableRevision()) {
         drawnWalkableRevision = gameManager.getWalkableRevision();
@@ -331,6 +408,17 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom }) => {
       level.tileLinks.flat().forEach(tileIndex => {
         drawSprite(ctx, getSoftSprite(TILE_LOOK.linkColor, TILE_LOOK.linkTintOpacity), getTileCenter(grid, tileIndex), pixelRatio);
       });
+      const accTime = gameManager.getAccTime();
+      const wormholePulse = (Math.sin((performance.now() / 1000 / TILE_LOOK.wormholePulseSeconds) * Math.PI * 2) + 1) / 2;
+      gameManager.getWormholes().forEach(({ from, to, endsAt }) => {
+        const closing = Math.min((endsAt - accTime) / TILE_LOOK.wormholeFadeMs, 1);
+        ctx.globalAlpha = Math.max(closing, 0) * (0.55 + 0.45 * wormholePulse);
+        [from, to].forEach(tileIndex => drawSprite(ctx, getStatusSprite(TILE_LOOK.wormholeColor), getTileCenter(grid, tileIndex), pixelRatio));
+      });
+      ctx.globalAlpha = 1;
+      gameManager.getSoapyTiles().forEach(tileIndex => {
+        drawSprite(ctx, getSoftSprite(TILE_LOOK.soapColor, TILE_LOOK.soapTintOpacity), getTileCenter(grid, tileIndex), pixelRatio);
+      });
       const colorLookup = gameManager.getPieceColorsLookup();
 
       const pulse = (Math.sin((performance.now() / 1000 / TILE_LOOK.goalPulseSeconds) * Math.PI * 2) + 1) / 2;
@@ -342,8 +430,18 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom }) => {
       });
       ctx.globalAlpha = 1;
 
+      const nextSmokeTiles = new Map();
+      const nextIconTiles = new Map();
       gameManager.getActiveTiles().forEach(tile => {
-        const color = tile.getColor();
+        const key = `${tile.tileIndex.i} ${tile.tileIndex.j}`;
+        const powerColor = tile.getColor();
+        const teamColor = isTeamColors && powerColor && !tile.teleportTileStatus ? gameManager.getStatusTeamColor(tile.cast.casterIndex) : undefined;
+        const statusColor = teamColor || powerColor;
+        const isSmoke = !!statusColor && tile.cast.isSmoke && !tile.teleportTileStatus;
+        const color = isSmoke ? getSmokeColor(tile, statusColor) : statusColor;
+        // the icon keeps its power's color on a team-colored tile, so the power can always be told
+        const iconColor = isSmoke ? getSmokeColor(tile, powerColor) : powerColor;
+        if (isSmoke) nextSmokeTiles.set(key, { center: getTileCenter(grid, tile.tileIndex), color });
         const pieceColor = colorLookup[`${tile.tileIndex.i} ${tile.tileIndex.j}`];
         const isHighlighted = tile.getIsHighlighted();
         if (!color && !isHighlighted && !pieceColor) return;
@@ -353,9 +451,16 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom }) => {
         else if (pieceColor && !color) drawSprite(ctx, getSoftSprite(pieceColor, TILE_LOOK.pieceTintOpacity), center, pixelRatio);
         if (color) {
           if (!isHighlighted) drawSprite(ctx, getStatusSprite(pieceColor || color), center, pixelRatio);
-          drawIcon(ctx, tile, center, radius, color, lineScale);
+          const icon = { iconClass: tile.getActiveIcon(), rotation: tile.getRotation() };
+          drawIcon(ctx, icon, center, radius, iconColor, lineScale);
+          if (icon.iconClass && !tile.teleportTileStatus) nextIconTiles.set(key, { center, icon, color: iconColor });
         }
       });
+      startFades(smokeTiles, nextSmokeTiles, smokeFades);
+      startFades(iconTiles, nextIconTiles, iconGhosts);
+      smokeTiles = nextSmokeTiles;
+      iconTiles = nextIconTiles;
+      drawFades();
     };
 
     draw();
@@ -364,9 +469,10 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom }) => {
     const unsubscribe = gameManager.subscribeToBoard(draw);
     return () => {
       isCancelled = true;
+      if (fadeFrame !== undefined) cancelAnimationFrame(fadeFrame);
       unsubscribe();
     };
-  }, [gameManager, level, tone, grid, width, height, zoom]);
+  }, [gameManager, level, tone, grid, width, height, zoom, isTeamColors]);
 
   return (
     <StyledCanvas

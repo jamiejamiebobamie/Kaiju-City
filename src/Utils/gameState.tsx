@@ -2407,7 +2407,7 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
 
     // PASSIVE ability data
     isTriggerPassiveImmediately: true,
-    modifierVal: 0, // off for now: needs a passive
+    modifierVal: 0, // Spurned is on the charmed piece: see 'updateCharm'
     fieldToModify: '',
     // - - - - - - - - - - -
 
@@ -2423,9 +2423,9 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     activeDesc: "An enemy fights for you for a few seconds.",
     activeEffect1: "Charm pursues its target and is spent when it touches an enemy. A target with no allies on the board takes 1 damage instead. A charmed enemy that dies still counts as your kill.",
 
-    passiveName: "None yet",
-    passiveDesc: "No passive for now.",
-    passiveEffect1: "No effect for now",
+    passiveName: "Spurned",
+    passiveDesc: "Hell hath no fury...",
+    passiveEffect1: "When the charm breaks, they come for you first, wherever you are",
 
     activeEffect2: '',
     passiveEffect2: ''
@@ -2501,7 +2501,7 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
   {
     // TILE STATUS data - - - - - - - - - - - - - - - - -
     appliedStatus: 'isOnFire',
-    range: 25, // count / startCount / totalCount
+    range: 16, // count / startCount / totalCount. mid range: casting again soon after takes it further
     area: 3, // numTiles
     dmgAmt: 1, // amt of dmg done to Piece when piece is on a tile with the status
 
@@ -2536,6 +2536,7 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     isSpread: [],
     isReverseDirection: [],
     isWall: true,
+    hasSmokeOnBounce: true, // fire that hits the edge of the map burns out as smoke
     // - - - - - - - - - - - - - - - - - - - - - - - - - 
 
     // AI data - - - -
@@ -2548,8 +2549,10 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
 
     // PASSIVE ability data
     isTriggerPassiveImmediately: true,
-    modifierVal: 0, // off for now: needs a different passive
-    fieldToModify: 'tileCountModifier',
+    isPassiveRefreshed: true,
+    castStack: { rangePerStack: 3, maxStacks: 4 }, // 16, then 19, 22, 25 and at most 28
+    modifierVal: 0,
+    fieldToModify: '',
     // - - - - - - - - - - -
 
     // UI data - - - - - - - - - -
@@ -2568,7 +2571,7 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
 
     passiveName: "Uncontrolled Burn",
     passiveDesc: "You've cleared a path...",
-    passiveEffect1: "No effect for now",
+    passiveEffect1: "Cast again within 6 seconds: +3 range each time, up to +12. Fire that hits the edge burns out as smoke",
 
     activeEffect2: '',
     passiveEffect2: '',
@@ -2617,8 +2620,9 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
 
     // PASSIVE ability data
     isTriggerPassiveImmediately: true,
-    modifierVal: -1,
-    fieldToModify: 'moveSpeedModifier',
+    isPassiveRefreshed: true,
+    modifierVal: 1,
+    fieldToModify: 'slipperyModifier', // you slide a tile further when you stop
     // - - - - - - - - - - -
 
     // UI data - - - - - - - - - -
@@ -2637,7 +2641,7 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
 
     passiveName: "Slippery",
     passiveDesc: "...when wet. Exercise caution.",
-    passiveEffect1: "-1 speed",
+    passiveEffect1: "For 4 seconds after casting, you stop one tile later",
 
     activeEffect2: '',
     passiveEffect2: '',
@@ -2903,8 +2907,9 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
 
     // PASSIVE ability data
     isTriggerPassiveImmediately: true,
-    modifierVal: 0, // off for now: needs a different passive
-    fieldToModify: 'tileCountModifier',
+    hasDispelDrawbacks: true, // its passive is a drawback, being playtested: see 'BubbleTest'
+    modifierVal: 0,
+    fieldToModify: '',
     // - - - - - - - - - - -
 
     // UI data - - - - - - - - - -
@@ -2923,7 +2928,7 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
 
     passiveName: "Like My Dreams",
     passiveDesc: "...they fade and die.",
-    passiveEffect1: "No effect for now",
+    passiveEffect1: "See 'BubbleTest': the picker shows the drawbacks that are on",
 
     activeEffect2: '',
     passiveEffect2: '',
@@ -3042,8 +3047,9 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
 
     // PASSIVE ability data
     isTriggerPassiveImmediately: false,
-    modifierVal: 2,
-    fieldToModify: 'numTilesModifier',
+    wormholeMs: 6000, // the wormhole left behind: anyone can use it, both ways, until it closes
+    modifierVal: 0,
+    fieldToModify: '',
     // - - - - - - - - - - -
 
     // UI data - - - - - - - - - -
@@ -3060,9 +3066,9 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     activeDesc: "Instantly travel to a safe tile",
     activeEffect1: "",
 
-    passiveName: "Warp Energy Overload",
-    passiveDesc: "For a short time after teleporting, your magic is explosive",
-    passiveEffect1: "+2 area", // TO-DO: determine better passive...
+    passiveName: "Wormhole",
+    passiveDesc: "You leave a hole in space behind you. Anyone can follow.",
+    passiveEffect1: "Leaves a two-way wormhole for 6 seconds",
 
     activeEffect2: '',
     passiveEffect2: '',
@@ -3111,8 +3117,8 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
 
     // PASSIVE ability data
     isTriggerPassiveImmediately: true,
-    modifierVal: 0, // off for now: needs a different passive
-    fieldToModify: 'tileCountModifier',
+    modifierVal: 0, // just vibes, on purpose
+    fieldToModify: '',
     // - - - - - - - - - - -
 
     // UI data - - - - - - - - - -
@@ -3129,9 +3135,9 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     activeDesc: "Heal your teammate or yourself with the power of love!",
     activeEffect1: "Heal will pursue the teammate with the least health",
 
-    passiveName: "Long Distance",
-    passiveDesc: "You're in a long distance relationship.",
-    passiveEffect1: "No effect for now",
+    passiveName: "Good Vibes",
+    passiveDesc: "Everyone feels a little better about themselves. Statistically, nothing changes.",
+    passiveEffect1: "No effect. Just vibes.",
 
     activeEffect2: '',
     passiveEffect2: '',

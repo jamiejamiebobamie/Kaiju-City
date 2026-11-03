@@ -52,6 +52,13 @@ export const CUTSCENE = {
   recruitButtonRows: 3.6 // how far above the player the buttons sit
 };
 
+// a playtest: tile statuses take the color of the side that cast them
+export const TEAM_COLORS = {
+    kaiju: '#9b30ff',
+    playerTeam: '#5b8fd9', // a light navy
+    agents: '#e0201b'
+};
+
 const ARRIVAL_LINE = "Heads-up, teammate. They're coming!";
 
 // before each Recruit or Terminate: what each choice means
@@ -189,6 +196,25 @@ export class GameManager {
         } else {
             this.gameBoardManager.setWalkableTiles(walkableTiles);
         }
+    }
+
+    // undefined for a status no one is known to have cast: it keeps its power's color
+    getStatusTeamColor = (casterIndex) => {
+        const caster = this.getPieces()[casterIndex];
+        if (!caster) return undefined;
+        if (caster.avatar == 'kaiju') return TEAM_COLORS.kaiju;
+        if (caster.avatar == 'agent') return TEAM_COLORS.agents;
+        const isPlayerSide = caster.homeTeamIndex == this.gameBoardPiecesManager.getPlayerTeamIndex();
+        // recruits and the bystanders they once were: their own color
+        return caster.isRecruit || !isPlayerSide ? caster.getColor() : TEAM_COLORS.playerTeam;
+    }
+
+    getWormholes() {
+        return this.gameBoardManager.getWormholes();
+    }
+
+    getSoapyTiles() {
+        return this.gameBoardManager.getSoapyTiles();
     }
 
     getActiveTiles() {
@@ -758,6 +784,7 @@ export class GameManager {
         this.liveWideShotMs = Math.max(this.liveWideShotMs - GAME_TICK.pieceMs, 0);
         if (this.isChaseSlowed) this.updateChaseSlowMotion();
         this.timeoutHandler.update(this.accTime);
+        this.gameBoardManager.updateWormholes(this.accTime);
         if (this.trainSchedule) this.trainSchedule.update(this.accTime);
         if (this.level.kaijuEntry) this.kaijuManager.update(this.accTime, this.score);
         if (this.level.rival) this.updateRival();
@@ -869,6 +896,9 @@ export class GameManager {
             getPathFromTileToTile: this.gameBoardManager.getPathFromTileToTile,
             spawnDeathPieceAtLocation: this.gameBoardPiecesManager.spawnDeathPieceAtLocation,
             getStatusDirs: this.gameBoardManager.getStatusDirs,
+            getStatusCaster: this.gameBoardManager.getStatusCaster,
+            getIsSoapy: this.gameBoardManager.getIsSoapy,
+            addWormhole: this.gameBoardManager.addWormhole,
             getDirFromTiles: this.gameBoardManager.getDirFromTiles,
             updateTileWithAbilityStatus: this.gameBoardManager.updateTileWithAbilityStatus,
             getPieceTileIndex: this.gameBoardPiecesManager.getPieceTileIndex,

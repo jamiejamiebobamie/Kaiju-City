@@ -860,6 +860,23 @@ describe('Charm', () => {
     expect(rival.teamIndex).toBe(rival.homeTeamIndex);
   });
 
+  it('Spurned: once it breaks, they go for whoever charmed them, even with someone closer', () => {
+    const { gm, player, rival, board } = makeFight();
+    addSecondEnemy(gm);
+    const teammate = gm.gameBoardPiecesManager.addPiece({ pieceInfo: { ...PIECES_INFO.girl, abilities: [] }, teamIndex: player.teamIndex });
+    const { i, j } = rival.getTileIndex();
+    board.tiles[i][j].updateTileStatus({
+      updateKey: 0, tileStatus: gm.settingsManager.getAbilityAndTileStatusData().isCharming, currCount: 20, dirs: ['up'],
+      teamIndex: player.teamIndex, targetIndex: rival.pieceIndex, cast: { ...board.tiles[i][j].cast, casterIndex: player.pieceIndex }
+    });
+    rival.updateCharm(1000);
+    rival.updateCharm(6000);
+    teammate.initCharLocation(true, rival.getTileIndex()); // right beside them
+    expect(board.getClosestEnemy(rival.pieceIndex)).toBe(player);
+    player.isDead = true;
+    expect(board.getClosestEnemy(rival.pieceIndex)).not.toBe(player);
+  });
+
   it('is spent on the enemy it touches', () => {
     const { gm, player, rival, board } = makeFight();
     addSecondEnemy(gm);
@@ -1644,5 +1661,22 @@ describe('recruits', () => {
     expect(getText(LEVELS.aquarium)).toMatch(/must've worked here/);
     expect(getText(LEVELS.rooftop)).toMatch(/ancestors/);
     expect(LEVELS.aquarium.rival.intro.lines[0].name).toBe('Aquarium Worker');
+  });
+});
+
+describe('Slippery', () => {
+  const getStopTile = isSlippery => {
+    const game = makeGame();
+    game.player.slipperyModifier = isSlippery ? 1 : 0;
+    hold(game, ['KeyW'], 6);
+    hold(game, [], 30); // let go, and let it come to a stop
+    return game.player.tileIndex;
+  };
+
+  it('a slippery piece stops one tile later than it would', () => {
+    const still = getStopTile(false);
+    const slid = getStopTile(true);
+    expect(slid.i).toBe(still.i);
+    expect(still.j - slid.j).toBe(1);
   });
 });

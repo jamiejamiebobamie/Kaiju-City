@@ -1,3 +1,11 @@
+/*
+    What one cast carries with it as it spreads, the same on every tile it reaches:
+    casterIndex: who cast it. trailBonus: extra tile updates a trail stays. isForwardWave: the second wave never turns.
+    rangeBonus: how much further than its range it started, so ticks are counted from where it really started.
+    isSmoke: it has hit an edge and is burning out.
+*/
+export const NO_CAST = Object.freeze({ casterIndex: -1, trailBonus: 0, isForwardWave: false, rangeBonus: 0, isSmoke: false });
+
 export class TileContender {
     constructor({
         tileStatus,
@@ -7,8 +15,7 @@ export class TileContender {
         dirs,
         wall,
         trailAge = 0,
-        trailBonus = 0,
-        isForwardWave = false
+        cast = NO_CAST
     }) {
         // CLASS: 'GameBoardTileStatusAndAbilityData' (shared "flyweight" instances)
         this.tileStatus = tileStatus;
@@ -20,8 +27,7 @@ export class TileContender {
         this.dirs = dirs;
         this.wall = wall;
         this.trailAge = trailAge; // tile updates since the status stopped moving
-        this.trailBonus = trailBonus; // extra tile updates it stays, from a buffed cast
-        this.isForwardWave = isForwardWave; // the second wave of a cast: it never turns around
+        this.cast = cast; // shared by every tile of one cast. see 'NO_CAST'.
     }
 
     getTileStatus() {
@@ -45,8 +51,7 @@ export class TileContender {
             dirs: this.dirs,
             wall: this.wall,
             trailAge: this.trailAge,
-            trailBonus: this.trailBonus,
-            isForwardWave: this.isForwardWave
+            cast: this.cast
         }
     }
 }

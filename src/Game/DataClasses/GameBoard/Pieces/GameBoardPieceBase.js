@@ -1,6 +1,8 @@
 import { getThrowVec } from 'Game/DataClasses/Ragdoll';
+import { BUBBLE_DRAWBACKS } from 'Game/DataClasses/BubbleTest';
 
 const CHARM_MS = 5000;
+const SLIPPERY_SLIDE_TILES = 1;
 const CHARM_ALONE_DMG = 1;
 
 export class GameBoardPieceBase {
@@ -53,6 +55,7 @@ export class GameBoardPieceBase {
         this.moveSpeedModifier = 0;
         this.numTilesModifier = 0;
         this.tileCountModifier = 0;
+        this.slipperyModifier = 0; // above 0, the piece slides one tile further when it stops
         this.dmgModifier = 0;
 
         // for rendering dmg/healing and teleport floating text
@@ -237,11 +240,14 @@ export class GameBoardPieceBase {
         if (this.isCharmed && (accTime >= this.charmEndsAt || hasNoOneToFight)) {
             this.isCharmed = false;
             this.setTeamIndex(this.homeTeamIndex);
+            // Spurned: an NPC goes after whoever charmed them, for as long as the charmer lives
+            if (this.isNpc) this.spurnedBy = this.charmedBy;
             return;
         }
         if (!this.isOnTiles) return;
         const charmingTeam = this.gameManagerProxy.getCharmingTeam(this.pieceIndex);
         if (charmingTeam === undefined) return;
+        const charmer = this.gameManagerProxy.getStatusCaster(this.tileIndex);
 
         // a Charm is spent on the first enemy it touches
         this.gameManagerProxy.clearTileStatusUnderPiece(this.pieceIndex);
@@ -254,6 +260,7 @@ export class GameBoardPieceBase {
         }
         this.isCharmed = true;
         this.charmEndsAt = accTime + CHARM_MS;
+        this.charmedBy = charmer;
         if (this.isNpc) {
             this.setTeamIndex(charmingTeam);
             this.moveToTiles = [];
@@ -349,7 +356,8 @@ export class GameBoardPieceBase {
             currentLocation: this.charLocation,
             moveFromLocation: this.moveFromLocation,
             moveToLocation: this.moveToLocation,
-            moveSpeed: this.moveSpeed + this.moveSpeedModifier
+            // Bubble's Suds: soapy tiles slow anyone on them
+            moveSpeed: this.moveSpeed + this.moveSpeedModifier + (this.isOnTiles && this.gameManagerProxy.getIsSoapy(this.tileIndex) ? BUBBLE_DRAWBACKS.suds.speed : 0)
         });
         this.charLocation = newLocation;
         this.moveFromLocation = newLocation;
@@ -366,8 +374,8 @@ export class GameBoardPieceBase {
         if (this.isThere && playerInputHandler.getIsPastPlayerInput() && !playerInputHandler.getIsCurrentPlayerInput()) {
             playerInputHandler.setIsPastPlayerInput(false);
             playerInputHandler.setPathPressedDir('idle');
-            // it walks on to the tile it is assigned, and stops there
-            this.moveToTiles = [];
+            // it walks on to the tile it is assigned, and stops there. slippery, it slides one tile on.
+            this.moveToTiles = this.slipperyModifier > 0 ? this.moveToTiles.slice(0, SLIPPERY_SLIDE_TILES) : [];
             this.isThere = false;
         } else if (playerInputHandler.getIsCurrentPlayerInput() && playerInputHandler.getIsChangeOfDirection()) {
             /*
@@ -430,6 +438,10 @@ export class GameBoardPieceBase {
         const teleportTileIndex = this.isNpc ? this.gameManagerProxy.getSafeTileIndex(this.pieceIndex) : this.moveToTiles[this.moveToTiles.length - 1];
 
         if (teleportTileIndex) {
+            // it leaves a wormhole between where it was and where it lands
+            const { wormholeMs } = this.gameManagerProxy.getAbilityAndTileStatusData().isTeleportTile;
+            if (wormholeMs) this.gameManagerProxy.addWormhole(this.tileIndex, teleportTileIndex, this.accTime, wormholeMs);
+            this.linkArrivalTile = teleportTileIndex; // standing on the wormhole's far end doesn't send it straight back
             const teleportLocation = this.gameManagerProxy.getCharXAndYFromTileIndex(teleportTileIndex);
             this.setTileIndex(teleportTileIndex);
             this.shouldTeleport = false;
@@ -691,6 +703,8 @@ export class GameBoardPieceBase {
         this.moveSpeedModifier = 0;
         this.numTilesModifier = 0;
         this.tileCountModifier = 0;
+        this.slipperyModifier = 0;
+        this.soakedUntil = 0;
         this.dmgModifier = 0;
         // - - - - - - - - - -
 

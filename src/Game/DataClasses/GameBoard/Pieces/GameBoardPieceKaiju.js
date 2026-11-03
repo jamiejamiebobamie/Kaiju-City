@@ -1,4 +1,5 @@
 import { GameBoardPieceBase } from './GameBoardPieceBase';
+import { getKaijuSpeedBoost, getKaijuSpeedMode, KAIJU_SPEED } from 'Game/DataClasses/KaijuSpeedTest';
 
 export class GameBoardPieceKaiju extends GameBoardPieceBase {
     constructor(params) {
@@ -13,6 +14,8 @@ export class GameBoardPieceKaiju extends GameBoardPieceBase {
         this.pieceClass = 'Kaiju!';
         this.pieceClassDescription = 'They come every night from the sea!';
         this.elements = 'kaijuFire';
+        this.rampageEndsAt = 0;
+        this.speedBoost = 0; // on top of 'moveSpeedModifier', from the speed playtest
     }
 
     useAbilities(accTime) {
@@ -36,11 +39,19 @@ export class GameBoardPieceKaiju extends GameBoardPieceBase {
                         registerTimeout: this.gameManagerProxy.registerTimeout,
                         updateTileWithAbilityStatus: this.gameManagerProxy.updateTileWithAbilityStatus
                     });
+                    if (getKaijuSpeedMode() == 'rampage') this.rampageEndsAt = accTime + KAIJU_SPEED.rampageMs;
                 }
             } else {
                 this.determineIfIsGoingToSpewFire(a, accTime);
             }
         });
+        this.updateSpeedBoost(accTime);
+    }
+
+    updateSpeedBoost(accTime) {
+        const boost = getKaijuSpeedBoost({ accTime, rampageEndsAt: this.rampageEndsAt, isGoingToSpewFire: this.isGoingToSpewFire });
+        this.moveSpeedModifier += boost - this.speedBoost;
+        this.speedBoost = boost;
     }
 
     determineIfIsGoingToSpewFire(a, accTime) {
@@ -54,6 +65,7 @@ export class GameBoardPieceKaiju extends GameBoardPieceBase {
 
     respawn(accTime) {
         super.respawn(accTime);
+        this.speedBoost = 0; // respawning clears 'moveSpeedModifier'
         this.initCharLocation(); // reset Kaiju position to off screen
     }
 

@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import styled from "styled-components";
+import styled, { keyframes } from "styled-components";
 import { WIDE_SHOT } from "Game/DataClasses/Camera";
 
 /*
@@ -48,15 +48,94 @@ const Outline = styled.div`
   outline: 0.15cqw dashed ${WINDOW_LOOK.handleColor};
 `;
 
-// grey plating around the window, like the player HUDs
-const Plating = styled.div`
+// an 80s-90s television around the window: a thick plastic casing, a rounded glass screen, scan lines and a rolling bar
+const TV_LOOK = {
+  casingWidth: 2.6, // in cqw
+  casingRadius: 3.2,
+  screenRadius: 1.8,
+  casing: "#1d1b1a",
+  casingLight: "#4a4542",
+  scanLineOpacity: 0.16,
+  vignetteOpacity: 0.5,
+  rollSeconds: 7, // the bright bar's trip down the screen
+  rollOpacity: 0.06
+};
+
+const TvCasing = styled.div`
   position: absolute;
-  inset: -0.9cqw;
+  inset: -${TV_LOOK.casingWidth}cqw;
   z-index: 2147483000;
   pointer-events: none;
-  border: 0.9cqw solid;
-  border-image: linear-gradient(135deg, #74777e, #26282c 22%, #55585f 48%, #1c1d21 72%, #6a6d74) 1;
-  box-shadow: 0 0 0 0.12cqw #08080a, inset 0 0 0 0.12cqw #08080a, 0 0 1cqw black;
+  border: ${TV_LOOK.casingWidth}cqw solid ${TV_LOOK.casing};
+  border-radius: ${TV_LOOK.casingRadius}cqw;
+  box-shadow:
+    inset 0 0.2cqw 0 ${TV_LOOK.casingLight},
+    0 0.25cqw 0 ${TV_LOOK.casingLight},
+    0 0 0 0.15cqw #080808,
+    0 1cqw 2.5cqw rgba(0, 0, 0, 0.8);
+`;
+
+// fills the corners outside the rounded glass with the casing's color
+const ScreenCorners = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 2147483001;
+  pointer-events: none;
+  border-radius: ${TV_LOOK.screenRadius}cqw;
+  box-shadow: 0 0 0 ${TV_LOOK.screenRadius}cqw ${TV_LOOK.casing}, inset 0 0 1.5cqw rgba(0, 0, 0, 0.9);
+`;
+
+const roll = keyframes`
+  from { top: -15%; }
+  to { top: 100%; }
+`;
+
+// over the picture: fine scan lines and a darker edge, as on curved glass
+const ScreenGlass = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 2147482990;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: ${TV_LOOK.screenRadius}cqw;
+  background:
+    radial-gradient(ellipse at center, transparent 58%, rgba(0, 0, 0, ${TV_LOOK.vignetteOpacity}) 100%),
+    repeating-linear-gradient(to bottom, rgba(0, 0, 0, ${TV_LOOK.scanLineOpacity}) 0 1px, transparent 1px 3px);
+`;
+
+const RollingBar = styled.div`
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 15%;
+  background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, ${TV_LOOK.rollOpacity}), transparent);
+  animation: ${roll} ${TV_LOOK.rollSeconds}s linear infinite;
+`;
+
+const PowerLight = styled.div`
+  position: absolute;
+  right: 1.6cqw;
+  bottom: -1.7cqw;
+  z-index: 2147483002;
+  width: 0.5cqw;
+  height: 0.5cqw;
+  border-radius: 50%;
+  background: #ff3b30;
+  box-shadow: 0 0 0.5cqw #ff3b30;
+  pointer-events: none;
+`;
+
+// at the left of the bottom edge, clear of the recruit buttons in the middle
+const BrandName = styled.div`
+  position: absolute;
+  left: 1.6cqw;
+  bottom: -1.95cqw;
+  z-index: 2147483002;
+  font-family: gameboy;
+  font-size: 0.8cqw;
+  letter-spacing: 0.25cqw;
+  color: #8c8580;
+  pointer-events: none;
 `;
 
 const Handle = styled.div`
@@ -119,7 +198,15 @@ export const PlayWindow = ({ playWindow, setPlayWindow, isAdjusting, isOpen, isC
       transition: isAdjusting || isCut ? "none" : `left ${WIDE_SHOT.pullMs}ms ease-in-out, top ${WIDE_SHOT.pullMs}ms ease-in-out, width ${WIDE_SHOT.pullMs}ms ease-in-out, height ${WIDE_SHOT.pullMs}ms ease-in-out`
     }}>
       {children}
-      {!isOpen && <Plating />}
+      <ScreenGlass><RollingBar /></ScreenGlass>
+      {!isOpen && (
+        <>
+          <ScreenCorners />
+          <TvCasing />
+          <BrandName>KAIJU-VISION</BrandName>
+          <PowerLight />
+        </>
+      )}
       {isAdjusting && <Outline />}
       {isAdjusting && HANDLES.map(handle => (
         <Handle

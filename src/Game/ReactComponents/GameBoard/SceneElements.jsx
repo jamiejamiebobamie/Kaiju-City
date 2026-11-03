@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import styled, { css, keyframes } from "styled-components";
+import styled, { keyframes } from "styled-components";
 import { getSortZIndex } from "Game/DataClasses/Levels/levels";
 import { getSpeechMs, SPEECH_TIMING } from "Game/DataClasses/speechTiming";
 
@@ -342,17 +342,27 @@ const KaijuPart = ({ element, activePhases, style }) => {
   );
 };
 
-// a recruit's glowing outline comes on when they touch a Kaiju part
-const sweepRock = keyframes`
-  0%, 100% { transform: translateX(-50%) rotate(-3deg); }
-  50% { transform: translateX(-46%) rotate(3deg); }
+// a sweeper swaps between the broom's two poses, to one side and then the other
+const SWEEP_LOOK = {
+  poses: ['/levels/npcs/hazmatBroomLeft.png', '/levels/npcs/hazmatBroomRight.png'],
+  strokeSeconds: 0.55 // each pose is held this long
+};
+
+const sweepSwap = keyframes`
+  0%, 49.9% { opacity: 1; }
+  50%, 100% { opacity: 0; }
 `;
 
+// a recruit's glowing outline comes on when they touch a Kaiju part
 const NpcElement = styled(ImageElement)`
   transform: translateX(-50%);
   transform-origin: 50% 100%;
   transition: filter 0.8s;
-  ${props => props.$isSweeping && css`animation: ${sweepRock} 0.9s ease-in-out infinite;`}
+`;
+
+// each pose is on for one stroke and off for the next. the second starts a stroke later, so only one shows at a time.
+const SweepPoseElement = styled(NpcElement)`
+  animation: ${sweepSwap} ${SWEEP_LOOK.strokeSeconds * 2}s step-end infinite;
 `;
 
 const SPEECH_LOOK = {
@@ -662,12 +672,26 @@ export const SceneElements = ({ level, activePhases, isPaused, onHotspot }) => (
 
       if (type == "npc") {
         const isGlowing = activePhases.includes(element.glowPhase);
-        return <NpcElement key={id} src={src} $isSweeping={element.isSweeping} style={{
+        const npcStyle = {
           ...style,
           width: "auto",
           top: `${y - height}px`,
           filter: isGlowing ? `drop-shadow(0 0 4px ${element.glowColor}) drop-shadow(0 0 10px ${element.glowColor})` : "none"
-        }} />;
+        };
+        if (!element.isSweeping) return <NpcElement key={id} src={src} style={npcStyle} />;
+        // the sweepers start on different poses, so they don't sweep in step
+        const otherPose = SWEEP_LOOK.poses.find(pose => pose != src) || src;
+        return (
+          <React.Fragment key={id}>
+            {[src, otherPose].map((pose, k) => (
+              <SweepPoseElement key={pose} src={pose} style={{
+                ...npcStyle,
+                animationDelay: `${-k * SWEEP_LOOK.strokeSeconds}s`,
+                animationPlayState: isPaused ? "paused" : "running"
+              }} />
+            ))}
+          </React.Fragment>
+        );
       }
       if (type == "walker") return <WalkerElement key={id} element={element} isPaused={isPaused} zIndex={style.zIndex} />;
       if (type == "hotspot") {

@@ -122,18 +122,69 @@ const RecruitPrompt = styled.div`
   transform-origin: 50% 100%;
 `;
 
+// the choice locks in: the button stays pressed, the other fades, and the word finishes itself
+const RECRUIT_LOOK = {
+  recruit: { button: "#2f7d57", tint: "#4c9a2a", suffix: "ED" }, // leaf green
+  terminate: { button: "#a01230", tint: "#7a0000", suffix: "D" }, // blood red
+  milk: "#f6f1e1",
+  lockMs: 250,
+  tintMs: 1200,
+  tintOpacity: 0.6,
+  suffixDelayMs: 350
+};
+
 const RecruitButton = styled.button`
   padding: 12px 22px;
   font-family: gameboy;
   font-size: 22px;
-  cursor: pointer;
-  color: #fbfbf0;
-  background: ${props => props.$isRecruit ? "#2f7d57" : "#a01230"};
+  cursor: ${props => props.$isLocked ? "default" : "pointer"};
+  color: ${props => props.$isLocked ? RECRUIT_LOOK.milk : "#fbfbf0"};
+  background: ${props => RECRUIT_LOOK[props.$choice].button};
   border: 4px solid #101018;
+  box-shadow: ${props => props.$isLocked ? "inset 0 4px 0 rgba(0, 0, 0, 0.5)" : "0 4px 0 #101018"};
+  transform: translateY(${props => props.$isLocked ? "4px" : "0"});
+  opacity: ${props => props.$isFaded ? 0 : 1};
+  pointer-events: ${props => props.$isFaded || props.$isLocked ? "none" : "auto"};
+  transition: transform ${RECRUIT_LOOK.lockMs}ms, box-shadow ${RECRUIT_LOOK.lockMs}ms, color ${RECRUIT_LOOK.tintMs}ms, opacity ${RECRUIT_LOOK.lockMs * 2}ms;
   &:hover {
-    filter: brightness(1.3);
+    filter: ${props => props.$isLocked ? "none" : "brightness(1.3)"};
   }
 `;
+
+const suffixArrive = keyframes`
+  from { opacity: 0; transform: scale(1.8); }
+  to { opacity: 1; transform: scale(1); }
+`;
+
+const ChoiceSuffix = styled.span`
+  display: inline-block;
+  animation: ${suffixArrive} 0.3s ease-out ${RECRUIT_LOOK.suffixDelayMs}ms both;
+`;
+
+const tintIn = keyframes`
+  from { opacity: 0; }
+  to { opacity: ${RECRUIT_LOOK.tintOpacity}; }
+`;
+
+// the whole play window washes over in the choice's color
+const ChoiceTint = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 2147482400;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  animation: ${tintIn} ${RECRUIT_LOOK.tintMs}ms ease-in forwards;
+`;
+
+const ChoiceButton = ({ choice, recruitChoice, onChooseRecruit }) => {
+  const isLocked = recruitChoice == choice;
+  return (
+    <RecruitButton $choice={choice} $isLocked={isLocked} $isFaded={!!recruitChoice && !isLocked} onClick={() => onChooseRecruit(choice)}>
+      {choice == "recruit" ? "Recruit" : "Terminate"}
+      {isLocked && <ChoiceSuffix>{RECRUIT_LOOK[choice].suffix}</ChoiceSuffix>}
+    </RecruitButton>
+  );
+};
 
 const getClosestEnemy = (player, pieces) => {
   const getDistance = ({ charLocation: { x, y } }) => Math.hypot(x - player.charLocation.x, y - player.charLocation.y);
@@ -146,7 +197,7 @@ const MOVEMENT_KEYS = ["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowLeft", "
 
 const getIsTouchScreen = () => window.matchMedia("(pointer: coarse)").matches;
 
-export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeScene, playWindow, isShowingWindowSize, isEditingTiles, isMouseLook, isEnemyZoom, isSlowMotion, speech, recruitScene, recruitChoice, onChooseRecruit, onHotspot }) => {
+export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeScene, playWindow, isShowingWindowSize, isEditingTiles, isMouseLook, isEnemyZoom, isSlowMotion, isTeamColors, speech, recruitScene, recruitChoice, onChooseRecruit, onHotspot }) => {
   // redraws the pieces when the game updates. the tiles draw themselves.
   useSyncExternalStore(gameManager.subscribeToBoard, gameManager.getBoardRevision);
   const pieces = gameManager.getPieces();
@@ -406,16 +457,17 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
           top: `${recruitScene.body.y}px`,
           height: `${pieceScale * RECRUIT_BODY_SIZE}px`
         }} />}
+        {recruitScene && recruitChoice && <ChoiceTint style={{ background: RECRUIT_LOOK[recruitChoice].tint }} />}
         {recruitScene && (
           <RecruitPrompt style={{ left: `${recruitScene.prompt.x}px`, top: `${recruitScene.prompt.y}px`, transform: `translate(-50%, -100%) scale(${overlayScale}) translateX(${RECRUIT_PROMPT_SHIFT}px)` }}>
-            {(!recruitChoice || recruitChoice == "recruit") && <RecruitButton $isRecruit onClick={() => onChooseRecruit("recruit")}>{recruitChoice ? "Confirmed" : "Recruit"}</RecruitButton>}
-            {(!recruitChoice || recruitChoice == "terminate") && <RecruitButton onClick={() => onChooseRecruit("terminate")}>{recruitChoice ? "Confirmed" : "Terminate"}</RecruitButton>}
+            <ChoiceButton choice="recruit" recruitChoice={recruitChoice} onChooseRecruit={onChooseRecruit} />
+            <ChoiceButton choice="terminate" recruitChoice={recruitChoice} onChooseRecruit={onChooseRecruit} />
           </RecruitPrompt>
         )}
         {speech && <SpeechBalloon name={speech.name} text={speech.text} x={speech.x} y={speech.y} isFlipped={speech.isFlipped} zIndex={2147482000} scale={overlayScale} />}
         <WorldContent style={{ left: `${contentOffset.x}px`, top: `${contentOffset.y}px` }}>
           {/* canvases are sized from the zoom, which means nothing until the frame has been measured */}
-          {isFrameMeasured && <TileCanvas gameManager={gameManager} level={level} tone={getTileTone(level, activePhases)} isVisible={!isPaused && !isEditingTiles} zoom={closeCamera.zoom} />}
+          {isFrameMeasured && <TileCanvas gameManager={gameManager} level={level} tone={getTileTone(level, activePhases)} isVisible={!isPaused && !isEditingTiles} zoom={closeCamera.zoom} isTeamColors={isTeamColors} />}
           {isFrameMeasured && <WakeCanvas gameManager={gameManager} level={level} zoom={closeCamera.zoom} isActive={!!level.flood && activePhases.includes(level.flood.phase)} />}
           {piecesComponents}
           {deathPiecesComponents}

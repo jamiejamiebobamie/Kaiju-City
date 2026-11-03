@@ -10,6 +10,9 @@ import { RadioCall } from "./RadioCall";
 import { IrradiationVat } from "./IrradiationVat";
 import { RecruitCalls } from "./RecruitCalls";
 import { AvatarChoice } from "./AvatarChoice";
+import { ControlsOverlay } from "./UI/ControlsOverlay";
+import { getKaijuSpeedMode, KaijuSpeedMode, setKaijuSpeedMode } from "../DataClasses/KaijuSpeedTest";
+import { BUBBLE_DRAWBACKS, BubbleDrawback, getIsDrawbackOn, setIsDrawbackOn } from "../DataClasses/BubbleTest";
 import { getAvatarColor, saveAvatarColor, saveTeamAvatars, unlockRecruitSkill, unlockTool } from "../DataClasses/Avatars";
 import { AbilityPicker } from "./AbilityPicker";
 import { useKeyPress } from "Utils/utils";
@@ -304,7 +307,7 @@ const playUnlockDing = () => {
 
 const RECRUIT_TIMING = {
   titleMs: 2800, // how long the title and slow motion last before the choice
-  confirmMs: 900,
+  confirmMs: 1500, // the choice locks in and the screen washes over in its color, then fades to black
   cardMs: 3800
 };
 
@@ -331,11 +334,16 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const gameLoop = useRef<GameLoop | null>(null);
 
   const [isTeammate, setIsTeammate] = useState(true);
+  const [isShowingControls, setIsShowingControls] = useState(false);
+  const isPausedForControls = useRef(false);
+  const [kaijuSpeedMode, setKaijuSpeedModeState] = useState(getKaijuSpeedMode); // dev playtest
+  const [, setBubbleTestRevision] = useState(0); // redraws the Bubble drawback switches
   const [isChoosingAvatar, setIsChoosingAvatar] = useState(!startingLevelId); // a new campaign starts with the guy or the girl
   const isPickingPowersInLab = useRef(false);
   const [isWholeScene, setIsWholeScene] = useState(false);
   const [isMouseLook, setIsMouseLook] = useState(true);
   const [isEnemyZoom, setIsEnemyZoom] = useState(true);
+  const [isTeamColors, setIsTeamColors] = useState(true); // a playtest: statuses in their side's color
   const [isAdjustingWindow, setIsAdjustingWindow] = useState(false);
   const [playWindow, setPlayWindow] = useState(() => import.meta.env.DEV ? loadPlayWindow() : FULL_WINDOW);
   const updatePlayWindow = next => {
@@ -627,7 +635,31 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     setTimeout(leaveLevel, RECRUIT_TIMING.confirmMs + RECRUIT_TIMING.cardMs);
   };
 
+  // the game holds still while the controls are up
+  const openControls = () => {
+    if (!gameManager.current || isShowingControls) return;
+    isPausedForControls.current = !isPaused && winner === null;
+    if (isPausedForControls.current) {
+      gameManager.current.togglePauseGame();
+      publishGameUi(gameManager.current.getUiState());
+    }
+    setIsShowingControls(true);
+  };
+
+  const closeControls = () => {
+    setIsShowingControls(false);
+    if (isPausedForControls.current && gameManager.current) {
+      gameManager.current.togglePauseGame();
+      publishGameUi(gameManager.current.getUiState());
+    }
+    isPausedForControls.current = false;
+  };
+
   const handleClickPause = () => {
+    if (isShowingControls) {
+      closeControls();
+      return;
+    }
     if (!gameManager.current || winner !== null) return;
     gameManager.current.togglePauseGame();
     publishGameUi(gameManager.current.getUiState());
@@ -757,6 +789,9 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 <input type="checkbox" checked={isEnemyZoom} onChange={() => setIsEnemyZoom(!isEnemyZoom)} /> Enemy zoom
               </label>
               <label>
+                <input type="checkbox" checked={isTeamColors} onChange={() => setIsTeamColors(!isTeamColors)} /> Team colors
+              </label>
+              <label>
                 <input type="checkbox" checked={isAdjustingWindow} onChange={() => setIsAdjustingWindow(!isAdjustingWindow)} /> Adjust window
               </label>
               {isAdjustingWindow && <button onClick={() => updatePlayWindow(PORTRAIT_WINDOW)}>Portrait window</button>}
@@ -767,6 +802,17 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 </label>
               )}
               <button onClick={resetUnlocks}>Reset unlocks</button>
+              <select aria-label="Kaiju speed" value={kaijuSpeedMode} onChange={e => { const mode = e.target.value as KaijuSpeedMode; setKaijuSpeedMode(mode); setKaijuSpeedModeState(mode); e.target.blur(); }}>
+                <option value="rampage">Kaiju: fast after fire</option>
+                <option value="windUp">Kaiju: fast while glowing</option>
+                <option value="off">Kaiju: steady speed</option>
+              </select>
+              <div>Bubble drawbacks:</div>
+              {(Object.keys(BUBBLE_DRAWBACKS) as Array<BubbleDrawback>).map(id => (
+                <label key={id}>
+                  <input type="checkbox" checked={getIsDrawbackOn(id)} onChange={e => { setIsDrawbackOn(id, e.target.checked); setBubbleTestRevision(revision => revision + 1); e.target.blur(); }} /> {BUBBLE_DRAWBACKS[id].label}
+                </label>
+              ))}
               {isEditingTiles && (
                 <TileEditor
                   key={`${level.id} ${matchCount}`}
@@ -792,6 +838,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 isEditingTiles={isEditingTiles}
                 isMouseLook={isMouseLook}
                 isEnemyZoom={isEnemyZoom}
+                isTeamColors={isTeamColors}
                 isSlowMotion={winner !== null && !level.isWalkingLevel}
                 speech={speech}
                 recruitScene={recruitScene}
@@ -818,6 +865,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
             {!level.isWalkingLevel && !isEditingTiles && !recruitScene && winner === null && getCallableRecruits().length > 0 && (
               <RecruitCalls key={matchCount} recruits={getCallableRecruits()} onCall={avatar => !!gameManager.current && gameManager.current.callRecruit(avatar)} isDisabled={isPaused} />
             )}
+            {isShowingControls && <ControlsOverlay onClose={closeControls} />}
             {!isEditingTiles && <UI
               players={players}
               recruits={recruits}
@@ -827,6 +875,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               isShowingHuds={!level.isWalkingLevel && !isCutscene && !recruitScene}
               handleClickHome={handleClickHome}
               handleClickPause={handleClickPause}
+              handleClickControls={openControls}
               isPaused={isPaused}
             />}
           </GameFrame>

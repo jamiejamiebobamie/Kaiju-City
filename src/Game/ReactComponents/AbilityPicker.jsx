@@ -1,5 +1,6 @@
 import React, { useState, useContext } from "react";
 import styled from "styled-components";
+import { getDispelDrawbackText } from "Game/DataClasses/BubbleTest";
 import { GlobalSettingsContext } from 'Home';
 import { getSciFiClass } from "../DataClasses/sciFiClasses";
 import { getIsSkillOpen, getSkillUnlock } from "../DataClasses/Avatars";
@@ -41,6 +42,44 @@ const Backdrop = styled.div`
       linear-gradient(125deg, transparent 18%, rgba(255, 255, 255, 0.1) 26%, transparent 34%, transparent 62%, rgba(255, 255, 255, 0.07) 70%, transparent 78%),
       linear-gradient(135deg, rgba(70, 120, 150, 0.16), transparent 45%, rgba(120, 90, 150, 0.14));
   }
+`;
+
+/*
+  Yellow accents on the board: a warm light under it that shows through the gaps between the traces,
+  and a darker gold on the traces in the same places, so the two read as one board.
+  Kept to a few spots, away from the middle, so they don't compete with the powers' colors.
+*/
+const BOARD_YELLOW = {
+  light: "255, 210, 63", // under the board
+  gold: "201, 150, 30", // on the traces
+  spots: [
+    { x: 14, y: 30, size: 22 },
+    { x: 84, y: 76, size: 26 },
+    { x: 70, y: 10, size: 14 },
+    { x: 30, y: 88, size: 12 }
+  ]
+};
+
+const getSpotGradients = (color, opacity) => BOARD_YELLOW.spots
+  .map(({ x, y, size }) => `radial-gradient(circle ${size}vmax at ${x}% ${y}%, rgba(${color}, ${opacity}), transparent)`)
+  .join(", ");
+
+// under the board: z-index -1 puts it above the backdrop's color but beneath the board
+const BoardLight = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: ${getSpotGradients(BOARD_YELLOW.light, 0.35)};
+`;
+
+// over the board, coloring only what is there: the traces go gold near the light
+const BoardGold = styled.div`
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  mix-blend-mode: color;
+  background: ${getSpotGradients(BOARD_YELLOW.gold, 0.55)};
 `;
 
 const Panel = styled.div`
@@ -119,21 +158,43 @@ const Description = styled.div`
   border: 2px solid #4a4c52;
 `;
 
-const ClassLine = styled.div`
-  min-height: 24px;
-  font-size: 13px;
-  line-height: 1.6;
-`;
-
-const ClassName = styled.span`
-  margin-right: 12px;
+// the class shows in the description when nothing is hovered
+const ClassName = styled.div`
+  margin-bottom: 8px;
   font-size: 18px;
   color: white;
+`;
+
+// each power: the big circle is its active, the small one at its foot its passive
+const PowerSlot = styled.div`
+  position: relative;
+`;
+
+const PassiveCircle = styled.div`
+  position: absolute;
+  left: -4px;
+  bottom: -4px;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  background: #0b0c0e;
+  border: 2px solid #5a5d64;
+  border-radius: 50%;
+  &:hover {
+    border-color: white;
+  }
 `;
 
 const PowerName = styled.div`
   margin-bottom: 8px;
   font-size: 16px;
+`;
+
+const PassiveEffect = styled.span`
+  filter: brightness(1.2);
 `;
 
 const Footer = styled.div`
@@ -183,7 +244,7 @@ export const AbilityPicker = ({
     settingsManager.initAbilityStatusData();
     return Object.values(settingsManager.getAbilityAndTileStatusData()).filter(({ element }) => element != "kaijuFire");
   });
-  const [shownPower, setShownPower] = useState(undefined);
+  const [hovered, setHovered] = useState(undefined); // { power, part: 'active' or 'passive' }
 
   const togglePower = power => {
     const element = power.getElementUppercase();
@@ -198,8 +259,38 @@ export const AbilityPicker = ({
   const isReady = pickedAbilities.length == PICK_COUNT;
   const playerClass = isReady ? getSciFiClass(pickedAbilities) : undefined;
 
+  // the hovered active or passive; with nothing hovered, the class the three picked powers make
+  const getDescription = () => {
+    if (!hovered) {
+      if (!playerClass) return "Hover over a power to read about it. Pick 3 powers to find out your class.";
+      return <><ClassName>{playerClass[0]}</ClassName>{playerClass[1]}</>;
+    }
+    const { power, part } = hovered;
+    if (!getIsSkillOpen(power.element)) return <><PowerName>{power.activeName}</PowerName>{getLockedText(power)}</>;
+    if (part == "passive") {
+      return (
+        <>
+          <PowerName>Passive: {power.passiveName}</PowerName>
+          {power.passiveDesc}
+          <br />
+          <PassiveEffect style={{ color: power.color }}>{power.hasDispelDrawbacks ? getDispelDrawbackText() : power.passiveEffect1}</PassiveEffect>
+        </>
+      );
+    }
+    return (
+      <>
+        <PowerName>{power.activeName}</PowerName>
+        {power.activeDesc}
+        <br />
+        {power.activeEffect1}
+      </>
+    );
+  };
+
   return (
     <Backdrop>
+    <BoardLight />
+    <BoardGold />
     <Panel>
       <Title>Choose your abilities</Title>
       <Groups>
@@ -209,37 +300,30 @@ export const AbilityPicker = ({
             <Powers>
               {powers.filter(getIsInGroup).map(power => {
                 const isOpen = getIsSkillOpen(power.element);
+                const iconColor = isOpen ? power.color : "#5a5d64";
                 return (
-                  <PowerButton
-                    key={power.element}
-                    aria-label={power.activeName}
-                    disabled={!isOpen}
-                    $isPicked={pickedAbilities.includes(power.getElementUppercase())}
-                    onClick={() => togglePower(power)}
-                    onMouseEnter={() => setShownPower(power)}
-                  >
-                    <i className={`fa ${power.activeIcon}`} style={{ color: isOpen ? power.color : "#5a5d64" }} />
-                    {!isOpen && <LockBadge className="fa fa-lock" />}
-                  </PowerButton>
+                  <PowerSlot key={power.element} onMouseLeave={() => setHovered(undefined)}>
+                    <PowerButton
+                      aria-label={power.activeName}
+                      disabled={!isOpen}
+                      $isPicked={pickedAbilities.includes(power.getElementUppercase())}
+                      onClick={() => togglePower(power)}
+                      onMouseEnter={() => setHovered({ power, part: "active" })}
+                    >
+                      <i className={`fa ${power.activeIcon}`} style={{ color: iconColor }} />
+                      {!isOpen && <LockBadge className="fa fa-lock" />}
+                    </PowerButton>
+                    <PassiveCircle aria-label={power.passiveName} onMouseEnter={() => setHovered({ power, part: "passive" })}>
+                      <i className={`fa ${power.passiveIcon}`} style={{ color: iconColor }} />
+                    </PassiveCircle>
+                  </PowerSlot>
                 );
               })}
             </Powers>
           </Group>
         ))}
       </Groups>
-      <Description>
-        {shownPower ? (
-          <>
-            <PowerName>{shownPower.activeName}</PowerName>
-            {getIsSkillOpen(shownPower.element) ? shownPower.activeDesc : getLockedText(shownPower)}
-            <br />
-            {getIsSkillOpen(shownPower.element) && shownPower.activeEffect1}
-          </>
-        ) : "Hover over a power to read about it."}
-      </Description>
-      <ClassLine>
-        {playerClass ? <><ClassName>{playerClass[0]}</ClassName>{playerClass[1]}</> : "Pick 3 powers to find out your class."}
-      </ClassLine>
+      <Description>{getDescription()}</Description>
       <Footer>
         <span>{pickedAbilities.length} of {PICK_COUNT} picked</span>
         <TeammateToggle>
