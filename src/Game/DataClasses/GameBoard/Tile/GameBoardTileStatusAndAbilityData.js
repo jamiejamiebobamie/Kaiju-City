@@ -16,6 +16,9 @@ export class GameBoardTileStatusAndAbilityData {
         isWall = false, // spreads as a straight front that widens, not as separate lines
         branchCount = undefined, // how far the status travels in every direction after its first
         trailTicks = undefined, // how long a persistent status stays on a tile, in tile updates. forever if undefined
+        buffedCastBonus = undefined, // { range, trailTicks }: added to a cast made while this power's own passive is on
+        isPassiveRefreshed = false, // casting again while the passive is on restarts its time, instead of stacking
+        hasForwardWave = false, // a second wave starts a tile ahead of the first, and never turns around
         color,
         passiveName,
         activeName,
@@ -70,6 +73,9 @@ export class GameBoardTileStatusAndAbilityData {
         this.isWall = isWall;
         this.branchCount = branchCount;
         this.trailTicks = trailTicks;
+        this.buffedCastBonus = buffedCastBonus;
+        this.isPassiveRefreshed = isPassiveRefreshed;
+        this.hasForwardWave = hasForwardWave;
 
         // status color
         this.color = color;

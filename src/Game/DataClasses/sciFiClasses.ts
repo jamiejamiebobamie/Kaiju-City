@@ -22,7 +22,7 @@ export const SCI_FI_CLASSES: Record<string, [string, string]> = {
   'Bubble,Death,Water': ['Bilge Revenant', 'Something died in the coolant.'],
   'Bubble,Death,Wood': ['Bio-Hazard', "Don't get wet."],
   'Bubble,Fire,Glass': ['Plasma Courier', 'Hot deliveries, no forwarding address.'],
-  'Bubble,Fire,Ice': ['Thermal Engineer', 'You were built for war.'],
+  'Bubble,Fire,Ice': ['Thermal Engineer', 'Don\'t touch that thermostat!'],
   'Bubble,Fire,Lightning': ['Reactor Tech', 'Science!'],
   'Bubble,Fire,Love': ['Pyrokinetic', 'Therapy recommended.'],
   'Bubble,Fire,Metal': ['Ordnance Tech', 'Free samples!'],

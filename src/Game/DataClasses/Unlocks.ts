@@ -18,6 +18,9 @@ const save = (key: string, value: unknown) => {
 
 export const getUnlocks = (): Array<string> => load(UNLOCKS_KEY, '[]');
 
+// versus is fought on the battlegrounds the player has won on
+export const getBattlegroundUnlockId = (levelId: string) => `battleground-${levelId}`;
+
 export const addUnlock = (id: string) => save(UNLOCKS_KEY, [...new Set([...getUnlocks(), id])]);
 
 // dev testing: everything unlocked is closed again

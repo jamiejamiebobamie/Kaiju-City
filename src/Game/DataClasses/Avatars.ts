@@ -9,7 +9,7 @@ export const ROSTER = [
   { id: 'girl', name: 'Girl' },
   { id: 'punk', name: 'Punk Guy', unlock: 'punk' },
   { id: 'black_female', name: 'Punk Girl', unlock: 'black_female' },
-  { id: 'mermaid', name: 'Mermaid', unlock: 'mermaid' },
+  { id: 'mermaid', name: 'Aquarium Worker', unlock: 'mermaid' },
   { id: 'hazmat', name: 'Hazmat Worker', unlock: 'hazmat' },
   { id: 'agent', name: 'Agent', unlock: 'agent' }
 ];
@@ -18,7 +18,7 @@ export const ROSTER = [
 export const SKILL_UNLOCKS = [
   { element: 'wood', name: 'Overgrowth', recruit: 'punk', recruitName: 'Punk Guy' },
   { element: 'death', name: 'Haunt', recruit: 'black_female', recruitName: 'Punk Girl' },
-  { element: 'charm', name: 'Charm', recruit: 'mermaid', recruitName: 'the Mermaid' },
+  { element: 'charm', name: 'Charm', recruit: 'mermaid', recruitName: 'the Aquarium Worker' },
   { element: 'glass', name: 'Teleport', recruit: 'agent', recruitName: 'the Agents' }
 ];
 

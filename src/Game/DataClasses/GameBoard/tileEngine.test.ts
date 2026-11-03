@@ -33,8 +33,8 @@ describe('tile statuses match master', () => {
       putStatusOnTile(gm, status, origin, { dirs: [...(castDirs ?? dirs)] });
       const series = runUntilClear(gm, maxTicks);
 
-      if (status == 'isWooded') {
-        // overgrowth fades on purpose: master's vines stayed forever
+      if (status == 'isWooded' || status == 'isShielded') {
+        // overgrowth and shields fade on purpose: master's stayed forever
       } else if (clearsAfterTicks === null) {
         expect(series[series.length - 1]).toBeGreaterThan(0); // persistent statuses stay
       } else {

@@ -157,9 +157,9 @@ export const PlayerUI = ({
   setDisplayString,
   playerIndex,
   isTeammate,
+  isRecruit = false,
   percentZoom,
-  isPaused,
-  onUseAbility
+  isPaused
 }) => {
   const {
     gender,
@@ -245,10 +245,10 @@ export const PlayerUI = ({
             abilities={pd.abilities}
             setDisplayString={setDisplayString}
             isReversed={true}
+            isWithoutKeys={isRecruit}
             playerIndex={playerIndex}
             isCharacterAlive={!pd.isDead}
             isPaused={isPaused}
-            onUseAbility={onUseAbility}
           />
           <HealthBar
             health={pd.lives}
@@ -273,7 +273,6 @@ export const PlayerUI = ({
             playerIndex={playerIndex}
             isCharacterAlive={!pd.isDead}
             isPaused={isPaused}
-            onUseAbility={onUseAbility}
           />
         </>
       )}

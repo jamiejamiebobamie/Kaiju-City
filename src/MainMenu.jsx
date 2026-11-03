@@ -10,24 +10,18 @@ import {
 } from "./Components/StyledComponents";
 import { Logo } from "./Components/Logo";
 import { GlobalSettingsContext } from "Home";
-import { AvatarRoster } from "./Game/ReactComponents/AvatarRoster";
 import { IrradiationVat } from "./Game/ReactComponents/IrradiationVat";
-import { getAvatarColor, getIsToolOpen, saveAvatarColor, saveTeamAvatars } from "./Game/DataClasses/Avatars";
+import { getAvatarColor, getIsToolOpen, saveAvatarColor } from "./Game/DataClasses/Avatars";
 
 export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
-  const { selectedAvatar, setSelectedAvatar, selectedTeammate, setSelectedTeammate } = useContext(GlobalSettingsContext);
+  const { selectedAvatar } = useContext(GlobalSettingsContext);
   const [toolScreen, setToolScreen] = useState(undefined);
-
-  const chooseTeam = (player, teammate) => {
-    setSelectedAvatar(player);
-    setSelectedTeammate(teammate);
-    saveTeamAvatars(player, teammate);
-  };
 
   // the rest are tools found in the Lab
   const toolButtons = [
     { tool: "colors", label: "Colors", onClick: () => setToolScreen("colors") },
-    { tool: "abilityEditor", label: "Powers", onClick: handleClickSettings }
+    // "Powers" opens Settings, which returns later with the ability editor
+    // { tool: "abilityEditor", label: "Powers", onClick: handleClickSettings }
   ].filter(({ tool }) => getIsToolOpen(tool));
 
   const navButtons = (<ButtonGroup>
@@ -37,18 +31,8 @@ export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
         New Game
       </Button>
     </ButtonsWrapper>
-    <ButtonsWrapper>
-      <Button onClick={handleClickSettings}>
-        <ButtonOutline zIndex={1} />
-        Settings
-      </Button>
-    </ButtonsWrapper>
-    <ButtonsWrapper>
-      <Button onClick={() => setToolScreen("avatars")}>
-        <ButtonOutline zIndex={1} />
-        Avatars
-      </Button>
-    </ButtonsWrapper>
+    {/* Settings returns with multiplayer, as a stretch goal */}
+    {/* the player is the guy or the girl, chosen when a new game starts */}
     {toolButtons.map(({ label, onClick }) => (
       <ButtonsWrapper key={label}>
         <Button onClick={onClick}>
@@ -76,7 +60,6 @@ export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
   return <Wrapper>
     <Logo />
     {navButtons}
-    {toolScreen == "avatars" && <AvatarRoster player={selectedAvatar} teammate={selectedTeammate} onChoose={chooseTeam} onClose={() => setToolScreen(undefined)} />}
     {toolScreen == "colors" && <IrradiationVat avatar={selectedAvatar} startColor={getAvatarColor(selectedAvatar)} onIrradiate={color => saveAvatarColor(selectedAvatar, color)} onClose={() => setToolScreen(undefined)} />}
   </Wrapper>
 }

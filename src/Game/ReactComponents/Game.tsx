@@ -7,16 +7,16 @@ import { GameBoard } from "./GameBoard/GameBoard";
 import { FULL_WINDOW, loadPlayWindow, PlayWindow, PORTRAIT_WINDOW, savePlayWindow } from "./GameBoard/PlayWindow";
 import { UI } from "./UI/UI";
 import { RadioCall } from "./RadioCall";
-import { AvatarRoster } from "./AvatarRoster";
 import { IrradiationVat } from "./IrradiationVat";
 import { RecruitCalls } from "./RecruitCalls";
+import { AvatarChoice } from "./AvatarChoice";
 import { getAvatarColor, saveAvatarColor, saveTeamAvatars, unlockRecruitSkill, unlockTool } from "../DataClasses/Avatars";
 import { AbilityPicker } from "./AbilityPicker";
 import { useKeyPress } from "Utils/utils";
-import { ABILITY_KEY_MAPPINGS, GAME_TICK } from "Utils/gameState";
+import { ABILITY_KEY_CODES, GAME_TICK } from "Utils/gameState";
 import { FullscreenPage } from "Components/FullscreenPage.jsx";
 import { GameManager, GameResult } from '../DataClasses/GameManager';
-import { addUnlock, getRecruitChoices, resetUnlocks, saveRecruitChoice } from '../DataClasses/Unlocks';
+import { addUnlock, getBattlegroundUnlockId, getRecruitChoices, resetUnlocks, saveRecruitChoice } from '../DataClasses/Unlocks';
 import { CAMPAIGN_SECTIONS, getIsLastSection } from '../DataClasses/Campaign';
 import { GameLoop } from '../DataClasses/GameLoop';
 import { applyLevelFile, LAB_TALK_PHASE, LEVEL_FILES, LEVELS, PENINSULA } from '../DataClasses/Levels/levels';
@@ -86,10 +86,13 @@ const cardFade = keyframes`
   100% { opacity: 0; }
 `;
 
+// notices sit a quarter of the way down: high enough to clear the titles in the middle, low enough to be seen
+const NOTICE_TOP = "25%";
+
 // a notice that comes and goes on its own, in the style of the speech bubbles
 const UnlockCard = styled.div`
   position: absolute;
-  top: 1.2cqw;
+  top: ${NOTICE_TOP};
   left: 50%;
   transform: translateX(-50%);
   z-index: 2147483646;
@@ -163,6 +166,18 @@ const EndButton = styled.button`
 const fadeIn = keyframes`
   from { opacity: 0; }
   to { opacity: 1; }
+`;
+
+// several notices at once, one above the other
+const CardStack = styled.div`
+  position: absolute;
+  top: ${NOTICE_TOP};
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8cqw;
 `;
 
 const FadeToBlack = styled.div`
@@ -296,12 +311,12 @@ const RECRUIT_TIMING = {
 const RECRUIT_CARDS = {
   punk: { avatar: 'punk', label: 'Punk Guy' },
   black_female: { avatar: 'black_female', label: 'Punk Girl' },
-  mermaid: { avatar: 'mermaid', label: 'Mermaid' }
+  mermaid: { avatar: 'mermaid', label: 'Aquarium Worker' }
 };
 
 export const Game = ({ handleClickHome, triggerTransition }) => {
   const { selectedAvatar, setSelectedAvatar, selectedTeammate, setSelectedTeammate, selectedDifficulty, settingsManager } = useContext(GlobalSettingsContext);
-  const { isPaused, winner, isPlayerDead, players, kaijuKillCount, kaijuToWin, activePhases, isWideShot, isCutscene, unlockMessage, unlockImage, speech, recruitScene } = useSnapshot(gameUiStore);
+  const { isPaused, winner, isPlayerDead, players, recruits, kaijuKillCount, kaijuToWin, activePhases, isWideShot, isCutscene, unlockMessage, unlockImage, speech, recruitScene } = useSnapshot(gameUiStore);
 
   const startingLevelId = new URLSearchParams(window.location.search).get('level');
   const [levelId, setLevelId] = useState(startingLevelId || PENINSULA.id);
@@ -316,6 +331,8 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const gameLoop = useRef<GameLoop | null>(null);
 
   const [isTeammate, setIsTeammate] = useState(true);
+  const [isChoosingAvatar, setIsChoosingAvatar] = useState(!startingLevelId); // a new campaign starts with the guy or the girl
+  const isPickingPowersInLab = useRef(false);
   const [isWholeScene, setIsWholeScene] = useState(false);
   const [isMouseLook, setIsMouseLook] = useState(true);
   const [isEnemyZoom, setIsEnemyZoom] = useState(true);
@@ -336,9 +353,9 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const [leavingFor, setLeavingFor] = useState(undefined); // the Lab screen the scene is sliding away for
   const [isResumingRadio, setIsResumingRadio] = useState(false);
   const isOnLabDetour = useRef(false);
-  const [labScreen, setLabScreen] = useState(undefined); // 'avatars' or 'colors'
+  const [labScreen, setLabScreen] = useState(undefined); // 'colors'
   const [labCover, setLabCover] = useState(undefined); // 'in' or 'out': the Lab screen's fade from or to black
-  const [fadeCard, setFadeCard] = useState(undefined); // the screen is fading to black, and this is the unlock shown on it
+  const [fadeCards, setFadeCards] = useState(undefined); // the screen is fading to black, and these are the unlocks shown on it
   const [isFadingOut, setIsFadingOut] = useState(false);
   const [isWiping, setIsWiping] = useState(false);
   const isLeavingScene = useRef(false);
@@ -401,7 +418,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     setRadioLines(undefined);
     setMatchEnd(undefined);
     setRecruitChoice(undefined);
-    setFadeCard(undefined);
+    setFadeCards(undefined);
   };
 
   // dev testing: changes level, and a match in progress restarts on it with the same powers
@@ -438,7 +455,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     if (unlockMessage) playUnlockDing();
   }, [unlockMessage]);
 
-  // a mock-up: in dev, everyone shows until the player has recruited someone
+  // in dev, everyone can be called until the player has recruited someone
   const getCallableRecruits = () => {
     const recruited = Object.entries(getRecruitChoices()).filter(([, choice]) => choice == "recruit").map(([avatar]) => avatar);
     return recruited.length || !import.meta.env.DEV ? recruited : ["punk", "black_female", "mermaid"];
@@ -472,7 +489,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     setFullScreenPageData(undefined);
     setMatchEnd(undefined);
     setRecruitChoice(undefined);
-    setFadeCard(undefined);
+    setFadeCards(undefined);
     setIsResumingRadio(false);
     if (radio) setRadioLines(radio(getRadioContext()));
     else startMatch(LEVELS[sectionLevelId], false, kills);
@@ -486,7 +503,10 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   };
 
   const handleClickPlay = () => {
-    if (isResumingRadio) {
+    if (isPickingPowersInLab.current) {
+      isPickingPowersInLab.current = false;
+      startMatch(LEVELS[level.id]);
+    } else if (isResumingRadio) {
       // back to the end of the call
     } else if (campaignIndex !== null) {
       showSection(campaignIndex);
@@ -535,6 +555,16 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
       gameManager.current.setPhase(LAB_TALK_PHASE, true);
       return;
     }
+    // the power picker, and back into the Lab with the new powers
+    if (screen == "powers") {
+      isPickingPowersInLab.current = true;
+      setPickedAbilities([]);
+      triggerTransition(() => {
+        endMatch(); // the Lab starts again with the new powers
+        setIsPlayingGame(false);
+      });
+      return;
+    }
     unlockTool(screen);
     setLeavingFor(screen);
     setTimeout(() => {
@@ -575,16 +605,25 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     else resetMatch();
   };
 
-  // confirmed, then fade to black, then the recruit's avatar: unlocked whichever way the player chose
+  // confirmed, then fade to black, then what the choice gave: a power, or someone to call in
   const handleChooseRecruit = choice => {
     if (recruitChoice) return;
     const { avatar, label } = RECRUIT_CARDS[level.rival.avatar];
     setRecruitChoice(choice);
     saveRecruitChoice(level.rival.avatar, choice);
     addUnlock(level.rival.avatar);
+    // Terminate: their power is yours. Recruit: they can be called into fights, and their power stays closed.
     const skill = choice == "terminate" ? unlockRecruitSkill(level.rival.avatar) : undefined;
-    const reward = skill ? ` ${skill.name} power unlocked!` : "";
-    setTimeout(() => setFadeCard({ label: `${label} unlocked!${reward}`, image: `/levels/portraits/${avatar}.png` }), RECRUIT_TIMING.confirmMs);
+    const choiceLabel = skill ? `${skill.name} power unlocked!` : `${label} recruited! Call them in during fights.`;
+    // the fight's battleground opens for versus, whichever way the player chose
+    addUnlock(getBattlegroundUnlockId(level.id));
+    const portrait = `/levels/portraits/${avatar}.png`;
+    const cards = [
+      { label: `${label} Unlocked`, image: portrait },
+      { label: `${level.name} Unlocked`, image: level.layers[0] && level.layers[0].src },
+      { label: choiceLabel, image: portrait }
+    ];
+    setTimeout(() => setFadeCards(cards), RECRUIT_TIMING.confirmMs);
     setTimeout(leaveLevel, RECRUIT_TIMING.confirmMs + RECRUIT_TIMING.cardMs);
   };
 
@@ -592,11 +631,6 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     if (!gameManager.current || winner !== null) return;
     gameManager.current.togglePauseGame();
     publishGameUi(gameManager.current.getUiState());
-  };
-
-  const handleUseAbility = (playerIndex, abilityIndex) => {
-    if (!gameManager.current || isPaused || level.isWalkingLevel) return;
-    gameManager.current.getPlayerInputHandler().usePlayerAbilityFromIndex(playerIndex * 3 + abilityIndex, gameManager.current.getAccTime());
   };
 
   useKeyPress({ keyCodes: "Escape", keyUpCallback: handleClickPause, isCharacterDead: false });
@@ -615,7 +649,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   });
 
   useKeyPress({
-    keyCodes: ABILITY_KEY_MAPPINGS,
+    keyCodes: ABILITY_KEY_CODES,
     keyDownCallback: code => gameManager.current && gameManager.current.getPlayerInputHandler().usePlayerAbility(code, gameManager.current.getAccTime()),
     isCharacterDead: isPaused || level.isWalkingLevel
   });
@@ -657,7 +691,12 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   );
 
   const screen = (
-    !isPlayingGame ?
+    !isPlayingGame && isChoosingAvatar ?
+      <AvatarChoice onChoose={(player, teammate) => {
+        chooseTeam(player, teammate);
+        triggerTransition(() => setIsChoosingAvatar(false));
+      }} />
+    : !isPlayingGame ?
       <>
       {import.meta.env.DEV && (
         <LevelPicker value={level.id} onChange={e => { switchLevel(e.target.value); e.target.blur(); }}>
@@ -753,7 +792,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 isEditingTiles={isEditingTiles}
                 isMouseLook={isMouseLook}
                 isEnemyZoom={isEnemyZoom}
-                isSlowMotion={winner === GameResult.PlayerWon && !level.isWalkingLevel}
+                isSlowMotion={winner !== null && !level.isWalkingLevel}
                 speech={speech}
                 recruitScene={recruitScene}
                 recruitChoice={recruitChoice}
@@ -769,24 +808,25 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
             </PlayWindow>
             {isWiping && <BlackWipe />}
             {unlockMessage && <UnlockCard><UnlockPortrait src={unlockImage} />{unlockMessage}</UnlockCard>}
-            {fadeCard && <FadeToBlack><UnlockCard style={{ position: "static", transform: "none" }}><UnlockPortrait src={fadeCard.image} />{fadeCard.label}</UnlockCard></FadeToBlack>}
+            {fadeCards && <FadeToBlack><CardStack>{fadeCards.map(({ label, image }) => (
+              <UnlockCard key={label} style={{ position: "static", transform: "none" }}>{image && <UnlockPortrait src={image} />}{label}</UnlockCard>
+            ))}</CardStack></FadeToBlack>}
             {campaignIndex !== null && level.isWalkingLevel && !level.sites && !level.exit && !level.walkIn && !isEditingTiles && (
               <ContinueButton onClick={() => showSection(campaignIndex + 1)}>Continue</ContinueButton>
             )}
-            {labScreen == "avatars" && <AvatarRoster player={selectedAvatar} teammate={selectedTeammate} onChoose={chooseTeam} onClose={closeLabScreen} />}
             {labScreen == "colors" && <IrradiationVat avatar={selectedAvatar} startColor={getAvatarColor(selectedAvatar)} onIrradiate={irradiate} onClose={closeLabScreen} />}
-            {!level.isWalkingLevel && !isEditingTiles && !recruitScene && getCallableRecruits().length > 0 && (
-              <RecruitCalls key={matchCount} recruits={getCallableRecruits()} firstNumber={players.length * 3 + 1} isDisabled={isPaused} />
+            {!level.isWalkingLevel && !isEditingTiles && !recruitScene && winner === null && getCallableRecruits().length > 0 && (
+              <RecruitCalls key={matchCount} recruits={getCallableRecruits()} onCall={avatar => !!gameManager.current && gameManager.current.callRecruit(avatar)} isDisabled={isPaused} />
             )}
             {!isEditingTiles && <UI
               players={players}
+              recruits={recruits}
               kaijuKillCount={kaijuKillCount}
               kaijuKilledToWin={kaijuToWin}
               isKaijuLevel={!!level.kaijuEntry}
               isShowingHuds={!level.isWalkingLevel && !isCutscene && !recruitScene}
               handleClickHome={handleClickHome}
               handleClickPause={handleClickPause}
-              onUseAbility={handleUseAbility}
               isPaused={isPaused}
             />}
           </GameFrame>

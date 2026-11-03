@@ -41,6 +41,10 @@ export class GameManagerProxy {
         return this.props.getTeamLeaderPiece(pieceIndex);
     }
 
+    getStatusDirs(tileIndex) {
+        return this.props.getStatusDirs(tileIndex);
+    }
+
     getTilesAround(tileIndex) {
         return this.props.getTilesAround(tileIndex);
     }
@@ -176,8 +180,8 @@ export class GameManagerProxy {
         return this.props.getPathToTeamLeader(pieceIndex);
     }
 
-    spawnDeathPieceAtLocation(charLocation, avatar, tileIndex, color) {
-        return this.props.spawnDeathPieceAtLocation(charLocation, avatar, tileIndex, color);
+    spawnDeathPieceAtLocation(charLocation, avatar, tileIndex, color, pieceIndex, throwVec) {
+        return this.props.spawnDeathPieceAtLocation(charLocation, avatar, tileIndex, color, pieceIndex, throwVec);
     }
 
     getDirFromTiles(fromTile, toTile) {
@@ -196,12 +200,14 @@ export class GameManagerProxy {
     updateTileWithAbilityStatus = ({
         accTime,
         pieceIndex,
-        appliedStatus
+        appliedStatus,
+        isBuffed
     }) => {
         this.props.updateTileWithAbilityStatus({
             accTime,
             pieceIndex,
-            appliedStatus
+            appliedStatus,
+            isBuffed
         });
     }
 

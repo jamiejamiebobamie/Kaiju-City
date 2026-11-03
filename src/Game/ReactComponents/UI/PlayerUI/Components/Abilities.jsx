@@ -33,7 +33,7 @@ export const Abilities = ({
   isReversed,
   isPaused,
   isCharacterAlive,
-  onUseAbility,
+  isWithoutKeys = false,
   abilities = []
 }) => {
   const abilityButtons = abilities.map((abilityData, i) => (
@@ -42,11 +42,10 @@ export const Abilities = ({
       abilityIndex={i}
       setDisplayString={setDisplayString}
       abilityData={abilityData}
-      keyNum={isReversed ? i + 4 : i + 1}
+      keyNum={isWithoutKeys ? undefined : isReversed ? i + 4 : i + 1}
       playerIndex={playerIndex}
       isPaused={isPaused}
       isCharacterAlive={isCharacterAlive}
-      onUseAbility={onUseAbility}
     />
   ));
   return (

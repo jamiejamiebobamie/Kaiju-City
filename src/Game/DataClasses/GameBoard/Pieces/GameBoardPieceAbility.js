@@ -21,19 +21,26 @@ export class GameBoardPieceAbility {
     }) {
         // update accTime
         this.accTime = accTime;
-        // activate active ability
+        const { buffedCastBonus, isPassiveRefreshed } = this.gameBoardPieceAbilityData;
+        // activate active ability. cast while its own passive is on, some powers come out stronger.
         updateTileWithAbilityStatus({
             pieceIndex: piece.pieceIndex,
             appliedStatus: this.gameBoardPieceAbilityData.appliedStatus,
-            accTime
+            accTime,
+            isBuffed: !!buffedCastBonus && this.isPassiveApplied
         });
         const triggerPassive = () => {
+            // a refreshed passive starts its time again instead of stacking
+            const isRefresh = isPassiveRefreshed && this.isPassiveApplied;
             // toggle-on passive ability
-            this.gameBoardPieceAbilityData.togglePassive(piece);
+            if (!isRefresh) this.gameBoardPieceAbilityData.togglePassive(piece);
             this.isPassiveApplied = true;
+            this.passiveCount = (this.passiveCount || 0) + 1;
+            const passiveId = this.passiveCount;
             // toggle-off passive ability
             const delay = this.gameBoardPieceAbilityData.passiveDurationTime ? this.gameBoardPieceAbilityData.passiveDurationTime : this.gameBoardPieceAbilityData.cooldownTimeAI;
             const toggleOffPassive = () => {
+                if (isPassiveRefreshed && passiveId != this.passiveCount) return; // a later cast restarted it
                 const toggleOff = true;
                 this.gameBoardPieceAbilityData.togglePassive(piece, toggleOff);
                 this.isPassiveApplied = false;

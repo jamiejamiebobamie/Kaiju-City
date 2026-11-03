@@ -6,6 +6,7 @@ import { proxy } from 'valtio';
 */
 export const gameUiStore = proxy({
   players: [],
+  recruits: [], // called-in recruits: shown under the teammate's HUD
   kaijuKillCount: 0,
   kaijuToWin: 0,
   isPaused: false,
@@ -37,6 +38,7 @@ export const publishGameUi = uiState => assign(gameUiStore, uiState);
 
 export const resetGameUi = () => {
   gameUiStore.players = [];
+  gameUiStore.recruits = [];
   gameUiStore.kaijuKillCount = 0;
   gameUiStore.kaijuToWin = 0;
   gameUiStore.isPaused = false;

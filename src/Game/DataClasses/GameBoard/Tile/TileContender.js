@@ -6,7 +6,9 @@ export class TileContender {
         teamIndex,
         dirs,
         wall,
-        trailAge = 0
+        trailAge = 0,
+        trailBonus = 0,
+        isForwardWave = false
     }) {
         // CLASS: 'GameBoardTileStatusAndAbilityData' (shared "flyweight" instances)
         this.tileStatus = tileStatus;
@@ -18,6 +20,8 @@ export class TileContender {
         this.dirs = dirs;
         this.wall = wall;
         this.trailAge = trailAge; // tile updates since the status stopped moving
+        this.trailBonus = trailBonus; // extra tile updates it stays, from a buffed cast
+        this.isForwardWave = isForwardWave; // the second wave of a cast: it never turns around
     }
 
     getTileStatus() {
@@ -40,7 +44,9 @@ export class TileContender {
             teamIndex: this.teamIndex,
             dirs: this.dirs,
             wall: this.wall,
-            trailAge: this.trailAge
+            trailAge: this.trailAge,
+            trailBonus: this.trailBonus,
+            isForwardWave: this.isForwardWave
         }
     }
 }

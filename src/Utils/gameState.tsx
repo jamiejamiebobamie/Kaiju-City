@@ -2602,8 +2602,9 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
 
     // TICK EVENTS - 
     isSpread: [],
-    isReverseDirection: [0, 5],
+    isReverseDirection: [0, 5], // the first wave rolls back, then turns at tick 5
     isWall: true,
+    hasForwardWave: true, // like waves on a beach: the second only comes forward
     // - - - - - - - - - - - - - - - - - - - - - - - - - 
 
     // AI data - - - -
@@ -2631,8 +2632,8 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     passiveIcon: "fa-exclamation-triangle",
 
     activeName: "Tidal Wave",
-    activeDesc: "Create a single, lateral line of water",
-    activeEffect1: "Water travels in the direction of your closest enemy",
+    activeDesc: "Send two waves of water, one after the other",
+    activeEffect1: "The first rolls back before it comes in. Both travel toward your closest enemy",
 
     passiveName: "Slippery",
     passiveDesc: "...when wet. Exercise caution.",
@@ -2948,6 +2949,7 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
       "trail" will be deleted next update if 'isPersistent' is false.
     */
     isLeaveTrail: true,
+    trailTicks: 50, // shields fade after 50 tile updates, about 8 seconds
 
     // TICK RANGES -
     isRotating: [],
@@ -2965,13 +2967,15 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     desiredAIRange: 4,
     cooldownTimePlayer: 4000,
     cooldownTimeAI: 5000,
-    passiveDurationTime: 6000,
+    passiveDurationTime: 7000, // longer than the cooldown, so the next Shield can be buffed
     // - - - - - - - -
 
     // PASSIVE ability data
     isTriggerPassiveImmediately: true,
-    modifierVal: 0, // off for now: needs a different passive
-    fieldToModify: 'tileCountModifier',
+    isPassiveRefreshed: true,
+    buffedCastBonus: { range: 1, trailTicks: 25 }, // one ring wider, and about 4 seconds longer
+    modifierVal: 0,
+    fieldToModify: '',
     // - - - - - - - - - - -
 
     // UI data - - - - - - - - - -
@@ -2986,11 +2990,11 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
 
     activeName: "Aegis",
     activeDesc: "Create an area of protection around you. Blocking many ranged attacks",
-    activeEffect1: "Status remains on the tile until walked on",
+    activeEffect1: "Shields fade after about 8 seconds, or when walked on",
 
     passiveName: "Seasoned Builder",
     passiveDesc: "You are prolific",
-    passiveEffect1: "No effect for now",
+    passiveEffect1: "Shield again soon after: +1 range, lasts 4 seconds longer",
 
     activeEffect2: '',
     passiveEffect2: '',
@@ -3031,8 +3035,8 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     // AI data - - - -
     type: ["escape"],
     desiredAIRange: 5,
-    cooldownTimePlayer: 15000,
-    cooldownTimeAI: 16000,
+    cooldownTimePlayer: 10500,
+    cooldownTimeAI: 11200,
     passiveDurationTime: 4000,
     // - - - - - - - -
 
@@ -3222,13 +3226,8 @@ export const ABILITY_KEY_MAPPINGS = [
   `Digit5`,
   `Digit6`,
 
-  // TEAMMATE_2 ABILITIES - - -
-  `Digit7`,
-  `Digit8`,
-  `Digit9`,
-
-  // TEAMMATE_3 ABILITIES - - -
-  `KeyZ`,
-  `KeyX`,
-  `KeyC`,
+  // 7 to 9 call in recruits (see 'RecruitCalls')
 ];
+
+// the number row or the numpad
+export const ABILITY_KEY_CODES = ABILITY_KEY_MAPPINGS.flatMap(code => [code, code.replace('Digit', 'Numpad')]);

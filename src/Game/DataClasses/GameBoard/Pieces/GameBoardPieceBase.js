@@ -1,3 +1,5 @@
+import { getThrowVec } from 'Game/DataClasses/Ragdoll';
+
 const CHARM_MS = 5000;
 const CHARM_ALONE_DMG = 1;
 
@@ -169,7 +171,9 @@ export class GameBoardPieceBase {
         if (!this.isDead && this.isOnTiles) {
             [...this.touchedTileIndices, this.tileIndex].forEach(tileIndex => {
                 const dmg = this.gameManagerProxy.getDmg(this.pieceIndex, tileIndex);
-                if (!!dmg) this.decrementHealth(accTime, dmg);
+                if (!dmg) return;
+                this.lastHitDirs = this.gameManagerProxy.getStatusDirs(tileIndex);
+                this.decrementHealth(accTime, dmg);
             });
         }
         this.touchedTileIndices = [];
@@ -221,6 +225,7 @@ export class GameBoardPieceBase {
         if (this.isOnTiles) {
             const dmg = this.gameManagerProxy.getDmg(this.pieceIndex);
             if (!!dmg) {
+                this.lastHitDirs = this.gameManagerProxy.getStatusDirs(this.tileIndex);
                 this.decrementHealth(accTime, dmg);
             }
         }
@@ -316,6 +321,7 @@ export class GameBoardPieceBase {
 
     hitByTrain(accTime, { mode, dmg }, safeTile) {
         this.setLastDmgAccTime(0); // a train hits whatever else has just happened
+        this.lastHitDirs = undefined;
         this.decrementHealth(accTime, mode == 'kill' ? this.lives + this.livesModifier : dmg);
         this.moveToTiles = [];
         this.jumpToLinkedTile(safeTile);
@@ -643,7 +649,9 @@ export class GameBoardPieceBase {
             representation varies per piece.
             (example: 'Exploding Kaiju' sprite anim.)
         */
-        this.gameManagerProxy.spawnDeathPieceAtLocation(this.charLocation, this.avatar, this.tileIndex, this.color, this.pieceIndex);
+        // thrown by how they were moving and by what hit them
+        const throwVec = getThrowVec(this.dir, this.lastHitDirs, this.facingDir);
+        this.gameManagerProxy.spawnDeathPieceAtLocation(this.charLocation, this.avatar, this.tileIndex, this.color, this.pieceIndex, throwVec);
     }
 
     getIsDead() {

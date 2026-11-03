@@ -129,7 +129,9 @@ export class PlayerInputHandler {
 
     /* player can use his abilities and command teammates to use theirs (if abilities are not on cooldown) */
     usePlayerAbility = (keycode, accTime) => {
-        this.usePlayerAbilityFromIndex(ABILITY_KEY_MAPPINGS.indexOf(keycode), accTime);
+        // the numpad's numbers do the same as the number row's
+        const digitCode = keycode.replace(/^Numpad/, 'Digit');
+        this.usePlayerAbilityFromIndex(ABILITY_KEY_MAPPINGS.indexOf(digitCode), accTime);
     }
 
     usePlayerAbilityFromIndex(i, accTime) {

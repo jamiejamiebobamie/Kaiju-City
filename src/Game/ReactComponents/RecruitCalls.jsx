@@ -4,9 +4,10 @@ import { useKeyPress } from "Utils/utils";
 import { PIECES_INFO } from "Utils/gameState";
 
 /*
-  A mock-up of calling in recruits: one round button each, once per fight.
-  The numbers carry on after the powers' numbers. Pressing one only marks it used for now.
+  Calling in recruits: one round button each, once per fight, on 7, 8 and 9 (number row or numpad).
+  Keys only: the mouse doesn't play.
 */
+export const RECRUIT_FIRST_KEY = 7;
 const Row = styled.div`
   position: absolute;
   left: 50%;
@@ -23,12 +24,11 @@ const CallButton = styled.button`
   height: 4.6cqw;
   padding: 0;
   overflow: visible;
-  cursor: pointer;
   background: #111214;
   border: 0.22cqw solid #8d9097;
   border-radius: 50%;
+  cursor: default;
   &:disabled {
-    cursor: default;
     filter: grayscale(1) brightness(0.45);
   }
 `;
@@ -56,14 +56,17 @@ const KeyNumber = styled.div`
   background: #d9dade;
 `;
 
-export const RecruitCalls = ({ recruits, firstNumber, isDisabled }) => {
+export const RecruitCalls = ({ recruits, onCall, isDisabled }) => {
   const [used, setUsed] = useState([]);
-  const call = avatar => setUsed(calls => [...calls, avatar]);
+  const call = avatar => {
+    if (used.includes(avatar) || !onCall(avatar)) return;
+    setUsed(calls => [...calls, avatar]);
+  };
 
   useKeyPress({
-    keyCodes: recruits.map((_, index) => `Digit${firstNumber + index}`),
+    keyCodes: recruits.flatMap((_, index) => [`Digit${RECRUIT_FIRST_KEY + index}`, `Numpad${RECRUIT_FIRST_KEY + index}`]),
     keyDownCallback: code => {
-      const avatar = recruits[Number(code.slice(-1)) - firstNumber];
+      const avatar = recruits[Number(code.slice(-1)) - RECRUIT_FIRST_KEY];
       if (avatar) call(avatar);
     },
     isCharacterDead: isDisabled
@@ -76,11 +79,11 @@ export const RecruitCalls = ({ recruits, firstNumber, isDisabled }) => {
           key={avatar}
           aria-label={`Call ${avatar}`}
           disabled={used.includes(avatar)}
+          tabIndex={-1}
           style={{ boxShadow: `0 0 0.9cqw ${PIECES_INFO[avatar].color}` }}
-          onClick={() => call(avatar)}
         >
           <Head src={`/levels/portraits/${avatar}.png`} />
-          <KeyNumber>{firstNumber + index}</KeyNumber>
+          <KeyNumber>{RECRUIT_FIRST_KEY + index}</KeyNumber>
         </CallButton>
       ))}
     </Row>

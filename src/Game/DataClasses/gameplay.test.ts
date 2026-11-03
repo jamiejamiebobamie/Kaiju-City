@@ -5,6 +5,7 @@ import { GameResult } from './GameManager';
 import { TimeoutHandler } from './TimeoutHandler';
 import { findPath } from './GameBoard/findPath';
 import { CENTER_TILE, getLitTiles, makeGame, placePiece, putStatusOnTile } from './testHelpers';
+import { getThrowVec, startRagdoll, stepRagdoll } from './Ragdoll';
 
 const useAbility = ({ gm, player }, abilityIndex) => {
   const ability = player.abilities[abilityIndex];
@@ -355,5 +356,101 @@ describe('a full match', () => {
     }
     const positions = gm.getPieces().flatMap(p => [p.charLocation.x, p.charLocation.y]);
     expect(positions.every(Number.isFinite)).toBe(true);
+  });
+});
+
+describe('Shield', () => {
+  const castShield = (game, accTime) => {
+    game.gm.accTime = accTime;
+    game.gm.timeoutHandler.update(accTime);
+    game.gm.gameBoardManager.getTilesInFlatArray().forEach(tile => tile.clearTileStatus());
+    const index = game.player.abilities.findIndex(a => a.gameBoardPieceAbilityData.element == 'metal');
+    useAbility(game, index);
+    return game.player.abilities[index];
+  };
+
+  it('the first Shield is plain. one cast soon after is a ring wider and lasts longer.', () => {
+    const game = makeGame({ abilities: ['Metal', 'Fire', 'Ice'] });
+    castShield(game, 1000);
+    const [plain] = getLitTiles(game.gm);
+    expect(plain.getCurrCount()).toBe(2);
+    expect(plain.trailBonus).toBe(0);
+    castShield(game, 5000);
+    const [buffed] = getLitTiles(game.gm);
+    expect(buffed.getCurrCount()).toBe(3);
+    expect(buffed.trailBonus).toBe(25);
+  });
+
+  it('casting again restarts the passive instead of stacking it', () => {
+    const game = makeGame({ abilities: ['Metal', 'Fire', 'Ice'] });
+    castShield(game, 1000);
+    const shield = castShield(game, 5000);
+    game.gm.timeoutHandler.update(9000); // the first cast's passive would have ended here
+    expect(shield.isPassiveApplied).toBe(true);
+    game.gm.timeoutHandler.update(12001);
+    expect(shield.isPassiveApplied).toBe(false);
+  });
+
+  it('shields fade on their own', () => {
+    const game = makeGame({ abilities: ['Metal', 'Fire', 'Ice'] });
+    castShield(game, 1000);
+    for (let k = 1; k <= 60; k++) game.gm.gameBoardManager.updateTileState(1000 + k * 160);
+    expect(getLitTiles(game.gm).length).toBe(0);
+  });
+});
+
+describe('Water', () => {
+  it('sends two waves: once both come forward, they are rows apart', () => {
+    const { i, j } = CENTER_TILE;
+    // up the map, where there is room before an edge
+    const game = makeGame({ abilities: ['Water', 'Fire', 'Ice'], kaijuTile: { i, j: j - 12 } });
+    const index = game.player.abilities.findIndex(a => a.gameBoardPieceAbilityData.element == 'water');
+    useAbility(game, index);
+    expect(getLitTiles(game.gm).map(tile => tile.isForwardWave).sort()).toEqual([false, true]);
+    for (let k = 1; k <= 10; k++) game.gm.gameBoardManager.updateTileState(1 + k * 160);
+    // in the player's column, the first wave has turned and trails the second
+    const getRow = isForwardWave => getLitTiles(game.gm)
+      .find(tile => tile.tileIndex.i == i && tile.getCurrCount() > 0 && tile.isForwardWave == isForwardWave).tileIndex.j;
+    expect(getRow(false) - getRow(true)).toBeGreaterThanOrEqual(4);
+  });
+});
+
+describe('ragdolls', () => {
+  const ROW_PX = 40;
+
+  it('a body is thrown the way the power was travelling, spins, and comes to rest lying down', () => {
+    let body = startRagdoll({ x: 0, y: 0 }, getThrowVec('idle', ['right', 'up right', 'down right'], 'down'), ROW_PX);
+    expect(body.angle).toBe(90); // standing, as it starts
+    for (let k = 0; k < 100 && !body.isResting; k++) body = stepRagdoll(body, GAME_TICK.pieceMs / 1000, ROW_PX);
+    expect(body.isResting).toBe(true);
+    expect(body.x).toBeGreaterThan(ROW_PX);
+    expect(Math.abs(body.y)).toBeLessThan(body.x / 2);
+    expect(body.height).toBe(0);
+    expect(body.angle % 180).toBe(0);
+  });
+
+  it('running adds to the throw', () => {
+    const still = getThrowVec('idle', ['up'], 'down');
+    const running = getThrowVec('up', ['up'], 'down');
+    expect(running.y).toBeLessThan(still.y);
+  });
+
+  it('with nothing pushing, they fall back from where they faced', () => {
+    expect(getThrowVec('idle', [], 'up').y).toBeGreaterThan(0);
+  });
+
+  it('the camera holds on the death that ended the fight, and slow motion eases in after a moment', () => {
+    const { gm, player } = makeGame();
+    player.lives = 1;
+    player.decrementHealth(1000, 1);
+    expect(gm.getGameResult()).toBe(GameResult.PlayerLost);
+    gm.stepPieces();
+    const shot = gm.getCameraShot();
+    expect(shot.point).toEqual(gm.getDeathLocation(gm.getDeathPieces()[0]));
+    expect(gm.getTimeScale()).toBe(1);
+    for (let k = 0; k < 20; k++) gm.stepPieces();
+    expect(gm.getCameraShot()).toBe(shot); // the same shot, so the camera doesn't pull in again
+    expect(shot.point).toEqual(gm.getDeathLocation(gm.getDeathPieces()[0]));
+    expect(gm.getTimeScale()).toBeCloseTo(0.2);
   });
 });

@@ -6,7 +6,7 @@ import { SettingsManager } from './SettingsManager';
 import { GameBoardPiecesManager } from './GameBoard/Pieces/GameBoardPiecesManager';
 import { KaijuManager } from './KaijuManager';
 import { GameBoardManager } from './GameBoard/GameBoardManager';
-import { EXIT_OPEN_PHASE, getSortZIndex, PENINSULA, RIVAL_IN_PHASE } from 'Game/DataClasses/Levels/levels';
+import { EXIT_OPEN_PHASE, getSortZIndex, LEVELS, PENINSULA, RIVAL_IN_PHASE } from 'Game/DataClasses/Levels/levels';
 import { TrainSchedule, TRAIN_HIT } from './TrainSchedule';
 import { GameBoardPieceAgent } from './GameBoard/Pieces/GameBoardPieceAgent';
 import { GameBoardPieceExtra } from './GameBoard/Pieces/GameBoardPieceExtra';
@@ -15,6 +15,7 @@ import { addUnlock, getRecruitChoices, getUnlocks } from './Unlocks';
 import { ROSTER } from './Avatars';
 import { getSpeechMs } from './speechTiming';
 import { getTileCenter } from './GameBoard/hexGrid';
+import { startRagdoll, stepRagdoll } from './Ragdoll';
 
 export const GameResult = Object.freeze({
     PlayerWon: 0,
@@ -35,6 +36,10 @@ export const CUTSCENE = {
   arrivalTeammateSpot: { x: 245, y: 325 },
   arrivalTeammateStart: { x: 195, y: 590 },
   slowMotionSpeed: 0.2,
+  slowMotionDelayMs: 350, // full speed for a moment, so the last explosion or throw gets going
+  slowMotionRampMs: 500, // then it eases down to slow motion
+  outcomeZoomScale: 1.25, // the end-of-fight shot is a little closer than play
+  outcomePullMs: 900,
   chaseSlowSpeed: 0.35,
   chaseSlowMs: 2800,
   mapWideMs: 2400,
@@ -48,6 +53,13 @@ export const CUTSCENE = {
 };
 
 const ARRIVAL_LINE = "Heads-up, teammate. They're coming!";
+
+// before each Recruit or Terminate: what each choice means
+const POSSESSIVES = { him: 'his', her: 'her' };
+export const getRecruitLine = (pronoun) => {
+    const possessive = POSSESSIVES[pronoun] || 'their';
+    return `Maybe we could recruit ${pronoun}... or we could study ${possessive} DNA to get ${possessive} power. Though that would be fatal for ${pronoun}.`;
+};
 
 export class GameManager {
     constructor({ level = PENINSULA, settingsManager, hasArrival = false, killsToWin = undefined }) {
@@ -63,6 +75,9 @@ export class GameManager {
         this.speech = null; // { name, text, x, y }
         this.recruitScene = null;
         this.isSlowMotion = false;
+        this.resultMs = 0; // how long the fight has been over
+        this.timeScale = 1; // the game's speed: below 1 in slow motion
+        this.outcomeShot = undefined; // once the fight is decided, the camera stays on the death that decided it
         this.isChaseSlowed = false;
         this.chaseSlowEndsAt = 0;
         this.followers = []; // recruits walking with the team
@@ -293,6 +308,19 @@ export class GameManager {
         this.rivalPiece = piece;
     }
 
+    // a recruit called in to help: they fight beside the team with the powers they had as a rival
+    callRecruit = (avatar) => {
+        if (this.isPaused || this.cutscene || this.recruitScene || this.getGameResult() !== null) return false;
+        const rivalLevel = Object.values(LEVELS).find(({ rival }) => rival && rival.avatar == avatar);
+        if (!rivalLevel) return false;
+        const piece = this.gameBoardPiecesManager.addRecruit(avatar, this.settingsManager.getAbilitiesFromElements(rivalLevel.rival.abilities));
+        const player = this.gameBoardPiecesManager.getPlayerPiece();
+        const [besidePlayer] = this.gameBoardManager.getAdjacentTileIndices(player.getTileIndex()).filter(this.gameBoardManager.getIsInBounds);
+        piece.initCharLocation(true, besidePlayer || player.getTileIndex());
+        piece.isShowHealthBarOnComponent = true;
+        return true;
+    }
+
     // placed by their feet, wherever they stand, tile or no tile
     addExtra({ avatar, spot, facingDir }) {
         const piece = this.gameBoardPiecesManager.addPiece({
@@ -316,8 +344,29 @@ export class GameManager {
 
     getCameraShot() {
         if (this.recruitScene) return this.recruitScene.shot;
-        return this.cutscene ? this.cutscene.steps[this.cutscene.index].shot : undefined;
+        if (this.cutscene) return this.cutscene.steps[this.cutscene.index].shot;
+        return this.outcomeShot;
     }
+
+    getTimeScale = () => {
+        return this.timeScale;
+    }
+
+    // bodies fly on game time, so slow motion slows them too
+    stepRagdolls() {
+        const rowPx = this.level.grid.rowStep * this.level.grid.scale;
+        const seconds = GAME_TICK.pieceMs / 1000 * this.timeScale;
+        this.getDeathPieces().filter(death => death.throwVec && death.avatar != 'kaiju').forEach(death => {
+            death.body = death.body ? stepRagdoll(death.body, seconds, rowPx) : startRagdoll(death.charLocation, death.throwVec, rowPx);
+        });
+    }
+
+    // where a death is now: a thrown body moves, an exploding Kaiju stays put
+    getDeathLocation({ body, charLocation }) {
+        return body ? { x: body.x, y: body.y - body.height } : charLocation;
+    }
+
+    // the shot holds on whoever's death ended the fight, and follows their body
 
     startCutscene(steps) {
         this.cutscene = { steps, index: -1, msLeft: 0 };
@@ -547,10 +596,30 @@ export class GameManager {
         if (this.level.isWalkingLevel) return;
         if (!this.isSlowMotion) {
             this.isSlowMotion = true;
-            this.gameBoardManager.moveSpeedScale *= CUTSCENE.slowMotionSpeed;
+            this.baseMoveSpeedScale = this.gameBoardManager.moveSpeedScale;
             if (this.trainSchedule) this.stopTrains();
+            this.startOutcomeShot();
         }
-        if (this.getGameResult() === GameResult.PlayerWon) this.gameBoardPiecesManager.movePieces({ accTime: this.accTime, playerInputHandler: this.playerInputHandler });
+        this.resultMs += GAME_TICK.pieceMs;
+        const rampProgress = Math.min(Math.max((this.resultMs - CUTSCENE.slowMotionDelayMs) / CUTSCENE.slowMotionRampMs, 0), 1);
+        this.timeScale = 1 - (1 - CUTSCENE.slowMotionSpeed) * rampProgress;
+        this.gameBoardManager.moveSpeedScale = this.baseMoveSpeedScale * this.timeScale;
+        this.gameBoardPiecesManager.movePieces({ accTime: this.accTime, playerInputHandler: this.playerInputHandler });
+        this.updateOutcomeShot();
+    }
+
+    startOutcomeShot() {
+        const deaths = this.getDeathPieces();
+        const lastDeath = deaths[deaths.length - 1];
+        if (!lastDeath) return;
+        this.outcomeDeath = lastDeath;
+        this.outcomeShot = { point: { ...this.getDeathLocation(lastDeath) }, zoomScale: this.level.cameraZoom * CUTSCENE.outcomeZoomScale, panMs: CUTSCENE.outcomePullMs };
+    }
+
+    // the same shot, moved: a new shot would start the camera's pull again
+    updateOutcomeShot() {
+        if (!this.outcomeShot) return;
+        Object.assign(this.outcomeShot.point, this.getDeathLocation(this.outcomeDeath));
     }
 
     // the fight is over: the train leaves, and no other comes
@@ -579,7 +648,7 @@ export class GameManager {
         const zoomScale = this.level.cameraZoom * CUTSCENE.recruitZoomScale;
         this.speech = teammate ? {
             name: 'Teammate',
-            text: `Do you think we can use ${pronoun}?`,
+            text: getRecruitLine(pronoun),
             x: teammate.charLocation.x,
             y: teammate.charLocation.y - CUTSCENE.recruitSpeechRows * rowStep * scale,
             isFlipped: true
@@ -618,7 +687,7 @@ export class GameManager {
     // who the camera stays with: the player, then their teammate once the player is down
     getFocusPiece() {
         const team = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
-        return team.find(piece => !piece.getIsDead()) || this.getPieces()[0];
+        return team.find(piece => !piece.getIsDead() && !piece.isRecruit) || this.getPieces()[0];
     }
 
     getIsAtGoal() {
@@ -676,6 +745,7 @@ export class GameManager {
             this.updateCutscene();
             return;
         }
+        this.stepRagdolls();
         if (this.getGameResult() !== null) {
             this.updateSlowMotion();
             return;
@@ -713,6 +783,7 @@ export class GameManager {
     getUiState() {
         return {
             players: this.gameBoardPiecesManager.getPlayerTeamUiState(),
+            recruits: this.gameBoardPiecesManager.getRecruitsUiState(),
             kaijuKillCount: this.score,
             kaijuToWin: this.getKillsToWin(),
             isPaused: this.isPaused,
@@ -797,6 +868,7 @@ export class GameManager {
             getPathToTeamLeader: this.gameBoardManager.getPathToTeamLeader,
             getPathFromTileToTile: this.gameBoardManager.getPathFromTileToTile,
             spawnDeathPieceAtLocation: this.gameBoardPiecesManager.spawnDeathPieceAtLocation,
+            getStatusDirs: this.gameBoardManager.getStatusDirs,
             getDirFromTiles: this.gameBoardManager.getDirFromTiles,
             updateTileWithAbilityStatus: this.gameBoardManager.updateTileWithAbilityStatus,
             getPieceTileIndex: this.gameBoardPiecesManager.getPieceTileIndex,

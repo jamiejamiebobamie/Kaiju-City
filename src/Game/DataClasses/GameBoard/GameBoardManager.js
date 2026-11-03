@@ -95,7 +95,8 @@ export class GameBoardManager {
     updateTileWithAbilityStatus = ({
         accTime,
         pieceIndex,
-        appliedStatus
+        appliedStatus,
+        isBuffed = false
     }) => {
         const self = this.gameManagerProxy.getPiece(pieceIndex);
         const pieceTileIndex = self.getTileIndex();
@@ -142,13 +143,21 @@ export class GameBoardManager {
         const teamIndex = self.getTeamIndex();
 
         // 'Dispel' keeps its size. it is not affected by the range modifier.
-        const range = tileStatus.range + (appliedStatus == 'isBubble' ? 0 : self.tileCountModifier);
+        const range = tileStatus.range + (appliedStatus == 'isBubble' ? 0 : self.tileCountModifier) + (isBuffed ? tileStatus.buffedCastBonus.range : 0);
+        const trailBonus = isBuffed ? tileStatus.buffedCastBonus.trailTicks : 0;
 
-        if (this.getIsInBounds(tileIndex)) {
-            const tile = this.tiles[tileIndex.i][tileIndex.j];
+        const castOnTile = (castTileIndex, isForwardWave) => {
+            if (!this.getIsInBounds(castTileIndex)) return;
+            const tile = this.tiles[castTileIndex.i][castTileIndex.j];
             if (tile.getCanApplyStatus(tileStatus)) {
-                tile.updateTileStatus({ updateKey: accTime, tileStatus, currCount: range, dirs: [...dirs], teamIndex, targetIndex });
+                tile.updateTileStatus({ updateKey: accTime, tileStatus, currCount: range, dirs: [...dirs], teamIndex, targetIndex, trailBonus, isForwardWave });
             }
+        };
+        castOnTile(tileIndex, false);
+        // the first wave rolls back before it comes forward, so the two waves arrive one after the other
+        if (tileStatus.hasForwardWave) {
+            const offset = this.getTileOffsetFromDir(dirs[0], tileIndex);
+            castOnTile({ i: tileIndex.i + offset.i, j: tileIndex.j + offset.j }, true);
         }
     };
 
@@ -223,7 +232,7 @@ export class GameBoardManager {
         // 1. persist curr tile's status on curr tile (a piece on the tile clears it)
         const trailAge = currCount == 0 ? tile.trailAge + 1 : 0;
         const isPersist = tileStatus.getIsPersistent() || (tileStatus.getIsLeaveTrail() && currCount != 0);
-        if (isPersist && !tileStatus.getIsTrailFaded(trailAge) && !this.gameManagerProxy.getIsPieceOnTile(tileIndex)) {
+        if (isPersist && !tileStatus.getIsTrailFaded(trailAge - tile.trailBonus) && !this.gameManagerProxy.getIsPieceOnTile(tileIndex)) {
             this.addContender(contenders, tileIndex, tile.getTileContenderFromTile({ currCount: 0, trailAge }));
         }
 
@@ -232,7 +241,8 @@ export class GameBoardManager {
         // 2. move curr tile's status to adjacent tiles based on dirs
         const tick = tileStatus.getCurrTick(currCount);
         const tileWall = this.getTileWall(tile, tick);
-        const isWallReversing = !!tileWall && tileStatus.getIsReverseDirection(currCount);
+        const isReversing = !tile.isForwardWave && tileStatus.getIsReverseDirection(currCount);
+        const isWallReversing = !!tileWall && isReversing;
         const wall = isWallReversing ? this.getReversedWall(tileWall, tick) : tileWall;
         const dirs = isWallReversing ? tile.getDirs().map(d => tileStatus.reverseDir(d)[0]) : tile.getDirs();
         dirs.forEach((d, dirIndex) => {
@@ -256,7 +266,7 @@ export class GameBoardManager {
                         const [_, dirs] = this.getNumAdjacentTilesInDirectionFromTileToTile({ fromTileIndex: tileIndex, toTileIndex: target.getTileIndex() });
                         newDirs = dirs;
                     }
-                } else if (tileStatus.getIsReverseDirection(currCount)) {
+                } else if (isReversing) {
                     newDirs = tileStatus.reverseDir(d);
                 }
 
@@ -723,6 +733,12 @@ export class GameBoardManager {
         const statusDmg = tile.getIsDmgTile(teamIndex) ? tile.getDmgAmt() : 0;
         const isContactDmg = this.gameManagerProxy.getIsContactDmg(pieceIndex, tileIndex);
         return isContactDmg ? Math.max(statusDmg, 1) : statusDmg;
+    }
+
+    // the ways the status on a tile is travelling
+    getStatusDirs = ({ i, j }) => {
+        const tile = this.tiles[i] && this.tiles[i][j];
+        return tile && tile.getTileStatus() ? [...tile.getDirs()] : [];
     }
 
     // the team whose Charm is on this piece's tile, if it isn't the piece's own

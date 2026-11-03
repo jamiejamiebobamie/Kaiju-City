@@ -364,7 +364,9 @@ const ROOFTOP_SCENE = {
       zoomScale: 1.5,
       lines: [
         { name: 'Punk Girl', text: 'Is someone there? I can hear them...', isFlipped: false },
-        { isTeammate: true, text: 'Step away from that!' }
+        { name: 'Punk Girl', text: "It's my ancestors... they're calling to me from the graves.", isFlipped: false },
+        { isTeammate: true, text: 'Step away from that!' },
+        { name: 'Punk Girl', text: "They're so ANGRY. They want me to take it!", isFlipped: false }
       ]
     }
   },
@@ -428,7 +430,8 @@ const AQUARIUM_SCENE = {
       focus: { x: 780, y: 590 },
       zoomScale: 1.6,
       lines: [
-        { name: 'Mermaid', text: "I'M A MERMAID!!", isFlipped: false },
+        { name: 'Aquarium Worker', text: "I'M A MERMAID!!", isFlipped: false },
+        { isTeammate: true, text: "She must've worked here... but the Kaiju radiation is scrambling her brains, like the others." },
         { isTeammate: true, text: "Ma'am, put that down!" }
       ]
     }
@@ -602,7 +605,7 @@ const LAB_INTRO_SCENE = {
       id: 'agentNervous', type: 'speech' as const, phase: LAB_TALK_PHASE, x: 720, y: 445, width: 0, height: 0, sortY: ABOVE_CHARACTERS,
       lines: ['*nervous* Oh, those?', 'Nothing to worry about...', 'Just some R&D. Cryo-chimeric epigenetics.']
     },
-    { id: 'avatarTank', type: 'hotspot' as const, action: 'avatars', label: 'Choose avatar', labelY: 345, outline: '/levels/lab-outline-avatars.png', x: 62, y: 235, width: 175, height: 440, rotate: -24, sortY: ABOVE_CHARACTERS },
+    { id: 'avatarTank', type: 'hotspot' as const, action: 'powers', label: 'Change powers', labelY: 345, outline: '/levels/lab-outline-avatars.png', x: 62, y: 235, width: 175, height: 440, rotate: -24, sortY: ABOVE_CHARACTERS },
     { id: 'specimenTank', type: 'hotspot' as const, action: 'agentTalk', label: 'What is this?', labelY: 300, outline: '/levels/lab-outline-specimen.png', x: 290, y: 310, width: 170, height: 300, rotate: -24, sortY: ABOVE_CHARACTERS, hidePhase: LAB_TALK_PHASE },
     { id: 'colorTank', type: 'hotspot' as const, action: 'colors', label: 'Choose color', labelY: 330, outline: '/levels/lab-outline-colors.png', x: 1225, y: 370, width: 170, height: 340, rotate: 34, sortY: ABOVE_CHARACTERS },
     { id: 'exit', type: 'door' as const, phase: EXIT_OPEN_PHASE, x: 1060, y: 700, width: 0, height: 0, sortY: ABOVE_CHARACTERS, label: 'Exit' }

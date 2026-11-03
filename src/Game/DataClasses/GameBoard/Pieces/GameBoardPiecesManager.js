@@ -33,11 +33,15 @@ export class GameBoardPiecesManager {
     }
 
     getIsPlayerTeamDead() {
-        return this.getTeamPieces(this.getPlayerTeamIndex()).every(piece => piece.getIsDead());
+        return this.getTeamPieces(this.getPlayerTeamIndex()).filter(piece => !piece.isRecruit).every(piece => piece.getIsDead());
+    }
+
+    getRecruitsUiState() {
+        return this.pieces.filter(piece => piece.isRecruit).map(piece => piece.getUiState());
     }
 
     getPlayerTeamUiState() {
-        return this.getTeamPieces(this.getPlayerTeamIndex()).map(piece => piece.getUiState());
+        return this.getTeamPieces(this.getPlayerTeamIndex()).filter(piece => !piece.isRecruit).map(piece => piece.getUiState());
     }
 
     // is anyone else on this side, on the board and alive?
@@ -163,6 +167,13 @@ export class GameBoardPiecesManager {
         return piece;
     }
 
+    // called in mid-fight. they are on the team, but not one of the team's HUDs, and the fight can be lost without them.
+    addRecruit(avatar, abilities) {
+        const piece = this.addPiece({ pieceInfo: { ...getPieceInfo(avatar), abilities } });
+        piece.isRecruit = true;
+        return piece;
+    }
+
     addPlayer({ playerAvatar, playerAbilities }) {
         const pieceInfo = { ...getPieceInfo(playerAvatar), isNpc: false, abilities: playerAbilities };
         this.addPiece({ pieceInfo });
@@ -179,9 +190,10 @@ export class GameBoardPiecesManager {
         return teamPieces
     }
 
-    spawnDeathPieceAtLocation = (charLocation, avatar, tileIndex, color, pieceIndex) => {
+    spawnDeathPieceAtLocation = (charLocation, avatar, tileIndex, color, pieceIndex, throwVec) => {
         const zIndex = this.gameManagerProxy.getFlattenedArrayIndex(tileIndex);
-        this.deathPieces.push({ key: this.deathPieces.length, charLocation, avatar, zIndex, color, pieceIndex });
+        // a person's body is thrown. 'body' is set going by the game manager, which knows the level's scale.
+        this.deathPieces.push({ key: this.deathPieces.length, charLocation, avatar, zIndex, color, pieceIndex, throwVec, body: undefined });
     }
 
     getIsTeamDamaged = (pieceIndex) => {

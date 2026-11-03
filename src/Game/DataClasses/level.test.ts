@@ -4,7 +4,7 @@ import { rescaleLevelTiles } from 'Game/DataClasses/Levels/levelScale';
 import aquarium from 'Game/DataClasses/Levels/data/aquarium.json';
 import rapidTransit from 'Game/DataClasses/Levels/data/rapidTransit.json';
 import { CAMPAIGN_SECTIONS, getIsLastSection } from './Campaign';
-import { GameManager, GameResult } from './GameManager';
+import { GameManager, GameResult, getRecruitLine } from './GameManager';
 import { addUnlock, getUnlocks, saveRecruitChoice } from './Unlocks';
 import { getIsAvatarOpen, getIsSkillOpen, ROSTER, saveAvatarColor, unlockRecruitSkill } from './Avatars';
 import { PIECES_INFO as ROSTER_PIECES } from 'Utils/gameState';
@@ -744,7 +744,7 @@ describe('cutscenes', () => {
     const [player, teammate] = gm.getPieces();
     expect(player.charLocation.y).toBeLessThan(gm.recruitScene.body.y);
     expect(teammate.charLocation.x).toBeLessThan(player.charLocation.x);
-    expect(gm.speech.text).toBe('Do you think we can use her?');
+    expect(gm.speech.text).toBe(getRecruitLine('her'));
     expect(gm.getCameraShot().isFollowingMouse).toBe(true);
   });
 
@@ -1592,5 +1592,57 @@ describe('tile icons', () => {
       expect(Number.isFinite(tile.getRotation())).toBe(true);
     });
     expect(gm).toBeTruthy();
+  });
+});
+
+describe('recruit calls', () => {
+  it('a called recruit fights beside the team with their rival powers, without a HUD of their own', () => {
+    const { gm } = makeGame({ isTeammate: true });
+    const huds = gm.getUiState().players.length;
+    expect(gm.callRecruit('punk')).toBe(true);
+    const recruit = gm.getPieces().find(piece => piece.isRecruit);
+    expect(recruit.getTeamIndex()).toBe(gm.gameBoardPiecesManager.getPlayerTeamIndex());
+    expect(recruit.isNpc).toBe(true);
+    expect(recruit.abilities.map(a => a.gameBoardPieceAbilityData.element).sort()).toEqual(['glass', 'metal', 'wood']);
+    expect(gm.getUiState().players.length).toBe(huds);
+  });
+
+  it('the fight is lost when the player and teammate are down, even with a recruit standing', () => {
+    const { gm } = makeGame();
+    gm.callRecruit('mermaid');
+    gm.gameBoardPiecesManager.getPlayerPiece().isDead = true;
+    expect(gm.getGameResult()).toBe(GameResult.PlayerLost);
+  });
+
+  it('no one can be called during a cutscene', () => {
+    const { gm } = makeGame();
+    gm.cutscene = { steps: [], index: 0, msLeft: 0 };
+    expect(gm.callRecruit('punk')).toBe(false);
+  });
+});
+
+describe('recruits', () => {
+  it('the teammate speaks of Punk Girl and the Aquarium Worker as her, and Punk Guy as him', () => {
+    expect(LEVELS.rooftop.rival.pronoun).toBe('her');
+    expect(LEVELS.aquarium.rival.pronoun).toBe('her');
+    expect(LEVELS.rapidTransit.rival.pronoun).toBe('him');
+    expect(getRecruitLine('her')).toContain('study her DNA to get her power');
+    expect(getRecruitLine('him')).toContain('study his DNA to get his power');
+  });
+
+  it('a called recruit has a HUD of their own, apart from the team', () => {
+    const { gm } = makeGame({ isTeammate: true });
+    expect(gm.getUiState().recruits).toEqual([]);
+    gm.callRecruit('black_female');
+    const { recruits, players } = gm.getUiState();
+    expect(recruits.map(({ gender }) => gender)).toEqual(['black_female']);
+    expect(players.map(({ gender }) => gender)).not.toContain('black_female');
+  });
+
+  it('the Aquarium Worker and Punk Girl say more before their fights', () => {
+    const getText = level => level.rival.intro.lines.map(({ text }) => text).join(' ');
+    expect(getText(LEVELS.aquarium)).toMatch(/must've worked here/);
+    expect(getText(LEVELS.rooftop)).toMatch(/ancestors/);
+    expect(LEVELS.aquarium.rival.intro.lines[0].name).toBe('Aquarium Worker');
   });
 });

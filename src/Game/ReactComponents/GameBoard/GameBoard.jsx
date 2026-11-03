@@ -12,7 +12,7 @@ import { WakeCanvas } from 'Game/ReactComponents/GameBoard/WakeCanvas';
 import { Camera, CAMERA, getCloseZoom, getFitZoom, WIDE_SHOT } from 'Game/DataClasses/Camera';
 import { CUTSCENE } from 'Game/DataClasses/GameManager';
 import { SpeechBubbleScale } from 'Game/ReactComponents/GameBoard/recruitLook';
-import { getHexRadius, getTileIndexAtLocation } from 'Game/DataClasses/GameBoard/hexGrid';
+import { getHexRadius } from 'Game/DataClasses/GameBoard/hexGrid';
 
 const Board = styled.div`
   position: absolute;
@@ -92,7 +92,6 @@ const WindowSize = styled.div`
   background: rgba(0, 0, 0, 0.75);
 `;
 
-const SLOW_MOTION_RATE = 0.2;
 const CHARM_COLOR = "#ff7ad9";
 const RECRUIT_BODY_SIZE = 100; // at a 'pieceScale' of 1: the body in the art is then as long as a character is tall
 const RECRUIT_LOOK_LEAN = 0.08; // how far the choice's camera leans with the mouse
@@ -151,7 +150,6 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
   // redraws the pieces when the game updates. the tiles draw themselves.
   useSyncExternalStore(gameManager.subscribeToBoard, gameManager.getBoardRevision);
   const pieces = gameManager.getPieces();
-  const inputHandler = gameManager.getPlayerInputHandler();
 
   const boardRef = useRef(null);
   const worldRef = useRef(null);
@@ -259,30 +257,23 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
   }, [gameManager, closeCamera, wideCamera, isMouseLook, isEnemyZoom]);
 
   // everything animated plays in slow motion once the match is won
-  const slowRate = isSlowMotion ? SLOW_MOTION_RATE : gameManager.isChaseSlowed ? CUTSCENE.chaseSlowSpeed : undefined;
+  // once a fight is over, the game eases into slow motion: the animations follow its speed
+  const slowRate = isSlowMotion ? "outcome" : gameManager.isChaseSlowed ? CUTSCENE.chaseSlowSpeed : undefined;
   useEffect(() => {
     if (!slowRate) return;
-    const setRate = rate => worldRef.current && worldRef.current.getAnimations({ subtree: true }).forEach(animation => { animation.playbackRate = rate; });
-    const interval = setInterval(() => setRate(slowRate), 100);
-    setRate(slowRate);
+    const getRate = () => slowRate == "outcome" ? gameManager.getTimeScale() : slowRate;
+    // transitions are left alone: the camera's pull and the bodies' easing between ticks already run on game time
+    const getIsTransition = animation => typeof CSSTransition != "undefined" && animation instanceof CSSTransition;
+    const setRate = rate => worldRef.current && worldRef.current.getAnimations({ subtree: true }).forEach(animation => {
+      if (!getIsTransition(animation)) animation.playbackRate = rate;
+    });
+    const interval = setInterval(() => setRate(getRate()), 100);
+    setRate(getRate());
     return () => {
       clearInterval(interval);
       setRate(1);
     };
   }, [slowRate]);
-
-  const getLocationFromEvent = e => {
-    // includes the camera's pan and zoom
-    const rect = worldRef.current.getBoundingClientRect();
-    const onScreenZoom = rect.width / world.width; // holds mid-pull and mid-shake, when it isn't the camera's zoom
-    return {
-      x: (e.clientX - rect.left) / onScreenZoom - contentOffset.x,
-      y: (e.clientY - rect.top) / onScreenZoom - contentOffset.y
-    };
-  };
-
-  const playerIndex = 0;
-  const isPlayerDead = !!pieces[playerIndex] && pieces[playerIndex].isDead;
 
   const focusPiece = pieces.length ? gameManager.getFocusPiece() : undefined;
   const siteTargets = (level.sites || []).map(({ spot, color }) => ({ key: `${spot.x} ${spot.y}`, color, charLocation: spot }));
@@ -313,42 +304,23 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
       </EdgeCaret>
     ));
 
-  // on press rather than on release, so a click can't be lost, and it feels immediate
-  const handlePress = e => {
-    if (isPlayerDead || isPaused || isEditingTiles || recruitScene || e.button != 0 || e.target.closest("[data-scene-button]")) return;
-    inputHandler.updatePlayerDestinationAndClickedTileFromClick(gameManager.getClosestReachableTile(getLocationFromEvent(e)));
-  };
-
+  // the keys move and use powers. the mouse only looks around, and clicks scene objects and buttons.
   const handleMouseMove = e => {
+    if (getIsTouchScreen()) return;
     const board = boardRef.current.getBoundingClientRect();
-    if (!getIsTouchScreen()) {
-      const getAim = (spot, start, size) => Math.max(Math.min(((spot - start) / size) * 2 - 1, 1), -1);
-      mouseAim.current = { x: getAim(e.clientX, board.left, board.width), y: getAim(e.clientY, board.top, board.height) };
-    }
-    const location = getLocationFromEvent(e);
-    const tileIndex = getTileIndexAtLocation(grid, location);
-    const isClickable = !isPlayerDead && !!tileIndex && gameManager.getIsWalkable(tileIndex);
-    boardRef.current.style.cursor = isClickable ? "pointer" : "default";
-    if (isPlayerDead || isPaused || isEditingTiles || recruitScene) return;
-    inputHandler.updateHoveredTileFromPlayerHover(gameManager.getClosestReachableTile(location));
+    const getAim = (spot, start, size) => Math.max(Math.min(((spot - start) / size) * 2 - 1, 1), -1);
+    mouseAim.current = { x: getAim(e.clientX, board.left, board.width), y: getAim(e.clientY, board.top, board.height) };
   };
 
   const handleMouseLeave = () => {
     mouseAim.current = { x: 0, y: 0 };
-    if (isPlayerDead) return;
-    inputHandler.updateHoveredTileFromPlayerHover(undefined);
   };
 
   const mouseHandlers = useRef(null);
-  mouseHandlers.current = { handlePress, handleMouseMove, handleMouseLeave };
+  mouseHandlers.current = { handleMouseMove, handleMouseLeave };
 
-  // the mouse counts everywhere on the page, so the empty area around a small play window still aims and clicks
+  // the mouse counts everywhere on the page, so the empty area around a small play window still aims
   useEffect(() => {
-    const gameFrame = boardRef.current.closest("[data-game-frame]");
-    const press = e => {
-      const isOnGameArea = e.target == gameFrame || boardRef.current.contains(e.target);
-      if (isOnGameArea) mouseHandlers.current.handlePress(e);
-    };
     const move = e => {
       document.body.style.cursor = "";
       mouseHandlers.current.handleMouseMove(e);
@@ -360,12 +332,10 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
       if (boardRef.current) boardRef.current.style.cursor = "none";
     };
     const leave = () => mouseHandlers.current.handleMouseLeave();
-    gameFrame.addEventListener("pointerdown", press);
     document.addEventListener("mousemove", move);
     document.addEventListener("keydown", hideCursor);
     document.documentElement.addEventListener("mouseleave", leave);
     return () => {
-      gameFrame.removeEventListener("pointerdown", press);
       document.removeEventListener("mousemove", move);
       document.removeEventListener("keydown", hideCursor);
       document.body.style.cursor = "";
@@ -398,11 +368,12 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
   const shotZoom = getFitZoom(fullFrameSizes) * ((recruitScene && recruitScene.shot.zoomScale) || (gameManager.getCameraShot() || {}).zoomScale || 1);
   const overlayScale = SpeechBubbleScale / shotZoom;
 
-  const deathPiecesComponents = recruitScene ? [] : gameManager.getDeathPieces().map(({ key, avatar, charLocation, color, zIndex }) => (
-    avatar == 'kaiju' ?
+  const deathPiecesComponents = recruitScene ? [] : gameManager.getDeathPieces().map(death => {
+    const { key, avatar, charLocation, color, zIndex, body } = death;
+    return avatar == 'kaiju' ?
       <ExplodingKaiju key={key} charLocation={charLocation} color={color} zIndex={zIndex} />
-      : <DeadPlayer key={key} avatar={avatar} pieceScale={pieceScale} charLocation={charLocation} color={color} zIndex={zIndex} />
-  ));
+      : <DeadPlayer key={key} avatar={avatar} pieceScale={pieceScale} charLocation={gameManager.getDeathLocation(death)} angle={body ? body.angle : 0} isFlying={!!body && !body.isResting} color={color} zIndex={zIndex} />;
+  });
 
   const foregroundLayers = level.foregroundLayers.map(({ src, x, y, width, height, sortY }) => (
     <LevelLayer

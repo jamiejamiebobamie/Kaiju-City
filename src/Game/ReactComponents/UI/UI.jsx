@@ -41,13 +41,13 @@ const Huds = styled.div`
 
 export const UI = ({
   players,
+  recruits,
   kaijuKillCount,
   kaijuKilledToWin,
   isKaijuLevel,
   isShowingHuds,
   handleClickHome,
   handleClickPause,
-  onUseAbility,
   isPaused
 }) => {
   const hudsRef = useRef(null);
@@ -76,7 +76,16 @@ export const UI = ({
           playerIndex={i}
           isTeammate={i > 0}
           isPaused={isPaused}
-          onUseAbility={onUseAbility}
+        />)}
+        {/* recruits fight on their own: their HUDs are teammate-sized, without keys */}
+        {isShowingHuds && (recruits || []).map((pd, i) => <PlayerUI
+          key={`recruit ${i}`}
+          pd={pd}
+          setDisplayString={setDisplayString}
+          playerIndex={players.length + i}
+          isTeammate={true}
+          isRecruit={true}
+          isPaused={isPaused}
         />)}
       </Huds>
     </>

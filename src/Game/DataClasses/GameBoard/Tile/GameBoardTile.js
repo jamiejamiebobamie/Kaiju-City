@@ -54,6 +54,8 @@ export class GameBoardTile {
         this.dmgMultiplier = dmgMultiplier;
         this.wall = undefined; // where a wall status set off from. false once it has bounced apart.
         this.trailAge = 0; // tile updates since the status stopped moving
+        this.trailBonus = 0; // extra tile updates it stays, from a buffed cast
+        this.isForwardWave = false; // the second wave of a cast: it never turns around
 
         // stored accTime of last tileStatus update
         this.updateKey = updateKey;
@@ -185,6 +187,8 @@ export class GameBoardTile {
         this.dirs = [];
         this.wall = undefined;
         this.trailAge = 0;
+        this.trailBonus = 0;
+        this.isForwardWave = false;
     }
 
     getCurrCount() {
@@ -203,7 +207,7 @@ export class GameBoardTile {
         return this.dirs;
     }
 
-    updateTileStatus({ updateKey, tileStatus, currCount, dirs, teamIndex, targetIndex, wall = undefined, trailAge = 0 }) {
+    updateTileStatus({ updateKey, tileStatus, currCount, dirs, teamIndex, targetIndex, wall = undefined, trailAge = 0, trailBonus = 0, isForwardWave = false }) {
         this.setUpdateKey(updateKey);
         this.setTileStatus(tileStatus);
 
@@ -213,6 +217,8 @@ export class GameBoardTile {
         this.targetIndex = targetIndex;
         this.wall = wall;
         this.trailAge = trailAge;
+        this.trailBonus = trailBonus;
+        this.isForwardWave = isForwardWave;
     }
 
     getTileContenderFromTile({ currCount, newDirs, wall, trailAge }) {
@@ -223,7 +229,9 @@ export class GameBoardTile {
             teamIndex: this.teamIndex,
             dirs: newDirs || this.dirs,
             wall: wall ?? this.wall,
-            trailAge
+            trailAge,
+            trailBonus: this.trailBonus,
+            isForwardWave: this.isForwardWave
         });
     }
 

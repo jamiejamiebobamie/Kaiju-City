@@ -93,7 +93,6 @@ const Wrapper = styled.div`
     }
   } */
   ${props => props.isAnimating && "animation: rotation linear .5s;"};
-  cursor: pointer;
   @keyframes rotation {
     0% {
       transform: rotate3d(0, 1, 0, 0deg);
@@ -158,8 +157,7 @@ export const Ability = ({
   abilityData,
   keyNum,
   isPaused,
-  isCharacterAlive,
-  onUseAbility
+  isCharacterAlive
 }) => {
   const { activeName, cooldownTime, element, color, accTime } = abilityData;
   const [isOnCoolDown, setIsOnCoolDown] = useState(false);
@@ -184,7 +182,6 @@ export const Ability = ({
 
   return (
     <Wrapper
-      onClick={() => isCharacterAlive && !isPaused && onUseAbility(playerIndex, abilityIndex)}
       isAnimating={isAnimating}
       title={activeName}
       color={color}
@@ -196,9 +193,9 @@ export const Ability = ({
         cooldownTime={cooldownTime}
         color={color}
       />
-      <AbilityNum color={color}>
+      {keyNum !== undefined && <AbilityNum color={color}>
         <div style={{ marginLeft: "4px" }}>{keyNum}</div>
-      </AbilityNum>
+      </AbilityNum>}
     </Wrapper>
   );
 };
