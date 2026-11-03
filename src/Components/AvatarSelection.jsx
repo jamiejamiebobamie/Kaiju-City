@@ -69,8 +69,8 @@ const SpritesWrapper = styled.div`
     align-self: center;
     justify-content: space-around;
 
-    // max-width: 1100px;
-    max-width: 1300px;
+    // the two stand 'spacing' apart: half the width, with space-around
+    max-width: ${props => props.spacing * 2}px;
 `;
 
 const CenteredLabelsContainer = styled.div`
@@ -86,7 +86,7 @@ const LabelContainer = styled.div`
     
     display: flex;
     align-self: center;
-    width: 770px;
+    width: ${props => props.spacing + 120}px;
 
     ${props => props.labelContent == 'Player' ? "justify-content: flex-end;" : "justify-content: flex-start;"}
 
@@ -104,7 +104,7 @@ const SlidingLabel = styled.span`
     transition-property: transform;
     transition-duration: 1s;
 
-    ${props => props.selectedGender == 'guy' ? props.labelContent == 'Player' ? "" : "" : props.labelContent == 'Player' ? "transform: translateX(-650px)" : "transform: translateX(650px)"}
+    ${props => props.selectedGender == 'guy' ? props.labelContent == 'Player' ? "" : "" : props.labelContent == 'Player' ? `transform: translateX(${-props.spacing}px)` : `transform: translateX(${props.spacing}px)`}
 `;
 
 const StyledIcon = styled.i`
@@ -452,11 +452,12 @@ const Sprite = ({ gender, onClick, selectedAvatar, globalTranslation }) => {
   </div>);
 }
 
-export const AvatarSelection = () => {
+// 'spacing': how far apart the two stand, in pixels
+export const AvatarSelection = ({ spacing = 650 }) => {
   const { selectedAvatar, setSelectedAvatar, setIsAvatarChangedOnce } = useContext(GlobalSettingsContext);
 
   return <AvatarSelectionWrapper>
-    <SpritesWrapper>
+    <SpritesWrapper spacing={spacing}>
       <Sprite
         gender={'girl'}
         onClick={() => {
@@ -475,8 +476,9 @@ export const AvatarSelection = () => {
     </SpritesWrapper>
     <CenteredLabelsContainer>
       {/* default is "girl" = "Teammate", "guy" = "Player" */}
-      <LabelContainer labelContent={"Teammate"} zIndex={3} selectedGender={selectedAvatar}>
+      <LabelContainer labelContent={"Teammate"} zIndex={3} selectedGender={selectedAvatar} spacing={spacing}>
         <SlidingLabel
+          spacing={spacing}
           selectedGender={selectedAvatar}
           labelContent={"Teammate"}
         >
@@ -490,8 +492,9 @@ export const AvatarSelection = () => {
           </BlinkFadeEffect>
         </SlidingLabel>
       </LabelContainer>
-      <LabelContainer labelContent={"Player"} zIndex={4} selectedGender={selectedAvatar}>
+      <LabelContainer labelContent={"Player"} zIndex={4} selectedGender={selectedAvatar} spacing={spacing}>
         <SlidingLabel
+          spacing={spacing}
           selectedGender={selectedAvatar}
           labelContent={"Player"}
         >

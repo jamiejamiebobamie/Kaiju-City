@@ -23,3 +23,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+
+# NPC training: the built bridge, a local venv, model checkpoints and charts (finished models are kept by hand)
+training/bridge/dist/
+training/.venv/
+training/runs/
+training/models/*-checkpoints/
+__pycache__/

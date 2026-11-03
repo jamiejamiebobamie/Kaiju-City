@@ -10,13 +10,13 @@ import { LEVELS } from '../Levels/levels';
 export const POWERS = TILE_STATUSES_AND_ABILITY_DATA.map(({ element }) => element).filter((element, index, all) => element != 'kaijuFire' && all.indexOf(element) == index);
 
 const ATTACK_POWERS = ['ice', 'fire', 'water', 'wood', 'lightning', 'death', 'charm'];
-const VERSUS_LIMIT_MS = 120000;
+export const VERSUS_LIMIT_MS = 120000;
 const KAIJU_LIMIT_MS = 300000;
 const KAIJU_TO_WIN = 20;
-const TOP_SPOTS = [{ x: 230, y: 160 }, { x: 260, y: 190 }];
-const BOTTOM_SPOTS = [{ x: 230, y: 660 }, { x: 200, y: 630 }];
+export const TOP_SPOTS = [{ x: 230, y: 160 }, { x: 260, y: 190 }];
+export const BOTTOM_SPOTS = [{ x: 230, y: 660 }, { x: 200, y: 630 }];
 
-const seedRandom = (seed: number) => {
+export const seedRandom = (seed: number) => {
   let state = seed;
   Math.random = () => {
     state = (state + 0x6D2B79F5) | 0;
@@ -27,7 +27,7 @@ const seedRandom = (seed: number) => {
 };
 
 // three powers, at least one of them an attack: a kit that can't hurt anyone tells us nothing
-const getKit = () => {
+export const getKit = () => {
   for (;;) {
     const kit = [...POWERS].sort(() => Math.random() - 0.5).slice(0, 3);
     if (kit.some(power => ATTACK_POWERS.includes(power))) return kit;
@@ -36,7 +36,7 @@ const getKit = () => {
 
 export const getTeamKits = () => [getKit(), getKit()];
 
-const makeGame = (level, killsToWin, edits) => {
+export const makeGame = (level, killsToWin, edits) => {
   const settingsManager = new SettingsManager();
   settingsManager.setAbilityEdits(edits);
   settingsManager.setSortedPlayerChosenAbilityElementsString([]);
@@ -47,7 +47,7 @@ const makeGame = (level, killsToWin, edits) => {
   return gm;
 };
 
-const useKits = (gm, pieces, kits) => pieces.forEach((piece, index) => {
+export const useKits = (gm, pieces, kits) => pieces.forEach((piece, index) => {
   piece.isNpc = true;
   piece.abilities = gm.settingsManager.getAbilitiesFromElements(kits[index]);
 });

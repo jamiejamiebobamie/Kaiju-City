@@ -136,7 +136,7 @@ export class PlayerInputHandler {
 
     usePlayerAbilityFromIndex(i, accTime) {
         const a = this.playerAbilities[i];
-        if (!a) return;
+        if (!a || this.gameManagerProxy.getIsPowersOff()) return;
 
         const pieceIndex = Math.floor(i / 3); // each player-team piece gets 3 abilities
         const piece = this.gameManagerProxy.getPiece(pieceIndex);

@@ -175,9 +175,10 @@ export const RadioCall = ({ lines, playerAvatar, teammateAvatar, isResuming, onG
     return () => clearTimeout(timeoutRef);
   }, [lineIndex, letters, isChoice, script]);
 
-  const choose = (event, { text: said, reply }) => {
+  // the button already said it: the call goes straight on to the answer
+  const choose = (event, { reply }) => {
     event.stopPropagation();
-    setScript([...script.slice(0, lineIndex), { speaker: "player", text: said }, ...reply, ...script.slice(lineIndex + 1)]);
+    setScript([...script.slice(0, lineIndex), ...reply, ...script.slice(lineIndex + 1)]);
     setLetters(0);
   };
 

@@ -4,13 +4,14 @@ import styled, { keyframes } from "styled-components";
 import { useSnapshot } from "valtio";
 import { GlobalSettingsContext } from "Home";
 import { GameBoard } from "./GameBoard/GameBoard";
-import { FULL_WINDOW, loadPlayWindow, PlayWindow, PORTRAIT_WINDOW, savePlayWindow } from "./GameBoard/PlayWindow";
+import { BezelButton, FULL_WINDOW, loadPlayWindow, PlayWindow, PORTRAIT_WINDOW, savePlayWindow } from "./GameBoard/PlayWindow";
 import { UI } from "./UI/UI";
 import { RadioCall } from "./RadioCall";
 import { IrradiationVat } from "./IrradiationVat";
 import { RecruitCalls } from "./RecruitCalls";
 import { AvatarChoice } from "./AvatarChoice";
 import { ControlsOverlay } from "./UI/ControlsOverlay";
+import { NpcModelDriver } from "Game/DataClasses/npcBrain/npcModel";
 import { getKaijuSpeedMode, KaijuSpeedMode, setKaijuSpeedMode } from "../DataClasses/KaijuSpeedTest";
 import { BUBBLE_DRAWBACKS, BubbleDrawback, getIsDrawbackOn, setIsDrawbackOn } from "../DataClasses/BubbleTest";
 import { getAvatarColor, saveAvatarColor, saveTeamAvatars, unlockRecruitSkill, unlockTool } from "../DataClasses/Avatars";
@@ -310,7 +311,7 @@ const playUnlockDing = () => {
 
 const RECRUIT_TIMING = {
   titleMs: 2800, // how long the title and slow motion last before the choice
-  confirmMs: 1500, // the choice locks in and the screen washes over in its color, then fades to black
+  confirmMs: 5000, // the choice locks in and the screen washes over in its color, held, then fades to black
   cardMs: 3800
 };
 
@@ -347,6 +348,8 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const [isMouseLook, setIsMouseLook] = useState(true);
   const [isEnemyZoom, setIsEnemyZoom] = useState(true);
   const [isTeamColors, setIsTeamColors] = useState(true); // a playtest: statuses in their side's color
+  const [isTrainedNpcs, setIsTrainedNpcs] = useState(false); // a playtest: NPCs play by the trained model in public/models
+  const [isMonitorAlways, setIsMonitorAlways] = useState(true); // a playtest: the TV never opens up, and wide shots play inside it
   const [isAdjustingWindow, setIsAdjustingWindow] = useState(false);
   const [playWindow, setPlayWindow] = useState(() => import.meta.env.DEV ? loadPlayWindow() : FULL_WINDOW);
   const updatePlayWindow = next => {
@@ -364,6 +367,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const [leavingFor, setLeavingFor] = useState(undefined); // the Lab screen the scene is sliding away for
   const [isResumingRadio, setIsResumingRadio] = useState(false);
   const isOnLabDetour = useRef(false); // the Lab, or a battleground visited again, off a map walk
+  const detourSpot = useRef(undefined); // where that site is on the map: the walk carries on from beside it
   const [labScreen, setLabScreen] = useState(undefined); // 'colors'
   const [labCover, setLabCover] = useState(undefined); // 'in' or 'out': the Lab screen's fade from or to black
   const [fadeCards, setFadeCards] = useState(undefined); // the screen is fading to black, and these are the unlocks shown on it
@@ -396,13 +400,23 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   // the game stops when the player leaves the page
   useEffect(() => endMatch, []);
 
-  const startMatch = (matchLevel = level, hasArrival = false, killsToWin = undefined) => {
+  // a clicked button lets go of the focus, so Enter or Space can't press it again in the middle of play
+  useEffect(() => {
+    const letGo = (event: MouseEvent) => {
+      const button = (event.target as HTMLElement).closest("button, select, input");
+      if (button) setTimeout(() => (button as HTMLElement).blur(), 0);
+    };
+    document.addEventListener("click", letGo, true);
+    return () => document.removeEventListener("click", letGo, true);
+  }, []);
+
+  const startMatch = (matchLevel = level, hasArrival = false, killsToWin = undefined, { returnSpot = undefined, isRetry = false } = {}) => {
     settingsManager.updatePlayerAvatar(selectedAvatar);
     settingsManager.setTeammateAvatar(selectedTeammate);
     settingsManager.setDifficulty(selectedDifficulty);
     settingsManager.setIsTeammate(isTeammate);
 
-    const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival, killsToWin });
+    const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival, killsToWin, returnSpot, isRetry });
     gm.initGame();
     gameManager.current = gm;
     resetGameUi();
@@ -506,6 +520,18 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     else startMatch(LEVELS[sectionLevelId], false, kills);
   };
 
+  // after a loss: the same fight again, without the call or the opening words a second time
+  const retrySection = index => {
+    const { levelId: sectionLevelId, kills } = CAMPAIGN_SECTIONS[index];
+    endMatch();
+    resetGameUi();
+    setMatchEnd(undefined);
+    setRecruitChoice(undefined);
+    setFadeCards(undefined);
+    setRadioLines(undefined);
+    startMatch(LEVELS[sectionLevelId], false, kills, { isRetry: true });
+  };
+
   // goes back through the ability picker, which returns to this section's call
   const handleChangePowers = lastLine => {
     setRadioLines([lastLine]);
@@ -542,7 +568,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
       return { title, buttons: [{ text: "Play again", onClick: () => triggerTransition(resetMatch) }, { text: "Leave", onClick: handleClickHome }] };
     }
     if (!isWon) {
-      return { title, buttons: [{ text: "Try again", onClick: () => fadeOutThen(() => showSection(campaignIndex)) }, { text: "Leave", onClick: handleClickHome }] };
+      return { title, buttons: [{ text: "Try again", onClick: () => fadeOutThen(() => retrySection(campaignIndex)) }, { text: "Leave", onClick: handleClickHome }] };
     }
     if (getIsLastSection(campaignIndex)) {
       return { title: "You saved the city!", buttons: [{ text: "Play again", onClick: () => { setCampaignIndex(0); triggerTransition(resetMatch); } }, { text: "Leave", onClick: handleClickHome }] };
@@ -554,6 +580,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const visitSite = site => {
     const visitLevelId = site.visitLevelId || 'labIntro';
     isOnLabDetour.current = true;
+    detourSpot.current = site.spot;
     setLevelId(visitLevelId);
     endMatch();
     startMatch(LEVELS[visitLevelId]);
@@ -613,7 +640,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
       const { levelId: mapLevelId } = CAMPAIGN_SECTIONS[campaignIndex];
       setLevelId(mapLevelId);
       endMatch();
-      startMatch(LEVELS[mapLevelId]);
+      startMatch(LEVELS[mapLevelId], false, undefined, { returnSpot: detourSpot.current });
     } else if (campaignIndex !== null) showSection(campaignIndex + 1);
     else resetMatch();
   };
@@ -660,6 +687,22 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     }
     isPausedForControls.current = false;
   };
+
+  // each match gets its own driver, so a new match starts with a clean slate
+  useEffect(() => {
+    const gm = gameManager.current;
+    if (!gm) return;
+    gm.setNpcModelDriver(isTrainedNpcs ? new NpcModelDriver(gm.getTrainablePieces) : undefined);
+  }, [isTrainedNpcs, matchCount, levelId, campaignIndex]);
+
+  // the first Peninsula fight opens with the controls, once the teammate's arrival has played
+  const hasShownFirstControls = useRef(false);
+  useEffect(() => {
+    const isFirstFight = campaignIndex === 0 && level.id == PENINSULA.id && isPlayingGame && !radioLines && !!gameManager.current;
+    if (!isFirstFight || isCutscene || hasShownFirstControls.current) return;
+    hasShownFirstControls.current = true;
+    openControls();
+  }, [campaignIndex, level, isPlayingGame, radioLines, isCutscene, matchCount]);
 
   const handleClickPause = () => {
     if (isShowingControls) {
@@ -718,6 +761,8 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     };
   }, [winner, isPlayingGame, campaignIndex]);
 
+  const isWindowOpen = !isMonitorAlways && (isWideShot || (level.isWalkingLevel && !level.isMapWalk));
+
   const sceneFades = isPlayingGame && createPortal(
     <>
       <SceneFadeIn key={radioLines ? `radio ${campaignIndex}` : `match ${matchCount}`} />
@@ -755,7 +800,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
           key={campaignIndex}
           lines={radioLines}
           playerAvatar={selectedAvatar}
-          teammateAvatar={settingsManager.getTeammateAvatar()}
+          teammateAvatar={selectedTeammate}
           isResuming={isResumingRadio}
           onGo={() => {
             const { levelId: sectionLevelId, hasArrival, kills } = CAMPAIGN_SECTIONS[campaignIndex];
@@ -798,6 +843,12 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 <input type="checkbox" checked={isTeamColors} onChange={() => setIsTeamColors(!isTeamColors)} /> Team colors
               </label>
               <label>
+                <input type="checkbox" checked={isTrainedNpcs} onChange={() => setIsTrainedNpcs(!isTrainedNpcs)} /> Trained NPCs
+              </label>
+              <label>
+                <input type="checkbox" checked={isMonitorAlways} onChange={() => setIsMonitorAlways(!isMonitorAlways)} /> Monitor always
+              </label>
+              <label>
                 <input type="checkbox" checked={isAdjustingWindow} onChange={() => setIsAdjustingWindow(!isAdjustingWindow)} /> Adjust window
               </label>
               {isAdjustingWindow && <button onClick={() => updatePlayWindow(PORTRAIT_WINDOW)}>Portrait window</button>}
@@ -831,9 +882,16 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
             </PhaseToggles>
           )}
           <GameFrame data-game-frame style={leavingFor ? { transform: `translateX(${leavingFor == "colors" ? -45 : 45}%)`, opacity: 0 } : undefined}>
-            <PlayWindow playWindow={playWindow} setPlayWindow={updatePlayWindow} isAdjusting={isAdjustingWindow} isOpen={isWideShot || (level.isWalkingLevel && !level.isMapWalk)} isCut={!!recruitScene}>
+            <PlayWindow playWindow={playWindow} setPlayWindow={updatePlayWindow} isAdjusting={isAdjustingWindow} isOpen={isWindowOpen} isCut={!!recruitScene} buttons={!isEditingTiles && (
+              <>
+                <BezelButton title="Pause" onClick={handleClickPause}>Pause</BezelButton>
+                <BezelButton title="How to play" onClick={openControls}>Controls</BezelButton>
+                <BezelButton title="Goodbye!" onClick={handleClickHome}>Leave</BezelButton>
+              </>
+            )}>
               <GameBoard
                 key={`${level.id} ${matchCount}`}
+                isWindowOpen={isWindowOpen}
                 isPaused={isPaused}
                 gameManager={gameManager.current}
                 level={level}
@@ -880,9 +938,6 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               isKaijuLevel={!!level.kaijuEntry}
               isShowingHuds={!level.isWalkingLevel && !isCutscene && !recruitScene}
               isShowingTopBar={!isCutscene && !recruitScene}
-              handleClickHome={handleClickHome}
-              handleClickPause={handleClickPause}
-              handleClickControls={openControls}
               isPaused={isPaused}
             />}
           </GameFrame>

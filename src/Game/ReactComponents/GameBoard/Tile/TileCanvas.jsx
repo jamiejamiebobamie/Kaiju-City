@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import styled from "styled-components";
 import { getHexRadius, getPerimeterEdges, getTileCenter } from "Game/DataClasses/GameBoard/hexGrid";
+import { EXIT_OPEN_PHASE } from "Game/DataClasses/Levels/levels";
 
 /*
   Draws every tile on one canvas: a React component per tile cannot keep up with larger levels.
@@ -19,6 +20,8 @@ const TILE_LOOK = {
   hoverFadeEndTiles: 3,
   siteFadeStartTiles: 2, // the tiles around a site on the map always show
   siteFadeEndTiles: 4,
+  exitFadeStartTiles: 3, // the tiles around an open exit show too, so the way out can be seen
+  exitFadeEndTiles: 4,
   // a hard line along the edge of the walkable tiles, which comes into view as the player gets close
   perimeterColor: "255, 255, 255", // r, g, b: the same on every level
   perimeterOpacity: 0.8, // at its strongest, right beside the player
@@ -52,16 +55,16 @@ const TILE_LOOK = {
   iconOutlineColor: "black",
   iconOutlineWidth: 2.5,
   iconSizeRatio: 0.55, // icon height, as a fraction of the hexagon's radius * 2
-  iconGlow: 2,
+  iconGlow: 7, // each icon glows in its power's color
   baseHexRadius: 12.6, // line widths are set for hexagons of this size, and scale with them
   maxPixelRatio: 1.5,
   fadeSeconds: 2,
   // a status burning out at the edge of the map: it darkens to smoke, then fades fast once it is gone
-  smokeColor: "#000000",
+  smokeColor: "#5e5246", // a warm grey-brown, not black
   smokeFadeMs: 350,
   // where a status moves on, its icon leaves a fading ghost in the power's own color
-  iconGhostOpacity: 0.6,
-  iconGhostMs: 500
+  iconGhostOpacity: 0.22, // faint, so a ghost is never taken for the power itself
+  iconGhostMs: 350
 };
 
 // any css color as [r, g, b]: the canvas turns names like 'tomato' into hex
@@ -204,13 +207,14 @@ const drawIcon = (ctx, { iconClass, rotation }, center, radius, color, lineScale
   ctx.font = `${radius * 2 * TILE_LOOK.iconSizeRatio}px FontAwesome`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
+  // the glow goes around the outline too, so it shows past the black edge
+  ctx.shadowColor = color;
+  ctx.shadowBlur = TILE_LOOK.iconGlow * lineScale;
   ctx.strokeStyle = TILE_LOOK.iconOutlineColor;
   ctx.lineWidth = TILE_LOOK.iconOutlineWidth * lineScale;
   ctx.lineJoin = "round";
   ctx.strokeText(getIconGlyph(iconClass), 0, 0);
   ctx.fillStyle = color;
-  ctx.shadowColor = color;
-  ctx.shadowBlur = TILE_LOOK.iconGlow * lineScale;
   ctx.fillText(getIconGlyph(iconClass), 0, 0);
   if (iconClass == "fa-two-hearts") {
     // a little heart beside the big one
@@ -331,6 +335,7 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
       const hoveredTile = gameManager.getHoveredTileIndex();
       if (hoveredTile) addLight(getTileCenter(grid, hoveredTile), TILE_LOOK.hoverFadeStartTiles, TILE_LOOK.hoverFadeEndTiles);
       (level.sites || []).forEach(({ spot }) => addLight(spot, TILE_LOOK.siteFadeStartTiles, TILE_LOOK.siteFadeEndTiles));
+      if (level.exit && gameManager.getActivePhases().includes(EXIT_OPEN_PHASE)) addLight(level.exit.spot, TILE_LOOK.exitFadeStartTiles, TILE_LOOK.exitFadeEndTiles);
 
       ctx.globalCompositeOperation = "destination-in";
       ctx.drawImage(fadeMask, 0, 0, width, height);
@@ -430,12 +435,16 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
       });
       ctx.globalAlpha = 1;
 
+      // a downed player has no path or hovered tile to show
+      const isPlayerUp = !gameManager.getPieces()[0]?.isDead && !gameManager.recruitScene;
       const nextSmokeTiles = new Map();
       const nextIconTiles = new Map();
       gameManager.getActiveTiles().forEach(tile => {
         const key = `${tile.tileIndex.i} ${tile.tileIndex.j}`;
         const powerColor = tile.getColor();
-        const teamColor = isTeamColors && powerColor && !tile.teleportTileStatus ? gameManager.getStatusTeamColor(tile.cast.casterIndex) : undefined;
+        // only powers that hurt take their side's color; the rest keep their own
+        const isHarmful = tile.getTileStatus()?.getDmgAmt() > 0;
+        const teamColor = isTeamColors && powerColor && isHarmful && !tile.teleportTileStatus ? gameManager.getStatusTeamColor(tile.cast.casterIndex) : undefined;
         const statusColor = teamColor || powerColor;
         const isSmoke = !!statusColor && tile.cast.isSmoke && !tile.teleportTileStatus;
         const color = isSmoke ? getSmokeColor(tile, statusColor) : statusColor;
@@ -443,7 +452,7 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
         const iconColor = isSmoke ? getSmokeColor(tile, powerColor) : powerColor;
         if (isSmoke) nextSmokeTiles.set(key, { center: getTileCenter(grid, tile.tileIndex), color });
         const pieceColor = colorLookup[`${tile.tileIndex.i} ${tile.tileIndex.j}`];
-        const isHighlighted = tile.getIsHighlighted();
+        const isHighlighted = tile.getIsHighlighted() && isPlayerUp;
         if (!color && !isHighlighted && !pieceColor) return;
 
         const center = getTileCenter(grid, tile.tileIndex);

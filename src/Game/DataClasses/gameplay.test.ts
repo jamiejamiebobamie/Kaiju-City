@@ -437,13 +437,25 @@ describe('ragdolls', () => {
 
   it('a body is thrown the way the power was travelling, spins, and comes to rest lying down', () => {
     let body = startRagdoll({ x: 0, y: 0 }, getThrowVec('idle', ['right', 'up right', 'down right'], 'down'), ROW_PX);
-    expect(body.angle).toBe(90); // standing, as it starts
-    for (let k = 0; k < 100 && !body.isResting; k++) body = stepRagdoll(body, GAME_TICK.pieceMs / 1000, ROW_PX);
+    expect(body.angle).toBe(0); // standing, as it starts
+    let mostSwing = 0;
+    for (let k = 0; k < 100 && !body.isResting; k++) {
+      body = stepRagdoll(body, GAME_TICK.pieceMs / 1000, ROW_PX);
+      mostSwing = Math.max(mostSwing, ...body.limbs.map(({ angle }) => Math.abs(angle)));
+    }
     expect(body.isResting).toBe(true);
     expect(body.x).toBeGreaterThan(ROW_PX);
     expect(Math.abs(body.y)).toBeLessThan(body.x / 2);
     expect(body.height).toBe(0);
-    expect(body.angle % 180).toBe(0);
+    expect(Math.abs(body.angle % 180)).toBe(90); // lying on one side
+    expect(mostSwing).toBeGreaterThan(20); // the limbs flop about on the way
+  });
+
+  it('a body thrown at the edge of the play area bounces back in', () => {
+    const bounds = { left: -ROW_PX, top: -ROW_PX * 10, right: ROW_PX, bottom: ROW_PX * 10 };
+    let body = startRagdoll({ x: 0, y: 0 }, { x: 2.6, y: 0 }, ROW_PX);
+    for (let k = 0; k < 100 && !body.isResting; k++) body = stepRagdoll(body, GAME_TICK.pieceMs / 1000, ROW_PX, bounds);
+    expect(body.x).toBeLessThan(ROW_PX * 1.5);
   });
 
   it('running adds to the throw', () => {

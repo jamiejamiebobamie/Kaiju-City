@@ -25,6 +25,10 @@ export class GameManagerProxy {
         return this.props.getMostDmgedTeammate(pieceIndex);
     }
 
+    getIsPowersOff(piece = undefined) {
+        return !!this.props.getIsPowersOff && this.props.getIsPowersOff(piece);
+    }
+
     getPiece(pieceIndex) {
         return this.props.getPiece(pieceIndex);
     }
@@ -192,8 +196,8 @@ export class GameManagerProxy {
         return this.props.getPathToTeamLeader(pieceIndex);
     }
 
-    spawnDeathPieceAtLocation(charLocation, avatar, tileIndex, color, pieceIndex, throwVec) {
-        return this.props.spawnDeathPieceAtLocation(charLocation, avatar, tileIndex, color, pieceIndex, throwVec);
+    spawnDeathPieceAtLocation(charLocation, avatar, tileIndex, color, pieceIndex, throwVec, spriteSheetSrc) {
+        return this.props.spawnDeathPieceAtLocation(charLocation, avatar, tileIndex, color, pieceIndex, throwVec, spriteSheetSrc);
     }
 
     getDirFromTiles(fromTile, toTile) {

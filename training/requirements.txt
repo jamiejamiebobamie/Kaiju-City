@@ -1,0 +1,13 @@
+# Python packages for training Kaiju City's NPCs (the same as QuickCast's, whose venv already has them).
+# Use QuickCast's:   ../QuickCast/training/.venv/Scripts/python
+# Or a new one:      py -3.12 -m venv training/.venv && training/.venv/Scripts/python -m pip install -r training/requirements.txt
+# CPU-only PyTorch: the model is small, and the game simulation is the slow part, not the network.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+gymnasium
+stable-baselines3
+sb3-contrib
+numpy
+tensorboard
+onnx
+onnxruntime

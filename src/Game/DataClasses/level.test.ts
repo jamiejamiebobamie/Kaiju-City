@@ -4,7 +4,7 @@ import { rescaleLevelTiles } from 'Game/DataClasses/Levels/levelScale';
 import aquarium from 'Game/DataClasses/Levels/data/aquarium.json';
 import rapidTransit from 'Game/DataClasses/Levels/data/rapidTransit.json';
 import { CAMPAIGN_SECTIONS, getIsLastSection } from './Campaign';
-import { GameManager, GameResult, getRecruitLine } from './GameManager';
+import { GameManager, GameResult, getRecruitLines } from './GameManager';
 import { addUnlock, getUnlocks, saveRecruitChoice } from './Unlocks';
 import { getIsAvatarOpen, getIsSkillOpen, ROSTER, saveAvatarColor, unlockRecruitSkill } from './Avatars';
 import { PIECES_INFO as ROSTER_PIECES } from 'Utils/gameState';
@@ -762,7 +762,7 @@ describe('cutscenes', () => {
     const [player, teammate] = gm.getPieces();
     expect(player.charLocation.y).toBeLessThan(gm.recruitScene.body.y);
     expect(teammate.charLocation.x).toBeLessThan(player.charLocation.x);
-    expect(gm.speech.text).toBe(getRecruitLine('her'));
+    expect(gm.speech.lines).toEqual(getRecruitLines('her', []));
     expect(gm.getCameraShot().isFollowingMouse).toBe(true);
   });
 
@@ -829,7 +829,8 @@ describe('cutscenes', () => {
       if (gm.speech && seenLines.at(-1) != gm.speech.text) seenLines.push(gm.speech.text);
       gm.stepPieces();
     }
-    expect(seenLines).toEqual(LEVELS.labTrap.trap.lines);
+    expect(seenLines).toEqual(LEVELS.labTrap.trap.script.filter(({ text, ifRecruits }) => text && !ifRecruits).map(({ text }) => text));
+    expect(gm.getPieces()[0].isPlain).toBe(true); // the ray took their glow
     expect(gm.getPieces().filter(piece => piece.isChaser).length).toBe(LEVELS.labTrap.trap.chasers.xs.length);
     expect(gm.isChaseSlowed).toBe(true);
     expect(gm.gameBoardManager.moveSpeedScale).toBeLessThan(LEVELS.labTrap.moveSpeedScale);
@@ -1029,6 +1030,29 @@ describe('roster and unlocks', () => {
     const gm = new GameManager({ level: LEVELS.peninsula, settingsManager });
     gm.initGame();
     expect(gm.getPieces()[0].color).toBe('#123456');
+  });
+
+  it('in the Lab trap the ray leaves the recruits their glow, and they stay to fight with their powers', () => {
+    useStorage();
+    saveRecruitChoice('punk', 'recruit');
+    const settingsManager = new SettingsManager();
+    settingsManager.setSortedPlayerChosenAbilityElementsString(['Fire', 'Ice', 'Water']);
+    settingsManager.setIsTeammate(true);
+    const gm = new GameManager({ level: LEVELS.labTrap, settingsManager });
+    gm.initGame();
+    const tiles = gm.getPieces().map(piece => `${piece.getTileIndex().i} ${piece.getTileIndex().j}`);
+    expect(new Set(tiles).size).toBe(tiles.length); // lined up, no one on top of anyone
+    while (gm.cutscene) gm.stepPieces();
+    const [player, teammate, punk] = gm.getPieces();
+    expect(player.isPlain && teammate.isPlain).toBe(true);
+    expect(punk.isPlain).toBeFalsy();
+    expect(punk.abilities.length).toBeGreaterThan(0);
+    expect(gm.getIsPowersOff(punk)).toBe(false);
+    expect(gm.getIsPowersOff(teammate)).toBe(true);
+    expect(teammate.escapeTile).toBeDefined();
+    expect(punk.escapeTile).toBeUndefined();
+    for (let k = 0; k < 40 && !gm.speech; k++) gm.stepPieces();
+    expect(gm.speech.text).toBe(LEVELS.labTrap.trap.chaseLines.agent);
   });
 
   it('recruits walk with the team in the Sewers, and only recruits', () => {
@@ -1662,8 +1686,15 @@ describe('recruits', () => {
     expect(LEVELS.rooftop.rival.pronoun).toBe('her');
     expect(LEVELS.aquarium.rival.pronoun).toBe('her');
     expect(LEVELS.rapidTransit.rival.pronoun).toBe('him');
-    expect(getRecruitLine('her')).toContain('study her DNA to get her power');
-    expect(getRecruitLine('him')).toContain('study his DNA to get his power');
+    expect(getRecruitLines('her').join(' ')).toContain('study her DNA to get her power');
+    expect(getRecruitLines('him').join(' ')).toContain('study his DNA to get his power');
+  });
+
+  it('the choice talk changes each time: the last choice, then a pattern', () => {
+    expect(getRecruitLines('him', ['recruit'])[0]).toMatch(/joined the crew/);
+    expect(getRecruitLines('him', ['terminate'])[0]).toMatch(/power for ourselves/);
+    expect(getRecruitLines('her', ['terminate', 'terminate'])[0]).toBe("I guess we're going to terminate her, like the others?");
+    expect(getRecruitLines('her', ['recruit', 'terminate']).join(' ')).toMatch(/crew member.*harvest her power/);
   });
 
   it('a called recruit has a HUD of their own, apart from the team', () => {
@@ -1747,5 +1778,41 @@ describe('visiting battlegrounds from the map', () => {
     while (gm.cutscene && gm.speech.text.startsWith('Not')) gm.stepPieces();
     expect(gm.speech.text).toMatch(/good place to train/);
     expect(LEVELS['visit-rapidTransit'].exit).toBeDefined();
+  });
+
+  const makeWalk = (level, options = {}) => {
+    const settingsManager = new SettingsManager();
+    settingsManager.setSortedPlayerChosenAbilityElementsString(['Fire', 'Ice', 'Water']);
+    settingsManager.setIsTeammate(true);
+    const gm = new GameManager({ level, settingsManager, ...options });
+    gm.initGame();
+    while (gm.cutscene) gm.stepPieces();
+    return gm;
+  };
+
+  it('starting a walk beside a site, or coming back out of one, does not walk straight into it', () => {
+    updateMapWalkSites(['rooftop']);
+    const fromStart = makeWalk(LEVELS.mapAquarium); // the walk starts by the Rooftop
+    fromStart.stepPieces();
+    expect(fromStart.getIsAtGoal()).toBe(false);
+    const rooftop = LEVELS.mapAquarium.sites.find(({ visitLevelId }) => visitLevelId == 'visit-rooftop');
+    const back = makeWalk(LEVELS.mapAquarium, { returnSpot: rooftop.spot });
+    back.stepPieces();
+    expect(back.getIsAtGoal()).toBe(false);
+    expect(back.getIsPlayerNear(rooftop.spot, 6)).toBe(true); // beside it, all the same
+  });
+});
+
+describe('playing again after a loss', () => {
+  it('the opening scene is skipped, and everything it set up is in place', () => {
+    const settingsManager = new SettingsManager();
+    settingsManager.setSortedPlayerChosenAbilityElementsString(['Fire', 'Ice', 'Water']);
+    settingsManager.setIsTeammate(true);
+    const gm = new GameManager({ level: LEVELS.rapidTransit, settingsManager, isRetry: true });
+    gm.initGame();
+    expect(gm.cutscene).toBeUndefined();
+    expect(gm.speech).toBeNull();
+    expect(gm.getActivePhases()).toContain(LEVELS.rapidTransit.rival.touchPhase);
+    expect((gm.rivalPiece as any).isPlain).toBe(false);
   });
 });

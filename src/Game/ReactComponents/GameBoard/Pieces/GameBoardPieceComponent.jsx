@@ -366,7 +366,8 @@ export const GameBoardPieceComponent = ({
   isGoingToSpewFire,
   isShowHealthBarOnComponent,
   facingDir,
-  pieceScale
+  pieceScale,
+  isQuiet = false // the Recruit or Terminate choice: no shaking, and no numbers
 }) => {
   const [modifierText, setModifierText] = useState([]);
   const [isDamaged, setIsDamaged] = useState(null);
@@ -383,7 +384,7 @@ export const GameBoardPieceComponent = ({
     if (isFirstLoad) {
       setIsFirstLoad(false);
     } else {
-      if (isHealed === isHealedCached && !isDamaged) {
+      if (isHealed === isHealedCached && !isDamaged && !isQuiet) {
         setIsDamaged(true);
         setModifierText(prevText => [
           ...prevText,
@@ -399,7 +400,7 @@ export const GameBoardPieceComponent = ({
     if (isFirstLoad) {
       setIsFirstLoad(false);
     } else {
-      if (!isHealedLocal) {
+      if (!isHealedLocal && !isQuiet) {
         setIsHealedLocal(true);
         setTimeout(() => setIsHealedLocal(false), 2000);
         setModifierText(prevText => [
@@ -432,9 +433,9 @@ export const GameBoardPieceComponent = ({
   const bars = !isShowHealthBarOnComponent ? undefined : Array(lives).fill(0).map((_, i) => <Bar lives={lives} key={i} />)
   return (
     <Wrapper zIndex={zIndex} isVisible={isVisible} charLocation={charLocation} pieceScale={pieceScale}>
-      {modifierText}
+      {!isQuiet && modifierText}
       <HealthBarWrapper lives={lives}>{bars}</HealthBarWrapper>
-      <Character isDamaged={isDamaged}>
+      <Character isDamaged={isDamaged && !isQuiet}>
         {isFalling ? <FallingFrame src="/levels/npcs/agentFalling.png" /> : <SpriteSheet
           avatar={avatar}
           spriteSheetSrc={spriteSheetSrc}

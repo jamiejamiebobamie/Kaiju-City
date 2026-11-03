@@ -9,10 +9,12 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:bridge": "rolldown -c training/bridge/rolldown.config.mjs"
   },
   "dependencies": {
     "@emotion/is-prop-valid": "^1.4.0",
+    "onnxruntime-web": "^1.27.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "styled-components": "^6.6.0",

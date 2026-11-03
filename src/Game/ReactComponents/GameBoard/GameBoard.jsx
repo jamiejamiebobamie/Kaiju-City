@@ -4,7 +4,7 @@ import { DeadPlayer } from "./Pieces/DeadPlayerPiece";
 import { ExplodingKaiju } from "./Pieces/ExplodingKaijuPiece";
 import { PauseModal } from "./PauseModal";
 import { GameBoardPieceComponent } from 'Game/ReactComponents/GameBoard/Pieces/GameBoardPieceComponent'
-import { SpeechBalloon } from 'Game/ReactComponents/GameBoard/SceneElements';
+import { getSpeechScreenBox, PagedSpeechBalloon, SpeechBalloon } from 'Game/ReactComponents/GameBoard/SceneElements';
 import { TileCanvas } from 'Game/ReactComponents/GameBoard/Tile/TileCanvas';
 import { SceneElements } from 'Game/ReactComponents/GameBoard/SceneElements';
 import { getSortZIndex, getTileTone } from 'Game/DataClasses/Levels/levels';
@@ -93,8 +93,16 @@ const WindowSize = styled.div`
 `;
 
 const CHARM_COLOR = "#ff7ad9";
-const RECRUIT_BODY_SIZE = 100; // at a 'pieceScale' of 1: the body in the art is then as long as a character is tall
+const RECRUIT_BODY_SIZE = 70; // at a 'pieceScale' of 1: the body then lies about as long as a character stands tall
 const RECRUIT_LOOK_LEAN = 0.08; // how far the choice's camera leans with the mouse
+
+// a shot with words in it keeps the whole balloon and the spot in view
+const SHOT_FIT = {
+  margin: 0.06, // room kept around them, as a fraction of the view
+  feetRoomPx: 40, // the spot is usually someone's feet: a little floor under them too
+  zoomStep: 0.94, // it pulls out this much at a time until everything fits
+  maxSteps: 30
+};
 const RECRUIT_PROMPT_SHIFT = 130; // to the right of the player, clear of the teammate's words
 
 const WinDimmer = styled.div`
@@ -122,33 +130,71 @@ const RecruitPrompt = styled.div`
   transform-origin: 50% 100%;
 `;
 
-// the choice locks in: the button stays pressed, the other fades, and the word finishes itself
+// the choice locks in: both buttons go, the chosen word flies to the middle and grows,
+// the screen washes over in its color, and the word finishes itself in milk white
 const RECRUIT_LOOK = {
-  recruit: { button: "#2f7d57", tint: "#4c9a2a", suffix: "ED" }, // leaf green
-  terminate: { button: "#a01230", tint: "#7a0000", suffix: "D" }, // blood red
+  recruit: { button: "#2f7d57", wash: "rgba(38, 120, 52, 0.88)", suffix: "ED" }, // leaf green
+  terminate: { button: "#a01230", wash: "rgba(120, 0, 12, 0.88)", suffix: "D" }, // blood red
   milk: "#f6f1e1",
-  lockMs: 250,
-  tintMs: 1200,
-  tintOpacity: 0.6,
-  suffixDelayMs: 350
+  fadeMs: 250,
+  flyMs: 900,
+  washMs: 1200,
+  suffixDelayMs: 1000,
+  wordPx: 96 // the word's size in the middle of the screen
 };
 
 const RecruitButton = styled.button`
   padding: 12px 22px;
   font-family: gameboy;
   font-size: 22px;
-  cursor: ${props => props.$isLocked ? "default" : "pointer"};
-  color: ${props => props.$isLocked ? RECRUIT_LOOK.milk : "#fbfbf0"};
+  cursor: pointer;
+  color: #fbfbf0;
   background: ${props => RECRUIT_LOOK[props.$choice].button};
   border: 4px solid #101018;
-  box-shadow: ${props => props.$isLocked ? "inset 0 4px 0 rgba(0, 0, 0, 0.5)" : "0 4px 0 #101018"};
-  transform: translateY(${props => props.$isLocked ? "4px" : "0"});
-  opacity: ${props => props.$isFaded ? 0 : 1};
-  pointer-events: ${props => props.$isFaded || props.$isLocked ? "none" : "auto"};
-  transition: transform ${RECRUIT_LOOK.lockMs}ms, box-shadow ${RECRUIT_LOOK.lockMs}ms, color ${RECRUIT_LOOK.tintMs}ms, opacity ${RECRUIT_LOOK.lockMs * 2}ms;
+  box-shadow: 0 4px 0 #101018;
+  opacity: ${props => props.$isGone ? 0 : 1};
+  pointer-events: ${props => props.$isGone ? "none" : "auto"};
+  transition: opacity ${RECRUIT_LOOK.fadeMs}ms;
   &:hover {
-    filter: ${props => props.$isLocked ? "none" : "brightness(1.3)"};
+    filter: brightness(1.3);
   }
+`;
+
+const washIn = keyframes`
+  from { opacity: 0; }
+  to { opacity: 1; }
+`;
+
+const ChoiceWash = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 2147482400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  animation: ${washIn} ${RECRUIT_LOOK.washMs}ms ease-in both;
+`;
+
+// from where the button was to the middle, growing as it goes
+const wordFly = keyframes`
+  from { transform: translate(var(--from-x), var(--from-y)) scale(var(--from-scale)); color: #fbfbf0; }
+  to { transform: translate(0, 0) scale(1); color: ${RECRUIT_LOOK.milk}; }
+`;
+
+const ChoiceWord = styled.div`
+  position: absolute;
+  z-index: 2147482450;
+  left: 50%;
+  top: 50%;
+  margin: 0;
+  font-family: gameboy;
+  font-size: ${RECRUIT_LOOK.wordPx}px;
+  white-space: nowrap;
+  pointer-events: none;
+  text-shadow: 0 6px 0 #101018;
+  translate: -50% -50%;
+  animation: ${wordFly} ${RECRUIT_LOOK.flyMs}ms cubic-bezier(0.3, 0, 0.2, 1) both;
 `;
 
 const suffixArrive = keyframes`
@@ -161,28 +207,27 @@ const ChoiceSuffix = styled.span`
   animation: ${suffixArrive} 0.3s ease-out ${RECRUIT_LOOK.suffixDelayMs}ms both;
 `;
 
-const tintIn = keyframes`
-  from { opacity: 0; }
-  to { opacity: ${RECRUIT_LOOK.tintOpacity}; }
-`;
+const CHOICE_WORDS = { recruit: "Recruit", terminate: "Terminate" };
 
-// the whole play window washes over in the choice's color
-const ChoiceTint = styled.div`
-  position: absolute;
-  inset: 0;
-  z-index: 2147482400;
-  pointer-events: none;
-  mix-blend-mode: multiply;
-  animation: ${tintIn} ${RECRUIT_LOOK.tintMs}ms ease-in forwards;
-`;
+const ChoiceButton = ({ choice, recruitChoice, onChooseRecruit }) => (
+  <RecruitButton $choice={choice} $isGone={!!recruitChoice} onClick={event => onChooseRecruit(choice, event.currentTarget.getBoundingClientRect())}>
+    {CHOICE_WORDS[choice]}
+  </RecruitButton>
+);
 
-const ChoiceButton = ({ choice, recruitChoice, onChooseRecruit }) => {
-  const isLocked = recruitChoice == choice;
+// 'from': where the pressed button was on the page, so the word starts there
+const ChoiceConfirm = ({ choice, from, board }) => {
+  const boardBox = board.getBoundingClientRect();
+  const fromX = from ? from.left + from.width / 2 - (boardBox.left + boardBox.width / 2) : 0;
+  const fromY = from ? from.top + from.height / 2 - (boardBox.top + boardBox.height / 2) : 0;
+  const fromScale = from ? Math.min(from.height / (RECRUIT_LOOK.wordPx * 1.6), 1) : 0.3;
   return (
-    <RecruitButton $choice={choice} $isLocked={isLocked} $isFaded={!!recruitChoice && !isLocked} onClick={() => onChooseRecruit(choice)}>
-      {choice == "recruit" ? "Recruit" : "Terminate"}
-      {isLocked && <ChoiceSuffix>{RECRUIT_LOOK[choice].suffix}</ChoiceSuffix>}
-    </RecruitButton>
+    <>
+      <ChoiceWash style={{ background: RECRUIT_LOOK[choice].wash }} />
+      <ChoiceWord style={{ "--from-x": `${fromX}px`, "--from-y": `${fromY}px`, "--from-scale": fromScale }}>
+        {CHOICE_WORDS[choice].toUpperCase()}<ChoiceSuffix>{RECRUIT_LOOK[choice].suffix}</ChoiceSuffix>
+      </ChoiceWord>
+    </>
   );
 };
 
@@ -193,16 +238,40 @@ const getClosestEnemy = (player, pieces) => {
     .reduce((closest, piece) => !closest || getDistance(piece) < getDistance(closest) ? piece : closest, undefined);
 };
 
+
+// the Agent's ray: a flickering beam from him to each of the team
+const rayFlicker = keyframes`
+  0%, 100% { opacity: 0.95; }
+  30% { opacity: 0.55; }
+  60% { opacity: 1; }
+`;
+
+const RayBeams = styled.svg`
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2147481000;
+  overflow: visible;
+  pointer-events: none;
+  animation: ${rayFlicker} 0.18s steps(2) infinite;
+`;
+
 const MOVEMENT_KEYS = ["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowLeft", "ArrowDown", "ArrowRight"];
 
 const getIsTouchScreen = () => window.matchMedia("(pointer: coarse)").matches;
 
-export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeScene, playWindow, isShowingWindowSize, isEditingTiles, isMouseLook, isEnemyZoom, isSlowMotion, isTeamColors, speech, recruitScene, recruitChoice, onChooseRecruit, onHotspot }) => {
+export const GameBoard = ({ isWindowOpen = true, isPaused, gameManager, level, activePhases, isWholeScene, playWindow, isShowingWindowSize, isEditingTiles, isMouseLook, isEnemyZoom, isSlowMotion, isTeamColors, speech, recruitScene, recruitChoice, onChooseRecruit, onHotspot }) => {
   // redraws the pieces when the game updates. the tiles draw themselves.
   useSyncExternalStore(gameManager.subscribeToBoard, gameManager.getBoardRevision);
   const pieces = gameManager.getPieces();
 
   const boardRef = useRef(null);
+  const choiceFrom = useRef(undefined); // where the pressed Recruit or Terminate button was
+  const chooseRecruit = (choice, buttonBox) => {
+    if (recruitChoice) return;
+    choiceFrom.current = buttonBox;
+    onChooseRecruit(choice);
+  };
   const worldRef = useRef(null);
   const mouseAim = useRef({ x: 0, y: 0 }); // where the mouse is in the view: -1 to 1, with 0 in the middle
   const [frame, setFrame] = useState({ width: 1, height: 1 });
@@ -240,12 +309,15 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
     });
   }, [level, frame, isWholeScene, playWindow]);
 
+  // the window opens up to the whole frame for wide shots, unless the monitor always stays: then every shot is framed inside it
+  const shotView = isWindowOpen ? { viewWidth: frame.width, viewHeight: frame.height } : { viewWidth: windowWidth, viewHeight: windowHeight };
+
   const wideCamera = useMemo(() => {
-    const sizes = { ...worldSizes, viewWidth: frame.width, viewHeight: frame.height };
+    const sizes = { ...worldSizes, ...shotView };
     const camera = new Camera({ ...sizes, zoom: getFitZoom(sizes) });
     camera.centerOn({ x: world.width / 2, y: world.height / 2 });
     return camera;
-  }, [level, frame]);
+  }, [level, frame, isWindowOpen, playWindow]);
 
   // walking scenes are made to be seen whole
   const getIsWholeLevelInView = () => (level.isWalkingLevel && !level.isMapWalk) || gameManager.getIsWideShot();
@@ -253,11 +325,37 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
   const camera = isWideShot ? wideCamera : closeCamera;
 
   // the camera for a cutscene's shot: it looks at a spot, and can lean with the mouse
-  const fullFrameSizes = { worldWidth: world.width, worldHeight: world.height, viewWidth: frame.width, viewHeight: frame.height };
-  const getShotCamera = ({ point, zoomScale, isFollowingMouse }) => {
-    const shotCamera = new Camera({ ...fullFrameSizes, zoom: getFitZoom(fullFrameSizes) * zoomScale });
-    const lean = isFollowingMouse ? frame.width / shotCamera.zoom * RECRUIT_LOOK_LEAN : 0;
-    shotCamera.centerOn({ x: point.x + mouseAim.current.x * lean, y: point.y + mouseAim.current.y * lean });
+  const fullFrameSizes = { worldWidth: world.width, worldHeight: world.height, ...shotView };
+  // with words on screen, the shot looks between the spot and the balloon, and pulls out until both fit
+  const speechRef = useRef(speech);
+  speechRef.current = speech; // the camera's loop is set up once, and reads the words from here
+  const getShotFraming = ({ point, zoomScale }) => {
+    const fitZoom = getFitZoom(fullFrameSizes);
+    let zoom = fitZoom * zoomScale;
+    const speech = speechRef.current;
+    if (!speech) return { zoom, center: point };
+    const box = getSpeechScreenBox(speech, SpeechBubbleScale);
+    const usedWidth = shotView.viewWidth * (1 - SHOT_FIT.margin * 2);
+    const usedHeight = shotView.viewHeight * (1 - SHOT_FIT.margin * 2);
+    let center = point;
+    for (let step = 0; step < SHOT_FIT.maxSteps; step += 1) {
+      const left = Math.min(point.x, speech.x + box.left / zoom);
+      const right = Math.max(point.x, speech.x + box.right / zoom);
+      const top = Math.min(point.y, speech.y + box.top / zoom);
+      const bottom = Math.max(point.y + SHOT_FIT.feetRoomPx, speech.y + box.bottom / zoom);
+      center = { x: (left + right) / 2, y: (top + bottom) / 2 };
+      const isFitting = (right - left) * zoom <= usedWidth && (bottom - top) * zoom <= usedHeight;
+      if (isFitting || zoom <= fitZoom) break;
+      zoom = Math.max(zoom * SHOT_FIT.zoomStep, fitZoom);
+    }
+    return { zoom, center };
+  };
+
+  const getShotCamera = shot => {
+    const { zoom, center } = getShotFraming(shot);
+    const shotCamera = new Camera({ ...fullFrameSizes, zoom });
+    const lean = shot.isFollowingMouse ? shotView.viewWidth / shotCamera.zoom * RECRUIT_LOOK_LEAN : 0;
+    shotCamera.centerOn({ x: center.x + mouseAim.current.x * lean, y: center.y + mouseAim.current.y * lean });
     return shotCamera;
   };
 
@@ -371,14 +469,17 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
   mouseHandlers.current = { handleMouseMove, handleMouseLeave };
 
   // the mouse counts everywhere on the page, so the empty area around a small play window still aims
+  const isChoosingRef = useRef(false);
+  isChoosingRef.current = !!recruitScene;
   useEffect(() => {
     const move = e => {
       document.body.style.cursor = "";
+      if (boardRef.current) boardRef.current.style.cursor = isChoosingRef.current ? "pointer" : "";
       mouseHandlers.current.handleMouseMove(e);
     };
-    // browsers can't move the cursor, so it hides while the keys are in charge
+    // browsers can't move the cursor, so it hides while the keys are in charge. not at the Recruit or Terminate choice: the hand stays there.
     const hideCursor = ({ code }) => {
-      if (!MOVEMENT_KEYS.includes(code)) return;
+      if (!MOVEMENT_KEYS.includes(code) || isChoosingRef.current) return;
       document.body.style.cursor = "none";
       if (boardRef.current) boardRef.current.style.cursor = "none";
     };
@@ -413,17 +514,19 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
       lives={p.lives}
       isGoingToSpewFire={p.isGoingToSpewFire}
       isShowHealthBarOnComponent={p.isShowHealthBarOnComponent}
+      isQuiet={!!recruitScene}
     />
   );
 
-  const shotZoom = getFitZoom(fullFrameSizes) * ((recruitScene && recruitScene.shot.zoomScale) || (gameManager.getCameraShot() || {}).zoomScale || 1);
+  const currentShot = gameManager.getCameraShot();
+  const shotZoom = currentShot && !currentShot.isWide ? getShotFraming(currentShot).zoom : getFitZoom(fullFrameSizes) * ((recruitScene && recruitScene.shot.zoomScale) || 1);
   const overlayScale = SpeechBubbleScale / shotZoom;
 
   const deathPiecesComponents = recruitScene ? [] : gameManager.getDeathPieces().map(death => {
     const { key, avatar, charLocation, color, zIndex, body } = death;
     return avatar == 'kaiju' ?
       <ExplodingKaiju key={key} charLocation={charLocation} color={color} zIndex={zIndex} />
-      : <DeadPlayer key={key} avatar={avatar} pieceScale={pieceScale} charLocation={gameManager.getDeathLocation(death)} angle={body ? body.angle : 0} isFlying={!!body && !body.isResting} color={color} zIndex={zIndex} />;
+      : <DeadPlayer key={key} avatar={avatar} pieceScale={pieceScale} charLocation={charLocation} body={body} spriteSheetSrc={death.spriteSheetSrc} color={color} zIndex={zIndex} />;
   });
 
   const foregroundLayers = level.foregroundLayers.map(({ src, x, y, width, height, sortY }) => (
@@ -444,7 +547,8 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
 
   return (
     <Board
-      ref={boardRef}>
+      ref={boardRef}
+      style={recruitScene ? { cursor: "pointer" } : undefined}>
       {isPaused && <PauseModal />}
       <SceneShake $isShaking={!isPaused && level.shakePhases.some(id => activePhases.includes(id))}>
       <World ref={worldRef} data-game-world style={{ width: `${world.width}px`, height: `${world.height}px` }}>
@@ -457,14 +561,30 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
           top: `${recruitScene.body.y}px`,
           height: `${pieceScale * RECRUIT_BODY_SIZE}px`
         }} />}
-        {recruitScene && recruitChoice && <ChoiceTint style={{ background: RECRUIT_LOOK[recruitChoice].tint }} />}
         {recruitScene && (
           <RecruitPrompt style={{ left: `${recruitScene.prompt.x}px`, top: `${recruitScene.prompt.y}px`, transform: `translate(-50%, -100%) scale(${overlayScale}) translateX(${RECRUIT_PROMPT_SHIFT}px)` }}>
-            <ChoiceButton choice="recruit" recruitChoice={recruitChoice} onChooseRecruit={onChooseRecruit} />
-            <ChoiceButton choice="terminate" recruitChoice={recruitChoice} onChooseRecruit={onChooseRecruit} />
+            <ChoiceButton choice="recruit" recruitChoice={recruitChoice} onChooseRecruit={chooseRecruit} />
+            <ChoiceButton choice="terminate" recruitChoice={recruitChoice} onChooseRecruit={chooseRecruit} />
           </RecruitPrompt>
         )}
-        {speech && <SpeechBalloon name={speech.name} text={speech.text} x={speech.x} y={speech.y} isFlipped={speech.isFlipped} zIndex={2147482000} scale={overlayScale} />}
+        {gameManager.getRayBeam() && (() => {
+          const { from, color, targets } = gameManager.getRayBeam();
+          return (
+            <RayBeams width={world.width} height={world.height}>
+              {targets.map(({ x, y }, k) => (
+                <g key={k}>
+                  <line x1={from.x} y1={from.y} x2={x} y2={y} stroke={color} strokeWidth={18} strokeOpacity={0.35} strokeLinecap="round" />
+                  <line x1={from.x} y1={from.y} x2={x} y2={y} stroke="white" strokeWidth={5} strokeLinecap="round" />
+                  <circle cx={x} cy={y} r={26} fill={color} fillOpacity={0.45} />
+                </g>
+              ))}
+              <circle cx={from.x} cy={from.y} r={16} fill="white" />
+            </RayBeams>
+          );
+        })()}
+        {speech && (speech.lines
+          ? <PagedSpeechBalloon name={speech.name} lines={speech.lines} x={speech.x} y={speech.y} isFlipped={speech.isFlipped} zIndex={2147482000} scale={overlayScale} />
+          : <SpeechBalloon name={speech.name} text={speech.text} x={speech.x} y={speech.y} isFlipped={speech.isFlipped} zIndex={2147482000} scale={overlayScale} />)}
         <WorldContent style={{ left: `${contentOffset.x}px`, top: `${contentOffset.y}px` }}>
           {/* canvases are sized from the zoom, which means nothing until the frame has been measured */}
           {isFrameMeasured && <TileCanvas gameManager={gameManager} level={level} tone={getTileTone(level, activePhases)} isVisible={!isPaused && !isEditingTiles} zoom={closeCamera.zoom} isTeamColors={isTeamColors} />}
@@ -474,6 +594,7 @@ export const GameBoard = ({ isPaused, gameManager, level, activePhases, isWholeS
         </WorldContent>
       </World>
       </SceneShake>
+      {recruitScene && recruitChoice && <ChoiceConfirm choice={recruitChoice} from={choiceFrom.current} board={boardRef.current} />}
       {edgeCarets}
       {isShowingWindowSize && (
         <WindowSize>

@@ -1,41 +1,111 @@
 import React from "react";
 import styled from "styled-components";
 import { GAME_TICK } from "Utils/gameState";
+import { getTorsoSpot, LIMBS } from "Game/DataClasses/Ragdoll";
 
 // the body moves once a game tick: easing between ticks keeps a thrown body smooth
 const TICK_EASE = `${GAME_TICK.pieceMs}ms linear`;
 
+/*
+  A thrown body, cut from the avatar's own standing frame: a torso, a head, two arms and two legs.
+  Each part turns about its joint on the torso, so the limbs flop as the body flies and lands.
+*/
+const FRAME = {
+  width: 152,
+  height: 200,
+  idleDownY: 500, // the standing, facing-down frame in every sheet
+  scale: 0.4, // as the living sprite is drawn
+  glowPx: 8
+};
+
+// the figure in each avatar's standing frame, in frame pixels: left, top, right, bottom
+const FIGURE_BOXES = {
+  guy: [49, 10, 112, 145],
+  girl: [39, 10, 105, 142],
+  punk: [50, 2, 114, 141],
+  black_female: [47, 6, 109, 145],
+  mermaid: [42, 7, 103, 139],
+  agent: [47, 2, 109, 140],
+  hazmat: [38, 7, 105, 144]
+};
+
+// each part as a fraction of the figure: its box, and the joint it hangs from on the torso
+const PARTS = {
+  torso: { box: [0.21, 0.19, 0.81, 0.61], joint: [0.51, 0.40] },
+  head: { box: [0.27, 0, 0.75, 0.21], joint: [0.51, 0.21] },
+  armLeft: { box: [0, 0.21, 0.3, 0.67], joint: [0.24, 0.24] },
+  armRight: { box: [0.7, 0.21, 1, 0.67], joint: [0.78, 0.24] },
+  legLeft: { box: [0.21, 0.58, 0.52, 1], joint: [0.37, 0.59] },
+  legRight: { box: [0.49, 0.58, 0.81, 1], joint: [0.65, 0.59] }
+};
+
 const Wrapper = styled.i`
-  display: flex;
+  display: block;
   position: absolute;
-  z-index: 19999;
-  color: ${props => props.color};
   pointer-events: none;
 `;
 
-const SpriteSheet = styled.div`
-  pointer-events: none;
+const Part = styled.div`
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: ${FRAME.width}px;
+  height: ${FRAME.height}px;
+  background-position: 0 -${FRAME.idleDownY}px;
+`;
 
+// fallback, before a body is thrown: the old lying-down art
+const StillBody = styled.div`
+  width: 70px;
+  height: 70px;
+  margin: -35px 0 0 -35px;
   background-position: center;
   background-repeat: no-repeat;
-  background-size: 100px 100px;
-
-  height: 100px;
-  width: 100px;
-
-  ${props => `filter: drop-shadow(0 0 20px ${props.color});`}
+  background-size: 70px 70px;
 `;
 
-const Character = styled.div`
-    margin-left: -20px;
-    margin-top: -45px;
-    width: 50px;
-    height: 75px;
-    position: absolute;
-    z-index: 1;
-    pointer-events: none;
-    animation-iteration-count: 2s;
-`;
+const getFigure = avatar => FIGURE_BOXES[avatar] || FIGURE_BOXES.guy;
+
+// a spot in the figure, as a fraction of it, in frame pixels
+const toFrame = (avatar, [fx, fy]) => {
+  const [left, top, right, bottom] = getFigure(avatar);
+  return { x: left + fx * (right - left), y: top + fy * (bottom - top) };
+};
+
+const getClip = (avatar, box) => {
+  const from = toFrame(avatar, [box[0], box[1]]);
+  const to = toFrame(avatar, [box[2], box[3]]);
+  return `inset(${from.y}px ${FRAME.width - to.x}px ${FRAME.height - to.y}px ${from.x}px)`;
+};
+
+const RagdollParts = ({ avatar, spriteSheetSrc, body, color }) => {
+  const torso = toFrame(avatar, PARTS.torso.joint);
+  const ease = body.isResting ? "transform 200ms ease-out" : `transform ${TICK_EASE}`;
+  const drawPart = (id, angle = 0) => {
+    const joint = toFrame(avatar, PARTS[id].joint);
+    return (
+      <Part key={id} style={{
+        backgroundImage: `url(${spriteSheetSrc})`,
+        clipPath: getClip(avatar, PARTS[id].box),
+        transformOrigin: `${joint.x}px ${joint.y}px`,
+        transform: `rotate(${angle}deg)`,
+        transition: ease
+      }} />
+    );
+  };
+  // the arms and legs behind the torso, the head in front
+  const limbs = LIMBS.map((limb, k) => ({ ...limb, angle: body.limbs[k].angle }));
+  const getLimb = id => limbs.find(limb => limb.id == id);
+  return (
+    <div style={{ transform: `rotate(${body.angle}deg)`, transition: ease, filter: `drop-shadow(0 0 ${FRAME.glowPx}px ${color})` }}>
+      <div style={{ position: "absolute", transformOrigin: "0 0", transform: `scale(${FRAME.scale}) translate(${-torso.x}px, ${-torso.y}px)` }}>
+        {["armLeft", "armRight", "legLeft", "legRight"].map(id => drawPart(id, getLimb(id).angle))}
+        {drawPart("torso")}
+        {drawPart("head", getLimb("head").angle)}
+      </div>
+    </div>
+  );
+};
 
 export const DeadPlayer = ({
   charLocation,
@@ -43,25 +113,24 @@ export const DeadPlayer = ({
   zIndex,
   avatar,
   pieceScale,
-  angle = 0,
-  isFlying = false
-}) => <Wrapper
-    zIndex={zIndex}
-    color={color}
-    style={{
-      left: `${charLocation.x}px`,
-      top: `${charLocation.y}px`,
-      transform: `scale(${pieceScale})`,
-      transformOrigin: "0 0",
-      transition: isFlying ? `left ${TICK_EASE}, top ${TICK_EASE}` : "none"
-    }}>
-    <Character>
-      <SpriteSheet
-        color={color}
-        style={{
-          backgroundImage: `url(/levels/dead/${avatar}.png)`,
-          transform: `translate(-25px, 8px) rotate(${angle}deg)`,
-          transition: isFlying ? `transform ${TICK_EASE}` : "transform 200ms ease-out"
-        }} />
-    </Character>
-  </Wrapper>
+  spriteSheetSrc,
+  body
+}) => {
+  const spot = body ? getTorsoSpot(body, pieceScale) : charLocation;
+  return (
+    <Wrapper
+      data-ragdoll
+      style={{
+        zIndex: (zIndex || 0) + 20001, // sorted with the living pieces
+        left: `${spot.x}px`,
+        top: `${spot.y}px`,
+        transform: `scale(${pieceScale})`,
+        transformOrigin: "0 0",
+        transition: body && !body.isResting ? `left ${TICK_EASE}, top ${TICK_EASE}` : "none"
+      }}>
+      {body && spriteSheetSrc
+        ? <RagdollParts avatar={avatar} spriteSheetSrc={spriteSheetSrc} body={body} color={color} />
+        : <StillBody style={{ backgroundImage: `url(/levels/dead/${avatar}.png)`, filter: `drop-shadow(0 0 ${FRAME.glowPx}px ${color})` }} />}
+    </Wrapper>
+  );
+};

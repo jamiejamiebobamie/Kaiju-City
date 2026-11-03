@@ -1,7 +1,7 @@
 import React, { Suspense, lazy, useState, useEffect, useRef } from "react";
 import { Home } from "./Home";
 import { SplashScreen } from "./Components/SplashScreen";
-import { CloudTransition } from "./Components/CloudTransition";
+import { CloudTransition, CLOUD_TIMING } from "./Components/CloudTransition";
 import "./App.css";
 import "./font-awesome-4.7.0/css/font-awesome.css";
 import "./font-awesome-7.3.1/fa7.css";
@@ -28,11 +28,13 @@ const App = () => {
     if (isTransitioning.current) return;
     isTransitioning.current = true;
     setShouldPlayAnim(true);
+    const { inMs, holdMs, outMs } = CLOUD_TIMING;
     setTimeout(() => {
       isTransitioning.current = false;
       setShouldPlayAnim(false);
-    }, 3000);
-    callback && setTimeout(() => callback(), 500);
+    }, inMs + holdMs + outMs);
+    // the next screen is made once the clouds cover the whole screen
+    callback && setTimeout(() => callback(), inMs + 30);
   };
 
   const appContent = isFirstLoad ? <SplashScreen /> : <Home triggerTransition={triggerTransition} />;

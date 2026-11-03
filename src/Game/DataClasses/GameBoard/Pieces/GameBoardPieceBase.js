@@ -1,4 +1,5 @@
 import { getThrowVec } from 'Game/DataClasses/Ragdoll';
+import { followBrainAction } from 'Game/DataClasses/npcBrain/brain';
 import { BUBBLE_DRAWBACKS } from 'Game/DataClasses/BubbleTest';
 
 const CHARM_MS = 5000;
@@ -191,6 +192,9 @@ export class GameBoardPieceBase {
         // intention: even the player can be Charmed and lose control for a moment of his piece....
         if (this.isNpc && this.isOnTiles && this.escapeTile) {
             this.runForEscape();
+        } else if (this.isNpc && this.isOnTiles && this.brainAction) {
+            // a trained NPC: its model chooses, in place of the rules below
+            followBrainAction(this, accTime);
         } else if (this.isNpc && this.isOnTiles) {
 
             const enemy = this.gameManagerProxy.getClosestEnemy(this.pieceIndex);
@@ -231,6 +235,7 @@ export class GameBoardPieceBase {
             const dmg = this.gameManagerProxy.getDmg(this.pieceIndex);
             if (!!dmg) {
                 this.lastHitDirs = this.gameManagerProxy.getStatusDirs(this.tileIndex);
+                this.lastHitBy = this.gameManagerProxy.getStatusCaster(this.tileIndex); // -1 for a Kaiju's touch
                 this.decrementHealth(accTime, dmg);
             }
         }
@@ -310,12 +315,25 @@ export class GameBoardPieceBase {
     }
 
     // starts off-shot, and runs up to where it was standing
-    startArrival(startLocation, dir = 'up') {
-        this.moveToLocation = this.charLocation;
+    // 'waypoints': the spots it passes on the way, if it has to go round something. 'dir': the way it faces once there.
+    startArrival(startLocation, dir = undefined, waypoints = []) {
+        this.arrivalEnd = this.charLocation;
+        this.arrivalWaypoints = [...waypoints];
+        this.arrivalDir = dir;
+        this.moveToLocation = this.arrivalWaypoints.shift() || this.arrivalEnd;
         this.charLocation = startLocation;
         this.moveFromLocation = startLocation;
         this.isVisible = true;
-        this.setDir(dir);
+        this.faceTowards(this.moveToLocation);
+    }
+
+    // one of the six hex directions, the closest to the way it is heading
+    faceTowards(location) {
+        const dx = location.x - this.charLocation.x;
+        const dy = location.y - this.charLocation.y;
+        if (!dx && !dy) return;
+        const upOrDown = dy < 0 ? 'up' : 'down';
+        this.setDir(Math.abs(dx) < Math.abs(dy) * 0.5 ? upOrDown : `${upOrDown}${dx > 0 ? 'Right' : 'Left'}`);
     }
 
     // says whether it has got there
@@ -328,8 +346,15 @@ export class GameBoardPieceBase {
         });
         this.charLocation = newLocation;
         this.moveFromLocation = newLocation;
-        if (hasArrived) this.setDir('idle');
-        return hasArrived;
+        if (!hasArrived) return false;
+        if (this.moveToLocation != this.arrivalEnd) {
+            this.moveToLocation = this.arrivalWaypoints.shift() || this.arrivalEnd;
+            this.faceTowards(this.moveToLocation);
+            return false;
+        }
+        this.setDir(this.arrivalDir || 'idle');
+        this.setDir('idle');
+        return true;
     }
 
     // the tiles changed: the piece doesn't walk onto tiles that have gone
@@ -502,8 +527,9 @@ export class GameBoardPieceBase {
         const isHealRequired = this.gameManagerProxy.getIsTeamDamaged(this.pieceIndex);
 
         // use abilities
+        const isPowersOff = this.gameManagerProxy.getIsPowersOff(this);
         this.abilities.forEach(a => {
-            if (!hasUsedOneAbility && !a.getIsOnCooldown(accTime, this.isNpc)) {
+            if (!isPowersOff && !hasUsedOneAbility && !a.getIsOnCooldown(accTime, this.isNpc)) {
                 const type = a.getType();
                 const desiredAIRange = a.getDesiredAIRange();
                 const isOffensivePowerAndTargetInRange =
@@ -580,7 +606,8 @@ export class GameBoardPieceBase {
         const readyAbilities = this.abilities.filter(a => !a.getIsOnCooldown(this.accTime, this.isNpc));
         return !readyAbilities.length ?
             10 // default to 10 tiles (away from enemy) if all abilities are on cooldown
-            : readyAbilities.reduce((acc, item) => acc + item.getDesiredAIRange(), 0) / this.abilities.length;
+            // the average range of the powers that are ready
+            : readyAbilities.reduce((acc, item) => acc + item.getDesiredAIRange(), 0) / readyAbilities.length;
     }
 
     decrementHealth(accTime, dmg) {
@@ -676,7 +703,7 @@ export class GameBoardPieceBase {
         */
         // thrown by how they were moving and by what hit them
         const throwVec = getThrowVec(this.dir, this.lastHitDirs, this.facingDir);
-        this.gameManagerProxy.spawnDeathPieceAtLocation(this.charLocation, this.avatar, this.tileIndex, this.color, this.pieceIndex, throwVec);
+        this.gameManagerProxy.spawnDeathPieceAtLocation(this.charLocation, this.avatar, this.tileIndex, this.color, this.pieceIndex, throwVec, this.spriteSheetSrc);
     }
 
     getIsDead() {

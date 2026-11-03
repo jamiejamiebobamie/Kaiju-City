@@ -477,6 +477,17 @@ const TypedText = ({ text }) => {
   return <>{text.slice(0, letterCount)}<span style={{ visibility: "hidden" }}>{text.slice(letterCount)}</span></>;
 };
 
+// where a balloon reaches on screen, from the spot its tail points at, in screen pixels at 'screenScale'.
+// the camera uses it to keep the whole balloon in the shot.
+const SPEECH_FIT = { lineChars: 15, linePx: 39, paddingPx: 46, popShift: 0.22 };
+export const getSpeechScreenBox = ({ text, lines, isFlipped = false }, screenScale) => {
+  const { width, tailOffset, flippedTailOffset } = SPEECH_LOOK;
+  if (!text) text = lines.reduce((longest, line) => line.length > longest.length ? line : longest, "");
+  const height = SPEECH_FIT.paddingPx + Math.ceil(text.length / SPEECH_FIT.lineChars) * SPEECH_FIT.linePx;
+  const left = (isFlipped ? flippedTailOffset + 80 - width : tailOffset) - width * SPEECH_FIT.popShift;
+  return { left: left * screenScale, right: (left + width) * screenScale, top: (-32 - height) * screenScale, bottom: -32 * screenScale };
+};
+
 // after Jet Set Radio Future's comic balloons, drawn in pixels
 export const SpeechBalloon = ({ name, text, x, y, zIndex, scale = 1, isFlipped = false }) => {
   const { pixel, outlineColor, fillColor, tailOffset, flippedTailOffset } = SPEECH_LOOK;
@@ -498,6 +509,18 @@ export const SpeechBalloon = ({ name, text, x, y, zIndex, scale = 1, isFlipped =
   );
 };
 
+// words a page at a time: each page held for as long as it takes to read, then round again
+export const PagedSpeechBalloon = ({ lines, ...props }) => {
+  const [lineIndex, setLineIndex] = useState(0);
+
+  useEffect(() => {
+    const timeoutRef = setTimeout(() => setLineIndex((lineIndex + 1) % lines.length), getSpeechMs(lines[lineIndex]));
+    return () => clearTimeout(timeoutRef);
+  }, [lines, lineIndex]);
+
+  return <SpeechBalloon {...props} text={lines[lineIndex % lines.length]} />;
+};
+
 const SpeechBubble = ({ element, style }) => {
   const { lines, x, y } = element;
   const [lineIndex, setLineIndex] = useState(0);
@@ -517,7 +540,7 @@ const doorPulse = keyframes`
 
 const DoorElement = styled.button`
   position: absolute;
-  cursor: pointer;
+  pointer-events: none;
   border: 0;
   display: flex;
   flex-direction: column;
@@ -557,38 +580,48 @@ const WalkerSprite = styled.div`
   transform-origin: 0 0;
 `;
 
-// walks between two spots and idles at each. moved here each frame, as its size changes with the depth of the scene.
-const WalkerElement = ({ element, isPaused, zIndex }) => {
-  const { src, route, walkSeconds, idleSeconds } = element;
+// runs along its route and idles at each spot that isn't marked to pass through.
+// moved here each frame, as its size and its place in the draw order change with the depth of the scene.
+const WalkerElement = ({ element, level, isPaused }) => {
+  const { src, route, runSpeed, idleSeconds } = element;
   const ref = useRef(null);
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
 
   useEffect(() => {
     const { cellWidth, cellHeight, feetX, feetY, figureHeight, rightRow, leftRow, frames, fps } = WALKER_LOOK;
-    const legSeconds = walkSeconds + idleSeconds;
+    // each leg: run to the next spot, at a steady speed, then idle there unless it is passed through
+    const legs = route.map((start, k) => {
+      const end = route[(k + 1) % route.length];
+      const runSeconds = Math.hypot(end[0] - start[0], end[1] - start[1]) / runSpeed;
+      return { start, end, runSeconds, seconds: runSeconds + (end[3] ? 0 : idleSeconds) };
+    });
+    const loopSeconds = legs.reduce((total, { seconds }) => total + seconds, 0);
     let frameRef;
     const draw = nowMs => {
       frameRef = requestAnimationFrame(draw);
       if (isPausedRef.current || !ref.current) return;
-      const seconds = (nowMs / 1000) % (legSeconds * route.length);
-      const legIndex = Math.floor(seconds / legSeconds);
-      const legTime = seconds - legIndex * legSeconds;
-      const start = route[legIndex];
-      const end = route[(legIndex + 1) % route.length];
-      const isRunning = legTime < walkSeconds;
-      const progress = Math.min(legTime / walkSeconds, 1);
+      let legTime = (nowMs / 1000) % loopSeconds;
+      let legIndex = 0;
+      while (legIndex < legs.length - 1 && legTime >= legs[legIndex].seconds) {
+        legTime -= legs[legIndex].seconds;
+        legIndex += 1;
+      }
+      const { start, end, runSeconds } = legs[legIndex];
+      const isRunning = legTime < runSeconds;
+      const progress = Math.min(legTime / runSeconds, 1);
       const [x, y, height] = start.map((value, n) => value + (end[n] - value) * progress);
       const frame = isRunning ? 1 + Math.floor((nowMs / 1000) * fps) % frames : 0;
       const scale = height / figureHeight;
       ref.current.style.transform = `translate(${x - feetX * scale}px, ${y - feetY * scale}px) scale(${scale})`;
       ref.current.style.backgroundPosition = `${-frame * cellWidth}px ${-(end[0] > start[0] ? rightRow : leftRow) * cellHeight}px`;
+      ref.current.style.zIndex = getSortZIndex(level, y);
     };
     frameRef = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(frameRef);
-  }, [element]);
+  }, [element, level]);
 
-  return <WalkerSprite ref={ref} style={{ width: `${WALKER_LOOK.cellWidth}px`, height: `${WALKER_LOOK.cellHeight}px`, backgroundImage: `url(${src})`, zIndex }} />;
+  return <WalkerSprite ref={ref} style={{ width: `${WALKER_LOOK.cellWidth}px`, height: `${WALKER_LOOK.cellHeight}px`, backgroundImage: `url(${src})`, zIndex: getSortZIndex(level, route[0][1]) }} />;
 };
 
 const hotspotPulse = keyframes`
@@ -694,7 +727,7 @@ export const SceneElements = ({ level, activePhases, isPaused, onHotspot }) => (
           </React.Fragment>
         );
       }
-      if (type == "walker") return <WalkerElement key={id} element={element} isPaused={isPaused} zIndex={style.zIndex} />;
+      if (type == "walker") return <WalkerElement key={id} element={element} level={level} isPaused={isPaused} />;
       if (type == "hotspot") {
         return (
           <React.Fragment key={id}>
@@ -713,10 +746,23 @@ export const SceneElements = ({ level, activePhases, isPaused, onHotspot }) => (
         );
       }
       if (type == "door") {
-        return <DoorElement key={id} data-scene-button onClick={() => onHotspot("exit")} style={{ left: `${x}px`, top: `${y}px`, zIndex: style.zIndex }}><DoorIcon className="fa fa-sign-out" />{element.label}</DoorElement>;
+        // a sign, not a button: the team has to walk there
+        return <DoorElement key={id} as="div" style={{ left: `${x}px`, top: `${y}px`, zIndex: style.zIndex }}><DoorIcon className="fa fa-sign-out" />{element.label}</DoorElement>;
       }
       if (type == "speech") return <SpeechBubble key={id} element={element} style={style} />;
-      if (type == "part") return <KaijuPart key={id} element={element} activePhases={activePhases} style={style} />;
+      if (type == "part") {
+        const part = <KaijuPart key={id} element={element} activePhases={activePhases} style={style} />;
+        if (!element.overFront) return part;
+        // where the part overlaps a foreground layer, a copy of that piece of it is drawn over the layer
+        const { box: [left, top, right, bottom], sortY: frontSortY } = element.overFront;
+        const clipPath = `inset(${top - y}px ${x + width - right}px ${y + height - bottom}px ${left - x}px)`;
+        return (
+          <React.Fragment key={id}>
+            {part}
+            <KaijuPart element={element} activePhases={activePhases} style={{ ...style, zIndex: getSortZIndex(level, frontSortY), clipPath, pointerEvents: "none" }} />
+          </React.Fragment>
+        );
+      }
       if (type == "moth") {
         return <MothElement key={id} style={{
           ...spriteStyle,

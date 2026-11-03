@@ -158,6 +158,7 @@ export type LevelConfig = {
   walkableTiles: Array<TileIndex>;
   tileSets?: Record<string, Array<TileIndex>>; // the level's walkable tiles for each phase
   isWalkingLevel: boolean; // a scene to walk through: no powers, and no HUDs
+  isDepowered?: boolean; // after the Lab trap: the player's side has no glow
   visitLines?: Array<string>; // a battleground visited again: what the teammate says on arrival
   tileLinks: Array<[TileIndex, TileIndex]>; // pairs of tiles a piece jumps between instantly
   spawnTiles: Array<TileIndex>; // where the player's team starts, in order. random if empty.
@@ -185,8 +186,12 @@ export type LevelConfig = {
   };
   extras?: Array<{ avatar: string; spot: { x: number; y: number }; facingDir: string }>; // people standing in the scene, drawn as pieces
   trap?: { // the Agent has his say, then his clones chase the player to the door
-    lines: Array<string>;
+    // each line, by who says it. 'ray' is the Agent firing his ray. 'ifRecruits': only said with recruits along.
+    script: Array<{ who?: 'agent' | 'teammate' | 'player' | 'recruit'; text?: string; phase?: string; ray?: boolean; ifRecruits?: boolean }>;
     speechSpot: { x: number; y: number };
+    lineUp: { y: number; spacing: number };
+    ray: { from: { x: number; y: number }; color: string; ms: number };
+    chaseLines: { agent: string; teammate: string; teammateWithRecruits: string };
     chasers: { xs: Array<number>; startY: number; landingY: number; moveSpeed: number; abilities: Array<string> };
   };
   hasRecruitFollowers?: boolean; // recruited characters walk with the team
@@ -272,9 +277,11 @@ const getWorkerHeight = y => 80 + 0.592 * (y - 372);
 
 const standingAgent = (x, y) => ({ avatar: 'agent', spot: { x, y }, facingDir: 'down' });
 
-// a worker who runs between spots beside other workers, and stands at each for a while
-const hazmatRunner = (id, route, walkSeconds, idleSeconds) => ({
-  id, type: 'walker' as const, src: '/spritesheet/hazmat.png', x: route[0][0], y: route[0][1], width: 0, height: 0, sortY: Math.max(...route.map(([, y]) => y)), route: route.map(([x, y]) => [x, y, getWorkerHeight(y)]), walkSeconds, idleSeconds
+// a worker who runs between spots beside other workers, and stands at each for a while.
+// a spot marked 'pass' is only run through, to keep them off the Kaiju parts.
+const hazmatRunner = (id, route, runSpeed, idleSeconds) => ({
+  id, type: 'walker' as const, src: '/spritesheet/hazmat.png', x: route[0][0], y: route[0][1], width: 0, height: 0, sortY: route[0][1],
+  route: route.map(([x, y, pass]) => [x, y, getWorkerHeight(y), pass == 'pass' ? 1 : 0]), runSpeed, idleSeconds
 });
 
 const hazmatSweeper = (id, pose, x, y) => ({ ...npc(id, pose, x, y, getWorkerHeight(y)), isSweeping: true });
@@ -376,7 +383,8 @@ const ROOFTOP_SCENE = {
   phases: [{ id: 'head', label: 'Kaiju head' }, { id: 'headTouched', label: 'Touch part' }],
   defaultPhases: ['head'],
   sceneElements: [
-    { id: 'head', type: 'part' as const, phase: 'head', touchPhase: 'headTouched', src: '/levels/rooftop/head-spritesheet.png', x: 255, y: 233, width: 959, height: 519, sortY: 573, seconds: 4.5, flashColor: '#ff1a0d' }
+    { id: 'head', type: 'part' as const, phase: 'head', touchPhase: 'headTouched', src: '/levels/rooftop/head-spritesheet.png', x: 255, y: 233, width: 959, height: 519, sortY: 573, seconds: 4.5, flashColor: '#ff1a0d',
+      overFront: { box: [255, 233, 515, 376], sortY: ABOVE_CHARACTERS + 1 } } // the head is in front of the crane where they overlap
   ]
 };
 
@@ -488,8 +496,14 @@ const SEWER1_WALK_IN = {
   script: [
     { who: 'recruit', text: 'Jumping into the sewers was quick thinking.' },
     { who: 'recruit', text: 'That swanky Agent will never look for us down here.' },
-    ...SEWER1_LINES.map(text => ({ who: 'teammate', text }))
-  ]
+    ...SEWER1_LINES.slice(0, 3).map(text => ({ who: 'teammate', text })),
+    // draft words: where the recruits' powers came from, and why the ray left them alone
+    { who: 'teammate', text: 'That is how the bystanders we fought got theirs: by touching the fallen Kaiju parts.' },
+    { who: 'teammate', text: "And that's why the Agent's ray didn't take yours.", ifRecruits: true },
+    ...SEWER1_LINES.slice(3).map(text => ({ who: 'teammate', text }))
+  ],
+  // then the doorway lights up, someone sees it, and after a beat the way on shows. draft words.
+  reveal: { glowPhase: 'glow', line: { who: 'recruit', text: 'Do you see that glow? Something is down there...' }, beatMs: 2500, shownPhase: 'deeperShown' }
 };
 
 const SEWER1_TALK = [
@@ -575,9 +589,10 @@ const STREET_SCENE = {
   sceneElements: [
     hazmatSweeper('hazmat1', 'hazmatBroomLeft', 740, 600),
     hazmatSweeper('hazmat3', 'hazmatBroomRight', 1005, 372),
-    hazmatRunner('hazmat2', [[845, 420], [800, 612], [1050, 392]], 2.6, 6),
-    hazmatRunner('hazmat4', [[1155, 376], [1062, 400], [1228, 475]], 2.2, 7),
-    hazmatRunner('hazmat5', [[1228, 500], [850, 440]], 3, 8),
+    // the claw's goo covers about x 785 to 1160, y 380 to 575, and the eye's x 1035 to 1165, y 280 to 375
+    hazmatRunner('hazmat2', [[700, 612], [745, 420, 'pass'], [950, 362], [1185, 385, 'pass'], [1195, 600, 'pass'], [1000, 635, 'pass']], 150, 6),
+    hazmatRunner('hazmat4', [[1250, 385], [1212, 470], [1245, 560]], 120, 7),
+    hazmatRunner('hazmat5', [[1225, 520], [1195, 615, 'pass'], [880, 640], [1195, 615, 'pass']], 140, 8),
     { id: 'exit', type: 'door' as const, phase: EXIT_OPEN_PHASE, x: 135, y: 660, width: 0, height: 0, sortY: ABOVE_CHARACTERS, label: 'Go To Peninsula' },
     {
       id: 'agentSpeech', type: 'speech' as const, x: 335, y: 372, width: 0, height: 0, sortY: ABOVE_CHARACTERS,
@@ -692,10 +707,10 @@ const LEVEL_BUILDERS: Record<string, (file) => LevelConfig> = {
     ]
   }),
   sewer1: file => {
-    const level = { ...buildLevel(file, 'Sewer 1', '#7a8a3a', [], true), ...SEWER1_SCENE, hasRecruitFollowers: true };
-    return { ...level, sceneElements: [...level.sceneElements, ...SEWER1_TALK], exit: { spot: { x: 250, y: 430 }, afterMs: 0 }, walkIn: SEWER1_WALK_IN };
+    const level = { ...buildLevel(file, 'Sewer 1', '#7a8a3a', [], true), ...SEWER1_SCENE, hasRecruitFollowers: true, isDepowered: true };
+    return { ...level, sceneElements: [...level.sceneElements, ...SEWER1_TALK], exit: { spot: { x: 250, y: 430 }, afterMs: Infinity, afterPhase: 'deeperShown' }, walkIn: SEWER1_WALK_IN };
   },
-  sewer2: file => ({ ...buildLevel(file, 'Sewer 2', '#7a8a3a', [], true), ...SEWER2_SCENE, hasRecruitFollowers: true }),
+  sewer2: file => ({ ...buildLevel(file, 'Sewer 2', '#7a8a3a', [], true), ...SEWER2_SCENE, hasRecruitFollowers: true, isDepowered: true }),
   street: file => ({
     ...buildLevel(file, 'Street', '#7a8a3a', [], true),
     ...STREET_SCENE,
@@ -795,16 +810,36 @@ LEVELS.labTrap = {
   isWalkingLevel: true,
   cameraZoom: 1,
   agentDrops: undefined,
-  phases: [],
   exit: { spot: { x: 1290, y: 480 }, afterMs: 0 },
   hasRecruitFollowers: true, // the recruits are here too, and run with the teammate
   trap: {
-    lines: ['You did well, soldier.', 'But those powers were only on loan.', 'Lab property. We are taking them back.', 'Seize them!'],
+    // the Agent's four lines are Jamie's. the clones, the teammate's line and the ray are a draft.
+    script: [
+      { who: 'agent', text: 'You did well, soldier.' },
+      { who: 'agent', text: 'But those powers were only on loan.' },
+      { who: 'agent', text: 'And we have no more need for you. Meet the new team.', phase: 'clones' },
+      { who: 'teammate', text: "Clones... That's what was in the tanks!" },
+      { who: 'agent', text: 'Lab property. We are taking them back.' },
+      { ray: true },
+      { who: 'player', text: 'Our powers... they are gone!' },
+      { who: 'recruit', text: 'Not ours. We still have ours. Kaiju powers are not theirs to take.', ifRecruits: true },
+      { who: 'agent', text: 'Seize them!' }
+    ],
     speechSpot: { x: 700, y: 365 },
+    lineUp: { y: 610, spacing: 80 }, // the team stands in a row in front of the Agent
+    // said as the chase starts, while everyone runs. draft words.
+    chaseLines: {
+      agent: "Get them! Don't let them escape!",
+      teammate: 'Run! Get to the exit, now!',
+      teammateWithRecruits: "The others will hold them off! Run for the exit!"
+    },
+    ray: { from: { x: 700, y: 440 }, color: '#7dffef', ms: 2200 },
     chasers: { xs: [480, 700, 920], startY: 830, landingY: 640, moveSpeed: 5, abilities: [] }
   },
   extras: [standingAgent(700, 480)],
+  phases: [{ id: 'clones', label: 'Agent clones' }],
   sceneElements: [
+    ...LAB_SCENE.sceneElements.filter(({ phase }) => phase == 'clones'),
     { id: 'exit', type: 'door' as const, phase: EXIT_OPEN_PHASE, x: 1290, y: 470, width: 0, height: 0, sortY: ABOVE_CHARACTERS, label: 'Escape!' }
   ]
 };

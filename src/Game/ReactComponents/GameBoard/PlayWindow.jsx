@@ -138,6 +138,36 @@ const BrandName = styled.div`
   pointer-events: none;
 `;
 
+// the game's buttons, set into the top of the casing like a TV's own buttons
+const BezelButtons = styled.div`
+  position: absolute;
+  left: 2.2cqw;
+  top: -2.05cqw;
+  z-index: 2147483002;
+  display: flex;
+  gap: 0.6cqw;
+`;
+
+export const BezelButton = styled.button`
+  padding: 0.25cqw 0.8cqw;
+  font-family: gameboy;
+  font-size: 0.75cqw;
+  letter-spacing: 0.1cqw;
+  cursor: pointer;
+  color: #a39b95;
+  background: linear-gradient(to bottom, #2c2927, #121110);
+  border: 0.1cqw solid #050505;
+  border-radius: 0.3cqw;
+  box-shadow: inset 0 0.08cqw 0 ${TV_LOOK.casingLight}, 0 0.12cqw 0 #050505;
+  &:hover {
+    color: #e6e0da;
+  }
+  &:active {
+    transform: translateY(0.1cqw);
+    box-shadow: inset 0 0.08cqw 0 #050505;
+  }
+`;
+
 const Handle = styled.div`
   position: absolute;
   z-index: 2147483647;
@@ -178,7 +208,8 @@ const moveEdge = (playWindow, edge, { x, y }) => {
 const getHandleSpot = fraction => `calc(${fraction * 100}% - ${fraction * WINDOW_LOOK.handleSize}cqw)`;
 
 // 'playWindow' is the window as set. 'isOpen' opens it up to the whole frame for a wide shot.
-export const PlayWindow = ({ playWindow, setPlayWindow, isAdjusting, isOpen, isCut = false, children }) => {
+// 'buttons' sit on the casing. with the window open there is no casing, and they show over the picture.
+export const PlayWindow = ({ playWindow, setPlayWindow, isAdjusting, isOpen, isCut = false, buttons = null, children }) => {
   const windowRef = useRef(null);
   const { left, top, right, bottom } = isOpen ? FULL_WINDOW : playWindow;
 
@@ -207,6 +238,7 @@ export const PlayWindow = ({ playWindow, setPlayWindow, isAdjusting, isOpen, isC
           <PowerLight />
         </>
       )}
+      {buttons && <BezelButtons style={isOpen ? { top: "1cqw", left: "1cqw" } : undefined}>{buttons}</BezelButtons>}
       {isAdjusting && <Outline />}
       {isAdjusting && HANDLES.map(handle => (
         <Handle

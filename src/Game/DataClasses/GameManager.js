@@ -15,7 +15,7 @@ import { addUnlock, getRecruitChoices, getUnlocks } from './Unlocks';
 import { ROSTER } from './Avatars';
 import { getSpeechMs } from './speechTiming';
 import { getTileCenter } from './GameBoard/hexGrid';
-import { startRagdoll, stepRagdoll } from './Ragdoll';
+import { getTorsoSpot, startRagdoll, stepRagdoll } from './Ragdoll';
 
 export const GameResult = Object.freeze({
     PlayerWon: 0,
@@ -43,8 +43,9 @@ export const CUTSCENE = {
   chaseSlowSpeed: 0.35,
   chaseSlowMs: 2800,
   mapWideMs: 2400,
+  revealGlowMs: 1200, // a door lights up before anyone says a word about it
   recruitZoomScale: 1.3,
-  recruitSpeechRows: 3.4, // how far above a character their words sit
+  recruitSpeechRows: 2.4, // how far above a character their words sit: just over their head
   speechTopY: 200, // words sit no higher than this, or they would go off the top of a wide shot or under the top buttons
   speechLineChars: 15, // about this many letters fit on a balloon's line
   speechShortLines: 3, // a balloon of up to this many lines fits under 'speechTopY'
@@ -55,11 +56,10 @@ export const CUTSCENE = {
   recruitButtonRows: 3.6 // how far above the player the buttons sit
 };
 
-// a playtest: tile statuses take the color of the side that cast them
+// a playtest: damaging tile statuses take the color of the side that cast them.
+// the player's side (recruits too) uses the player's own color: blue for Guy, yellow for Girl.
 export const TEAM_COLORS = {
-    kaiju: '#9b30ff',
-    playerTeam: '#5b8fd9', // a light navy
-    agents: '#e0201b'
+    enemies: '#9b30ff'
 };
 
 // the Lab fight's Agents: three of these each, at random
@@ -68,16 +68,53 @@ const AGENT_POWER_COUNT = 3;
 
 const ARRIVAL_LINE = "Heads-up, teammate. They're coming!";
 
-// before each Recruit or Terminate: what each choice means
+// before each Recruit or Terminate: what each choice means, a page at a time.
+// the first time is as written. after that the teammate remembers the last choice, and then any pattern.
 const POSSESSIVES = { him: 'his', her: 'her' };
-export const getRecruitLine = (pronoun) => {
-    const possessive = POSSESSIVES[pronoun] || 'their';
-    return `Maybe we could recruit ${pronoun}... or we could study ${possessive} DNA to get ${possessive} power. Though that would be fatal for ${pronoun}.`;
+const RECRUIT_ORDER = ['punk', 'black_female', 'mermaid']; // as they are met in the campaign
+export const getRecruitLines = (pronoun, pastChoices = []) => {
+    const his = POSSESSIVES[pronoun] || 'their';
+    const him = pronoun;
+    const last = pastChoices[pastChoices.length - 1];
+    if (pastChoices.length >= 2 && pastChoices.every(choice => choice == last)) {
+        return [
+            `I guess we're going to ${last} ${him}, like the others?`,
+            `Recruit ${him}, and the crew grows by one...`,
+            `...or study ${his} DNA and take ${his} power. That would be fatal for ${him}.`
+        ];
+    }
+    if (pastChoices.length >= 2) {
+        return [
+            'We have recruited, and we have terminated...',
+            `Recruit ${him}, and we gain a crew member...`,
+            `...or terminate ${him}, and harvest ${his} power.`
+        ];
+    }
+    if (last == 'recruit') {
+        return [
+            'Another one... The last one joined the crew.',
+            `We could recruit ${him} too, and grow the team...`,
+            `...or study ${his} DNA and take ${his} power. That would be fatal for ${him}.`
+        ];
+    }
+    if (last == 'terminate') {
+        return [
+            'Last time, we took the power for ourselves.',
+            `We could study ${his} DNA again, and take ${his} power. It would be fatal for ${him}...`,
+            `...or we could recruit ${him} onto the crew.`
+        ];
+    }
+    return [`Maybe we could recruit ${him}...`, `...or we could study ${his} DNA to get ${his} power.`, `Though that would be fatal for ${him}.`];
 };
 
 export class GameManager {
-    constructor({ level = PENINSULA, settingsManager, hasArrival = false, killsToWin = undefined }) {
+    // 'returnSpot': back on a map walk from a site, the team starts beside it.
+    // 'isRetry': the match is played again after a loss, so its opening scene is skipped.
+    constructor({ level = PENINSULA, settingsManager, hasArrival = false, killsToWin = undefined, returnSpot = undefined, isRetry = false }) {
         this.killsToWin = killsToWin;
+        this.returnSpot = returnSpot;
+        this.isRetry = isRetry;
+        this.armedSites = new Set(); // a site counts once the player has been away from it: spawning beside one doesn't enter it
         this.zoomLvl = ZoomLvl.NoZoom;
         this.accTime = 0;
         this.score = 0;
@@ -152,6 +189,12 @@ export class GameManager {
         return [...this.activePhases];
     }
 
+    // no one uses powers while walking a scene, in a cutscene, or once the Agents have taken them
+    getIsPowersOff = (piece = undefined) => {
+        if (this.isRecruitsFighting && !this.cutscene && piece && piece.isRecruit) return false; // the Lab trap: the recruits hold the Agents off
+        return !!this.level.isWalkingLevel || !!this.cutscene || !!this.recruitScene;
+    }
+
     // the camera starts its move back in before the game resumes
     getIsWideShot = () => {
         const isAgentEntering = this.getPieces().some(({ isEntering, isDead }) => isEntering && !isDead);
@@ -209,11 +252,9 @@ export class GameManager {
     getStatusTeamColor = (casterIndex) => {
         const caster = this.getPieces()[casterIndex];
         if (!caster) return undefined;
-        if (caster.avatar == 'kaiju') return TEAM_COLORS.kaiju;
-        if (caster.avatar == 'agent') return TEAM_COLORS.agents;
-        const isPlayerSide = caster.homeTeamIndex == this.gameBoardPiecesManager.getPlayerTeamIndex();
-        // recruits and the bystanders they once were: their own color
-        return caster.isRecruit || !isPlayerSide ? caster.getColor() : TEAM_COLORS.playerTeam;
+        const playerTeamIndex = this.gameBoardPiecesManager.getPlayerTeamIndex();
+        const isPlayerSide = caster.homeTeamIndex == playerTeamIndex || caster.teamIndex == playerTeamIndex || caster.isRecruit;
+        return isPlayerSide && caster.avatar != 'kaiju' && caster.avatar != 'agent' ? this.getPlayerColor() : TEAM_COLORS.enemies;
     }
 
     getWormholes() {
@@ -300,10 +341,11 @@ export class GameManager {
 
         this.gameBoardManager.initTiles();
 
-        this.gameBoardPiecesManager.initPlayerLocationsOnBoard(this.level.spawnTiles);
+        this.gameBoardPiecesManager.initPlayerLocationsOnBoard(this.returnSpot ? this.getReturnTiles(this.returnSpot) : this.level.spawnTiles);
 
         if (this.level.hasRecruitFollowers) this.addRecruitFollowers();
         if (this.level.extras) this.level.extras.forEach(extra => this.addExtra(extra));
+        if (this.level.isDepowered) this.depowerPlayerTeam();
 
         if (this.hasArrival) this.startArrival();
         else if (this.level.rival) this.startRivalIntro();
@@ -312,6 +354,48 @@ export class GameManager {
         else if (this.level.showdown) this.startShowdown();
         else if (this.level.walkIn) this.startWalkInScene();
         else if (this.level.visitLines) this.startVisitScene();
+        if (this.isRetry && this.cutscene) this.skipCutscene();
+    }
+
+    // just outside a site's reach, toward the middle of the map, so the walk carries on from beside it
+    getReturnTiles(spot) {
+        const { rowStep, scale } = this.level.grid;
+        const { width, height } = this.level.world;
+        const toMiddle = { x: width / 2 - spot.x, y: height / 2 - spot.y };
+        const length = Math.hypot(toMiddle.x, toMiddle.y) || 1;
+        const reach = (SITE_ROWS + 1.5) * rowStep * scale;
+        const start = { x: spot.x + (toMiddle.x / length) * reach, y: spot.y + (toMiddle.y / length) * reach };
+        return [start, { x: start.x + 25, y: start.y }].map(spot => this.gameBoardManager.getClosestWalkableTileToLocation(spot));
+    }
+
+    // played again: everything the opening scene sets up happens at once, with no words
+    skipCutscene() {
+        const { steps, index } = this.cutscene;
+        steps.slice(Math.max(index, 0)).forEach(step => {
+            if (step.phase) this.activePhases.add(step.phase);
+            if (step.onStart) step.onStart();
+            (step.arrivals || []).forEach(({ piece, toTile }) => {
+                if (toTile) piece.initCharLocation(true, toTile);
+                piece.isVisible = true;
+            });
+        });
+        this.cutscene = undefined;
+        this.speech = null;
+        this.getPieces().forEach(piece => {
+            piece.isTileHidden = false;
+            piece.isVisible = true;
+        });
+    }
+
+    // the Agents' ray only took the player's and teammate's powers: the recruits keep theirs
+    getDepoweredPieces() {
+        return this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex())
+            .filter(piece => !piece.isRecruit && !this.followers.includes(piece));
+    }
+
+    // the Agents took their powers: no glow, to show it
+    depowerPlayerTeam() {
+        this.getDepoweredPieces().forEach(piece => { piece.isPlain = true; });
     }
 
     // the bystander has touched the Kaiju part in the intro, and now the fight starts
@@ -391,13 +475,27 @@ export class GameManager {
         const rowPx = this.level.grid.rowStep * this.level.grid.scale;
         const seconds = GAME_TICK.pieceMs / 1000 * this.timeScale;
         this.getDeathPieces().filter(death => death.throwVec && death.avatar != 'kaiju').forEach(death => {
-            death.body = death.body ? stepRagdoll(death.body, seconds, rowPx) : startRagdoll(death.charLocation, death.throwVec, rowPx);
+            death.body = death.body ? stepRagdoll(death.body, seconds, rowPx, this.getRagdollBounds()) : startRagdoll(death.charLocation, death.throwVec, rowPx);
         });
+    }
+
+    // a thrown body stays over the walkable tiles, so it stays in the shot
+    getRagdollBounds() {
+        if (!this.ragdollBounds) {
+            const centers = this.level.walkableTiles.map(this.gameBoardManager.getCharXAndYFromTileIndex);
+            this.ragdollBounds = {
+                left: Math.min(...centers.map(({ x }) => x)),
+                right: Math.max(...centers.map(({ x }) => x)),
+                top: Math.min(...centers.map(({ y }) => y)),
+                bottom: Math.max(...centers.map(({ y }) => y))
+            };
+        }
+        return this.ragdollBounds;
     }
 
     // where a death is now: a thrown body moves, an exploding Kaiju stays put
     getDeathLocation({ body, charLocation }) {
-        return body ? { x: body.x, y: body.y - body.height } : charLocation;
+        return body ? getTorsoSpot(body, this.level.pieceScale) : charLocation;
     }
 
     // the shot holds on whoever's death ended the fight, and follows their body
@@ -426,10 +524,14 @@ export class GameManager {
     }
 
     // a piece walks to where it stands, from a tile, or from where it is to a new tile
+    // it follows the tiles, so it goes round walls and water. off the tiles, it walks straight.
     startPieceArrival({ piece, startTile, toTile, dir }) {
         const start = startTile ? this.gameBoardManager.getCharXAndYFromTileIndex(startTile) : piece.charLocation;
+        const fromTile = startTile || piece.getTileIndex();
         if (toTile) piece.initCharLocation(true, toTile);
-        piece.startArrival(start, dir);
+        const isOnTiles = fromTile && this.gameBoardManager.getIsInBounds(fromTile) && this.gameBoardManager.getIsInBounds(piece.getTileIndex());
+        const path = isOnTiles ? this.gameBoardManager.findPathFromTo(fromTile, piece.getTileIndex()) : [];
+        piece.startArrival(start, dir, path.slice(0, -1).map(this.gameBoardManager.getCharXAndYFromTileIndex));
     }
 
     updateCutscene() {
@@ -553,12 +655,58 @@ export class GameManager {
     }
 
     // everyone stands facing the Agent while he has his say, each line once, and then the chase is on
+    // the team in a row before the Agent, each on their own tile, all facing him
+    lineUpTeam({ y, spacing }) {
+        const { x } = this.level.trap.speechSpot;
+        const team = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
+        const usedTiles = new Set();
+        team.forEach((piece, k) => {
+            const spot = { x: x + (k - (team.length - 1) / 2) * spacing, y };
+            let tile = this.gameBoardManager.getClosestWalkableTileToLocation(spot);
+            if (usedTiles.has(`${tile.i} ${tile.j}`)) {
+                tile = this.gameBoardManager.getAdjacentTileIndices(tile).filter(this.gameBoardManager.getIsInBounds).find(next => !usedTiles.has(`${next.i} ${next.j}`)) || tile;
+            }
+            usedTiles.add(`${tile.i} ${tile.j}`);
+            piece.initCharLocation(true, tile);
+            piece.facingDir = 'up';
+        });
+    }
+
+    // the Agent's ray drains the team: a beam to each of them, and their glow goes out
+    fireRay() {
+        const { from, color } = this.level.trap.ray;
+        // it hits the recruits too, but their powers came from the Kaiju parts, and stay
+        const team = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
+        this.rayBeam = { from, color, targets: team.map(piece => ({ x: piece.charLocation.x, y: piece.charLocation.y - this.level.grid.rowStep * this.level.grid.scale })) };
+    }
+
+    endRay = () => {
+        this.rayBeam = undefined;
+        this.depowerPlayerTeam();
+    }
+
+    getRayBeam() {
+        return this.rayBeam;
+    }
+
     startTrapScene() {
-        const { lines, speechSpot } = this.level.trap;
-        this.getPieces().forEach(piece => { piece.facingDir = 'up'; });
+        const { script, speechSpot, lineUp, ray } = this.level.trap;
+        this.lineUpTeam(lineUp);
+        const [player, teammate] = this.getPieces();
+        const [recruit] = this.followers;
         const shot = { isWide: true };
+        const getName = ({ avatar }) => ROSTER.find(({ id }) => id == avatar).name;
+        const getSpeaker = who => ({ player, teammate, recruit })[who];
+        const getStep = ({ who, text, phase, ray: isRay }) => {
+            if (isRay) return { shot, ms: ray.ms, onStart: () => this.fireRay() };
+            const speaker = getSpeaker(who);
+            const name = who == 'teammate' ? 'Teammate' : speaker && getName(speaker);
+            const speech = speaker ? this.getSpeechOver(speaker, name, text) : { name: 'Agent', text, ...speechSpot };
+            // once the beam has done its work, the glow is gone
+            return { shot, ms: getSpeechMs(text), phase, speech, onStart: () => this.rayBeam && this.endRay() };
+        };
         this.startCutscene([
-            ...lines.map(text => ({ shot, ms: getSpeechMs(text), speech: { name: 'Agent', text, ...speechSpot } })),
+            ...script.filter(({ who, ifRecruits }) => (who != 'teammate' || !!teammate) && (!ifRecruits || !!recruit)).map(getStep),
             { shot, ms: 0, onStart: this.startChase }
         ]);
     }
@@ -575,7 +723,7 @@ export class GameManager {
 
     // the teammate may have gone on ahead. after a beat the recruits catch up, the script plays, and it may end with the team walking on.
     startWalkInScene() {
-        const { teammateSpot, doorTile, standSpots, frontSpots, script, ending } = this.level.walkIn;
+        const { teammateSpot, doorTile, standSpots, frontSpots, script, ending, reveal } = this.level.walkIn;
         const [player, teammate] = this.getPieces();
         const hasTeammate = !!teammate && !this.followers.includes(teammate);
         const getTile = spot => this.gameBoardManager.getClosestWalkableTileToLocation(spot);
@@ -615,25 +763,44 @@ export class GameManager {
             { shot, ms: 0, onStart: () => { this.isSceneOver = true; } }
         ];
 
+        // the way on lights up, someone remarks on it, and after a beat it opens
+        const revealSteps = !reveal ? [] : [
+            { shot, ms: CUTSCENE.revealGlowMs, phase: reveal.glowPhase },
+            { shot, ms: getSpeechMs(reveal.line.text), speech: () => getSpeech(reveal.line) },
+            { shot, ms: reveal.beatMs },
+            { shot, ms: 0, phase: reveal.shownPhase }
+        ];
+
         this.startCutscene([
             { shot, ms: CUTSCENE.pullInMs },
             ...arrivals,
             ...frontSteps,
             ...script
-                .filter(({ who }) => who != 'teammate' || hasTeammate)
+                .filter(({ who, ifRecruits }) => (who != 'teammate' || hasTeammate) && (!ifRecruits || this.followers.length > 0))
                 .map(line => ({ shot, ms: getSpeechMs(line.text), speech: () => getSpeech(line) })),
+            ...revealSteps,
             ...endingSteps
         ]);
     }
 
     // the Agents burst in from below, in slow motion at first. the powers are gone, so the only way out is the door.
+    // the recruits still have theirs: they stay and hold the Agents off while the player and teammate run.
     startChase = () => {
-        const { chasers: { xs, startY, landingY, moveSpeed, abilities } } = this.level.trap;
+        const { chasers: { xs, startY, landingY, moveSpeed, abilities }, chaseLines } = this.level.trap;
         const team = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
-        team.forEach(piece => { piece.abilities = []; });
-        // the teammate and the recruits make a run for the exit. the player has to follow.
+        const runners = team.filter(piece => !this.followers.includes(piece));
+        runners.forEach(piece => { piece.abilities = []; });
+        this.followers.forEach(piece => {
+            const rivalLevel = Object.values(LEVELS).find(({ rival }) => rival && rival.avatar == piece.avatar);
+            piece.abilities = rivalLevel ? this.settingsManager.getAbilitiesFromElements(rivalLevel.rival.abilities) : [];
+            piece.isRecruit = true;
+            piece.isShowHealthBarOnComponent = true;
+        });
+        this.isRecruitsFighting = this.followers.length > 0;
+        // the teammate makes a run for the exit. the player has to follow.
         const exitTile = this.gameBoardManager.getClosestWalkableTileToLocation(this.level.exit.spot);
-        team.filter(piece => piece.isNpc).forEach(piece => { piece.escapeTile = exitTile; });
+        runners.filter(piece => piece.isNpc).forEach(piece => { piece.escapeTile = exitTile; });
+        if (chaseLines) this.sayDuringChase(chaseLines);
         xs.forEach(x => {
             const piece = this.gameBoardPiecesManager.addPiece({
                 pieceClass: GameBoardPieceAgent,
@@ -645,6 +812,24 @@ export class GameManager {
         this.gameBoardManager.moveSpeedScale *= CUTSCENE.chaseSlowSpeed;
         this.isChaseSlowed = true;
         this.chaseSlowEndsAt = this.accTime + CUTSCENE.chaseSlowMs;
+    }
+
+    // words in the middle of the chase: the game doesn't stop for them. the teammate's are hurried, and tell the player what to do.
+    sayDuringChase({ agent, teammate, teammateWithRecruits }) {
+        const [, teammatePiece] = this.getPieces();
+        const { speechSpot } = this.level.trap;
+        const lines = [
+            { name: 'Agent', text: agent, getSpot: () => speechSpot },
+            ...(teammatePiece && !this.followers.includes(teammatePiece) ? [{ name: 'Teammate', text: this.isRecruitsFighting ? teammateWithRecruits : teammate, piece: teammatePiece }] : [])
+        ];
+        let atMs = 1; // after the cutscene has cleared its own words
+        lines.forEach(({ name, text, getSpot, piece }) => {
+            this.timeoutHandler.registerTimeout(() => {
+                this.speech = piece ? this.getSpeechOver(piece, name, text) : { name, text, ...getSpot() };
+            }, atMs);
+            atMs += getSpeechMs(text);
+        });
+        this.timeoutHandler.registerTimeout(() => { this.speech = null; }, atMs);
     }
 
     updateChaseSlowMotion() {
@@ -722,7 +907,7 @@ export class GameManager {
         const zoomScale = this.level.cameraZoom * CUTSCENE.recruitZoomScale;
         this.speech = teammate ? {
             name: 'Teammate',
-            text: getRecruitLine(pronoun),
+            lines: getRecruitLines(pronoun, RECRUIT_ORDER.filter(id => id != avatar && getRecruitChoices()[id]).map(id => getRecruitChoices()[id])),
             x: teammate.charLocation.x,
             y: teammate.charLocation.y - CUTSCENE.recruitSpeechRows * rowStep * scale,
             isFlipped: true
@@ -768,7 +953,8 @@ export class GameManager {
         const { goalTiles, exit, sites = [] } = this.level;
         if (!this.getPieces().length) return false;
         if (this.isSceneOver) return true;
-        const site = sites.find(({ spot }) => this.getIsPlayerNear(spot, SITE_ROWS));
+        sites.filter(({ spot }) => !this.getIsPlayerNear(spot, SITE_ROWS + 1)).forEach(site => this.armedSites.add(site));
+        const site = sites.find(site => this.armedSites.has(site) && this.getIsPlayerNear(site.spot, SITE_ROWS));
         if (site) {
             this.reachedSite = site;
             return true;
@@ -818,12 +1004,23 @@ export class GameManager {
         return this.killsToWin || this.gameManagerProxy.determineKaijuDetails().MAX_TO_WIN;
     }
 
+    // a dev playtest: some NPCs play by a trained model (npcBrain/npcModel.ts) instead of the rules
+    setNpcModelDriver(driver) {
+        if (this.npcModelDriver) this.npcModelDriver.stop();
+        this.npcModelDriver = driver;
+    }
+
+    // who a trained model may play: people fighting on their own, not scripted ones
+    getTrainablePieces = () => this.level.isWalkingLevel ? [] : this.getPieces().filter(piece =>
+        piece.isNpc && piece.avatar != 'kaiju' && !piece.isChaser && !piece.escapeTile && !(piece instanceof GameBoardPieceExtra) && piece.abilities.length > 0);
+
     stepPieces() {
         if (this.isPaused || this.isEditingTiles || this.recruitScene) return;
         if (this.cutscene) {
             this.updateCutscene();
             return;
         }
+        if (this.npcModelDriver && this.getGameResult() === null) this.npcModelDriver.step(this);
         this.stepRagdolls();
         if (this.getGameResult() !== null) {
             this.updateSlowMotion();
@@ -937,6 +1134,7 @@ export class GameManager {
             setClickedTileIndex: this.gameBoardManager.setClickedTileIndex,
             setHoveredTileIndex: this.gameBoardManager.setHoveredTileIndex,
             getIsPieceInDanger: this.gameBoardManager.getIsPieceInDanger,
+            getIsPowersOff: this.getIsPowersOff,
             getIsTeamDamaged: this.gameBoardPiecesManager.getIsTeamDamaged,
             getIsPieceOnTile: this.gameBoardPiecesManager.getIsPieceOnTile,
             getIsContactDmg: this.gameBoardPiecesManager.getIsContactDmg,

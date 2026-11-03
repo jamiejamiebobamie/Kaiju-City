@@ -18,15 +18,6 @@ const TopBar = styled.div`
   text-shadow: 0 0 0.3cqw black;
 `;
 
-const Button = styled.div`
-  padding: 0.4cqw 1cqw;
-  cursor: pointer;
-  border-radius: 0.4cqw;
-  border: 0.2cqw solid #5a8a7a;
-  color: #dfe;
-  background-color: #376e5b;
-`;
-
 const Huds = styled.div`
   position: absolute;
   top: 1cqw;
@@ -47,9 +38,6 @@ export const UI = ({
   isKaijuLevel,
   isShowingHuds,
   isShowingTopBar = true,
-  handleClickHome,
-  handleClickPause,
-  handleClickControls,
   isPaused
 }) => {
   const hudsRef = useRef(null);
@@ -67,9 +55,6 @@ export const UI = ({
     <>
       {/* hidden in cutscenes, like the HUDs, so it never covers anyone's words */}
       <TopBar style={{ visibility: isShowingTopBar ? "visible" : "hidden" }}>
-        <Button title="Pause" onClick={handleClickPause}>Pause</Button>
-        <Button title="How to play" onClick={handleClickControls}>Controls</Button>
-        <Button title="Goodbye!" onClick={handleClickHome}>Leave</Button>
         {isKaijuLevel && <span>{`Kaiju: ${kaijuKillCount} / ${kaijuKilledToWin}`}</span>}
       </TopBar>
       <Huds ref={hudsRef} style={{ transform: `scale(${hudScale})` }}>
