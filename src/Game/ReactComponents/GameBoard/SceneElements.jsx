@@ -486,7 +486,8 @@ export const SpeechBalloon = ({ name, text, x, y, zIndex, scale = 1, isFlipped =
       <SpeechBubbleElement key={text} style={isFlipped ? { left: `${80 - SPEECH_LOOK.width}px` } : undefined}>
         {getLayer(outlineColor, getPixelBox(0))}
         {getLayer(fillColor, getPixelBox(pixel))}
-        <SpeechTail style={isFlipped ? { left: "auto", right: "44px" } : undefined}>
+        {/* flipped, the tail is mirrored too: it leans out to the right, toward a speaker off that side */}
+        <SpeechTail style={isFlipped ? { left: "auto", right: "44px", transform: "scaleX(-1)" } : undefined}>
           {getLayer(outlineColor, getPixelTail(0))}
           {getLayer(fillColor, getPixelTail(pixel))}
         </SpeechTail>

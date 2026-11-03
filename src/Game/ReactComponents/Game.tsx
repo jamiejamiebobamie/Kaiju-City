@@ -19,10 +19,13 @@ import { useKeyPress } from "Utils/utils";
 import { ABILITY_KEY_CODES, GAME_TICK } from "Utils/gameState";
 import { FullscreenPage } from "Components/FullscreenPage.jsx";
 import { GameManager, GameResult } from '../DataClasses/GameManager';
-import { addUnlock, getBattlegroundUnlockId, getRecruitChoices, resetUnlocks, saveRecruitChoice } from '../DataClasses/Unlocks';
+import { addUnlock, getBattlegroundUnlockId, getRecruitChoices, getWonBattlegrounds, resetUnlocks, saveRecruitChoice } from '../DataClasses/Unlocks';
+
+// the map walks show the battlegrounds already won on, from whatever was saved
+updateMapWalkSites(getWonBattlegrounds());
 import { CAMPAIGN_SECTIONS, getIsLastSection } from '../DataClasses/Campaign';
 import { GameLoop } from '../DataClasses/GameLoop';
-import { applyLevelFile, LAB_TALK_PHASE, LEVEL_FILES, LEVELS, PENINSULA } from '../DataClasses/Levels/levels';
+import { applyLevelFile, LAB_TALK_PHASE, LEVEL_FILES, LEVELS, PENINSULA, updateMapWalkSites } from '../DataClasses/Levels/levels';
 import { TileEditor } from './Levels/TileEditor';
 import { gameUiStore, publishGameUi, resetGameUi } from '../DataClasses/gameUiStore';
 
@@ -360,7 +363,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const [recruitChoice, setRecruitChoice] = useState(undefined);
   const [leavingFor, setLeavingFor] = useState(undefined); // the Lab screen the scene is sliding away for
   const [isResumingRadio, setIsResumingRadio] = useState(false);
-  const isOnLabDetour = useRef(false);
+  const isOnLabDetour = useRef(false); // the Lab, or a battleground visited again, off a map walk
   const [labScreen, setLabScreen] = useState(undefined); // 'colors'
   const [labCover, setLabCover] = useState(undefined); // 'in' or 'out': the Lab screen's fade from or to black
   const [fadeCards, setFadeCards] = useState(undefined); // the screen is fading to black, and these are the unlocks shown on it
@@ -547,11 +550,13 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     return { title, buttons: [{ text: "Continue", onClick: () => fadeOutThen(() => showSection(campaignIndex + 1)) }] };
   };
 
-  const visitLab = () => {
+  // a stop off a map walk: the Lab, or a battleground won on before. the walk carries on after.
+  const visitSite = site => {
+    const visitLevelId = site.visitLevelId || 'labIntro';
     isOnLabDetour.current = true;
-    setLevelId('labIntro');
+    setLevelId(visitLevelId);
     endMatch();
-    startMatch(LEVELS.labIntro);
+    startMatch(LEVELS[visitLevelId]);
   };
 
   const openLabScreen = screen => {
@@ -625,6 +630,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     const choiceLabel = skill ? `${skill.name} power unlocked!` : `${label} recruited! Call them in during fights.`;
     // the fight's battleground opens for versus, whichever way the player chose
     addUnlock(getBattlegroundUnlockId(level.id));
+    updateMapWalkSites(getWonBattlegrounds());
     const portrait = `/levels/portraits/${avatar}.png`;
     const cards = [
       { label: `${label} Unlocked`, image: portrait },
@@ -691,7 +697,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     const isWon = winner === GameResult.PlayerWon;
     if (level.isWalkingLevel && isWon) {
       const site = gameManager.current && gameManager.current.reachedSite;
-      leaveWithClouds(site && site.isDetour ? visitLab : leaveLevel);
+      leaveWithClouds(site && site.isDetour ? () => visitSite(site) : leaveLevel);
       return;
     }
     if (isWon && level.agentDrops) unlockRecruitSkill("agent");
@@ -801,7 +807,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                   <input type="checkbox" checked={isEditingTiles} onChange={() => setIsEditing(!isEditingTiles)} /> Edit tiles
                 </label>
               )}
-              <button onClick={resetUnlocks}>Reset unlocks</button>
+              <button onClick={() => { resetUnlocks(); updateMapWalkSites([]); }}>Reset unlocks</button>
               <select aria-label="Kaiju speed" value={kaijuSpeedMode} onChange={e => { const mode = e.target.value as KaijuSpeedMode; setKaijuSpeedMode(mode); setKaijuSpeedModeState(mode); e.target.blur(); }}>
                 <option value="rampage">Kaiju: fast after fire</option>
                 <option value="windUp">Kaiju: fast while glowing</option>
@@ -873,6 +879,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               kaijuKilledToWin={kaijuToWin}
               isKaijuLevel={!!level.kaijuEntry}
               isShowingHuds={!level.isWalkingLevel && !isCutscene && !recruitScene}
+              isShowingTopBar={!isCutscene && !recruitScene}
               handleClickHome={handleClickHome}
               handleClickPause={handleClickPause}
               handleClickControls={openControls}

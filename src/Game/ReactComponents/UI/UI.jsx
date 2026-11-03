@@ -46,6 +46,7 @@ export const UI = ({
   kaijuKilledToWin,
   isKaijuLevel,
   isShowingHuds,
+  isShowingTopBar = true,
   handleClickHome,
   handleClickPause,
   handleClickControls,
@@ -64,7 +65,8 @@ export const UI = ({
 
   return (
     <>
-      <TopBar>
+      {/* hidden in cutscenes, like the HUDs, so it never covers anyone's words */}
+      <TopBar style={{ visibility: isShowingTopBar ? "visible" : "hidden" }}>
         <Button title="Pause" onClick={handleClickPause}>Pause</Button>
         <Button title="How to play" onClick={handleClickControls}>Controls</Button>
         <Button title="Goodbye!" onClick={handleClickHome}>Leave</Button>

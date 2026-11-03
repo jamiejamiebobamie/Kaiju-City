@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import { applyLevelFile, getTileTone, LEVEL_FILES, LEVELS, RUN_SPEED_SCALE, TILE_TONES } from 'Game/DataClasses/Levels/levels';
+import { applyLevelFile, getTileTone, LEVEL_FILES, LEVELS, RUN_SPEED_SCALE, TILE_TONES, updateMapWalkSites } from 'Game/DataClasses/Levels/levels';
 import { rescaleLevelTiles } from 'Game/DataClasses/Levels/levelScale';
 import aquarium from 'Game/DataClasses/Levels/data/aquarium.json';
 import rapidTransit from 'Game/DataClasses/Levels/data/rapidTransit.json';
@@ -374,7 +374,7 @@ describe('levels', () => {
 
   it('walking levels are the street, sewers and the first Lab visit', () => {
     const walking = Object.values(LEVELS).filter(level => level.isWalkingLevel).map(({ id }) => id).sort();
-    expect(walking).toEqual(['labIntro', 'labTrap', 'mapAquarium', 'mapLab', 'mapRooftop', 'mapSubway', 'sewer1', 'sewer2', 'street']);
+    expect(walking).toEqual(['labIntro', 'labTrap', 'mapAquarium', 'mapLab', 'mapRooftop', 'mapSubway', 'sewer1', 'sewer2', 'street', 'visit-aquarium', 'visit-rapidTransit', 'visit-rooftop']);
   });
 
   it('no level has goal tiles: map walks have sites instead', () => {
@@ -647,13 +647,15 @@ describe('the Agents in the Lab', () => {
     run(gm, 400);
     const agents = getAgents(gm);
     const last = agents.pop();
+    // hard enough to get through any extra lives their random powers gave them
+    const finish = agent => agent.decrementHealth(gm.accTime, agent.maxLives + agent.livesModifier);
     agents.forEach(agent => {
       gm.accTime += 5000;
-      agent.decrementHealth(gm.accTime, agent.maxLives);
+      finish(agent);
     });
     expect(gm.getGameResult()).toBe(null);
     gm.accTime += 5000;
-    last.decrementHealth(gm.accTime, last.maxLives);
+    finish(last);
     expect(gm.getGameResult()).toBe(GameResult.PlayerWon);
   });
 });
@@ -1717,5 +1719,33 @@ describe('the Lab Trap', () => {
 
   it('recruits are in the scene', () => {
     expect(LEVELS.labTrap.hasRecruitFollowers).toBe(true);
+  });
+});
+
+describe('visiting battlegrounds from the map', () => {
+  afterEach(() => updateMapWalkSites([]));
+
+  it('a battleground won on shows on the later map walks, as a stop off the walk', () => {
+    expect(LEVELS.mapRooftop.sites.some(site => site.visitLevelId)).toBe(false);
+    updateMapWalkSites(['rapidTransit']);
+    const visit = LEVELS.mapRooftop.sites.find(site => site.visitLevelId);
+    expect(visit.visitLevelId).toBe('visit-rapidTransit');
+    expect(visit.isDetour).toBe(true);
+    // the walk to the Subway itself isn't doubled up
+    expect(LEVELS.mapSubway.sites.filter(({ icon }) => icon == 'subway').length).toBe(1);
+  });
+
+  it('a visit is a walk: no bystander, no trains, the teammate has a word, and a door back', () => {
+    const settingsManager = new SettingsManager();
+    settingsManager.setSortedPlayerChosenAbilityElementsString(['Fire', 'Ice', 'Water']);
+    settingsManager.setIsTeammate(true);
+    const gm = new GameManager({ level: LEVELS['visit-rapidTransit'], settingsManager });
+    gm.initGame();
+    expect(gm.rivalPiece).toBeUndefined();
+    expect(gm.trainSchedule).toBeUndefined();
+    expect(gm.speech.text).toMatch(/Not much to do here/);
+    while (gm.cutscene && gm.speech.text.startsWith('Not')) gm.stepPieces();
+    expect(gm.speech.text).toMatch(/good place to train/);
+    expect(LEVELS['visit-rapidTransit'].exit).toBeDefined();
   });
 });

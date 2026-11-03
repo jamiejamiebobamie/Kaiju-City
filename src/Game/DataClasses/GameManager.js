@@ -45,7 +45,10 @@ export const CUTSCENE = {
   mapWideMs: 2400,
   recruitZoomScale: 1.3,
   recruitSpeechRows: 3.4, // how far above a character their words sit
-  speechTopY: 150, // words sit no higher than this, or they would go off the top of a wide shot
+  speechTopY: 200, // words sit no higher than this, or they would go off the top of a wide shot or under the top buttons
+  speechLineChars: 15, // about this many letters fit on a balloon's line
+  speechShortLines: 3, // a balloon of up to this many lines fits under 'speechTopY'
+  speechLinePx: 40, // each line past that sits it this much lower, in scene pixels
   shotHeadRows: 1.5,
   recruitStandRows: 2, // how far north of the beaten bystander they stand
   recruitShotRows: 3, // how far north of the bystander the camera looks
@@ -308,6 +311,7 @@ export class GameManager {
         else if (this.level.trap) this.startTrapScene();
         else if (this.level.showdown) this.startShowdown();
         else if (this.level.walkIn) this.startWalkInScene();
+        else if (this.level.visitLines) this.startVisitScene();
     }
 
     // the bystander has touched the Kaiju part in the intro, and now the fight starts
@@ -414,7 +418,8 @@ export class GameManager {
             return;
         }
         cutscene.msLeft = step.ms;
-        this.speech = step.speech || null;
+        // words can be placed when they are said, over wherever the speaker has walked to
+        this.speech = (typeof step.speech == 'function' ? step.speech() : step.speech) || null;
         if (step.onStart) step.onStart();
         if (step.arrivals) step.arrivals.forEach(arrival => this.startPieceArrival(arrival));
         if (step.phase) this.activePhases.add(step.phase);
@@ -494,6 +499,13 @@ export class GameManager {
         ]);
     }
 
+    // a battleground won on before, visited from the map: the teammate has a word, then it's a walk
+    startVisitScene() {
+        const [, teammate] = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
+        if (!teammate) return;
+        this.startCutscene(this.level.visitLines.map(text => ({ shot: { isWide: true }, ms: getSpeechMs(text), speech: this.getSpeechOver(teammate, 'Teammate', text) })));
+    }
+
     // the whole map, to show where to go, then in on the player as in a battle
     startMapIntro() {
         const [player] = this.getPieces();
@@ -555,12 +567,15 @@ export class GameManager {
     getSpeechOver(piece, name, text) {
         const { x, y } = piece.charLocation;
         const { rowStep, scale } = this.level.grid;
-        return { name, text, x, y: Math.max(y - CUTSCENE.recruitSpeechRows * rowStep * scale, CUTSCENE.speechTopY), isFlipped: x > this.level.world.width / 2 };
+        // a longer balloon is taller, so it sits lower to stay in the shot
+        const lineCount = Math.ceil(text.length / CUTSCENE.speechLineChars);
+        const topY = CUTSCENE.speechTopY + Math.max(lineCount - CUTSCENE.speechShortLines, 0) * CUTSCENE.speechLinePx;
+        return { name, text, x, y: Math.max(y - CUTSCENE.recruitSpeechRows * rowStep * scale, topY), isFlipped: x > this.level.world.width / 2 };
     }
 
     // the teammate may have gone on ahead. after a beat the recruits catch up, the script plays, and it may end with the team walking on.
     startWalkInScene() {
-        const { teammateSpot, doorTile, standSpots, script, ending } = this.level.walkIn;
+        const { teammateSpot, doorTile, standSpots, frontSpots, script, ending } = this.level.walkIn;
         const [player, teammate] = this.getPieces();
         const hasTeammate = !!teammate && !this.followers.includes(teammate);
         const getTile = spot => this.gameBoardManager.getClosestWalkableTileToLocation(spot);
@@ -587,8 +602,15 @@ export class GameManager {
             return this.getSpeechOver(speaker, getName(speaker), text);
         };
 
+        const pair = [player, teammate].filter(piece => !!piece && (piece == player || hasTeammate));
+        // the two of them walk to the front of the group, where their words are in shot
+        const frontSteps = !frontSpots ? [] : [
+            { shot, arrivals: pair.map((piece, index) => ({ piece, toTile: getTile(frontSpots[index]), dir: 'downLeft' })) },
+            { shot, ms: 0, onStart: () => pair.forEach(piece => { piece.facingDir = 'downLeft'; }) }
+        ];
+
         const endingSteps = !ending ? [] : [
-            { shot, arrivals: [player, teammate].filter(piece => !!piece && (piece == player || hasTeammate)).map((piece, index) => ({ piece, toTile: getTile(ending.spots[index]), dir: 'downLeft' })) },
+            { shot, arrivals: pair.map((piece, index) => ({ piece, toTile: getTile(ending.spots[index]), dir: 'downLeft' })) },
             { shot, ms: ending.climaxMs, phase: ending.phase },
             { shot, ms: 0, onStart: () => { this.isSceneOver = true; } }
         ];
@@ -596,9 +618,10 @@ export class GameManager {
         this.startCutscene([
             { shot, ms: CUTSCENE.pullInMs },
             ...arrivals,
+            ...frontSteps,
             ...script
                 .filter(({ who }) => who != 'teammate' || hasTeammate)
-                .map(line => ({ shot, ms: getSpeechMs(line.text), speech: getSpeech(line) })),
+                .map(line => ({ shot, ms: getSpeechMs(line.text), speech: () => getSpeech(line) })),
             ...endingSteps
         ]);
     }

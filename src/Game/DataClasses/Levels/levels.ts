@@ -144,7 +144,7 @@ type AgentDrops = {
   drops: Array<{ x: number; isFromLeft: boolean }>; // one for each Agent. x is where they drop, in scene pixels.
 };
 
-type MapSite = { spot: { x: number; y: number }; color: string; isDetour?: boolean };
+type MapSite = { spot: { x: number; y: number }; color: string; icon?: string; isDetour?: boolean; visitLevelId?: string };
 
 export type LevelConfig = {
   id: string;
@@ -158,6 +158,7 @@ export type LevelConfig = {
   walkableTiles: Array<TileIndex>;
   tileSets?: Record<string, Array<TileIndex>>; // the level's walkable tiles for each phase
   isWalkingLevel: boolean; // a scene to walk through: no powers, and no HUDs
+  visitLines?: Array<string>; // a battleground visited again: what the teammate says on arrival
   tileLinks: Array<[TileIndex, TileIndex]>; // pairs of tiles a piece jumps between instantly
   spawnTiles: Array<TileIndex>; // where the player's team starts, in order. random if empty.
   goalTiles: Array<TileIndex>; // tiles highlighted to show the player where to go
@@ -174,6 +175,7 @@ export type LevelConfig = {
     teammateSpot?: { x: number; y: number };
     doorTile: { i: number; j: number }; // where recruits walk in from
     standSpots: Array<{ x: number; y: number }>;
+    frontSpots?: Array<{ x: number; y: number }>; // where the player and teammate step to before the words
     script: Array<{ who: string; text: string }>; // 'who' is 'teammate', 'player', or 'recruit': a recruit, or the player if there are none
     ending?: { spots: Array<{ x: number; y: number }>; phase: string; climaxMs: number }; // the player and teammate walk to these spots, and the phase ends the level
   };
@@ -517,6 +519,7 @@ const sewerPart = (id, x, y, width, height, seconds, delaySeconds, glowColor) =>
 const SEWER2_WALK_IN = {
   doorTile: { i: 18, j: 4 },
   standSpots: [{ x: 1100, y: 520 }, { x: 1040, y: 590 }, { x: 1170, y: 600 }],
+  frontSpots: [{ x: 705, y: 560 }, { x: 772, y: 598 }], // the player and teammate step to the front of the group, on the far left, before they talk
   script: [
     { who: 'player', text: 'Are those... Kaiju parts?' },
     { who: 'teammate', text: 'The one thing we need, and it was in the next room this whole time.' },
@@ -531,7 +534,7 @@ const SEWER2_WALK_IN = {
     { who: 'teammate', text: "OK... let's do this." },
     { who: 'player', text: "Let's do this." }
   ],
-  ending: { spots: [{ x: 720, y: 560 }, { x: 790, y: 500 }], phase: 'blinding', climaxMs: 8500 } // the climb to the whiteout, in SceneElements
+  ending: { spots: [{ x: 638, y: 523 }, { x: 705, y: 485 }], phase: 'blinding', climaxMs: 8500 } // the climb to the whiteout, in SceneElements
 };
 
 const SEWER2_SCENE = {
@@ -757,10 +760,32 @@ export const LEVELS: Record<string, LevelConfig> = Object.fromEntries(
 // sites are placed as in the mission map mockup
 const CITY_END = { x: 230, y: 160 };
 const FOOT = { x: 230, y: 660 };
-LEVELS.mapSubway = buildMapWalk('mapSubway', 'Map to Subway', CITY_END, [{ spot: { x: 126, y: 279 }, color: '#57E931', icon: 'subway' }, LAB_SITE]);
-LEVELS.mapRooftop = buildMapWalk('mapRooftop', 'Map to Rooftop', FOOT, [{ spot: { x: 238, y: 122 }, color: '#ff2a2a', icon: 'rooftop' }, LAB_SITE]);
-LEVELS.mapAquarium = buildMapWalk('mapAquarium', 'Map to Aquarium', CITY_END, [{ spot: { x: 297, y: 594 }, color: '#C5063F', icon: 'aquarium' }, LAB_SITE]);
-LEVELS.mapLab = buildMapWalk('mapLab', 'Map to Lab', CITY_END, [{ ...LAB_SITE, isDetour: false }]);
+const BATTLEGROUND_SITES = {
+  rapidTransit: { spot: { x: 126, y: 279 }, color: '#57E931', icon: 'subway' },
+  rooftop: { spot: { x: 238, y: 122 }, color: '#ff2a2a', icon: 'rooftop' },
+  aquarium: { spot: { x: 297, y: 594 }, color: '#C5063F', icon: 'aquarium' }
+};
+const MAP_WALKS = [
+  ['mapSubway', 'Map to Subway', CITY_END, [BATTLEGROUND_SITES.rapidTransit, LAB_SITE]],
+  ['mapRooftop', 'Map to Rooftop', FOOT, [BATTLEGROUND_SITES.rooftop, LAB_SITE]],
+  ['mapAquarium', 'Map to Aquarium', CITY_END, [BATTLEGROUND_SITES.aquarium, LAB_SITE]],
+  ['mapLab', 'Map to Lab', CITY_END, [{ ...LAB_SITE, isDetour: false }]]
+] as const;
+
+// a battleground the player has won on can be visited again from the map: a walk around it, and back
+export const getVisitLevelId = (levelId: string) => `visit-${levelId}`;
+const VISIT_LINES = ['Not much to do here...', '...but it would be a good place to train.'];
+
+// the map walks show the battlegrounds already won on, as well as where to go next
+export const updateMapWalkSites = (visitedIds: Array<string>) => {
+  MAP_WALKS.forEach(([id, name, start, sites]) => {
+    const visited = visitedIds
+      .filter(levelId => BATTLEGROUND_SITES[levelId] && !sites.includes(BATTLEGROUND_SITES[levelId]))
+      .map(levelId => ({ ...BATTLEGROUND_SITES[levelId], isDetour: true, visitLevelId: getVisitLevelId(levelId) }));
+    LEVELS[id] = buildMapWalk(id, name, start, [...sites, ...visited]);
+  });
+};
+updateMapWalkSites([]);
 
 // the Lab's fight scene, before the fight: where the Agent takes the player's powers back
 LEVELS.labTrap = {
@@ -783,6 +808,30 @@ LEVELS.labTrap = {
     { id: 'exit', type: 'door' as const, phase: EXIT_OPEN_PHASE, x: 1290, y: 470, width: 0, height: 0, sortY: ABOVE_CHARACTERS, label: 'Escape!' }
   ]
 };
+
+// the battleground as a walk: no bystander, no trains, and a door back to the map where the bystander once lay
+Object.keys(BATTLEGROUND_SITES).forEach(levelId => {
+  const level = LEVELS[levelId];
+  const doorSpot = level.rival.recruitSpot;
+  LEVELS[getVisitLevelId(levelId)] = {
+    ...level,
+    id: getVisitLevelId(levelId),
+    name: `${level.name} (visit)`,
+    isWalkingLevel: true,
+    cameraZoom: 1, // walking scenes are seen whole
+    rival: undefined,
+    hasTrainSchedule: false,
+    defaultPhases: [],
+    wideShots: {},
+    liveWideShots: {},
+    visitLines: VISIT_LINES,
+    exit: { spot: doorSpot, afterMs: 0 },
+    sceneElements: [
+      ...level.sceneElements,
+      { id: 'exit', type: 'door' as const, phase: EXIT_OPEN_PHASE, x: doorSpot.x, y: doorSpot.y, width: 0, height: 0, sortY: ABOVE_CHARACTERS, label: 'Back to map' }
+    ]
+  };
+});
 
 export const PENINSULA = LEVELS.peninsula;
 
