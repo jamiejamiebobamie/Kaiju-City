@@ -587,19 +587,34 @@ describe('the Agents in the Lab', () => {
   };
   const getAgents = gm => gm.getPieces().filter(piece => piece.avatar == 'agent' && !gm.extras.includes(piece));
 
-  it('come in one at a time, three in all', () => {
+  const dropCount = LEVELS.lab.agentDrops.drops.length;
+
+  it('the Agent who did the talking fights from where he stood, then the rest come in one at a time', () => {
     const { gm } = makeLab();
-    expect(getAgents(gm).length).toBe(0);
-    run(gm, 20);
+    const [speaker] = getAgents(gm);
     expect(getAgents(gm).length).toBe(1);
+    expect(speaker.isOnTiles).toBe(true);
+    expect(speaker.isEntering).toBe(false);
+    run(gm, 20);
+    expect(getAgents(gm).length).toBe(2);
     run(gm, 400);
-    expect(getAgents(gm).length).toBe(3);
+    expect(getAgents(gm).length).toBe(1 + dropCount);
+  });
+
+  it('each Agent has three powers, picked at random', () => {
+    const { gm } = makeLab();
+    run(gm, 400);
+    getAgents(gm).forEach(agent => {
+      const elements = agent.abilities.map(a => a.gameBoardPieceAbilityData.element);
+      expect(new Set(elements).size).toBe(3);
+    });
   });
 
   it('walk the catwalk from off-shot, drop, and land on the floor to fight', () => {
     const { gm } = makeLab();
-    while (!getAgents(gm).length) gm.stepPieces();
-    const [agent] = getAgents(gm);
+    const getDropping = () => getAgents(gm).filter(piece => piece.isEntering);
+    while (!getDropping().length) gm.stepPieces();
+    const [agent] = getDropping();
     const { y } = agent.charLocation;
     expect(agent.charLocation.x).toBeLessThan(0);
     expect(agent.isOnTiles).toBe(false);
@@ -627,17 +642,18 @@ describe('the Agents in the Lab', () => {
     }
   });
 
-  it('winning takes all three', () => {
+  it('winning takes every Agent, the speaker too', () => {
     const { gm } = makeLab();
     run(gm, 400);
     const agents = getAgents(gm);
-    agents.slice(0, 2).forEach(agent => {
+    const last = agents.pop();
+    agents.forEach(agent => {
       gm.accTime += 5000;
       agent.decrementHealth(gm.accTime, agent.maxLives);
     });
     expect(gm.getGameResult()).toBe(null);
     gm.accTime += 5000;
-    agents[2].decrementHealth(gm.accTime, agents[2].maxLives);
+    last.decrementHealth(gm.accTime, last.maxLives);
     expect(gm.getGameResult()).toBe(GameResult.PlayerWon);
   });
 });
@@ -1164,9 +1180,10 @@ describe('playtest fixes', () => {
   it('the camera stays pulled out while an Agent enters, and the game keeps going', () => {
     const { gm } = makeGame(LEVELS.lab);
     while (gm.cutscene) gm.stepPieces();
-    for (let k = 0; k < 20 && gm.getPieces().length < 3; k++) gm.stepPieces();
+    const getDropping = () => gm.getPieces().filter(piece => piece.isEntering && !piece.isDead);
+    for (let k = 0; k < 20 && !getDropping().length; k++) gm.stepPieces();
     expect(gm.getIsWideShot()).toBe(true);
-    const agent = gm.getPieces().at(-1);
+    const [agent] = getDropping();
     const { accTime } = gm;
     for (let k = 0; k < 200 && !agent.isOnTiles; k++) gm.stepPieces();
     expect(gm.accTime).toBeGreaterThan(accTime);
@@ -1678,5 +1695,27 @@ describe('Slippery', () => {
     const slid = getStopTile(true);
     expect(slid.i).toBe(still.i);
     expect(still.j - slid.j).toBe(1);
+  });
+});
+
+describe('the Lab Trap', () => {
+  it('when the chase starts, the teammate runs for the exit and is gone once there', () => {
+    const settingsManager = new SettingsManager();
+    settingsManager.setSortedPlayerChosenAbilityElementsString(['Fire', 'Ice', 'Water']);
+    settingsManager.setIsTeammate(true);
+    const gm = new GameManager({ level: LEVELS.labTrap, settingsManager });
+    gm.initGame();
+    while (gm.cutscene) gm.stepPieces();
+    const [player, teammate] = gm.getPieces();
+    player.maxLives = 1000;
+    player.lives = 1000;
+    expect(teammate.escapeTile).toBeDefined();
+    for (let k = 0; k < 600 && teammate.isVisible; k++) gm.stepPieces();
+    expect(teammate.isVisible).toBe(false);
+    expect(gm.getGameResult()).toBe(null); // the player still has to get out
+  });
+
+  it('recruits are in the scene', () => {
+    expect(LEVELS.labTrap.hasRecruitFollowers).toBe(true);
   });
 });

@@ -118,6 +118,7 @@ type TileTone = keyof typeof TILE_TONES;
 type Rival = {
   avatar: string;
   abilities: Array<string>; // ability elements
+  isRandomPowers?: boolean; // each Agent gets three powers at random instead
   maxLives: number;
   moveSpeed: number;
   touchPhase: string; // the phase where they touch the Kaiju part. the fight starts once it plays out.
@@ -630,14 +631,16 @@ const LAB_SCENE = {
   showdown: { script: LAB_SHOWDOWN_SCRIPT, speechSpot: { x: 700, y: 365 } },
   extras: [standingAgent(700, 480)],
   agentDrops: {
-    abilities: ['death', 'lightning', 'glass'],
+    abilities: ['death', 'lightning', 'glass'], // when not random
+    isRandomPowers: true, // each Agent gets three powers at random, Kaiju Fire among them
     maxLives: 4,
     moveSpeed: 5,
     firstDropMs: 1500,
     dropIntervalMs: 7000,
     catwalkY: 130,
     floorY: 450,
-    drops: [{ x: 330, isFromLeft: true }, { x: 1080, isFromLeft: false }, { x: 520, isFromLeft: true }]
+    // the Agent who did the talking fights too, from where he stood
+    drops: [{ x: 330, isFromLeft: true }, { x: 1080, isFromLeft: false }, { x: 520, isFromLeft: true }, { x: 900, isFromLeft: false }, { x: 230, isFromLeft: true }]
   },
   phases: [{ id: 'clones', label: 'Agent clones' }],
   sceneElements: [
@@ -769,6 +772,7 @@ LEVELS.labTrap = {
   agentDrops: undefined,
   phases: [],
   exit: { spot: { x: 1290, y: 480 }, afterMs: 0 },
+  hasRecruitFollowers: true, // the recruits are here too, and run with the teammate
   trap: {
     lines: ['You did well, soldier.', 'But those powers were only on loan.', 'Lab property. We are taking them back.', 'Seize them!'],
     speechSpot: { x: 700, y: 365 },

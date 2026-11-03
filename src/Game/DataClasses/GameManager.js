@@ -59,6 +59,10 @@ export const TEAM_COLORS = {
     agents: '#e0201b'
 };
 
+// the Lab fight's Agents: three of these each, at random
+const AGENT_POWER_POOL = ['ice', 'fire', 'water', 'wood', 'lightning', 'death', 'bubble', 'metal', 'glass', 'love', 'charm', 'kaijuFire'];
+const AGENT_POWER_COUNT = 3;
+
 const ARRIVAL_LINE = "Heads-up, teammate. They're coming!";
 
 // before each Recruit or Terminate: what each choice means
@@ -514,8 +518,26 @@ export class GameManager {
             ...script
                 .filter(({ who }) => who != 'teammate' || !!teammate)
                 .map(line => ({ shot, ms: getSpeechMs(line.text), speech: getSpeech(line) })),
-            { shot, ms: 0, onStart: () => this.extras.forEach(extra => extra.leave()) }
+            { shot, ms: 0, onStart: this.startShowdownFight }
         ]);
+    }
+
+    // the Agent who did the talking fights from where he stands. the rest drop in from the catwalk.
+    startShowdownFight = () => {
+        this.extras.forEach(extra => {
+            extra.leave();
+            this.addAgent({ standTile: extra.getTileIndex() });
+        });
+    }
+
+    // Agents with powers picked at random, Kaiju Fire among them
+    getAgentAbilities() {
+        const { abilities, isRandomPowers } = this.level.agentDrops;
+        if (!isRandomPowers) return this.settingsManager.getAbilitiesFromElements(abilities);
+        const pool = [...AGENT_POWER_POOL];
+        const picked = [];
+        while (picked.length < AGENT_POWER_COUNT) picked.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+        return this.settingsManager.getAbilitiesFromElements(picked);
     }
 
     // everyone stands facing the Agent while he has his say, each line once, and then the chase is on
@@ -586,6 +608,9 @@ export class GameManager {
         const { chasers: { xs, startY, landingY, moveSpeed, abilities } } = this.level.trap;
         const team = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
         team.forEach(piece => { piece.abilities = []; });
+        // the teammate and the recruits make a run for the exit. the player has to follow.
+        const exitTile = this.gameBoardManager.getClosestWalkableTileToLocation(this.level.exit.spot);
+        team.filter(piece => piece.isNpc).forEach(piece => { piece.escapeTile = exitTile; });
         xs.forEach(x => {
             const piece = this.gameBoardPiecesManager.addPiece({
                 pieceClass: GameBoardPieceAgent,
@@ -737,18 +762,23 @@ export class GameManager {
         if (this.agentsDropped < drops.length && isDue) this.addAgent(drops[this.agentsDropped]);
     }
 
-    addAgent({ x, isFromLeft }) {
-        const { abilities, maxLives, moveSpeed, catwalkY, floorY } = this.level.agentDrops;
+    addAgent({ x = 0, isFromLeft = false, standTile = undefined }) {
+        const { maxLives, moveSpeed, catwalkY, floorY } = this.level.agentDrops;
         const piece = this.gameBoardPiecesManager.addPiece({
             pieceClass: GameBoardPieceAgent,
             pieceInfo: {
                 ...PIECES_INFO.agent,
-                abilities: this.settingsManager.getAbilitiesFromElements(abilities),
+                abilities: this.getAgentAbilities(),
                 maxLives,
                 moveSpeed
             },
             teamIndex: 1
         });
+        if (standTile) {
+            piece.isEntering = false;
+            piece.initCharLocation(true, standTile);
+            return;
+        }
         const offShot = 60;
         piece.startEntrance({
             startLocation: { x: isFromLeft ? -offShot : this.level.world.width + offShot },
@@ -760,7 +790,7 @@ export class GameManager {
     }
 
     getKillsToWin() {
-        if (this.level.agentDrops) return this.level.agentDrops.drops.length;
+        if (this.level.agentDrops) return this.level.agentDrops.drops.length + (this.level.showdown ? this.level.extras.length : 0);
         if (this.level.rival) return 1;
         return this.killsToWin || this.gameManagerProxy.determineKaijuDetails().MAX_TO_WIN;
     }

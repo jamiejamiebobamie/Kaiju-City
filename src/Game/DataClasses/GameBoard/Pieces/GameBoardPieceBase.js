@@ -189,7 +189,9 @@ export class GameBoardPieceBase {
         this.updateCharm(accTime);
 
         // intention: even the player can be Charmed and lose control for a moment of his piece....
-        if (this.isNpc && this.isOnTiles) {
+        if (this.isNpc && this.isOnTiles && this.escapeTile) {
+            this.runForEscape();
+        } else if (this.isNpc && this.isOnTiles) {
 
             const enemy = this.gameManagerProxy.getClosestEnemy(this.pieceIndex);
 
@@ -232,6 +234,17 @@ export class GameBoardPieceBase {
                 this.decrementHealth(accTime, dmg);
             }
         }
+    }
+
+    // runs for a way out, ignoring everyone, and is gone once there
+    runForEscape() {
+        const { i, j } = this.escapeTile;
+        if (this.tileIndex.i == i && this.tileIndex.j == j) {
+            this.isVisible = false;
+            this.isOnTiles = false;
+            return;
+        }
+        if (this.isThere) this.updateMovmement(this.gameManagerProxy.getPathFromTileToTile({ fromTile: this.tileIndex, toTile: this.escapeTile }));
     }
 
     // a charmed piece fights for the other team for a while. the player keeps their piece, but its keys are reversed.
