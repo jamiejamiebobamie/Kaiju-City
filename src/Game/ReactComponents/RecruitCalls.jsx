@@ -8,10 +8,11 @@ import { PIECES_INFO } from "Utils/gameState";
   Keys only: the mouse doesn't play.
 */
 export const RECRUIT_FIRST_KEY = 7;
+// set into the bottom of the casing: each icon breaks the line between the screen and the casing
 const Row = styled.div`
   position: absolute;
   left: 50%;
-  bottom: 1cqw;
+  bottom: -2.3cqw;
   transform: translateX(-50%);
   z-index: 2147483640;
   display: flex;
@@ -28,6 +29,8 @@ const CallButton = styled.button`
   border: 0.22cqw solid #8d9097;
   border-radius: 50%;
   cursor: default;
+  /* a ring of the casing around each, with its lit edge, so it sits in the casing */
+  box-shadow: 0 0 0 0.45cqw #1d1b1a, 0 0 0 0.55cqw #4a4542, 0 0.3cqw 0.6cqw 0.45cqw rgba(0, 0, 0, 0.7);
   &:disabled {
     filter: grayscale(1) brightness(0.45);
   }

@@ -665,7 +665,8 @@ const HotspotLabel = styled.div`
   text-shadow: 0 0 4px black, 2px 2px 0 black;
 `;
 
-export const SceneElements = ({ level, activePhases, isPaused, onHotspot }) => (
+// 'isDialogueLog': a scene's speech goes to the log beside the monitor instead
+export const SceneElements = ({ level, activePhases, isPaused, onHotspot, isDialogueLog = false }) => (
   <>
     {level.sceneElements.map(element => {
       const {
@@ -751,7 +752,7 @@ export const SceneElements = ({ level, activePhases, isPaused, onHotspot }) => (
         // a sign, not a button: the team has to walk there
         return <DoorElement key={id} as="div" style={{ left: `${x}px`, top: `${y}px`, zIndex: style.zIndex }}><DoorIcon className="fa fa-sign-out" />{element.label}</DoorElement>;
       }
-      if (type == "speech") return <SpeechBubble key={id} element={element} style={style} />;
+      if (type == "speech") return isDialogueLog ? null : <SpeechBubble key={id} element={element} style={style} />;
       if (type == "part") {
         const part = <KaijuPart key={id} element={element} activePhases={activePhases} style={style} />;
         if (!element.overFront) return part;

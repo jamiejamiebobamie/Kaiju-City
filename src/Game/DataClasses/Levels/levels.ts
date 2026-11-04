@@ -504,7 +504,7 @@ const SEWER1_WALK_IN = {
     ...SEWER1_LINES.slice(3).map(text => ({ who: 'teammate', text }))
   ],
   // then the doorway lights up, someone sees it, and after a beat the way on shows. draft words.
-  reveal: { glowPhase: 'glow', line: { who: 'recruit', text: 'Do you see that glow? Something is down there...' }, beatMs: 2500, shownPhase: 'deeperShown' }
+  reveal: { glowPhase: 'glow', line: { who: 'recruit', text: "What's that glow?" }, beatMs: 2500, shownPhase: 'deeperShown' }
 };
 
 const SEWER1_TALK = [

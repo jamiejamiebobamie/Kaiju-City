@@ -444,7 +444,7 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
         const powerColor = tile.getColor();
         // only powers that hurt take their side's color; the rest keep their own
         const isHarmful = tile.getTileStatus()?.getDmgAmt() > 0;
-        const teamColor = isTeamColors && powerColor && isHarmful && !tile.teleportTileStatus ? gameManager.getStatusTeamColor(tile.cast.casterIndex) : undefined;
+        const teamColor = isTeamColors && powerColor && isHarmful && !tile.teleportTileStatus ? gameManager.getStatusTeamColor(tile.cast.casterIndex, tile.teamIndex) : undefined;
         const statusColor = teamColor || powerColor;
         const isSmoke = !!statusColor && tile.cast.isSmoke && !tile.teleportTileStatus;
         const color = isSmoke ? getSmokeColor(tile, statusColor) : statusColor;

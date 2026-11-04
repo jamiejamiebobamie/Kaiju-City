@@ -11,13 +11,13 @@ import { TILE_DIRS, TILE_DIR_NORM_VECS } from 'Utils/gameState';
 export const RAGDOLL = {
   moveWeight: 1, // how much the way they were running pushes them
   powerWeight: 1.6, // how much the power that hit them pushes them
-  speedRows: 5, // rows per second at full push
-  hopRows: 1.4, // how high the first hop goes
+  speedRows: 2, // rows per second at full push: heavy bodies that slide, not fly (was 5)
+  hopRows: 0.35, // how high the first hop goes (was 1.4)
   gravityRows: 14, // rows per second per second
-  bounce: 0.35, // how much of the fall comes back up on landing
+  bounce: 0.15, // how much of the fall comes back up on landing (was 0.35)
   minBounceRows: 1, // a slower landing doesn't bounce
   slideFriction: 0.06, // what is left of the slide's speed after a second on the ground
-  spinDegrees: 540, // degrees per second, at full push
+  spinDegrees: 220, // degrees per second, at full push (was 540)
   restSpeedRows: 0.15,
   wallBounce: 0.6, // at the edge of the play area, it bounces back in, so it stays in the shot
   // the limbs
@@ -157,7 +157,8 @@ export const stepRagdoll = (body: Ragdoll, seconds: number, rowPx: number, bound
     }
     if (height <= 0) {
       height = 0;
-      const isBouncing = -vHeight > RAGDOLL.minBounceRows * rowPx;
+      // a rebound smaller than one tick of gravity would only land again: it would hop for ever, and never slide
+      const isBouncing = -vHeight > RAGDOLL.minBounceRows * rowPx && -vHeight * RAGDOLL.bounce > RAGDOLL.gravityRows * rowPx * seconds;
       vHeight = isBouncing ? -vHeight * RAGDOLL.bounce : 0;
       spin *= 0.5;
       if (!isBouncing) {

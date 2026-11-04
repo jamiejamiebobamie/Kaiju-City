@@ -12,12 +12,13 @@ const WINDOW_LOOK = {
   handleColor: "#ffd24a"
 };
 
-const STORAGE_KEY = "kaiju-play-window";
+const STORAGE_KEY = "kaiju-play-window-2"; // a new key: the old saved windows sat in the middle, without room for the HUDs
 
 export const FULL_WINDOW = { left: 0, top: 0, right: 1, bottom: 1 };
 
-// a little taller than it is wide, with a margin above and below, on a 16:9 frame
-export const PORTRAIT_WINDOW = { left: 0.267, top: 0.04, right: 0.733, bottom: 0.96 };
+// a little taller than it is wide, with a margin above and below, on a 16:9 frame.
+// left of the middle: with the HUDs beside it, the two are centered together.
+export const PORTRAIT_WINDOW = { left: 0.157, top: 0.04, right: 0.623, bottom: 0.96 };
 
 // a convenience for testing sizes: the game runs the same without it
 export const loadPlayWindow = () => {
@@ -146,6 +147,21 @@ const BezelButtons = styled.div`
   z-index: 2147483002;
   display: flex;
   gap: 0.6cqw;
+`;
+
+// set into the casing beside the buttons, like a clock radio's display
+export const BezelDisplay = styled.div`
+  padding: 0.2cqw 0.8cqw;
+  font-family: gameboy;
+  font-size: 0.85cqw;
+  letter-spacing: 0.15cqw;
+  white-space: nowrap;
+  color: #71ff71;
+  text-shadow: 0 0 0.35cqw rgba(113, 255, 113, 0.8);
+  background: linear-gradient(to bottom, #020803, #0a170c);
+  border: 0.1cqw solid #050505;
+  border-radius: 0.25cqw;
+  box-shadow: inset 0 0.12cqw 0.3cqw black, 0 0.08cqw 0 ${TV_LOOK.casingLight};
 `;
 
 export const BezelButton = styled.button`

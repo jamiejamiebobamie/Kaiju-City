@@ -3,6 +3,7 @@ import styled, { css, keyframes } from "styled-components";
 import { DeadPlayer } from "./Pieces/DeadPlayerPiece";
 import { ExplodingKaiju } from "./Pieces/ExplodingKaijuPiece";
 import { PauseModal } from "./PauseModal";
+import { getIsDialogueLog } from "Game/DataClasses/DialogueLog";
 import { GameBoardPieceComponent } from 'Game/ReactComponents/GameBoard/Pieces/GameBoardPieceComponent'
 import { getSpeechScreenBox, PagedSpeechBalloon, SpeechBalloon } from 'Game/ReactComponents/GameBoard/SceneElements';
 import { TileCanvas } from 'Game/ReactComponents/GameBoard/Tile/TileCanvas';
@@ -231,11 +232,45 @@ const ChoiceConfirm = ({ choice, from, board }) => {
   );
 };
 
+const getIsEnemyInPlay = (player, piece) => piece.getTeamIndex() != player.getTeamIndex() && !piece.isDead && piece.isOnTiles;
+
 const getClosestEnemy = (player, pieces) => {
   const getDistance = ({ charLocation: { x, y } }) => Math.hypot(x - player.charLocation.x, y - player.charLocation.y);
   return pieces
-    .filter(piece => piece.getTeamIndex() != player.getTeamIndex() && !piece.isDead && piece.isOnTiles)
+    .filter(piece => getIsEnemyInPlay(player, piece))
     .reduce((closest, piece) => !closest || getDistance(piece) < getDistance(closest) ? piece : closest, undefined);
+};
+
+// the enemy zoom keeps to one enemy: another must be clearly closer, for a while, before the camera turns to them
+const ENEMY_FOCUS = {
+  closerBy: 0.3, // the new enemy is this much closer, as a share of the current one's distance
+  holdMs: 800 // and stays that way this long
+};
+
+const makeEnemyFocus = () => {
+  let current;
+  let challenger;
+  let challengerSinceMs = 0;
+  return (player, pieces, nowMs) => {
+    const closest = getClosestEnemy(player, pieces);
+    if (!current || !getIsEnemyInPlay(player, current) || !closest) {
+      current = closest;
+      challenger = undefined;
+      return current;
+    }
+    const getDistance = ({ charLocation: { x, y } }) => Math.hypot(x - player.charLocation.x, y - player.charLocation.y);
+    const isClearlyCloser = closest != current && getDistance(closest) < getDistance(current) * (1 - ENEMY_FOCUS.closerBy);
+    if (!isClearlyCloser) {
+      challenger = undefined;
+    } else if (closest != challenger) {
+      challenger = closest;
+      challengerSinceMs = nowMs;
+    } else if (nowMs - challengerSinceMs >= ENEMY_FOCUS.holdMs) {
+      current = closest;
+      challenger = undefined;
+    }
+    return current;
+  };
 };
 
 
@@ -319,8 +354,16 @@ export const GameBoard = ({ isWindowOpen = true, isPaused, gameManager, level, a
     return camera;
   }, [level, frame, isWindowOpen, playWindow]);
 
-  // walking scenes are made to be seen whole
-  const getIsWholeLevelInView = () => (level.isWalkingLevel && !level.isMapWalk) || gameManager.getIsWideShot();
+  // in the monitor, a walking scene fills the screen and follows the player: seen whole, a wide scene is a thin strip.
+  // its first shot (and any wide shot) still shows the whole scene.
+  const coverCamera = useMemo(() => {
+    const sizes = { ...worldSizes, ...shotView };
+    return new Camera({ ...sizes, zoom: Math.max(shotView.viewWidth / world.width, shotView.viewHeight / world.height) });
+  }, [level, frame, isWindowOpen, playWindow]);
+  const getIsCoverScene = () => level.isWalkingLevel && !level.isMapWalk && !isWindowOpen && !gameManager.getIsWideShot();
+
+  // walking scenes are made to be seen whole, unless the monitor always stays
+  const getIsWholeLevelInView = () => (level.isWalkingLevel && !level.isMapWalk && isWindowOpen) || gameManager.getIsWideShot();
   const isWideShot = getIsWholeLevelInView();
   const camera = isWideShot ? wideCamera : closeCamera;
 
@@ -329,11 +372,12 @@ export const GameBoard = ({ isWindowOpen = true, isPaused, gameManager, level, a
   // with words on screen, the shot looks between the spot and the balloon, and pulls out until both fit
   const speechRef = useRef(speech);
   speechRef.current = speech; // the camera's loop is set up once, and reads the words from here
-  const getShotFraming = ({ point, zoomScale }) => {
+  const getShotFraming = ({ point, zoomScale, isCover }) => {
     const fitZoom = getFitZoom(fullFrameSizes);
-    let zoom = fitZoom * zoomScale;
+    const coverZoom = Math.max(shotView.viewWidth / world.width, shotView.viewHeight / world.height);
+    let zoom = (isCover ? coverZoom : fitZoom) * zoomScale;
     const speech = speechRef.current;
-    if (!speech) return { zoom, center: point };
+    if (!speech || speech.isLogged) return { zoom, center: point }; // words in the log take no room in the shot
     const box = getSpeechScreenBox(speech, SpeechBubbleScale);
     const usedWidth = shotView.viewWidth * (1 - SHOT_FIT.margin * 2);
     const usedHeight = shotView.viewHeight * (1 - SHOT_FIT.margin * 2);
@@ -366,6 +410,7 @@ export const GameBoard = ({ isWindowOpen = true, isPaused, gameManager, level, a
     let pullMs = WIDE_SHOT.pullMs;
     let pullEase = "ease-in-out";
     let isCutting = false; // the camera is already there when the shot starts
+    const pickEnemy = makeEnemyFocus();
     const moveCamera = () => {
       const player = gameManager.getFocusPiece();
       if (!player || !worldRef.current) return;
@@ -388,10 +433,15 @@ export const GameBoard = ({ isWindowOpen = true, isPaused, gameManager, level, a
         worldRef.current.style.transform = getShotCamera(shot).getTransform();
         return;
       }
+      if (getIsCoverScene()) {
+        coverCamera.follow(getWorldLocation(player.charLocation));
+        worldRef.current.style.transform = coverCamera.getTransform();
+        return;
+      }
       if (!isWide) {
         // the keys are in charge when the mouse's hover is hidden
         const isLooking = isMouseLook && !!gameManager.getHoveredTileIndex();
-        const closestEnemy = isEnemyZoom ? getClosestEnemy(player, gameManager.getPieces()) : undefined;
+        const closestEnemy = isEnemyZoom ? pickEnemy(player, gameManager.getPieces(), nowMs) : undefined;
         closeCamera.lookToward(
           getWorldLocation(player.charLocation),
           isLooking ? mouseAim.current : { x: 0, y: 0 },
@@ -401,9 +451,10 @@ export const GameBoard = ({ isWindowOpen = true, isPaused, gameManager, level, a
       worldRef.current.style.transform = (isWide ? wideCamera : closeCamera).getTransform();
     };
     closeCamera.centerOn(getWorldLocation(gameManager.getFocusPiece().charLocation));
+    coverCamera.centerOn(getWorldLocation(gameManager.getFocusPiece().charLocation));
     moveCamera();
     return gameManager.subscribeToBoard(moveCamera);
-  }, [gameManager, closeCamera, wideCamera, isMouseLook, isEnemyZoom]);
+  }, [gameManager, closeCamera, wideCamera, coverCamera, isMouseLook, isEnemyZoom]);
 
   // everything animated plays in slow motion once the match is won
   // once a fight is over, the game eases into slow motion: the animations follow its speed
@@ -426,7 +477,7 @@ export const GameBoard = ({ isWindowOpen = true, isPaused, gameManager, level, a
 
   const focusPiece = pieces.length ? gameManager.getFocusPiece() : undefined;
   const siteTargets = (level.sites || []).map(({ spot, color }) => ({ key: `${spot.x} ${spot.y}`, color, charLocation: spot }));
-  const edgeCarets = isWideShot || !focusPiece ? [] : [
+  const edgeCarets = isWideShot || getIsCoverScene() || !focusPiece ? [] : [
     ...pieces
       .filter(p => p.getTeamIndex() != focusPiece.getTeamIndex() && !p.isDead)
       .map(p => ({ key: p.pieceIndex, color: p.color, charLocation: p.charLocation })),
@@ -564,7 +615,7 @@ export const GameBoard = ({ isWindowOpen = true, isPaused, gameManager, level, a
       <World ref={worldRef} data-game-world style={{ width: `${world.width}px`, height: `${world.height}px`, opacity: isPaused ? 0 : 1, transition: "opacity 0.3s" }}>
         {levelLayers}
         {foregroundLayers}
-        <SceneElements level={level} activePhases={activePhases} isPaused={isPaused} onHotspot={onHotspot} />
+        <SceneElements level={level} activePhases={activePhases} isPaused={isPaused} onHotspot={onHotspot} isDialogueLog={getIsDialogueLog()} />
         {isSlowMotion && !recruitScene && <WinDimmer />}
         {recruitScene && <RecruitBody src={`/levels/dead/${recruitScene.body.avatar}.png`} style={{
           left: `${recruitScene.body.x}px`,
@@ -592,7 +643,7 @@ export const GameBoard = ({ isWindowOpen = true, isPaused, gameManager, level, a
             </RayBeams>
           );
         })()}
-        {speech && !isPaused && (speech.lines
+        {speech && !isPaused && !speech.isLogged && (speech.lines
           ? <PagedSpeechBalloon name={speech.name} lines={speech.lines} x={getSpeechX(speech)} y={speech.y} isFlipped={speech.isFlipped} zIndex={2147482000} scale={overlayScale} />
           : <SpeechBalloon name={speech.name} text={speech.text} x={getSpeechX(speech)} y={speech.y} isFlipped={speech.isFlipped} zIndex={2147482000} scale={overlayScale} />)}
         <WorldContent style={{ left: `${contentOffset.x}px`, top: `${contentOffset.y}px` }}>

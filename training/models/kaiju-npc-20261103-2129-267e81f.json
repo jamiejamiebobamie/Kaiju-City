@@ -1,0 +1,99 @@
+{
+  "commit": "689eb82",
+  "steps": 6000000,
+  "resumedFrom": null,
+  "results": {
+    "versus": {
+      "rules": {
+        "winRate": 0.38,
+        "deathRate": 0.61,
+        "meanReward": 0.4253000000000016,
+        "meanSeconds": 22.1331,
+        "castsPerMinute": 24.750260921425376,
+        "meanNearestRows": 12.156216895326889,
+        "closingShare": 0.4289532293986637,
+        "livesTaken": 2.4,
+        "livesLost": 2.98
+      },
+      "model@0": {
+        "winRate": 0.66,
+        "deathRate": 0.21,
+        "meanReward": 1.781331169892539,
+        "meanSeconds": 50.942099999999996,
+        "castsPerMinute": 33.07284152007868,
+        "meanNearestRows": 14.016750071305708,
+        "closingShare": 0.41269636046286123,
+        "livesTaken": 4.74,
+        "livesLost": 1.48
+      },
+      "model@0.5": {
+        "winRate": 0.61,
+        "deathRate": 0.21,
+        "meanReward": 5.273500000000005,
+        "meanSeconds": 52.137800000000006,
+        "castsPerMinute": 33.25802009290764,
+        "meanNearestRows": 13.224095361073417,
+        "closingShare": 0.39930489731437596,
+        "livesTaken": 5.21,
+        "livesLost": 1.45
+      },
+      "model@1": {
+        "winRate": 0.66,
+        "deathRate": 0.22,
+        "meanReward": 8.779147947923235,
+        "meanSeconds": 44.6787,
+        "castsPerMinute": 34.459373258398294,
+        "meanNearestRows": 13.710769027290782,
+        "closingShare": 0.40787146226415094,
+        "livesTaken": 5.16,
+        "livesLost": 1.39
+      }
+    },
+    "kaiju": {
+      "rules": {
+        "winRate": 0.57,
+        "deathRate": 0.43,
+        "meanReward": 17.33043999999999,
+        "meanSeconds": 72.424,
+        "castsPerMinute": 20.18115541809345,
+        "meanNearestRows": 10.397178479211703,
+        "closingShare": 0.40863590863590865,
+        "livesTaken": 18.75,
+        "livesLost": 2.69
+      },
+      "model@0": {
+        "winRate": 0.41,
+        "deathRate": 0.59,
+        "meanReward": 3.9909101766499346,
+        "meanSeconds": 63.302800000000005,
+        "castsPerMinute": 35.145364817985936,
+        "meanNearestRows": 10.965994036211521,
+        "closingShare": 0.40172763698808345,
+        "livesTaken": 16.51,
+        "livesLost": 3.33
+      },
+      "model@0.5": {
+        "winRate": 0.43,
+        "deathRate": 0.57,
+        "meanReward": 15.22776,
+        "meanSeconds": 66.2552,
+        "castsPerMinute": 36.060565812192856,
+        "meanNearestRows": 11.29329268396226,
+        "closingShare": 0.39881662688941927,
+        "livesTaken": 17.47,
+        "livesLost": 3.13
+      },
+      "model@1": {
+        "winRate": 0.49,
+        "deathRate": 0.51,
+        "meanReward": 24.65508656642019,
+        "meanSeconds": 67.91839999999999,
+        "castsPerMinute": 35.65455016608165,
+        "meanNearestRows": 11.484695759690307,
+        "closingShare": 0.403638127577007,
+        "livesTaken": 16.67,
+        "livesLost": 3.02
+      }
+    }
+  }
+}

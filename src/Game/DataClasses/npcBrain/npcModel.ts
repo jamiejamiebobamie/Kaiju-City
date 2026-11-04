@@ -14,6 +14,12 @@ const loadOnnxRuntime = (): Promise<typeof Ort> => runtime ??= import('onnxrunti
 let session: Promise<Ort.InferenceSession> | null = null;
 const loadSession = () => session ??= loadOnnxRuntime().then(ort => ort.InferenceSession.create(MODEL_PATH));
 
+// the closest enemy is a Kaiju
+const getIsFacingKaiju = (gm, piece) => {
+  const enemy = gm.gameManagerProxy.getClosestEnemy(piece.pieceIndex);
+  return !!enemy && enemy.avatar == 'kaiju';
+};
+
 // the best legal action, as the trained model's deterministic choice
 const chooseAction = (logits: Float32Array, mask: Array<boolean>) => mask.reduce((best, isLegal, action) =>
   isLegal && (best < 0 || logits[action] > logits[best]) ? action : best, -1);
@@ -47,6 +53,11 @@ export class NpcModelDriver {
         const ort = await loadOnnxRuntime();
         for (const piece of pieces) {
           if (this.isBroken) return; // switched off while deciding
+          // against the Kaiju, the rules still do better than the model (training run 3): they take over
+          if (getIsFacingKaiju(gm, piece)) {
+            piece.brainAction = undefined;
+            continue;
+          }
           if (this.getAggression) piece.aggression = this.getAggression();
           const observation = new ort.Tensor('float32', Float32Array.from(observe(gm, piece)), [1, OBSERVATION_SIZE]);
           const { logits } = await net.run({ observation });

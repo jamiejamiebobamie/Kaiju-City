@@ -4,6 +4,7 @@ import { GameLoop } from './GameLoop';
 import { GameManager, GameResult } from './GameManager';
 import { SettingsManager } from './SettingsManager';
 import { LEVELS } from './Levels/levels';
+import { setIsClickThrough, setIsDialogueLog } from './DialogueLog';
 import { TimeoutHandler } from './TimeoutHandler';
 import { findPath } from './GameBoard/findPath';
 import { CENTER_TILE, getLitTiles, makeGame, placePiece, putStatusOnTile } from './testHelpers';
@@ -657,5 +658,64 @@ describe('the Lab fight', () => {
     gm.accTime += LEVELS.lab.agentDrops.retryPowersMs;
     expect(gm.getIsPowersOff(agent)).toBe(false);
     expect(makeLabFight(false).getIsPowersOff(agent)).toBe(false);
+  });
+});
+
+describe('team colors', () => {
+  it("a status shows the color of the side that cast it, so a charmed piece's powers show the charmer's", () => {
+    const { gm, player } = makeGame();
+    const playerTeam = player.getTeamIndex();
+    expect(gm.getStatusTeamColor(player.pieceIndex, playerTeam)).toBe(gm.getPlayerColor());
+    expect(gm.getStatusTeamColor(player.pieceIndex, playerTeam + 1)).not.toBe(gm.getPlayerColor());
+    expect(gm.getStatusTeamColor(999, playerTeam)).toBeUndefined();
+  });
+});
+
+describe('the dialogue log', () => {
+  const makeLevel = (level) => {
+    const settingsManager = new SettingsManager();
+    settingsManager.setSortedPlayerChosenAbilityElementsString(['Fire', 'Ice', 'Water']);
+    const gm = new GameManager({ level, settingsManager });
+    gm.initGame();
+    return gm;
+  };
+  const run = (gm, ticks) => { for (let k = 0; k < ticks; k++) gm.stepPieces(); };
+  beforeEach(() => { setIsDialogueLog(true); setIsClickThrough(true); });
+  afterEach(() => { setIsDialogueLog(false); setIsClickThrough(true); });
+
+  it('a conversation goes to the log, after a look at the whole scene, and each line waits to be moved on', () => {
+    const gm = makeLevel(LEVELS.lab);
+    expect(gm.dialogueLog).toEqual([]); // the whole scene first
+    run(gm, 40);
+    expect(gm.dialogueLog.length).toBe(1);
+    expect(gm.dialogueLog[0]).toMatchObject({ who: 'agent', avatar: 'agent' });
+    expect(gm.speech.isLogged).toBe(true); // no balloon
+    expect(gm.getCameraShot().isWide).toBeFalsy(); // the shot is on the Agent
+    run(gm, 100);
+    expect(gm.dialogueLog.length).toBe(1); // still waiting
+    expect(gm.advanceDialogue()).toBe(true);
+    run(gm, 1);
+    expect(gm.dialogueLog.length).toBe(2);
+  });
+
+  it("the Street Agent's words go to the log once each, and the unlock waits for the last", () => {
+    const gm = makeLevel(LEVELS.street);
+    if (gm.cutscene) gm.skipCutscene();
+    const player = gm.gameBoardPiecesManager.getPlayerPiece();
+    player.initCharLocation(true, gm.gameBoardManager.getClosestWalkableTileToLocation(LEVELS.street.unlock.spot));
+    for (let k = 0; k < 30; k++) { run(gm, 3); gm.advanceDialogue(); }
+    expect(gm.dialogueLog.map(({ text }) => text).length).toBe(LEVELS.street.sceneElements.find(({ type }) => type == 'speech').lines.length);
+    expect(gm.getIsSceneTalkDone()).toBe(true);
+  });
+
+  it('a shout stays a balloon', () => {
+    const settingsManager = new SettingsManager();
+    settingsManager.setSortedPlayerChosenAbilityElementsString(['Fire', 'Ice', 'Water']);
+    const gm = new GameManager({ level: LEVELS.peninsula, settingsManager, hasArrival: true });
+    gm.initGame();
+    for (let k = 0; k < 400 && !(gm.speech && gm.speech.text.includes('Heads-up')); k++) gm.stepPieces();
+    expect(gm.speech.text).toContain('Heads-up');
+    expect(gm.speech.isLogged).toBeFalsy();
+    expect(gm.dialogueLog).toEqual([]);
   });
 });

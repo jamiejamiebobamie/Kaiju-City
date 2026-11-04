@@ -18,10 +18,11 @@ const TopBar = styled.div`
   text-shadow: 0 0 0.3cqw black;
 `;
 
+// beside the monitor, which sits left of the middle so the two are centered together
 const Huds = styled.div`
   position: absolute;
   top: 1cqw;
-  right: 1cqw;
+  right: 13.1cqw;
   z-index: 2147483646;
   width: 400px;
   display: flex;
@@ -38,6 +39,7 @@ export const UI = ({
   isKaijuLevel,
   isShowingHuds,
   isShowingTopBar = true,
+  isCountOnBezel = false,
   isPaused
 }) => {
   const hudsRef = useRef(null);
@@ -55,7 +57,8 @@ export const UI = ({
     <>
       {/* hidden in cutscenes, like the HUDs, so it never covers anyone's words */}
       <TopBar style={{ visibility: isShowingTopBar ? "visible" : "hidden", opacity: isPaused ? 0 : 1, transition: "opacity 0.3s" }}>
-        {isKaijuLevel && <span>{`Kaiju: ${kaijuKillCount} / ${kaijuKilledToWin}`}</span>}
+        {/* in the monitor, the count is on the casing's display instead */}
+        {isKaijuLevel && !isCountOnBezel && <span>{`Kaiju: ${kaijuKillCount} / ${kaijuKilledToWin}`}</span>}
       </TopBar>
       {/* paused: everything fades, and only the word "Paused" shows */}
       <Huds ref={hudsRef} style={{ transform: `scale(${hudScale})`, opacity: isPaused ? 0 : 1, transition: "opacity 0.3s" }}>

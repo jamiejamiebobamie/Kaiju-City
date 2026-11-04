@@ -4,7 +4,7 @@ import styled, { keyframes } from "styled-components";
 import { useSnapshot } from "valtio";
 import { GlobalSettingsContext } from "Home";
 import { GameBoard } from "./GameBoard/GameBoard";
-import { BezelButton, FULL_WINDOW, loadPlayWindow, PlayWindow, PORTRAIT_WINDOW, savePlayWindow } from "./GameBoard/PlayWindow";
+import { BezelButton, BezelDisplay, FULL_WINDOW, loadPlayWindow, PlayWindow, PORTRAIT_WINDOW, savePlayWindow } from "./GameBoard/PlayWindow";
 import { UI } from "./UI/UI";
 import { RadioCall } from "./RadioCall";
 import { IrradiationVat } from "./IrradiationVat";
@@ -12,6 +12,8 @@ import { RecruitCalls } from "./RecruitCalls";
 import { AvatarChoice } from "./AvatarChoice";
 import { ControlsOverlay } from "./UI/ControlsOverlay";
 import { NpcModelDriver } from "Game/DataClasses/npcBrain/npcModel";
+import { getIsClickThrough, setIsClickThrough, setIsDialogueLog } from "Game/DataClasses/DialogueLog";
+import { DialogueLogPanel } from "./DialogueLogPanel";
 import { DEFAULT_AGGRESSION } from "Game/DataClasses/npcBrain/brain";
 import { getKaijuSpeedMode, KaijuSpeedMode, setKaijuSpeedMode } from "../DataClasses/KaijuSpeedTest";
 import { BUBBLE_DRAWBACKS, BubbleDrawback, getIsDrawbackOn, setIsDrawbackOn } from "../DataClasses/BubbleTest";
@@ -333,7 +335,8 @@ const RECRUIT_CARDS = {
 
 export const Game = ({ handleClickHome, triggerTransition }) => {
   const { selectedAvatar, setSelectedAvatar, selectedTeammate, setSelectedTeammate, selectedDifficulty, settingsManager } = useContext(GlobalSettingsContext);
-  const { isPaused, winner, isPlayerDead, players, recruits, kaijuKillCount, kaijuToWin, activePhases, isWideShot, isCutscene, unlockMessage, unlockImage, speech, recruitScene } = useSnapshot(gameUiStore);
+  const { isPaused, winner, isPlayerDead, players, recruits, kaijuKillCount, kaijuToWin, activePhases, isWideShot, isCutscene, unlockMessage, unlockImage, speech, recruitScene, dialogueLog, isDialogueWaiting } = useSnapshot(gameUiStore);
+  const [isClickThrough, setClickThrough] = useState(getIsClickThrough); // a playtest: each line in the log waits for a key or a click
 
   const startingLevelId = new URLSearchParams(window.location.search).get('level');
   const [levelId, setLevelId] = useState(startingLevelId || PENINSULA.id);
@@ -429,6 +432,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     settingsManager.setDifficulty(selectedDifficulty);
     settingsManager.setIsTeammate(isTeammate);
 
+    setIsDialogueLog(isMonitorAlways); // in the monitor, conversations go to the log beside it
     const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival, killsToWin, returnSpot, isRetry });
     gm.initGame();
     gameManager.current = gm;
@@ -729,6 +733,17 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
 
   useKeyPress({ keyCodes: "Escape", keyUpCallback: handleClickPause, isCharacterDead: false });
 
+  // a cutscene's line waiting in the log moves on with any key. Enter does it through its Continue bar, below; Escape pauses.
+  useEffect(() => {
+    const handleKeyDown = ({ code, repeat }) => {
+      const gm = gameManager.current;
+      if (repeat || !gm || !gm.cutscene || ["Enter", "NumpadEnter", "Escape"].includes(code)) return;
+      if (gm.getIsDialogueWaiting()) gm.advanceDialogue();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   // Enter presses whatever moves things on: a Continue button, the radio's next line, or a cutscene's next line
   useKeyPress({
     keyCodes: ["Enter", "NumpadEnter"],
@@ -885,6 +900,9 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 <input type="checkbox" checked={isMonitorAlways} onChange={() => setIsMonitorAlways(!isMonitorAlways)} /> Monitor always
               </label>
               <label>
+                <input type="checkbox" checked={isClickThrough} onChange={() => { setIsClickThrough(!isClickThrough); setClickThrough(!isClickThrough); }} /> Click through
+              </label>
+              <label>
                 <input type="checkbox" checked={isAdjustingWindow} onChange={() => setIsAdjustingWindow(!isAdjustingWindow)} /> Adjust window
               </label>
               {isAdjustingWindow && <button onClick={() => updatePlayWindow(PORTRAIT_WINDOW)}>Portrait window</button>}
@@ -923,6 +941,9 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 <BezelButton title="Pause" onClick={handleClickPause}>Pause</BezelButton>
                 <BezelButton title="How to play" onClick={openControls}>Controls</BezelButton>
                 <BezelButton title="Goodbye!" onClick={handleClickHome}>Leave</BezelButton>
+                {!isWindowOpen && level.kaijuEntry && !isCutscene && !recruitScene && (
+                  <BezelDisplay style={{ opacity: isPaused ? 0 : 1 }}>{`KAIJU ${String(kaijuKillCount).padStart(2, "0")}/${kaijuToWin}`}</BezelDisplay>
+                )}
               </>
             )}>
               <GameBoard
@@ -960,18 +981,25 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               {campaignIndex !== null && level.isWalkingLevel && !level.sites && !level.exit && !level.walkIn && !isEditingTiles && (
                 <ContinueButton data-enter onClick={() => showSection(campaignIndex + 1)}>Continue</ContinueButton>
               )}
+              {!level.isWalkingLevel && !isEditingTiles && !recruitScene && winner === null && getCallableRecruits().length > 0 && (
+                <RecruitCalls key={matchCount} recruits={getCallableRecruits()} onCall={avatar => !!gameManager.current && gameManager.current.callRecruit(avatar)} isDisabled={isPaused} />
+              )}
             </PlayWindow>
             {labScreen == "colors" && <IrradiationVat avatar={selectedAvatar} startColor={getAvatarColor(selectedAvatar)} onIrradiate={irradiate} onClose={closeLabScreen} />}
-            {!level.isWalkingLevel && !isEditingTiles && !recruitScene && winner === null && getCallableRecruits().length > 0 && (
-              <RecruitCalls key={matchCount} recruits={getCallableRecruits()} onCall={avatar => !!gameManager.current && gameManager.current.callRecruit(avatar)} isDisabled={isPaused} />
-            )}
             {isShowingControls && <ControlsOverlay onClose={closeControls} />}
+            <DialogueLogPanel
+              entries={dialogueLog}
+              isWaiting={isDialogueWaiting}
+              isVisible={!isPaused && (level.isWalkingLevel || isCutscene || !!recruitScene)}
+              onContinue={() => gameManager.current && gameManager.current.advanceDialogue()}
+            />
             {!isEditingTiles && <UI
               players={players}
               recruits={recruits}
               kaijuKillCount={kaijuKillCount}
               kaijuKilledToWin={kaijuToWin}
               isKaijuLevel={!!level.kaijuEntry}
+              isCountOnBezel={!isWindowOpen}
               isShowingHuds={!level.isWalkingLevel && !isCutscene && !recruitScene}
               isShowingTopBar={!isCutscene && !recruitScene}
               isPaused={isPaused}

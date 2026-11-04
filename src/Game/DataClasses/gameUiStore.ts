@@ -18,7 +18,9 @@ export const gameUiStore = proxy({
   speech: null,
   recruitScene: null,
   winner: null,
-  isPlayerDead: false
+  isPlayerDead: false,
+  dialogueLog: [], // every line said in the scene so far (DialogueLog.ts)
+  isDialogueWaiting: false
 });
 
 // writes only the values that changed, so valtio only notifies the components that care
@@ -51,4 +53,6 @@ export const resetGameUi = () => {
   gameUiStore.recruitScene = null;
   gameUiStore.winner = null;
   gameUiStore.isPlayerDead = false;
+  gameUiStore.dialogueLog = [];
+  gameUiStore.isDialogueWaiting = false;
 };
