@@ -40,6 +40,7 @@ export const CUTSCENE = {
   slowMotionRampMs: 500, // then it eases down to slow motion
   outcomeZoomScale: 1.25, // the end-of-fight shot is a little closer than play
   outcomePullMs: 900,
+  outcomeFollow: 0.15, // each tick, the end-of-fight shot moves this share of the way to the body
   chaseSlowSpeed: 0.35,
   chaseSlowMs: 2800,
   mapWideMs: 2400,
@@ -128,7 +129,8 @@ export class GameManager {
         this.isSlowMotion = false;
         this.resultMs = 0; // how long the fight has been over
         this.timeScale = 1; // the game's speed: below 1 in slow motion
-        this.outcomeShot = undefined; // once the fight is decided, the camera stays on the death that decided it
+        this.outcomeShot = undefined;
+        this.enemyPowersAtMs = 0; // before this, the other side can't use powers // once the fight is decided, the camera stays on the death that decided it
         this.isChaseSlowed = false;
         this.chaseSlowEndsAt = 0;
         this.followers = []; // recruits walking with the team
@@ -192,6 +194,7 @@ export class GameManager {
     // no one uses powers while walking a scene, in a cutscene, or once the Agents have taken them
     getIsPowersOff = (piece = undefined) => {
         if (this.isRecruitsFighting && !this.cutscene && piece && piece.isRecruit) return false; // the Lab trap: the recruits hold the Agents off
+        if (piece && piece.teamIndex != this.gameBoardPiecesManager.getPlayerTeamIndex() && this.accTime < this.enemyPowersAtMs) return true; // a retry's head start
         return !!this.level.isWalkingLevel || !!this.cutscene || !!this.recruitScene;
     }
 
@@ -383,7 +386,7 @@ export class GameManager {
         this.speech = null;
         this.getPieces().forEach(piece => {
             piece.isTileHidden = false;
-            piece.isVisible = true;
+            if (!piece.isDead) piece.isVisible = true; // one who has left the scene, like the Agent who talked, stays gone
         });
     }
 
@@ -534,6 +537,14 @@ export class GameManager {
         piece.startArrival(start, dir, path.slice(0, -1).map(this.gameBoardManager.getCharXAndYFromTileIndex));
     }
 
+    // Enter hurries a cutscene's line along: the next step starts on the next tick
+    advanceDialogue() {
+        const step = this.cutscene && this.cutscene.steps[this.cutscene.index];
+        if (!step || !step.speech || this.isPaused) return false;
+        this.cutscene.msLeft = 0;
+        return true;
+    }
+
     updateCutscene() {
         const { cutscene } = this;
         const step = cutscene.steps[cutscene.index];
@@ -638,6 +649,8 @@ export class GameManager {
 
     // the Agent who did the talking fights from where he stands. the rest drop in from the catwalk.
     startShowdownFight = () => {
+        // a retry skips the talk: the Agents hold their powers a moment, so the team isn't hit the instant it starts
+        if (this.isRetry) this.enemyPowersAtMs = this.accTime + ((this.level.agentDrops && this.level.agentDrops.retryPowersMs) || 0);
         this.extras.forEach(extra => {
             extra.leave();
             this.addAgent({ standTile: extra.getTileIndex() });
@@ -875,10 +888,14 @@ export class GameManager {
         this.outcomeShot = { point: { ...this.getDeathLocation(lastDeath) }, zoomScale: this.level.cameraZoom * CUTSCENE.outcomeZoomScale, panMs: CUTSCENE.outcomePullMs };
     }
 
-    // the same shot, moved: a new shot would start the camera's pull again
+    // the same shot, moved: a new shot would start the camera's pull again.
+    // it eases after the body, so the shot tracks it without shaking along with each bounce.
     updateOutcomeShot() {
         if (!this.outcomeShot) return;
-        Object.assign(this.outcomeShot.point, this.getDeathLocation(this.outcomeDeath));
+        const { point } = this.outcomeShot;
+        const target = this.getDeathLocation(this.outcomeDeath);
+        point.x += (target.x - point.x) * CUTSCENE.outcomeFollow;
+        point.y += (target.y - point.y) * CUTSCENE.outcomeFollow;
     }
 
     // the fight is over: the train leaves, and no other comes
@@ -921,8 +938,8 @@ export class GameManager {
 
     // stepping on a level's hidden tile unlocks a character
     updateUnlock() {
-        const { id, label, image, spot } = this.level.unlock;
-        if (getUnlocks().includes(id)) return;
+        const { id, label, image, spot, afterMs = 0 } = this.level.unlock;
+        if (getUnlocks().includes(id) || this.accTime < afterMs) return;
         const { i, j } = this.gameBoardManager.getClosestWalkableTileToLocation(spot);
         const tile = this.gameBoardPiecesManager.getPlayerPiece().getTileIndex();
         if (tile.i != i || tile.j != j) return;

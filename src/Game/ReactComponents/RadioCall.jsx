@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import styled, { keyframes } from "styled-components";
 
 /*
@@ -31,13 +30,13 @@ const flicker = keyframes`
 `;
 
 const Page = styled.div`
-  position: fixed;
+  position: absolute;
   inset: 0;
-  z-index: 2147483646;
+  z-index: 2147482900;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0.62)), url(/Map.gif) center / contain no-repeat, black;
+  background: linear-gradient(rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0.62)), url(/Map.gif) center / cover no-repeat, black;
   image-rendering: pixelated;
   font-family: gameboy;
 `;
@@ -45,23 +44,23 @@ const Page = styled.div`
 const Panel = styled.div`
   display: flex;
   align-items: stretch;
-  gap: 1.5vw;
-  width: min(62vw, 1000px);
-  padding: 1.2vw;
+  gap: 1.5cqw;
+  width: 42cqw;
+  padding: 1.2cqw;
   background: #050f0c;
-  border: 0.2vw solid #2c5c47;
+  border: 0.2cqw solid #2c5c47;
   cursor: pointer;
 `;
 
 const Screen = styled.div`
   position: relative;
   flex-shrink: 0;
-  width: 9vw;
+  width: 6.5cqw;
   aspect-ratio: 3 / 4;
   align-self: center;
   overflow: hidden;
   background: ${RADIO_LOOK.screenColor};
-  border: 0.15vw solid #2c5c47;
+  border: 0.15cqw solid #2c5c47;
 `;
 
 const PortraitImage = styled.img`
@@ -98,19 +97,19 @@ const Middle = styled.div`
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 1vw;
-  min-height: 12vw;
+  gap: 1cqw;
+  min-height: 9cqw;
 `;
 
 const Words = styled.div`
-  font-size: 0.95vw;
+  font-size: 0.95cqw;
   line-height: 1.7;
   color: ${RADIO_LOOK.textColor};
 `;
 
 const Name = styled.div`
-  margin-bottom: 0.6vw;
-  font-size: 0.75vw;
+  margin-bottom: 0.6cqw;
+  font-size: 0.75cqw;
   text-transform: uppercase;
   opacity: 0.7;
 `;
@@ -118,16 +117,16 @@ const Name = styled.div`
 const Buttons = styled.div`
   display: flex;
   flex-wrap: wrap;
-  gap: 0.6vw;
+  gap: 0.6cqw;
 `;
 
 const RadioButton = styled.button`
-  padding: 0.45vw 0.9vw;
+  padding: 0.45cqw 0.9cqw;
   font-family: gameboy;
-  font-size: 0.8vw;
+  font-size: 0.8cqw;
   color: ${RADIO_LOOK.textColor};
   background: ${RADIO_LOOK.screenColor};
-  border: 0.12vw solid #2c5c47;
+  border: 0.12cqw solid #2c5c47;
   cursor: pointer;
   &:hover {
     color: #8fe0a6;
@@ -182,10 +181,10 @@ export const RadioCall = ({ lines, playerAvatar, teammateAvatar, isResuming, onG
     setLetters(0);
   };
 
-  // on the page itself, so nothing from the home page can sit above it
-  return createPortal(
+  // inside the monitor, like everything else in the game
+  return (
     <Page>
-      <Panel onClick={() => isTyped ? nextLine() : setLetters(text.length)}>
+      <Panel data-enter={isChoice || (isLastLine && isTyped) ? undefined : ""} onClick={() => isTyped ? nextLine() : setLetters(text.length)}>
         <Portrait src="/levels/portraits/agent.png" isLit={line.speaker == "agent"} />
         <Middle style={isChoice ? { justifyContent: "center" } : undefined}>
           {isChoice ? <Words><Name>Your turn</Name></Words> : (
@@ -198,7 +197,7 @@ export const RadioCall = ({ lines, playerAvatar, teammateAvatar, isResuming, onG
             {isChoice && line.choices.map(choice => (
               <RadioButton key={choice.text} onClick={event => choose(event, choice)}>{choice.text}</RadioButton>
             ))}
-            {!isChoice && isLastLine && isTyped && <RadioButton onClick={onGo}>Go!</RadioButton>}
+            {!isChoice && isLastLine && isTyped && <RadioButton data-enter onClick={onGo}>Go!</RadioButton>}
             {!isChoice && isLastLine && isTyped && <RadioButton onClick={() => onChangePowers(line)}>Change powers</RadioButton>}
           </Buttons>
         </Middle>
@@ -207,7 +206,6 @@ export const RadioCall = ({ lines, playerAvatar, teammateAvatar, isResuming, onG
           isLit={isChoice || line.speaker == "player" || line.speaker == "teammate"}
         />
       </Panel>
-    </Page>,
-    document.body
+    </Page>
   );
 };

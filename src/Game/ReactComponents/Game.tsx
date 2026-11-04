@@ -237,6 +237,15 @@ const blackWipe = keyframes`
   to { transform: translateY(-100%); }
 `;
 
+// keeps the wipe on the monitor's screen
+const ScreenClip = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 2147482996;
+  overflow: hidden;
+  pointer-events: none;
+`;
+
 const BlackWipe = styled.div`
   position: absolute;
   left: 0;
@@ -720,6 +729,17 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
 
   useKeyPress({ keyCodes: "Escape", keyUpCallback: handleClickPause, isCharacterDead: false });
 
+  // Enter presses whatever moves things on: a Continue button, the radio's next line, or a cutscene's next line
+  useKeyPress({
+    keyCodes: ["Enter", "NumpadEnter"],
+    keyUpCallback: () => {
+      const button = document.querySelector<HTMLElement>("[data-enter]");
+      if (button) button.click();
+      else if (gameManager.current) gameManager.current.advanceDialogue();
+    },
+    isCharacterDead: false
+  });
+
   useKeyPress({
     keyCodes: ["BracketLeft", "BracketRight"],
     keyDownCallback: code => cycleLevel(code == "BracketRight" ? 1 : -1),
@@ -800,18 +820,24 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
       />
       </>
       : radioLines ?
-        <RadioCall
-          key={campaignIndex}
-          lines={radioLines}
-          playerAvatar={selectedAvatar}
-          teammateAvatar={selectedTeammate}
-          isResuming={isResumingRadio}
-          onGo={() => {
-            const { levelId: sectionLevelId, hasArrival, kills } = CAMPAIGN_SECTIONS[campaignIndex];
-            fadeOutThen(() => startMatch(LEVELS[sectionLevelId], hasArrival, kills));
-          }}
-          onChangePowers={handleChangePowers}
-        />
+        <GameArea>
+          <GameFrame data-game-frame>
+            <PlayWindow playWindow={playWindow} setPlayWindow={updatePlayWindow} isAdjusting={false} isOpen={false}>
+              <RadioCall
+                key={campaignIndex}
+                lines={radioLines}
+                playerAvatar={selectedAvatar}
+                teammateAvatar={selectedTeammate}
+                isResuming={isResumingRadio}
+                onGo={() => {
+                  const { levelId: sectionLevelId, hasArrival, kills } = CAMPAIGN_SECTIONS[campaignIndex];
+                  fadeOutThen(() => startMatch(LEVELS[sectionLevelId], hasArrival, kills));
+                }}
+                onChangePowers={handleChangePowers}
+              />
+            </PlayWindow>
+          </GameFrame>
+        </GameArea>
       : fullScreenPageData ?
         <FullscreenPage
           text={fullScreenPageData.text}
@@ -923,18 +949,18 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               {matchEnd && (
                 <EndScreen>
                   <EndTitle>{matchEnd.title}</EndTitle>
-                  {(!level.rival || winner !== GameResult.PlayerWon) && <EndButtons>{matchEnd.buttons.map(({ text, onClick }) => <EndButton key={text} onClick={onClick}>{text}</EndButton>)}</EndButtons>}
+                  {(!level.rival || winner !== GameResult.PlayerWon) && <EndButtons>{matchEnd.buttons.map(({ text, onClick }, index) => <EndButton key={text} data-enter={index == 0 ? "" : undefined} onClick={onClick}>{text}</EndButton>)}</EndButtons>}
                 </EndScreen>
               )}
+              {isWiping && <ScreenClip><BlackWipe /></ScreenClip>}
+              {unlockMessage && <UnlockCard><UnlockPortrait src={unlockImage} />{unlockMessage}</UnlockCard>}
+              {fadeCards && <FadeToBlack><CardStack>{fadeCards.map(({ label, image }) => (
+                <UnlockCard key={label} style={{ position: "static", transform: "none" }}>{image && <UnlockPortrait src={image} />}{label}</UnlockCard>
+              ))}</CardStack></FadeToBlack>}
+              {campaignIndex !== null && level.isWalkingLevel && !level.sites && !level.exit && !level.walkIn && !isEditingTiles && (
+                <ContinueButton data-enter onClick={() => showSection(campaignIndex + 1)}>Continue</ContinueButton>
+              )}
             </PlayWindow>
-            {isWiping && <BlackWipe />}
-            {unlockMessage && <UnlockCard><UnlockPortrait src={unlockImage} />{unlockMessage}</UnlockCard>}
-            {fadeCards && <FadeToBlack><CardStack>{fadeCards.map(({ label, image }) => (
-              <UnlockCard key={label} style={{ position: "static", transform: "none" }}>{image && <UnlockPortrait src={image} />}{label}</UnlockCard>
-            ))}</CardStack></FadeToBlack>}
-            {campaignIndex !== null && level.isWalkingLevel && !level.sites && !level.exit && !level.walkIn && !isEditingTiles && (
-              <ContinueButton onClick={() => showSection(campaignIndex + 1)}>Continue</ContinueButton>
-            )}
             {labScreen == "colors" && <IrradiationVat avatar={selectedAvatar} startColor={getAvatarColor(selectedAvatar)} onIrradiate={irradiate} onClose={closeLabScreen} />}
             {!level.isWalkingLevel && !isEditingTiles && !recruitScene && winner === null && getCallableRecruits().length > 0 && (
               <RecruitCalls key={matchCount} recruits={getCallableRecruits()} onCall={avatar => !!gameManager.current && gameManager.current.callRecruit(avatar)} isDisabled={isPaused} />

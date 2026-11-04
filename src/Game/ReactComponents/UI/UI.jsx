@@ -54,10 +54,11 @@ export const UI = ({
   return (
     <>
       {/* hidden in cutscenes, like the HUDs, so it never covers anyone's words */}
-      <TopBar style={{ visibility: isShowingTopBar ? "visible" : "hidden" }}>
+      <TopBar style={{ visibility: isShowingTopBar ? "visible" : "hidden", opacity: isPaused ? 0 : 1, transition: "opacity 0.3s" }}>
         {isKaijuLevel && <span>{`Kaiju: ${kaijuKillCount} / ${kaijuKilledToWin}`}</span>}
       </TopBar>
-      <Huds ref={hudsRef} style={{ transform: `scale(${hudScale})` }}>
+      {/* paused: everything fades, and only the word "Paused" shows */}
+      <Huds ref={hudsRef} style={{ transform: `scale(${hudScale})`, opacity: isPaused ? 0 : 1, transition: "opacity 0.3s" }}>
         {isShowingHuds && players.map((pd, i) => <PlayerUI
           key={i}
           pd={pd}

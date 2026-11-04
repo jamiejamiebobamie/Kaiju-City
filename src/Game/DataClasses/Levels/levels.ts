@@ -142,6 +142,7 @@ type AgentDrops = {
   catwalkY: number; // in scene pixels
   floorY: number; // where they land, in scene pixels
   drops: Array<{ x: number; isFromLeft: boolean }>; // one for each Agent. x is where they drop, in scene pixels.
+  retryPowersMs?: number; // on a retry, how long before the Agents can use powers
 };
 
 type MapSite = { spot: { x: number; y: number }; color: string; icon?: string; isDetour?: boolean; visitLevelId?: string };
@@ -201,7 +202,7 @@ export type LevelConfig = {
   agentDrops?: AgentDrops;
   cameraZoom: number; // how close the camera sits during play. at 1, the whole scene fits the frame.
   liveWideShots?: Record<string, number>; // the same, for phases the game keeps running through
-  unlock?: { id: string; label: string; spot: { x: number; y: number } }; // a hidden tile, in scene pixels
+  unlock?: { id: string; label: string; image?: string; spot: { x: number; y: number }; afterMs?: number }; // a hidden tile, in scene pixels. 'afterMs': it only unlocks after this long
   wideShots?: Record<string, number>; // phases the camera pulls out to show, and how long it holds there in ms
   tileTone: TileTone;
   phaseTileTones?: Record<string, TileTone>; // phases that change the floor enough to need another tone
@@ -583,6 +584,8 @@ const STREET_LINES = [
   'Go.'
 ];
 
+const STREET_TALK_MS = STREET_LINES.reduce((total, line) => total + getSpeechMs(line), 0);
+
 const STREET_SCENE = {
   tileTone: 'dark' as const,
   extras: [standingAgent(335, 682)],
@@ -658,7 +661,9 @@ const LAB_SCENE = {
     catwalkY: 130,
     floorY: 450,
     // the Agent who did the talking fights too, from where he stood
-    drops: [{ x: 330, isFromLeft: true }, { x: 1080, isFromLeft: false }, { x: 520, isFromLeft: true }, { x: 900, isFromLeft: false }, { x: 230, isFromLeft: true }]
+    // halved from five, with the talker: three in all
+    drops: [{ x: 330, isFromLeft: true }, { x: 1080, isFromLeft: false }],
+    retryPowersMs: 3500 // on a retry, the Agents can't use powers for this long
   },
   phases: [{ id: 'clones', label: 'Agent clones' }],
   sceneElements: [
@@ -714,8 +719,9 @@ const LEVEL_BUILDERS: Record<string, (file) => LevelConfig> = {
   street: file => ({
     ...buildLevel(file, 'Street', '#7a8a3a', [], true),
     ...STREET_SCENE,
-    unlock: { id: 'hazmat', label: 'Hazmat worker', image: '/levels/portraits/hazmat.png', spot: { x: 1010, y: 690 } },
-    exit: { spot: { x: 112, y: 690 }, afterMs: STREET_LINES.reduce((total, line) => total + getSpeechMs(line), 0) } // after one full loop of the Agent's words
+    // on the tile of the hazmat worker sweeping by the van, once the Agent has had his say
+    unlock: { id: 'hazmat', label: 'Hazmat worker', image: '/levels/portraits/hazmat.png', spot: { x: 740, y: 600 }, afterMs: STREET_TALK_MS },
+    exit: { spot: { x: 112, y: 690 }, afterMs: STREET_TALK_MS } // after one full loop of the Agent's words
   })
 };
 

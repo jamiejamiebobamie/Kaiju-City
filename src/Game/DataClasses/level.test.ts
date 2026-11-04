@@ -1233,11 +1233,15 @@ describe('playtest fixes', () => {
     expect(gm.reachedSite).toBe(site);
   });
 
-  it('stepping on the hidden Street tile unlocks the hazmat worker', () => {
+  it("stepping on the sweeper's tile unlocks the hazmat worker, once the Agent has had his say", () => {
     const saved = {};
     vi.stubGlobal('localStorage', { getItem: key => saved[key] ?? null, setItem: (key, value) => { saved[key] = value; } });
     const { gm, player } = makeGame(LEVELS.street);
+    if (gm.cutscene) gm.skipCutscene();
     player.initCharLocation(true, gm.gameBoardManager.getClosestWalkableTileToLocation(LEVELS.street.unlock.spot));
+    gm.stepPieces();
+    expect(gm.unlockMessage).toBeFalsy(); // the Agent is still talking
+    gm.accTime = LEVELS.street.unlock.afterMs;
     gm.stepPieces();
     expect(gm.unlockMessage).toContain('Hazmat');
     expect(getUnlocks()).toContain('hazmat');

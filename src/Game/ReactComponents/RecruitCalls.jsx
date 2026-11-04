@@ -73,7 +73,8 @@ export const RecruitCalls = ({ recruits, onCall, isDisabled }) => {
   });
 
   return (
-    <Row>
+    // paused: they fade with everything else
+    <Row style={{ opacity: isDisabled ? 0 : 1, transition: "opacity 0.3s" }}>
       {recruits.map((avatar, index) => (
         <CallButton
           key={avatar}

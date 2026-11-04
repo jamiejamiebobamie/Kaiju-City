@@ -201,11 +201,12 @@ const PartGlowSwell = styled.div`
   animation: ${glowSwell} ${PART_CRESCENDO.seconds}s ease-in forwards;
 `;
 
-// over everything, including the HUDs and the edges of the screen
+// over the whole monitor screen, and only the screen: everything in the game stays inside it
 const ScreenFlash = styled.div`
-  position: fixed;
+  position: absolute;
   inset: 0;
-  z-index: 2147483647;
+  z-index: 2147482995;
+  border-radius: 1.8cqw;
   pointer-events: none;
   opacity: 0;
   animation: ${screenFlash} ${PART_TRANSFORM.seconds + PART_TRANSFORM.flashSeconds}s linear forwards;
@@ -337,7 +338,7 @@ const KaijuPart = ({ element, activePhases, style }) => {
   return (
     <>
       {!isGone && <PartFrame style={style}>{getPart()}</PartFrame>}
-      {isTouched && !!flashColor && createPortal(<ScreenFlash style={{ background: flashColor }} />, document.body)}
+      {isTouched && !!flashColor && createPortal(<ScreenFlash style={{ background: flashColor }} />, document.querySelector("[data-play-screen]") || document.body)}
     </>
   );
 };
@@ -530,6 +531,7 @@ const SpeechBubble = ({ element, style }) => {
     return () => clearTimeout(timeoutRef);
   }, [lines, lineIndex]);
 
+  if (style.opacity === 0) return null; // paused: only the word "Paused" shows
   return <SpeechBalloon name={element.name || "Agent"} text={lines[lineIndex]} x={x} y={y} zIndex={style.zIndex} />;
 };
 

@@ -1,7 +1,9 @@
 import { GAME_TICK } from 'Utils/gameState';
 import { MASTER_PENINSULA_TILES as PENINSULA_TILE_LOOKUP_VALS } from './masterPeninsula';
 import { GameLoop } from './GameLoop';
-import { GameResult } from './GameManager';
+import { GameManager, GameResult } from './GameManager';
+import { SettingsManager } from './SettingsManager';
+import { LEVELS } from './Levels/levels';
 import { TimeoutHandler } from './TimeoutHandler';
 import { findPath } from './GameBoard/findPath';
 import { CENTER_TILE, getLitTiles, makeGame, placePiece, putStatusOnTile } from './testHelpers';
@@ -479,7 +481,9 @@ describe('ragdolls', () => {
     expect(gm.getTimeScale()).toBe(1);
     for (let k = 0; k < 20; k++) gm.stepPieces();
     expect(gm.getCameraShot()).toBe(shot); // the same shot, so the camera doesn't pull in again
-    expect(shot.point).toEqual(gm.getDeathLocation(gm.getDeathPieces()[0]));
+    // it eases after the body, so it stays close without shaking with each bounce
+    const body = gm.getDeathLocation(gm.getDeathPieces()[0]);
+    expect(Math.hypot(shot.point.x - body.x, shot.point.y - body.y)).toBeLessThan(gm.level.grid.rowStep * gm.level.grid.scale * 2);
     expect(gm.getTimeScale()).toBeCloseTo(0.2);
   });
 });
@@ -615,5 +619,43 @@ describe('Bubble drawbacks playtest', () => {
     gm.gameBoardManager.getTilesInFlatArray().forEach(tile => tile.clearTileStatus()); // the Dispel has passed
     gm.gameBoardManager.updateTileState(1160 + BUBBLE_DRAWBACKS.suds.ms + 1);
     expect(gm.gameBoardManager.getIsSoapy(soapy)).toBe(false);
+  });
+});
+
+describe('the Lab fight', () => {
+  const makeLabFight = (isRetry) => {
+    const settingsManager = new SettingsManager();
+    settingsManager.setSortedPlayerChosenAbilityElementsString(['Fire', 'Ice', 'Water']);
+    const gm = new GameManager({ level: LEVELS.lab, settingsManager, isRetry });
+    gm.initGame();
+    if (gm.cutscene) gm.skipCutscene();
+    return gm;
+  };
+
+  it('the Agent who did the talking stays gone once the fight starts, even on a retry', () => {
+    const gm = makeLabFight(true);
+    const talker = gm.extras[0];
+    expect(talker.isDead).toBe(true);
+    expect(talker.isVisible).toBe(false);
+  });
+
+  it('Enter hurries the talk along to the next line', () => {
+    const settingsManager = new SettingsManager();
+    settingsManager.setSortedPlayerChosenAbilityElementsString(['Fire', 'Ice', 'Water']);
+    const gm = new GameManager({ level: LEVELS.lab, settingsManager });
+    gm.initGame();
+    const first = gm.speech;
+    expect(gm.advanceDialogue()).toBe(true);
+    gm.stepPieces();
+    expect(gm.speech).not.toBe(first);
+  });
+
+  it('on a retry, the Agents hold their powers for a moment', () => {
+    const gm = makeLabFight(true);
+    const agent = gm.getPieces().find(piece => piece.teamIndex != 0 && !piece.isDead);
+    expect(gm.getIsPowersOff(agent)).toBe(true);
+    gm.accTime += LEVELS.lab.agentDrops.retryPowersMs;
+    expect(gm.getIsPowersOff(agent)).toBe(false);
+    expect(makeLabFight(false).getIsPowersOff(agent)).toBe(false);
   });
 });

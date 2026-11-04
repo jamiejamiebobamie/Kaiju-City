@@ -560,7 +560,8 @@ export const GameBoard = ({ isWindowOpen = true, isPaused, gameManager, level, a
       style={recruitScene ? { cursor: "pointer" } : undefined}>
       {isPaused && <PauseModal />}
       <SceneShake $isShaking={!isPaused && level.shakePhases.some(id => activePhases.includes(id))}>
-      <World ref={worldRef} data-game-world style={{ width: `${world.width}px`, height: `${world.height}px` }}>
+      {/* paused: the whole scene fades, and only the word "Paused" shows */}
+      <World ref={worldRef} data-game-world style={{ width: `${world.width}px`, height: `${world.height}px`, opacity: isPaused ? 0 : 1, transition: "opacity 0.3s" }}>
         {levelLayers}
         {foregroundLayers}
         <SceneElements level={level} activePhases={activePhases} isPaused={isPaused} onHotspot={onHotspot} />
@@ -591,7 +592,7 @@ export const GameBoard = ({ isWindowOpen = true, isPaused, gameManager, level, a
             </RayBeams>
           );
         })()}
-        {speech && (speech.lines
+        {speech && !isPaused && (speech.lines
           ? <PagedSpeechBalloon name={speech.name} lines={speech.lines} x={getSpeechX(speech)} y={speech.y} isFlipped={speech.isFlipped} zIndex={2147482000} scale={overlayScale} />
           : <SpeechBalloon name={speech.name} text={speech.text} x={getSpeechX(speech)} y={speech.y} isFlipped={speech.isFlipped} zIndex={2147482000} scale={overlayScale} />)}
         <WorldContent style={{ left: `${contentOffset.x}px`, top: `${contentOffset.y}px` }}>
@@ -604,7 +605,7 @@ export const GameBoard = ({ isWindowOpen = true, isPaused, gameManager, level, a
       </World>
       </SceneShake>
       {recruitScene && recruitChoice && <ChoiceConfirm choice={recruitChoice} from={choiceFrom.current} board={boardRef.current} />}
-      {edgeCarets}
+      {!isPaused && edgeCarets}
       {isShowingWindowSize && (
         <WindowSize>
           {Math.round((playWindow.right - playWindow.left) * 100)}% x {Math.round((playWindow.bottom - playWindow.top) * 100)}% of the frame:

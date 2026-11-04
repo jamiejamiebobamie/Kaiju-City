@@ -575,12 +575,15 @@ export class GameBoardPieceBase {
         const idealDistance = this.getIdealDistanceFromEnemy();
         const moveToTilesToEnemy = this.gameManagerProxy.getPathFromTileToTile({ fromTile: this.tileIndex, toTile: enemy.tileIndex });
 
-        const isEnemyTooFar = moveToTilesToEnemy.length > idealDistance + this.enemyDistanceBias;
+        // the furthest a ready attack reaches. without this, two NPCs could settle just out of each other's range for good.
+        const attackReach = this.getReadyAttackReach();
+        const isOutOfReach = attackReach > 0 && moveToTilesToEnemy.length > attackReach;
+        const isEnemyTooFar = moveToTilesToEnemy.length > idealDistance + this.enemyDistanceBias || isOutOfReach;
         const isEnemyTooClose = moveToTilesToEnemy.length < idealDistance;
 
         if (isEnemyTooFar) {
             // move closer to enemy
-            this.setMoveToTilesGivenIdealDistanceFromEnemy(moveToTilesToEnemy, idealDistance);
+            this.setMoveToTilesGivenIdealDistanceFromEnemy(moveToTilesToEnemy, isOutOfReach ? Math.min(idealDistance, attackReach) : idealDistance);
         } else if (isEnemyTooClose) {
             // move closer to safe tile, away from enemy
             const moveToTilesToSafety = this.isDoAvoidEnemy ?
@@ -600,6 +603,13 @@ export class GameBoardPieceBase {
             // ensure piece follows within the range of 'this.followDistance'
             moveToTiles.slice(0, moveToTiles.length - this.followDistance)
             : [];
+    }
+
+    getReadyAttackReach() {
+        if (this.gameManagerProxy.getIsPowersOff(this)) return 0;
+        return this.abilities
+            .filter(a => a.getType().includes("offensive") && !a.getIsOnCooldown(this.accTime, this.isNpc))
+            .reduce((reach, a) => Math.max(reach, a.getDesiredAIRange()), 0);
     }
 
     getIdealDistanceFromEnemy() {

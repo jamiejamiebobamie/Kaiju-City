@@ -221,7 +221,7 @@ export const PlayWindow = ({ playWindow, setPlayWindow, isAdjusting, isOpen, isC
   };
 
   return (
-    <Window ref={windowRef} style={{
+    <Window ref={windowRef} data-play-screen style={{
       left: `${left * 100}%`,
       top: `${top * 100}%`,
       width: `${(right - left) * 100}%`,
