@@ -8,7 +8,7 @@ import { GameBoardPieceComponent } from 'Game/ReactComponents/GameBoard/Pieces/G
 import { getSpeechScreenBox, PagedSpeechBalloon, SpeechBalloon } from 'Game/ReactComponents/GameBoard/SceneElements';
 import { TileCanvas } from 'Game/ReactComponents/GameBoard/Tile/TileCanvas';
 import { SceneElements } from 'Game/ReactComponents/GameBoard/SceneElements';
-import { getSortZIndex, getTileTone } from 'Game/DataClasses/Levels/levels';
+import { EXIT_OPEN_PHASE, getSortZIndex, getTileTone } from 'Game/DataClasses/Levels/levels';
 import { WakeCanvas } from 'Game/ReactComponents/GameBoard/WakeCanvas';
 import { Camera, CAMERA, getCloseZoom, getFitZoom, WIDE_SHOT } from 'Game/DataClasses/Camera';
 import { CUTSCENE } from 'Game/DataClasses/GameManager';
@@ -477,16 +477,20 @@ export const GameBoard = ({ isWindowOpen = true, isPaused, gameManager, level, a
 
   const focusPiece = pieces.length ? gameManager.getFocusPiece() : undefined;
   const siteTargets = (level.sites || []).map(({ spot, color }) => ({ key: `${spot.x} ${spot.y}`, color, charLocation: spot }));
-  const edgeCarets = isWideShot || getIsCoverScene() || !focusPiece ? [] : [
+  // in a walking scene that fills the monitor, a caret points the way out once it is open (Sewer 1's "Deeper")
+  const isCoverScene = getIsCoverScene();
+  const caretCamera = isCoverScene ? coverCamera : closeCamera;
+  const exitTargets = level.exit && activePhases.includes(EXIT_OPEN_PHASE) ? [{ key: "exit", color: "white", charLocation: level.exit.spot }] : [];
+  const edgeCarets = isWideShot || !focusPiece ? [] : (isCoverScene ? exitTargets : [
     ...pieces
       .filter(p => p.getTeamIndex() != focusPiece.getTeamIndex() && !p.isDead)
       .map(p => ({ key: p.pieceIndex, color: p.color, charLocation: p.charLocation })),
     ...siteTargets
-  ]
+  ])
     .map(({ key, color, charLocation }) => ({
       key,
       color,
-      caret: closeCamera.getEdgeCaret(getWorldLocation(charLocation), getWorldLocation(focusPiece.charLocation), grid.rowStep * grid.scale)
+      caret: caretCamera.getEdgeCaret(getWorldLocation(charLocation), getWorldLocation(focusPiece.charLocation), grid.rowStep * grid.scale)
     }))
     .filter(({ caret }) => !!caret)
     .map(({ key, color, caret: { left, top, size, degrees } }) => (

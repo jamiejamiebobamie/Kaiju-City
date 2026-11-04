@@ -719,3 +719,21 @@ describe('the dialogue log', () => {
     expect(gm.dialogueLog).toEqual([]);
   });
 });
+
+describe('Sewer 1', () => {
+  it('the team waits where it rests until the player, heading left, goes past', () => {
+    const { gm, player } = makeGame({ isTeammate: true });
+    const [, teammate] = gm.gameBoardPiecesManager.getTeamPieces(player.getTeamIndex());
+    const { i, j } = CENTER_TILE;
+    placePiece(gm, teammate, { i, j });
+    placePiece(gm, player, { i: i + 4, j });
+    teammate.isWaitingToBePassed = true;
+    teammate.followLeader();
+    expect(teammate.moveToTiles).toEqual([]);
+    expect(teammate.isWaitingToBePassed).toBe(true);
+    placePiece(gm, player, PENINSULA_TILE_LOOKUP_VALS.find(tile => tile.i < i - 2 && Math.abs(tile.j - j) >= 12)); // past them, and further than they keep behind
+    teammate.followLeader();
+    expect(teammate.isWaitingToBePassed).toBe(false);
+    expect(teammate.moveToTiles.length).toBeGreaterThan(0);
+  });
+});

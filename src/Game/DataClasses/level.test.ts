@@ -766,8 +766,10 @@ describe('cutscenes', () => {
     expect(gm.getCameraShot().isFollowingMouse).toBe(true);
   });
 
-  it('the Street door opens after a full loop of the words, and leaving through it ends the level', () => {
+  it('the Street opens on the Agent calling the team over, then its door opens after a full loop of the words', () => {
     const gm = makeGame(LEVELS.street);
+    expect(gm.cutscene.steps.some(({ speech }) => speech && speech.text == LEVELS.street.greeting.text)).toBe(true);
+    gm.skipCutscene();
     const [player] = gm.getPieces();
     const { exit } = LEVELS.street;
     player.initCharLocation(true, gm.gameBoardManager.getClosestWalkableTileToLocation(exit.spot));

@@ -453,10 +453,11 @@ const Sprite = ({ gender, onClick, selectedAvatar, globalTranslation }) => {
 }
 
 // 'spacing': how far apart the two stand, in pixels
-export const AvatarSelection = ({ spacing = 650 }) => {
+// 'raise': css length to move the band up by, from where it sits
+export const AvatarSelection = ({ spacing = 650, raise = undefined }) => {
   const { selectedAvatar, setSelectedAvatar, setIsAvatarChangedOnce } = useContext(GlobalSettingsContext);
 
-  return <AvatarSelectionWrapper>
+  return <AvatarSelectionWrapper style={raise ? { marginTop: `calc(200px - ${raise})` } : undefined}>
     <SpritesWrapper spacing={spacing}>
       <Sprite
         gender={'girl'}

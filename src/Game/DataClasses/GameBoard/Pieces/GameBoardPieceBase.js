@@ -598,6 +598,15 @@ export class GameBoardPieceBase {
     }
 
     followLeader() {
+        // in Sewer 1 the team waits where it rests until the player, heading left, has gone past
+        if (this.isWaitingToBePassed) {
+            const leader = this.gameManagerProxy.getTeamLeaderPiece(this.pieceIndex);
+            if (leader && leader != this && leader.getTileIndex().i >= this.tileIndex.i) {
+                this.moveToTiles = [];
+                return;
+            }
+            this.isWaitingToBePassed = false;
+        }
         const moveToTiles = this.gameManagerProxy.getPathToTeamLeader(this.pieceIndex);
         this.moveToTiles = moveToTiles.length > this.followDistance ?
             // ensure piece follows within the range of 'this.followDistance'

@@ -31,22 +31,25 @@ const turnAround = keyframes`
   to { background-position: 0 0; }
 `;
 
+// on the monitor's screen, like everything in the game. sizes are fractions of the screen (cqw, cqh).
 const Page = styled.div`
-  position: fixed;
+  position: absolute;
   inset: 0;
-  z-index: 2147483646;
+  z-index: 2147482980;
+  container-type: size;
+  border-radius: 1.8cqw;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1.5vw;
+  gap: 1.5cqw;
   background: black;
   color: #d9dade;
   font-family: gameboy;
 `;
 
 const Heading = styled.div`
-  font-size: 1.6vw;
+  font-size: 1.6cqw;
 `;
 
 const Grid = styled.div`
@@ -73,7 +76,7 @@ const Cell = styled.button`
 const DiscHolder = styled.div`
   position: absolute;
   left: 50%;
-  bottom: 2.6vw;
+  bottom: 2.6cqw;
   width: 0;
   height: 0;
   transform: scale(0.42);
@@ -87,7 +90,7 @@ const DiscHolder = styled.div`
 const Figure = styled.div`
   position: absolute;
   left: 50%;
-  bottom: 1.6vw;
+  bottom: 1.6cqw;
   width: 152px;
   height: 230px;
   transform: translateX(-50%) scale(0.72);
@@ -104,7 +107,7 @@ const Figure = styled.div`
 const DoodadHolder = styled.div`
   position: absolute;
   left: 50%;
-  bottom: 2.2vw;
+  bottom: 2.2cqw;
   width: 0;
   height: 0;
   transform: scale(0.42);
@@ -119,35 +122,35 @@ const Name = styled.div`
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 0.3vw;
-  font-size: 0.75vw;
+  bottom: 0.3cqw;
+  font-size: 0.75cqw;
   text-align: center;
 `;
 
 const Tag = styled.div`
   position: absolute;
   left: 50%;
-  top: 0.2vw;
+  top: 0.2cqw;
   transform: translateX(-50%);
-  padding: 0.15vw 0.4vw;
-  font-size: 0.7vw;
+  padding: 0.15cqw 0.4cqw;
+  font-size: 0.7cqw;
   color: #0b0c0e;
   background: ${props => props.$isPlayer ? "#e8e9ec" : "#8d9097"};
 `;
 
 const Controls = styled.div`
   display: flex;
-  gap: 0.8vw;
+  gap: 0.8cqw;
 `;
 
 const MetalButton = styled.button`
-  padding: 0.5vw 1.2vw;
+  padding: 0.5cqw 1.2cqw;
   font-family: gameboy;
-  font-size: 0.9vw;
+  font-size: 0.9cqw;
   cursor: pointer;
   color: ${props => props.$isOn ? "#0b0c0e" : "#d9dade"};
   background: ${props => props.$isOn ? "#d9dade" : "linear-gradient(#4a4c52, #26282c)"};
-  border: 0.12vw solid #8d9097;
+  border: 0.12cqw solid #8d9097;
 `;
 
 const RosterCell = ({ avatar, index, player, teammate, onPick }) => {
@@ -198,6 +201,6 @@ export const AvatarRoster = ({ player, teammate, onChoose, onClose }) => {
       </Grid>
       <MetalButton onClick={onClose}>Done</MetalButton>
     </Page>,
-    document.body
+    document.querySelector("[data-play-screen]") || document.body
   );
 };

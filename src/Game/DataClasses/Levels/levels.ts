@@ -161,6 +161,7 @@ export type LevelConfig = {
   isWalkingLevel: boolean; // a scene to walk through: no powers, and no HUDs
   isDepowered?: boolean; // after the Lab trap: the player's side has no glow
   visitLines?: Array<string>; // a battleground visited again: what the teammate says on arrival
+  greeting?: { text: string; speechSpot: { x: number; y: number } }; // a scene that opens with the Agent calling the team over
   tileLinks: Array<[TileIndex, TileIndex]>; // pairs of tiles a piece jumps between instantly
   spawnTiles: Array<TileIndex>; // where the player's team starts, in order. random if empty.
   goalTiles: Array<TileIndex>; // tiles highlighted to show the player where to go
@@ -178,6 +179,8 @@ export type LevelConfig = {
     doorTile: { i: number; j: number }; // where recruits walk in from
     standSpots: Array<{ x: number; y: number }>;
     frontSpots?: Array<{ x: number; y: number }>; // where the player and teammate step to before the words
+    talkBeatMs?: number; // a quiet moment once all are in, before the words
+    isWaitingToBePassed?: boolean; // the recruits and teammate only follow once the player has gone past them
     script: Array<{ who: string; text: string }>; // 'who' is 'teammate', 'player', or 'recruit': a recruit, or the player if there are none
     ending?: { spots: Array<{ x: number; y: number }>; phase: string; climaxMs: number }; // the player and teammate walk to these spots, and the phase ends the level
   };
@@ -493,7 +496,10 @@ const SEWER1_LINES = [
 const SEWER1_WALK_IN = {
   teammateSpot: { x: 640, y: 530 }, // out on the catwalk
   doorTile: { i: 37, j: 11 },
-  standSpots: [{ x: 1180, y: 520 }, { x: 1120, y: 480 }, { x: 1230, y: 560 }],
+  // the recruits spread out to rest around the sewer, away from the door
+  standSpots: [{ x: 1180, y: 540 }, { x: 960, y: 610 }, { x: 820, y: 470 }],
+  talkBeatMs: 2500,
+  isWaitingToBePassed: true, // the recruits and the teammate wait where they rest until the player goes by, heading left
   script: [
     { who: 'recruit', text: 'Jumping into the sewers was quick thinking.' },
     { who: 'recruit', text: 'That swanky Agent will never look for us down here.' },
@@ -588,6 +594,8 @@ const STREET_TALK_MS = STREET_LINES.reduce((total, line) => total + getSpeechMs(
 
 const STREET_SCENE = {
   tileTone: 'dark' as const,
+  // the whole street, then in on the Agent as he calls the team over, then back to them. his words follow in the log.
+  greeting: { text: 'Hey, soldiers! Over here.', speechSpot: { x: 335, y: 372 } },
   extras: [standingAgent(335, 682)],
   sceneElements: [
     hazmatSweeper('hazmat1', 'hazmatBroomLeft', 740, 600),
@@ -734,7 +742,7 @@ const getSpotDistance = ({ grid }, tile, { x, y }) => {
 const MIST_PUFFS = [[0, 0, 120, 3.1], [-34, 18, 90, 4.3], [36, -14, 100, 5.2], [14, 34, 80, 3.7], [-22, -30, 84, 6.1]];
 
 const MAP_ICONS = {
-  subway: { width: 111, height: 65 },
+  subway: { width: 74, height: 43 }, // two thirds of the art's size
   rooftop: { width: 62, height: 77 },
   aquarium: { width: 90, height: 72 },
   lab: { width: 104, height: 78 }
@@ -744,7 +752,14 @@ const MAP_ICONS = {
 const LAB_SPOT = { x: 150, y: 680 };
 const LAB_SITE = { spot: LAB_SPOT, color: '#4a8fb0', icon: 'lab', isDetour: true };
 
-const getSiteElements = ({ spot, color, icon }) => [
+// where to go next pulses: a bright ring of its color, in and out, under its icon
+const MISSION_PULSE = { size: 190, seconds: 1.3, lowOpacity: 0.1, highOpacity: 0.95 };
+
+const getSiteElements = ({ spot, color, icon, isDetour = false }) => [
+  ...(isDetour ? [] : [{
+    id: `${icon}Pulse`, type: 'light' as const, color, x: spot.x - MISSION_PULSE.size / 2, y: spot.y - MISSION_PULSE.size / 2,
+    width: MISSION_PULSE.size, height: MISSION_PULSE.size, zIndex: -1, seconds: MISSION_PULSE.seconds, lowOpacity: MISSION_PULSE.lowOpacity, highOpacity: MISSION_PULSE.highOpacity
+  }]),
   ...MIST_PUFFS.map(([x, y, size, seconds], n) => ({
     id: `${icon}Mist${n}`, type: 'light' as const, color, x: spot.x + x - size / 2, y: spot.y + y - size / 2, width: size, height: size, zIndex: -2, seconds, delaySeconds: -n, lowOpacity: 0.2, highOpacity: 0.75
   })),
@@ -784,7 +799,7 @@ const FOOT = { x: 230, y: 660 };
 const BATTLEGROUND_SITES = {
   rapidTransit: { spot: { x: 126, y: 279 }, color: '#57E931', icon: 'subway' },
   rooftop: { spot: { x: 238, y: 122 }, color: '#ff2a2a', icon: 'rooftop' },
-  aquarium: { spot: { x: 297, y: 594 }, color: '#C5063F', icon: 'aquarium' }
+  aquarium: { spot: { x: 222, y: 480 }, color: '#C5063F', icon: 'aquarium' } // up the east coast, clear of the Lab
 };
 const MAP_WALKS = [
   ['mapSubway', 'Map to Subway', CITY_END, [BATTLEGROUND_SITES.rapidTransit, LAB_SITE]],
@@ -851,9 +866,18 @@ LEVELS.labTrap = {
 };
 
 // the battleground as a walk: no bystander, no trains, and a door back to the map where the bystander once lay
+// on a visit, the way out can be where the team came in: they arrive a little way past it, clear of the door
+const VISIT_ENTRANCE_EXITS = {
+  rapidTransit: { walkInPx: { x: 40, y: 165 } } // down the left platform from the stairs, past the door's reach (two rows)
+};
+
 Object.keys(BATTLEGROUND_SITES).forEach(levelId => {
   const level = LEVELS[levelId];
-  const doorSpot = level.rival.recruitSpot;
+  const entranceExit = VISIT_ENTRANCE_EXITS[levelId];
+  const entrance = entranceExit && getTileCenter(level.grid, level.spawnTiles[0]);
+  const doorSpot = entrance || level.rival.recruitSpot;
+  const getClosest = target => level.walkableTiles.reduce((closest, tile) => getSpotDistance(level, tile, target) < getSpotDistance(level, closest, target) ? tile : closest);
+  const spawnTiles = entrance ? [getClosest({ x: entrance.x + entranceExit.walkInPx.x, y: entrance.y + entranceExit.walkInPx.y })] : level.spawnTiles;
   LEVELS[getVisitLevelId(levelId)] = {
     ...level,
     id: getVisitLevelId(levelId),
@@ -866,6 +890,7 @@ Object.keys(BATTLEGROUND_SITES).forEach(levelId => {
     wideShots: {},
     liveWideShots: {},
     visitLines: VISIT_LINES,
+    spawnTiles,
     exit: { spot: doorSpot, afterMs: 0 },
     sceneElements: [
       ...level.sceneElements,

@@ -46,12 +46,12 @@ const dripFall = keyframes`
 const bubbleRise = keyframes`
   0% { transform: translateY(0) scale(0.6); opacity: 0; }
   20% { opacity: 1; }
-  100% { transform: translateY(-14vh) scale(1.1); opacity: 0; }
+  100% { transform: translateY(-14cqh) scale(1.1); opacity: 0; }
 `;
 
 const foamBob = keyframes`
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-0.35vw); }
+  50% { transform: translateY(-0.35cqw); }
 `;
 
 const Drip = styled.div`
@@ -59,7 +59,7 @@ const Drip = styled.div`
   top: 71%;
   transform-origin: 50% 0;
   background: var(--vat-color);
-  box-shadow: inset 0.15vw 0 0 rgba(255, 255, 255, 0.4);
+  box-shadow: inset 0.15cqw 0 0 rgba(255, 255, 255, 0.4);
   animation: ${dripFall} ease-in-out infinite alternate;
 `;
 
@@ -67,7 +67,7 @@ const Bubble = styled.div`
   position: absolute;
   top: 70%;
   background: var(--vat-color);
-  box-shadow: inset 0.12vw 0.12vw 0 rgba(255, 255, 255, 0.7);
+  box-shadow: inset 0.12cqw 0.12cqw 0 rgba(255, 255, 255, 0.7);
   animation: ${bubbleRise} linear infinite;
 `;
 
@@ -75,7 +75,7 @@ const Foam = styled.div`
   position: absolute;
   top: 69.6%;
   background: var(--vat-color);
-  box-shadow: inset 0.1vw 0.1vw 0 rgba(255, 255, 255, 0.6);
+  box-shadow: inset 0.1cqw 0.1cqw 0 rgba(255, 255, 255, 0.6);
   animation: ${foamBob} 1.3s ease-in-out infinite;
 `;
 
@@ -85,10 +85,13 @@ const beamFlicker = keyframes`
   70% { opacity: 0.8; }
 `;
 
+// on the monitor's screen, like everything in the game. sizes are fractions of the screen (cqw, cqh).
 const Page = styled.div`
-  position: fixed;
+  position: absolute;
   inset: 0;
-  z-index: 2147483646;
+  z-index: 2147482980;
+  container-type: size;
+  border-radius: 1.8cqw;
   overflow: hidden;
   background: black;
   font-family: gameboy;
@@ -113,7 +116,7 @@ const Beams = styled.div`
   pointer-events: none;
   mix-blend-mode: screen;
   background:
-    repeating-linear-gradient(90deg, var(--vat-color) 0 0.5vw, transparent 0.5vw 1.1vw, var(--vat-color) 1.1vw 1.3vw, transparent 1.3vw 3.2vw);
+    repeating-linear-gradient(90deg, var(--vat-color) 0 0.5cqw, transparent 0.5cqw 1.1cqw, var(--vat-color) 1.1cqw 1.3cqw, transparent 1.3cqw 3.2cqw);
   -webkit-mask-image: linear-gradient(to top, black 10%, transparent 100%);
   mask-image: linear-gradient(to top, black 10%, transparent 100%);
   animation: ${beamFlicker} 0.3s steps(3) infinite;
@@ -141,17 +144,17 @@ const Hanging = styled.div`
 
 const Cable = styled.div`
   position: absolute;
-  left: -0.15vw;
-  bottom: 12vw;
-  width: 0.3vw;
-  height: 100vh;
+  left: -0.15cqw;
+  bottom: 12cqw;
+  width: 0.3cqw;
+  height: 100cqh;
   background: linear-gradient(90deg, #1b1c20, #6a6d74, #1b1c20);
 `;
 
 const Figure = styled.div`
   position: absolute;
   left: -76px;
-  bottom: -2vw;
+  bottom: -2cqw;
   width: 152px;
   height: 230px;
   transform: scale(2);
@@ -162,12 +165,12 @@ const Figure = styled.div`
 
 const Heading = styled.div`
   position: absolute;
-  top: 2vw;
+  top: 2cqw;
   left: 0;
   right: 0;
-  font-size: 1.6vw;
+  font-size: 1.6cqw;
   text-align: center;
-  text-shadow: 0 0 0.4vw black;
+  text-shadow: 0 0 0.4cqw black;
 `;
 
 // from someone off to the right
@@ -181,26 +184,26 @@ const PraiseSpot = styled.div`
 
 const Panel = styled.div`
   position: absolute;
-  left: 2vw;
-  bottom: 2vw;
+  left: 2cqw;
+  bottom: 2cqw;
   display: flex;
   align-items: stretch;
-  gap: 1vw;
-  padding: 1vw;
+  gap: 1cqw;
+  padding: 1cqw;
   background: linear-gradient(#3a3c42, #1c1d21);
-  border: 0.15vw solid #8d9097;
+  border: 0.15cqw solid #8d9097;
 `;
 
 const Picker = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 0.6vw;
-  width: 14vw;
+  gap: 0.6cqw;
+  width: 14cqw;
 `;
 
 const ColorField = styled.div`
   position: relative;
-  height: 9vw;
+  height: 9cqw;
   cursor: crosshair;
   touch-action: none;
   background: linear-gradient(to top, black, transparent), linear-gradient(to right, white, transparent);
@@ -208,18 +211,18 @@ const ColorField = styled.div`
 
 const Cursor = styled.div`
   position: absolute;
-  width: 0.7vw;
-  height: 0.7vw;
+  width: 0.7cqw;
+  height: 0.7cqw;
   transform: translate(-50%, -50%);
-  border: 0.12vw solid white;
+  border: 0.12cqw solid white;
   border-radius: 50%;
-  box-shadow: 0 0 0 0.08vw black;
+  box-shadow: 0 0 0 0.08cqw black;
   pointer-events: none;
 `;
 
 const HueSlider = styled.input`
   width: 100%;
-  height: 0.9vw;
+  height: 0.9cqw;
   margin: 0;
   -webkit-appearance: none;
   appearance: none;
@@ -227,29 +230,29 @@ const HueSlider = styled.input`
 `;
 
 const HexInput = styled.input`
-  padding: 0.3vw;
+  padding: 0.3cqw;
   font-family: gameboy;
-  font-size: 0.85vw;
+  font-size: 0.85cqw;
   color: #d9dade;
   background: #111214;
-  border: 0.1vw solid #5a5d64;
+  border: 0.1cqw solid #5a5d64;
 `;
 
 const Actions = styled.div`
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 0.6vw;
+  gap: 0.6cqw;
 `;
 
 const ActionButton = styled.button`
-  padding: 0.7vw 1vw;
+  padding: 0.7cqw 1cqw;
   font-family: gameboy;
-  font-size: ${props => props.$isMain ? "1.1vw" : "0.8vw"};
+  font-size: ${props => props.$isMain ? "1.1cqw" : "0.8cqw"};
   cursor: pointer;
   color: ${props => props.$isMain ? "#0b0c0e" : "#d9dade"};
   background: ${props => props.$isMain ? "#d9dade" : "#26282c"};
-  border: 0.12vw solid #8d9097;
+  border: 0.12cqw solid #8d9097;
   flex-grow: ${props => props.$isMain ? 1 : 0};
   &:disabled {
     opacity: 0.5;
@@ -303,7 +306,7 @@ export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose }) => 
       <Layer src="/levels/vat-room.png" />
       <Beams />
       <Glow />
-      <Hanging style={{ transform: isDunked ? "translateY(52vh)" : "none" }}>
+      <Hanging style={{ transform: isDunked ? "translateY(52cqh)" : "none" }}>
         <Cable />
         <Figure style={{ backgroundImage: `url(/${PIECES_INFO[avatar].spriteSheetSrc})`, filter: avatarColor ? `drop-shadow(0 0 12px ${avatarColor}) drop-shadow(0 0 3px ${avatarColor})` : "none" }} />
       </Hanging>
@@ -318,7 +321,7 @@ export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose }) => 
         <Bubble key={left} style={{ left: `${left}%`, width: `${size}vw`, height: `${size}vw`, animationDuration: `${seconds}s`, animationDelay: `${delay}s` }} />
       ))}
       <Heading>Choose Color</Heading>
-      {isPraising && <PraiseSpot><SpeechBalloon name="Lab Tech" text="Looking good!" x={0} y={0} isFlipped scale={window.innerWidth / VAT_LOOK.praiseBaseWidth} /></PraiseSpot>}
+      {isPraising && <PraiseSpot><SpeechBalloon name="Lab Tech" text="Looking good!" x={0} y={0} isFlipped scale={(document.querySelector("[data-play-screen]") || document.body).clientWidth / VAT_LOOK.praiseBaseWidth} /></PraiseSpot>}
       <Panel>
         <Picker>
           <ColorField
@@ -339,6 +342,6 @@ export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose }) => 
         </Actions>
       </Panel>
     </Page>,
-    document.body
+    document.querySelector("[data-play-screen]") || document.body
   );
 };

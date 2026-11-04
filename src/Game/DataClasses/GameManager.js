@@ -361,6 +361,7 @@ export class GameManager {
         else if (this.level.showdown) this.startShowdown();
         else if (this.level.walkIn) this.startWalkInScene();
         else if (this.level.visitLines) this.startVisitScene();
+        else if (this.level.greeting) this.startGreeting();
         if (this.isRetry && this.cutscene) this.skipCutscene();
     }
 
@@ -680,6 +681,22 @@ export class GameManager {
         ]);
     }
 
+    // the whole scene, in on the Agent for his call, then back to the team, as at the train
+    startGreeting() {
+        const { text, speechSpot } = this.level.greeting;
+        const speech = this.getAgentSpeech(text, speechSpot);
+        const player = this.gameBoardPiecesManager.getPlayerPiece();
+        const { rowStep, scale } = this.level.grid;
+        const agentShot = { point: speech.focus || speechSpot, zoomScale: DIALOGUE.speakerZoomScale, isCover: true };
+        const teamShot = { point: { x: player.charLocation.x, y: player.charLocation.y - CUTSCENE.shotHeadRows * rowStep * scale }, zoomScale: 1, isCover: true };
+        this.startCutscene([
+            { shot: { isWide: true }, ms: CUTSCENE.mapWideMs },
+            { shot: agentShot, ms: CUTSCENE.pullInMs },
+            { shot: agentShot, ms: getSpeechMs(text), speech },
+            { shot: teamShot, ms: CUTSCENE.pullInMs }
+        ]);
+    }
+
     // a battleground won on before, visited from the map: the teammate has a word, then it's a walk
     startVisitScene() {
         const [, teammate] = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
@@ -814,7 +831,7 @@ export class GameManager {
 
     // the teammate may have gone on ahead. after a beat the recruits catch up, the script plays, and it may end with the team walking on.
     startWalkInScene() {
-        const { teammateSpot, doorTile, standSpots, frontSpots, script, ending, reveal } = this.level.walkIn;
+        const { teammateSpot, doorTile, standSpots, frontSpots, script, ending, reveal, talkBeatMs = 0, isWaitingToBePassed = false } = this.level.walkIn;
         const [player, teammate] = this.getPieces();
         const hasTeammate = !!teammate && !this.followers.includes(teammate);
         const getTile = spot => this.gameBoardManager.getClosestWalkableTileToLocation(spot);
@@ -825,6 +842,8 @@ export class GameManager {
             teammate.initCharLocation(true, getTile(teammateSpot));
             teammate.facingDir = 'down';
         }
+        // they stay where they are until the player has gone past them
+        if (isWaitingToBePassed) [...this.followers, ...(hasTeammate ? [teammate] : [])].forEach(piece => { piece.isWaitingToBePassed = true; });
         const arrivals = this.followers.map((piece, index) => {
             piece.initCharLocation(true, getTile(standSpots[index % standSpots.length]));
             piece.isVisible = false;
@@ -866,6 +885,7 @@ export class GameManager {
             { shot, ms: CUTSCENE.pullInMs },
             ...arrivals,
             ...frontSteps,
+            ...(talkBeatMs ? [{ shot, ms: talkBeatMs }] : []), // a quiet moment, all in, before anyone speaks
             ...script
                 .filter(({ who, ifRecruits }) => (who != 'teammate' || hasTeammate) && (!ifRecruits || this.followers.length > 0))
                 .map(line => ({ shot, ms: getSpeechMs(line.text), speech: () => getSpeech(line) })),

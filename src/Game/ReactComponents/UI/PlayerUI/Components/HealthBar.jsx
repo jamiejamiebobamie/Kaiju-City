@@ -60,7 +60,7 @@ export const HealthBar = ({
         isDead={isDead}
         isTeammate={isTeammate}
       >
-        {!isDead ? bars : "Down"}
+        {!isDead ? bars : "Wasted!"}
       </Wrapper>
     </BlinkFadeEffect>
 

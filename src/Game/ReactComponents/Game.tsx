@@ -154,7 +154,12 @@ const EndTitle = styled.div`
   text-align: center;
   color: #ff2a4d;
   -webkit-text-stroke: 0.12cqw #ffb3c4;
-  text-shadow: 0 0 0.6cqw #ff5c8a, 0.25cqw 0.25cqw 0 #5c0013, 0 0 2.5cqw #ff0040;
+  /* a deep block shadow down and to the left, stepped like an extrusion, with a black edge: it reads on bright scenes and dark */
+  text-shadow:
+    0 0 0.6cqw #ff5c8a,
+    -0.12cqw 0.12cqw 0 #8a0020, -0.24cqw 0.24cqw 0 #6e0019, -0.36cqw 0.36cqw 0 #520012, -0.48cqw 0.48cqw 0 #3a000c,
+    -0.6cqw 0.6cqw 0 #22000a, -0.72cqw 0.72cqw 0 black, -0.9cqw 0.9cqw 0.6cqw rgba(0, 0, 0, 0.8),
+    0 0 2.5cqw #ff0040;
   animation: ${titleArrive} 1.4s ease-out both;
 `;
 
@@ -237,6 +242,14 @@ const blackWipe = keyframes`
   from { transform: translateY(38.5%); }
   40%, 60% { transform: translateY(-30.8%); }
   to { transform: translateY(-100%); }
+`;
+
+const SlideAway = styled.div`
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 1.8cqw;
+  transition: transform 0.9s ease-in, opacity 0.9s ease-in;
 `;
 
 // keeps the wipe on the monitor's screen
@@ -935,7 +948,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               )}
             </PhaseToggles>
           )}
-          <GameFrame data-game-frame style={leavingFor ? { transform: `translateX(${leavingFor == "colors" ? -45 : 45}%)`, opacity: 0 } : undefined}>
+          <GameFrame data-game-frame>
             <PlayWindow playWindow={playWindow} setPlayWindow={updatePlayWindow} isAdjusting={isAdjustingWindow} isOpen={isWindowOpen} isCut={!!recruitScene} buttons={!isEditingTiles && (
               <>
                 <BezelButton title="Pause" onClick={handleClickPause}>Pause</BezelButton>
@@ -946,6 +959,8 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 )}
               </>
             )}>
+              {/* for a Lab screen, the scene slides away inside the monitor, and the screen takes its place there */}
+              <SlideAway style={leavingFor ? { transform: `translateX(${leavingFor == "colors" ? -45 : 45}%)`, opacity: 0 } : undefined}>
               <GameBoard
                 key={`${level.id} ${matchCount}`}
                 isWindowOpen={isWindowOpen}
@@ -967,6 +982,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 onChooseRecruit={handleChooseRecruit}
                 onHotspot={openLabScreen}
               />
+              </SlideAway>
               {matchEnd && (
                 <EndScreen>
                   <EndTitle>{matchEnd.title}</EndTitle>
