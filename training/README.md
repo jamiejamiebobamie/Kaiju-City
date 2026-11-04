@@ -5,7 +5,7 @@ Trains an NPC for Kaiju City with reinforcement learning (MaskablePPO from sb3-c
 ## How it fits together
 
 - `src/Game/DataClasses/npcBrain/brain.ts`: what a trained NPC sees (149 numbers: itself, its powers, the nearest two enemies and nearest ally, how many are on each side, the tiles around it, and last its aggression) and can do (28 actions: stay or step in one of six directions, times no power or one of its three). Also the mask of legal actions.
-- `src/Game/DataClasses/npcBrain/TrainingEnv.ts`: one training match on the Peninsula. The learner has 1 to 4 allies (as with recruits along), against 1 to 5 opponents with no Kaiju, or (35% of matches) against the Kaiju waves. Everyone but the learner plays by the rules, and every piece gets three random powers. This file also holds the rewards.
+- `src/Game/DataClasses/npcBrain/TrainingEnv.ts`: one training match on the Peninsula. The learner fights alone (30% of matches, as a rival does in a recruit fight) or with 1 to 4 allies (as with recruits along), against 1 to 5 opponents with no Kaiju, or (35% of matches) against the Kaiju waves. Everyone but the learner plays by the rules, and every piece gets three random powers. This file also holds the rewards.
 - `training/bridge/bridge.ts`: runs a `TrainingEnv` in Node and talks to Python over stdin/stdout. Run `npm run build:bridge` after any change to the game.
 - `training/kaiju_env.py`: the Gymnasium environment that starts the bridge.
 - `src/Game/DataClasses/npcBrain/npcModel.ts`: plays the exported model in the browser. It loads `onnxruntime-web` on demand and is switched on by the dev panel's "Trained NPCs" box.

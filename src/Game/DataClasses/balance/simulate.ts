@@ -36,11 +36,12 @@ export const getKit = () => {
 
 export const getTeamKits = () => [getKit(), getKit()];
 
-export const makeGame = (level, killsToWin, edits) => {
+// 'isTeammate': false starts the player's side with the player alone
+export const makeGame = (level, killsToWin, edits, isTeammate = true) => {
   const settingsManager = new SettingsManager();
   settingsManager.setAbilityEdits(edits);
   settingsManager.setSortedPlayerChosenAbilityElementsString([]);
-  settingsManager.setIsTeammate(true);
+  settingsManager.setIsTeammate(isTeammate);
   settingsManager.setDifficulty(Difficulty.Hard);
   const gm = new GameManager({ level, settingsManager, killsToWin });
   gm.initGame();

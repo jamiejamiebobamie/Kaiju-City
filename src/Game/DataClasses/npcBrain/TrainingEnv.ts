@@ -5,7 +5,7 @@ import { DECISION_TICKS, decodeAction, getActionMask, getAggression, observe } f
 
 /*
   One NPC learning to fight on the Peninsula. The learner is the first piece of the top team; its allies play by the rules.
-  Sides come in different sizes, as in the Agent fights with recruits along: the learner has 1 to 4 allies.
+  Sides come in different sizes: alone, as a rival in a recruit fight, or with 1 to 4 allies, as in the Agent fights with recruits along.
   Each match is one of two kinds:
   - 'versus': against 1 to 5 opponents, with no Kaiju, until one side has all fallen. The opponents play by the rules.
   - 'kaiju': against the Kaiju waves, until 20 Kaiju fall or the team does.
@@ -32,7 +32,8 @@ export const TRAINING = {
   perDecision: -0.002,
   timeLimitMs: { versus: VERSUS_LIMIT_MS, kaiju: KAIJU_LIMIT_MS },
   kaijuShare: 0.35, // the share of matches against the Kaiju
-  allies: { min: 1, max: 4 },
+  aloneShare: 0.3, // the share of matches the learner fights alone
+  allies: { min: 1, max: 4 }, // otherwise
   opponents: { min: 1, max: 5 },
   aggressionLean: 0.5, // at aggression 1, lives taken are worth 1.5 and lives lost cost 0.5 (the reverse at 0)
   nearness: 0.005, // at aggression 1, earned each decision right beside an opponent, less further away
@@ -72,7 +73,7 @@ export class TrainingEnv {
     this.isBaseline = isBaseline;
     this.kind = kind ?? (Math.random() < TRAINING.kaijuShare ? 'kaiju' : 'versus');
     this.aggression = aggression ?? Math.random();
-    this.sizes = sizes ?? { allies: randomCount(TRAINING.allies), opponents: randomCount(TRAINING.opponents) };
+    this.sizes = sizes ?? { allies: Math.random() < TRAINING.aloneShare ? 0 : randomCount(TRAINING.allies), opponents: randomCount(TRAINING.opponents) };
     const gm = this.kind == 'kaiju' ? this.makeKaijuMatch() : this.makeVersusMatch();
     this.gm = gm;
     this.learner = gm.getPieces()[0];
@@ -87,9 +88,8 @@ export class TrainingEnv {
 
   // the learner, its teammate, and any more allies. They start along the top.
   makeTeam(gm) {
-    const [learner, teammate] = gm.getPieces();
-    const extras = Array.from({ length: this.sizes.allies - 1 }, () => this.addPiece(gm, 0));
-    const team = [learner, teammate, ...extras];
+    const team = gm.getPieces().slice();
+    while (team.length < this.sizes.allies + 1) team.push(this.addPiece(gm, 0));
     team.forEach((piece, k) => piece.initCharLocation(true, gm.gameBoardManager.getClosestWalkableTileToLocation(getSpot(TOP_SPOTS, k))));
     useKits(gm, team, team.map(() => getKit()));
   }
@@ -101,7 +101,7 @@ export class TrainingEnv {
 
   makeVersusMatch() {
     // the team wins once every opponent has fallen
-    const gm = makeGame({ ...LEVELS.peninsula, kaijuEntry: undefined }, this.sizes.opponents, {});
+    const gm = makeGame({ ...LEVELS.peninsula, kaijuEntry: undefined }, this.sizes.opponents, {}, this.sizes.allies > 0);
     this.makeTeam(gm);
     const opponents = Array.from({ length: this.sizes.opponents }, (_, k) => {
       const piece = this.addPiece(gm, 1);
@@ -113,7 +113,7 @@ export class TrainingEnv {
   }
 
   makeKaijuMatch() {
-    const gm = makeGame({ ...LEVELS.peninsula }, KAIJU_TO_WIN, {});
+    const gm = makeGame({ ...LEVELS.peninsula }, KAIJU_TO_WIN, {}, this.sizes.allies > 0);
     this.makeTeam(gm);
     return gm;
   }

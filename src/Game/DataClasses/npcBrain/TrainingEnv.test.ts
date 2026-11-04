@@ -94,4 +94,17 @@ describe('NPC training', () => {
     expect(team.every(piece => piece.isNpc && piece.abilities.length == 3)).toBe(true);
     expect(result.observation.slice(-3, -1)).toEqual([3 / 5, 5 / 5]);
   });
+
+  it('the learner can fight alone, as a rival in a recruit fight', () => {
+    const env = new TrainingEnv();
+    let result = env.reset({ seed: 17, kind: 'versus', sizes: { allies: 0, opponents: 2 } });
+    expect(env.gm.getPieces().filter(piece => piece.teamIndex == env.learner.teamIndex)).toEqual([env.learner]);
+    expect(result.observation.slice(-3, -1)).toEqual([0, 2 / 5]);
+    let steps = 0;
+    while (!result.terminated && !result.truncated && steps < 2000) {
+      result = env.step(0);
+      steps += 1;
+    }
+    expect(result.terminated || result.truncated).toBe(true);
+  });
 });

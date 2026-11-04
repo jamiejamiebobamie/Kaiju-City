@@ -3,7 +3,7 @@
 The game's rules live in JavaScript (src/Game). This environment starts the Node bridge (training/bridge, built with
 `npm run build:bridge`) and talks to it over stdin/stdout, so training always uses exactly the game's own rules.
 
-The agent is one NPC on the Peninsula, with 1 to 4 allies, against 1 to 5 opponents or the Kaiju; everyone else plays by the
+The agent is one NPC on the Peninsula, alone or with 1 to 4 allies, against 1 to 5 opponents or the Kaiju; everyone else plays by the
 game's rules. Each match's kind, side sizes, and the agent's aggression (0 careful to 1 reckless, one of its inputs) are random,
 unless reset is given options={"kind": "versus" | "kaiju", "aggression": 0-1, "sizes": {"allies": n, "opponents": n}}.
 Observations, actions, legal-move masks and rewards are defined in src/Game/DataClasses/npcBrain.
