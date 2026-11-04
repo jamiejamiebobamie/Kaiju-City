@@ -162,6 +162,8 @@ export type LevelConfig = {
   isDepowered?: boolean; // after the Lab trap: the player's side has no glow
   visitLines?: Array<string>; // a battleground visited again: what the teammate says on arrival
   greeting?: { text: string; speechSpot: { x: number; y: number } }; // a scene that opens with the Agent calling the team over
+  walkers?: Array<{ id: string; avatar: string; route: Array<{ x: number; y: number; isPass: boolean }>; runSpeed: number; idleSeconds: number }>; // people at work in a walking scene
+  getWalkerHeight?: (y: number) => number; // a walker's height at a y, in scene pixels: they shrink up the scene
   tileLinks: Array<[TileIndex, TileIndex]>; // pairs of tiles a piece jumps between instantly
   spawnTiles: Array<TileIndex>; // where the player's team starts, in order. random if empty.
   goalTiles: Array<TileIndex>; // tiles highlighted to show the player where to go
@@ -228,6 +230,9 @@ const CHARACTER_HEIGHT_IN_ROWS = CHARACTER_HEIGHT / PENINSULA_ROW_HEIGHT;
 // from the top-left of a character at 'pieceScale' 1 to the center of the tile it stands on
 const CHARACTER_TILE_CENTER = { x: 4, y: 7.5 };
 const CHARACTER_LEFT_SHIFT = 3.5;
+// the same, for a piece placed by where its feet are (a walker)
+export const CHARACTER_FEET = { ...CHARACTER_TILE_CENTER, leftShift: CHARACTER_LEFT_SHIFT };
+export const CHARACTER_HEIGHT_PX = CHARACTER_HEIGHT;
 
 // the files made by the level editor: /level-editor can import these to change them
 const buildLevel = (editorFile, name, accentColor, foregroundLayers = [], isWalkingLevel = false): LevelConfig => {
@@ -281,12 +286,13 @@ const getWorkerHeight = y => 80 + 0.592 * (y - 372);
 
 const standingAgent = (x, y) => ({ avatar: 'agent', spot: { x, y }, facingDir: 'down' });
 
-// a worker who runs between spots beside other workers, and stands at each for a while.
+// a worker who runs between spots beside other workers, and stands at each for a while: a board piece,
+// so it faces the way it runs (its back to the camera going up the street), and shrinks with distance.
 // a spot marked 'pass' is only run through, to keep them off the Kaiju parts.
 const hazmatRunner = (id, route, runSpeed, idleSeconds) => ({
-  id, type: 'walker' as const, src: '/spritesheet/hazmat.png', x: route[0][0], y: route[0][1], width: 0, height: 0, sortY: route[0][1],
-  route: route.map(([x, y, pass]) => [x, y, getWorkerHeight(y), pass == 'pass' ? 1 : 0]), runSpeed, idleSeconds
+  id, avatar: 'hazmat', route: route.map(([x, y, pass]) => ({ x, y, isPass: pass == 'pass' })), runSpeed, idleSeconds
 });
+export type Walker = ReturnType<typeof hazmatRunner>;
 
 const hazmatSweeper = (id, pose, x, y) => ({ ...npc(id, pose, x, y, getWorkerHeight(y)), isSweeping: true });
 
@@ -594,6 +600,12 @@ const STREET_TALK_MS = STREET_LINES.reduce((total, line) => total + getSpeechMs(
 
 const STREET_SCENE = {
   tileTone: 'dark' as const,
+  walkers: [
+    hazmatRunner('hazmat2', [[700, 612], [745, 420, 'pass'], [950, 362], [1185, 385, 'pass'], [1195, 600, 'pass'], [1000, 635, 'pass']], 150, 6),
+    hazmatRunner('hazmat4', [[1250, 385], [1212, 470], [1245, 560]], 120, 7),
+    hazmatRunner('hazmat5', [[1225, 520], [1195, 615, 'pass'], [880, 640], [1195, 615, 'pass']], 140, 8)
+  ],
+  getWalkerHeight: getWorkerHeight, // how tall a worker stands at a spot's y, in scene pixels
   // the whole street, then in on the Agent as he calls the team over, then back to them. his words follow in the log.
   greeting: { text: 'Hey, soldiers! Over here.', speechSpot: { x: 335, y: 372 } },
   extras: [standingAgent(335, 682)],
@@ -601,9 +613,6 @@ const STREET_SCENE = {
     hazmatSweeper('hazmat1', 'hazmatBroomLeft', 740, 600),
     hazmatSweeper('hazmat3', 'hazmatBroomRight', 1005, 372),
     // the claw's goo covers about x 785 to 1160, y 380 to 575, and the eye's x 1035 to 1165, y 280 to 375
-    hazmatRunner('hazmat2', [[700, 612], [745, 420, 'pass'], [950, 362], [1185, 385, 'pass'], [1195, 600, 'pass'], [1000, 635, 'pass']], 150, 6),
-    hazmatRunner('hazmat4', [[1250, 385], [1212, 470], [1245, 560]], 120, 7),
-    hazmatRunner('hazmat5', [[1225, 520], [1195, 615, 'pass'], [880, 640], [1195, 615, 'pass']], 140, 8),
     { id: 'exit', type: 'door' as const, phase: EXIT_OPEN_PHASE, x: 135, y: 660, width: 0, height: 0, sortY: ABOVE_CHARACTERS, label: 'Go To Peninsula' },
     {
       id: 'agentSpeech', type: 'speech' as const, x: 335, y: 372, width: 0, height: 0, sortY: ABOVE_CHARACTERS,

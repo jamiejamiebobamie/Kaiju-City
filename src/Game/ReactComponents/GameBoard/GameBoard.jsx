@@ -564,7 +564,7 @@ export const GameBoard = ({ isWindowOpen = true, isPaused, gameManager, level, a
       isFalling={p.isFalling}
       dir={p.dir}
       facingDir={p.getFacingDir()}
-      pieceScale={pieceScale}
+      pieceScale={pieceScale * (p.perspectiveScale || 1)}
       spriteSheetSrc={p.spriteSheetSrc}
       lives={p.lives}
       isGoingToSpewFire={p.isGoingToSpewFire}

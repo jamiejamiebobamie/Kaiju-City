@@ -5,12 +5,18 @@ import styled from "styled-components";
   The clouds that sweep across between screens, drawn on one canvas: the original strips.
   Each strip slides in from its own side, meets the others in the middle, and slides back.
   Lit by the sun from above: bright white at the top of the screen to a deeper blue below.
+  Each strip has its own outline, lit the same way, so the rows read as layered banks of cloud, not one mass.
   So the change of scene is never seen, the strips all meet at about the same time, and a bank of the same cloud
   fills in behind them while they meet. The scene changes at the middle of that.
 */
 const CLOUD_LOOK = {
   topColor: "#ffffff",
   bottomColor: "#5d8fd6",
+  outlineTopColor: "#b9d3f2", // the outlines: pale where the sun catches them, deep blue below
+  outlineBottomColor: "#22467f",
+  outlineWidth: 5,
+  puffSize: 120, // the bank behind the strips is puffs, outlined too
+  puffStep: 92,
   strips: 60,
   minSeconds: 2.6, // close together, so the strips meet at nearly the same moment
   maxSeconds: 3,
@@ -81,6 +87,18 @@ export const CloudTransition = ({ isPlaying }) => {
     const sunlight = ctx.createLinearGradient(0, 0, 0, height);
     sunlight.addColorStop(0, topColor);
     sunlight.addColorStop(1, bottomColor);
+    const outline = ctx.createLinearGradient(0, 0, 0, height);
+    outline.addColorStop(0, CLOUD_LOOK.outlineTopColor);
+    outline.addColorStop(1, CLOUD_LOOK.outlineBottomColor);
+    ctx.lineWidth = CLOUD_LOOK.outlineWidth * scale;
+    // the bank's puffs, in staggered rows, each a little bigger or smaller
+    const { puffSize, puffStep } = CLOUD_LOOK;
+    const puffs = [];
+    for (let row = 0, y = -puffSize / 2; y < height + puffSize; row += 1, y += puffStep * 0.62 * scale) {
+      for (let x = (row % 2) * puffStep * scale / 2 - puffSize; x < width + puffSize; x += puffStep * scale) {
+        puffs.push({ x, y, radius: puffSize * scale * (0.42 + Math.random() * 0.16) });
+      }
+    }
 
     let frameRef;
     const startMs = performance.now();
@@ -88,21 +106,31 @@ export const CloudTransition = ({ isPlaying }) => {
       const seconds = (nowMs - startMs) / 1000;
       ctx.clearRect(0, 0, width, height);
       ctx.fillStyle = sunlight;
+      ctx.strokeStyle = outline;
       const bankOpacity = getBankOpacity(seconds / minSeconds);
       if (bankOpacity > 0) {
+        // the puffs fill the screen between them, under their outlines
         ctx.globalAlpha = bankOpacity;
         ctx.fillRect(0, 0, width, height);
+        puffs.forEach(({ x, y, radius }) => {
+          ctx.beginPath();
+          ctx.arc(x, y, radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        });
         ctx.globalAlpha = 1;
       }
-      ctx.beginPath();
+      // top to bottom, so each strip's outline overlaps the one above, like rows of cloud
       clouds.forEach(({ seconds: duration, isLeft, top }) => {
         if (seconds >= duration) return;
         const { inset, width: stripWidth } = getStripShape(seconds / duration, 0.9 / duration);
         const pixelWidth = stripWidth * width;
         const near = inset * width;
+        ctx.beginPath();
         ctx.roundRect(isLeft ? near : width - near - pixelWidth, top, pixelWidth, stripHeight * scale, stripHeight * scale / 2);
+        ctx.fill();
+        ctx.stroke();
       });
-      ctx.fill();
       if (seconds < maxSeconds) frameRef = requestAnimationFrame(draw);
     };
     frameRef = requestAnimationFrame(draw);

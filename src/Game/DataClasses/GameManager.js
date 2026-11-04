@@ -6,7 +6,7 @@ import { SettingsManager } from './SettingsManager';
 import { GameBoardPiecesManager } from './GameBoard/Pieces/GameBoardPiecesManager';
 import { KaijuManager } from './KaijuManager';
 import { GameBoardManager } from './GameBoard/GameBoardManager';
-import { EXIT_OPEN_PHASE, getSortZIndex, LEVELS, PENINSULA, RIVAL_IN_PHASE } from 'Game/DataClasses/Levels/levels';
+import { CHARACTER_FEET, CHARACTER_HEIGHT_PX, EXIT_OPEN_PHASE, getSortZIndex, LEVELS, PENINSULA, RIVAL_IN_PHASE } from 'Game/DataClasses/Levels/levels';
 import { TrainSchedule, TRAIN_HIT } from './TrainSchedule';
 import { GameBoardPieceAgent } from './GameBoard/Pieces/GameBoardPieceAgent';
 import { GameBoardPieceExtra } from './GameBoard/Pieces/GameBoardPieceExtra';
@@ -135,7 +135,8 @@ export class GameManager {
         // the dialogue log (DialogueLog.ts): every line said so far, and talk that runs outside of cutscenes
         this.dialogueLog = []; // { key, who, name, text, avatar }
         this.isCutsceneLineWaiting = false; // a cutscene's line waits for a key or a click
-        this.talks = []; // { lines, index, msLeft, isWaiting, isActive, isPhased } // once the fight is decided, the camera stays on the death that decided it
+        this.talks = []; // { lines, index, msLeft, isWaiting, isActive, isPhased }
+        this.walkers = []; // people at work in a walking scene (addWalker) // once the fight is decided, the camera stays on the death that decided it
         this.isChaseSlowed = false;
         this.chaseSlowEndsAt = 0;
         this.followers = []; // recruits walking with the team
@@ -351,6 +352,7 @@ export class GameManager {
 
         if (this.level.hasRecruitFollowers) this.addRecruitFollowers();
         if (this.level.extras) this.level.extras.forEach(extra => this.addExtra(extra));
+        if (this.level.walkers) this.level.walkers.forEach(walker => this.addWalker(walker));
         if (getIsDialogueLog()) this.addSceneTalks();
         if (this.level.isDepowered) this.depowerPlayerTeam();
 
@@ -459,6 +461,59 @@ export class GameManager {
         const { x, y } = this.gameBoardManager.getCharXAndYFromTileIndex(tileIndex);
         piece.place({ charLocation: { x: x + spot.x - center.x, y: y + spot.y - center.y }, tileIndex, facingDir });
         this.extras.push(piece);
+    }
+
+    // a person at work in a walking scene (the Street's hazmat workers): runs from spot to spot, off the tiles, and stands a while
+    addWalker({ avatar, route, runSpeed, idleSeconds }) {
+        const piece = this.gameBoardPiecesManager.addPiece({
+            pieceClass: GameBoardPieceExtra,
+            pieceInfo: { ...PIECES_INFO[avatar], abilities: [] },
+            teamIndex: 1
+        });
+        const [first] = route;
+        piece.place({ charLocation: this.getWalkerCharLocation(first), tileIndex: this.gameBoardManager.getClosestWalkableTileToLocation(first), facingDir: 'down' });
+        piece.walk = { route, runSpeed, idleMs: idleSeconds * 1000, legIndex: 0, idleMsLeft: Math.random() * idleSeconds * 1000, isRunning: false };
+        this.placeWalker(piece, first.y);
+        this.walkers.push(piece);
+    }
+
+    // from where the feet are to the piece's own spot, its top left: it is drawn smaller further up the scene
+    getWalkerScale(y) {
+        return this.level.getWalkerHeight(y) / (CHARACTER_HEIGHT_PX * this.level.pieceScale);
+    }
+
+    getWalkerCharLocation({ x, y }) {
+        const scale = this.level.pieceScale * this.getWalkerScale(y);
+        return { x: x - CHARACTER_FEET.x * scale - CHARACTER_FEET.leftShift, y: y - CHARACTER_FEET.y * scale };
+    }
+
+    // its size and its place in front of or behind the scene, from where its feet are
+    placeWalker(piece, feetY) {
+        piece.perspectiveScale = this.getWalkerScale(feetY);
+        piece.introZIndex = getSortZIndex(this.level, feetY);
+    }
+
+    updateWalkers() {
+        this.walkers.forEach(piece => {
+            const walk = piece.walk;
+            if (walk.isRunning) {
+                piece.moveSpeed = walk.runSpeed * GAME_TICK.pieceMs / 1000 / this.gameBoardManager.moveSpeedScale;
+                const hasArrived = piece.stepArrival();
+                this.placeWalker(piece, piece.charLocation.y + CHARACTER_FEET.y * this.level.pieceScale * piece.perspectiveScale);
+                if (hasArrived) {
+                    walk.isRunning = false;
+                    walk.idleMsLeft = walk.route[walk.legIndex].isPass ? 0 : walk.idleMs;
+                }
+                return;
+            }
+            walk.idleMsLeft -= GAME_TICK.pieceMs;
+            if (walk.idleMsLeft > 0) return;
+            walk.legIndex = (walk.legIndex + 1) % walk.route.length;
+            const from = piece.charLocation;
+            piece.charLocation = this.getWalkerCharLocation(walk.route[walk.legIndex]);
+            piece.startArrival(from);
+            walk.isRunning = true;
+        });
     }
 
     addRecruitFollowers() {
@@ -1141,6 +1196,7 @@ export class GameManager {
     stepPieces() {
         if (this.isPaused || this.isEditingTiles) return;
         this.updateTalks();
+        this.updateWalkers();
         if (this.recruitScene) return;
         if (this.cutscene) {
             this.updateCutscene();
