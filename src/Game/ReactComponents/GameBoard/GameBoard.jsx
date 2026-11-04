@@ -522,6 +522,15 @@ export const GameBoard = ({ isWindowOpen = true, isPaused, gameManager, level, a
   const shotZoom = currentShot && !currentShot.isWide ? getShotFraming(currentShot).zoom : getFitZoom(fullFrameSizes) * ((recruitScene && recruitScene.shot.zoomScale) || 1);
   const overlayScale = SpeechBubbleScale / shotZoom;
 
+  // a balloon is kept inside the scene: near an edge, it slides in (the tail still starts from the same spot on it)
+  const getSpeechX = currentSpeech => {
+    const box = getSpeechScreenBox(currentSpeech, overlayScale);
+    const margin = world.width * 0.02;
+    const pastLeft = Math.max(margin - (currentSpeech.x + box.left), 0);
+    const pastRight = Math.max(currentSpeech.x + box.right - (world.width - margin), 0);
+    return currentSpeech.x + pastLeft - pastRight;
+  };
+
   const deathPiecesComponents = recruitScene ? [] : gameManager.getDeathPieces().map(death => {
     const { key, avatar, charLocation, color, zIndex, body } = death;
     return avatar == 'kaiju' ?
@@ -583,8 +592,8 @@ export const GameBoard = ({ isWindowOpen = true, isPaused, gameManager, level, a
           );
         })()}
         {speech && (speech.lines
-          ? <PagedSpeechBalloon name={speech.name} lines={speech.lines} x={speech.x} y={speech.y} isFlipped={speech.isFlipped} zIndex={2147482000} scale={overlayScale} />
-          : <SpeechBalloon name={speech.name} text={speech.text} x={speech.x} y={speech.y} isFlipped={speech.isFlipped} zIndex={2147482000} scale={overlayScale} />)}
+          ? <PagedSpeechBalloon name={speech.name} lines={speech.lines} x={getSpeechX(speech)} y={speech.y} isFlipped={speech.isFlipped} zIndex={2147482000} scale={overlayScale} />
+          : <SpeechBalloon name={speech.name} text={speech.text} x={getSpeechX(speech)} y={speech.y} isFlipped={speech.isFlipped} zIndex={2147482000} scale={overlayScale} />)}
         <WorldContent style={{ left: `${contentOffset.x}px`, top: `${contentOffset.y}px` }}>
           {/* canvases are sized from the zoom, which means nothing until the frame has been measured */}
           {isFrameMeasured && <TileCanvas gameManager={gameManager} level={level} tone={getTileTone(level, activePhases)} isVisible={!isPaused && !isEditingTiles} zoom={closeCamera.zoom} isTeamColors={isTeamColors} />}

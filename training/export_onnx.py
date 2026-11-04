@@ -9,7 +9,7 @@ import json
 import pathlib
 
 import torch
-from sb3_contrib import MaskablePPO
+from model_io import load_model
 
 
 class Logits(torch.nn.Module):
@@ -28,7 +28,7 @@ def main():
     parser.add_argument("model", type=pathlib.Path)
     parser.add_argument("out", type=pathlib.Path)
     args = parser.parse_args()
-    model = MaskablePPO.load(args.model, device="cpu")
+    model = load_model(args.model, device="cpu")
     size = model.observation_space.shape[0]
     args.out.parent.mkdir(parents=True, exist_ok=True)
     torch.onnx.export(Logits(model.policy).eval(), torch.zeros(1, size), str(args.out),

@@ -1,0 +1,19 @@
+{
+  "commit": "686963c",
+  "steps": 2000000,
+  "resumedFrom": null,
+  "results": {
+    "model": {
+      "winRate": 0.72,
+      "deathRate": 0.115,
+      "meanReward": 4.866420000000009,
+      "meanSeconds": 50.8266
+    },
+    "rules": {
+      "winRate": 0.295,
+      "deathRate": 0.655,
+      "meanReward": -0.690959999999996,
+      "meanSeconds": 28.93
+    }
+  }
+}

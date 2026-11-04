@@ -22,6 +22,7 @@ from stable_baselines3.common.vec_env import SubprocVecEnv
 
 from evaluate import evaluate
 from kaiju_env import KaijuEnv
+from model_io import load_model
 
 MODELS_DIR = pathlib.Path(__file__).parent / "models"
 RUNS_DIR = pathlib.Path(__file__).parent / "runs"
@@ -69,7 +70,7 @@ def main():
     MODELS_DIR.mkdir(exist_ok=True)
     envs = make_vec_env(KaijuEnv, n_envs=args.envs, seed=args.seed, vec_env_cls=SubprocVecEnv)
     if args.resume:
-        model = MaskablePPO.load(args.resume, env=envs, tensorboard_log=str(RUNS_DIR))
+        model = load_model(args.resume, env=envs, tensorboard_log=str(RUNS_DIR))
     else:
         model = MaskablePPO(
             "MlpPolicy", envs, seed=args.seed, tensorboard_log=str(RUNS_DIR), verbose=1,

@@ -7,7 +7,7 @@ import argparse
 import json
 
 import numpy as np
-from sb3_contrib import MaskablePPO
+from model_io import load_model
 
 from kaiju_env import KaijuEnv
 
@@ -45,4 +45,4 @@ if __name__ == "__main__":
     parser.add_argument("model")
     parser.add_argument("--games", type=int, default=200)
     args = parser.parse_args()
-    print(json.dumps(evaluate(MaskablePPO.load(args.model), args.games), indent=2))
+    print(json.dumps(evaluate(load_model(args.model), args.games), indent=2))
