@@ -66,13 +66,16 @@ const Chunk = styled.div`
   display: flex;
   gap: 0.9cqw;
   margin-bottom: 1.1cqw;
+  /* the same speaker again: no portrait, and the words line up under theirs */
+  padding-left: ${props => props.$isRepeat ? "5.3cqw" : "0"};
+  margin-top: ${props => props.$isRepeat ? "-0.5cqw" : "0"};
   opacity: ${props => props.$isOld ? 0.6 : 1};
   transition: opacity 0.4s;
 `;
 
 const Portrait = styled.div`
   flex-shrink: 0;
-  width: 3.6cqw;
+  width: 4.4cqw;
   aspect-ratio: 3 / 4;
   overflow: hidden;
   border: 0.1cqw solid ${LOG_LOOK.dim};
@@ -82,8 +85,8 @@ const Portrait = styled.div`
 `;
 
 const Words = styled.div`
-  font-size: 0.82cqw;
-  line-height: 1.6;
+  font-size: 1.25cqw;
+  line-height: 1.55;
 `;
 
 const Name = styled.span`
@@ -95,7 +98,7 @@ const ContinueBar = styled.button`
   margin: 0.6cqw 1.4cqw 1.2cqw;
   padding: 0.55cqw 1cqw;
   font-family: gameboy;
-  font-size: 0.85cqw;
+  font-size: 1.1cqw;
   letter-spacing: 0.15cqw;
   text-align: left;
   color: #04140b;
@@ -119,7 +122,8 @@ const TypedText = ({ text, isTyping }) => {
 };
 
 // 'entries': { key, who, name, text, avatar }. 'isVisible': hidden in fights, where the HUDs take this space.
-export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue }) => {
+// 'actions': buttons in place of Continue, for a choice ({ text, onClick, isEnter }), as in a radio call.
+export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, actions = [] }) => {
   const scrollRef = useRef(null);
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -129,17 +133,24 @@ export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue }) 
   return (
     <Panel style={{ opacity: isVisible ? 1 : 0, pointerEvents: isVisible ? "auto" : "none" }} onClick={() => isWaiting && onContinue()}>
       <Scroll ref={scrollRef}>
-        {entries.map(({ key, who, name, text, avatar }, index) => (
-          <Chunk key={key} $isOld={index < entries.length - 1}>
-            <Portrait style={{ backgroundImage: avatar ? `url(/levels/portraits/${avatar}.png)` : undefined }} />
+        {entries.map(({ key, who, name, text, avatar }, index) => {
+          // a portrait, and the name, only when the speaker changes
+          const isRepeat = index > 0 && entries[index - 1].name == name && entries[index - 1].avatar == avatar;
+          return (
+          <Chunk key={key} $isOld={index < entries.length - 1} $isRepeat={isRepeat}>
+            {!isRepeat && <Portrait style={{ backgroundImage: avatar ? `url(/levels/portraits/${avatar}.png)` : undefined }} />}
             <Words>
-              <Name style={{ color: LOG_LOOK.names[who] || LOG_LOOK.names.other }}>{name} -</Name>
+              {!isRepeat && <Name style={{ color: LOG_LOOK.names[who] || LOG_LOOK.names.other }}>{name} -</Name>}
               <TypedText text={text} isTyping={index == entries.length - 1} />
             </Words>
           </Chunk>
-        ))}
+          );
+        })}
       </Scroll>
-      {isWaiting && <ContinueBar data-enter onClick={event => { event.stopPropagation(); onContinue(); }}>Continue &#9654;</ContinueBar>}
+      {isWaiting && !actions.length && <ContinueBar data-enter onClick={event => { event.stopPropagation(); onContinue(); }}>Continue &#9654;</ContinueBar>}
+      {actions.map(({ text, onClick, isEnter }) => (
+        <ContinueBar key={text} data-enter={isEnter ? "" : undefined} onClick={event => { event.stopPropagation(); onClick(); }}>{text} &#9654;</ContinueBar>
+      ))}
     </Panel>
   );
 };

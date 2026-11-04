@@ -594,7 +594,16 @@ export class GameBoardPieceBase {
     }
 
     setMoveToTilesGivenIdealDistanceFromEnemy(moveToTiles, idealDistance) {
-        this.moveToTiles = (moveToTiles.length - idealDistance) > 0 ? moveToTiles.slice(0, moveToTiles.length - idealDistance) : moveToTiles;
+        this.moveToTiles = this.getSpacedPath((moveToTiles.length - idealDistance) > 0 ? moveToTiles.slice(0, moveToTiles.length - idealDistance) : moveToTiles);
+    }
+
+    // with spacing on, an NPC stops short rather than end on a tile someone else stands on: groups spread out.
+    // not a Kaiju: it hurts by walking into people.
+    getSpacedPath(moveToTiles) {
+        if (this.avatar == 'kaiju') return moveToTiles;
+        const path = [...moveToTiles];
+        while (path.length && this.gameManagerProxy.getIsTileTakenForSpacing(this.pieceIndex, path[path.length - 1])) path.pop();
+        return path;
     }
 
     followLeader() {
@@ -608,10 +617,10 @@ export class GameBoardPieceBase {
             this.isWaitingToBePassed = false;
         }
         const moveToTiles = this.gameManagerProxy.getPathToTeamLeader(this.pieceIndex);
-        this.moveToTiles = moveToTiles.length > this.followDistance ?
+        this.moveToTiles = this.getSpacedPath(moveToTiles.length > this.followDistance ?
             // ensure piece follows within the range of 'this.followDistance'
             moveToTiles.slice(0, moveToTiles.length - this.followDistance)
-            : [];
+            : []);
     }
 
     getReadyAttackReach() {

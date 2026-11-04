@@ -240,7 +240,9 @@ export const ControlsOverlay = ({ onClose }) => {
     <Backdrop onClick={onClose}>
       <Panel onClick={e => {
         e.stopPropagation();
-        setPageIndex((pageIndex + 1) % PAGES.length);
+        // on to the next page; past the last, it closes. it never wraps back to the first.
+        if (pageIndex < PAGES.length - 1) setPageIndex(pageIndex + 1);
+        else onClose();
       }}>
         <CloseButton aria-label="Close" className="fa fa-times" onClick={e => {
           e.stopPropagation();
@@ -259,7 +261,7 @@ export const ControlsOverlay = ({ onClose }) => {
             </React.Fragment>
           ))}
         </Lines>
-        <Hint>Click for the {pageIndex < PAGES.length - 1 ? "next" : "first"} page. Click outside to close.</Hint>
+        <Hint>{pageIndex < PAGES.length - 1 ? "Click for the next page." : "Click to close."} Click outside to close.</Hint>
       </Panel>
     </Backdrop>
   );

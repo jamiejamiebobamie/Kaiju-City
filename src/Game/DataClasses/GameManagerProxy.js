@@ -29,6 +29,11 @@ export class GameManagerProxy {
         return !!this.props.getIsPowersOff && this.props.getIsPowersOff(piece);
     }
 
+    // someone else stands on the tile, and NPCs keep their distance here (SpacingTest.ts)
+    getIsTileTakenForSpacing(pieceIndex, tile) {
+        return !!this.props.getIsTileTakenForSpacing && this.props.getIsTileTakenForSpacing(pieceIndex, tile);
+    }
+
     getPiece(pieceIndex) {
         return this.props.getPiece(pieceIndex);
     }

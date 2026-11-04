@@ -5,6 +5,7 @@ import { GameManager, GameResult } from './GameManager';
 import { SettingsManager } from './SettingsManager';
 import { LEVELS } from './Levels/levels';
 import { setIsClickThrough, setIsDialogueLog } from './DialogueLog';
+import { setIsSpacing } from './SpacingTest';
 import { TimeoutHandler } from './TimeoutHandler';
 import { findPath } from './GameBoard/findPath';
 import { CENTER_TILE, getLitTiles, makeGame, placePiece, putStatusOnTile } from './testHelpers';
@@ -735,5 +736,17 @@ describe('Sewer 1', () => {
     teammate.followLeader();
     expect(teammate.isWaitingToBePassed).toBe(false);
     expect(teammate.moveToTiles.length).toBeGreaterThan(0);
+  });
+});
+
+describe('spacing', () => {
+  it("an NPC stops short of a tile someone else stands on, unless spacing is off", () => {
+    const { gm, player } = makeGame({ isTeammate: true });
+    const [, teammate] = gm.gameBoardPiecesManager.getTeamPieces(player.getTeamIndex());
+    const path = [{ i: 1, j: 1 }, { ...player.getTileIndex() }];
+    expect(teammate.getSpacedPath(path)).toEqual([{ i: 1, j: 1 }]);
+    setIsSpacing('battle', false);
+    expect(teammate.getSpacedPath(path)).toEqual(path);
+    setIsSpacing('battle', true);
   });
 });

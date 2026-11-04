@@ -126,6 +126,22 @@ const PowerLight = styled.div`
   pointer-events: none;
 `;
 
+// "Battle!": where the screen meets the casing, a red glow pulses like a siren
+const sirenPulse = keyframes`
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 1; }
+`;
+
+const SirenEdge = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 2147482995;
+  pointer-events: none;
+  border-radius: ${TV_LOOK.screenRadius}cqw;
+  box-shadow: inset 0 0 1.6cqw 0.35cqw rgba(255, 20, 50, 0.85), inset 0 0 0.25cqw 0.12cqw #ff2a4d;
+  animation: ${sirenPulse} 1.1s ease-in-out infinite;
+`;
+
 // at the left of the bottom edge, clear of the recruit buttons in the middle
 const BrandName = styled.div`
   position: absolute;
@@ -225,7 +241,8 @@ const getHandleSpot = fraction => `calc(${fraction * 100}% - ${fraction * WINDOW
 
 // 'playWindow' is the window as set. 'isOpen' opens it up to the whole frame for a wide shot.
 // 'buttons' sit on the casing. with the window open there is no casing, and they show over the picture.
-export const PlayWindow = ({ playWindow, setPlayWindow, isAdjusting, isOpen, isCut = false, buttons = null, children }) => {
+// 'isSiren': the red alarm glow around the screen, for a Kaiju fight
+export const PlayWindow = ({ playWindow, setPlayWindow, isAdjusting, isOpen, isCut = false, buttons = null, isSiren = false, children }) => {
   const windowRef = useRef(null);
   const { left, top, right, bottom } = isOpen ? FULL_WINDOW : playWindow;
 
@@ -245,6 +262,7 @@ export const PlayWindow = ({ playWindow, setPlayWindow, isAdjusting, isOpen, isC
       transition: isAdjusting || isCut ? "none" : `left ${WIDE_SHOT.pullMs}ms ease-in-out, top ${WIDE_SHOT.pullMs}ms ease-in-out, width ${WIDE_SHOT.pullMs}ms ease-in-out, height ${WIDE_SHOT.pullMs}ms ease-in-out`
     }}>
       {children}
+      {isSiren && !isOpen && <SirenEdge />}
       <ScreenGlass><RollingBar /></ScreenGlass>
       {!isOpen && (
         <>

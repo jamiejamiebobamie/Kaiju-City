@@ -13,6 +13,7 @@ import { AvatarChoice } from "./AvatarChoice";
 import { ControlsOverlay } from "./UI/ControlsOverlay";
 import { NpcModelDriver } from "Game/DataClasses/npcBrain/npcModel";
 import { getIsClickThrough, setIsClickThrough, setIsDialogueLog } from "Game/DataClasses/DialogueLog";
+import { getIsSpacing, setIsSpacing } from "Game/DataClasses/SpacingTest";
 import { DialogueLogPanel } from "./DialogueLogPanel";
 import { DEFAULT_AGGRESSION } from "Game/DataClasses/npcBrain/brain";
 import { getKaijuSpeedMode, KaijuSpeedMode, setKaijuSpeedMode } from "../DataClasses/KaijuSpeedTest";
@@ -350,6 +351,11 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const { selectedAvatar, setSelectedAvatar, selectedTeammate, setSelectedTeammate, selectedDifficulty, settingsManager } = useContext(GlobalSettingsContext);
   const { isPaused, winner, isPlayerDead, players, recruits, kaijuKillCount, kaijuToWin, activePhases, isWideShot, isCutscene, unlockMessage, unlockImage, speech, recruitScene, dialogueLog, isDialogueWaiting } = useSnapshot(gameUiStore);
   const [isClickThrough, setClickThrough] = useState(getIsClickThrough); // a playtest: each line in the log waits for a key or a click
+  const [spacing, setSpacing] = useState(() => ({ walking: getIsSpacing("walking"), battle: getIsSpacing("battle") })); // a playtest: NPCs don't bunch up
+  const toggleSpacing = kind => {
+    setIsSpacing(kind, !spacing[kind]);
+    setSpacing({ ...spacing, [kind]: !spacing[kind] });
+  };
 
   const startingLevelId = new URLSearchParams(window.location.search).get('level');
   const [levelId, setLevelId] = useState(startingLevelId || PENINSULA.id);
@@ -850,7 +856,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
       : radioLines ?
         <GameArea>
           <GameFrame data-game-frame>
-            <PlayWindow playWindow={playWindow} setPlayWindow={updatePlayWindow} isAdjusting={false} isOpen={false}>
+            <PlayWindow playWindow={playWindow} setPlayWindow={updatePlayWindow} isAdjusting={false} isOpen={false} isSiren>
               <RadioCall
                 key={campaignIndex}
                 lines={radioLines}
@@ -916,6 +922,12 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 <input type="checkbox" checked={isClickThrough} onChange={() => { setIsClickThrough(!isClickThrough); setClickThrough(!isClickThrough); }} /> Click through
               </label>
               <label>
+                <input type="checkbox" checked={spacing.walking} onChange={() => toggleSpacing("walking")} /> Spacing: walking
+              </label>
+              <label>
+                <input type="checkbox" checked={spacing.battle} onChange={() => toggleSpacing("battle")} /> Spacing: battle
+              </label>
+              <label>
                 <input type="checkbox" checked={isAdjustingWindow} onChange={() => setIsAdjustingWindow(!isAdjustingWindow)} /> Adjust window
               </label>
               {isAdjustingWindow && <button onClick={() => updatePlayWindow(PORTRAIT_WINDOW)}>Portrait window</button>}
@@ -949,7 +961,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
             </PhaseToggles>
           )}
           <GameFrame data-game-frame>
-            <PlayWindow playWindow={playWindow} setPlayWindow={updatePlayWindow} isAdjusting={isAdjustingWindow} isOpen={isWindowOpen} isCut={!!recruitScene} buttons={!isEditingTiles && (
+            <PlayWindow playWindow={playWindow} setPlayWindow={updatePlayWindow} isAdjusting={isAdjustingWindow} isOpen={isWindowOpen} isCut={!!recruitScene} isSiren={!!level.kaijuEntry && winner === null && !isPaused} buttons={!isEditingTiles && (
               <>
                 <BezelButton title="Pause" onClick={handleClickPause}>Pause</BezelButton>
                 <BezelButton title="How to play" onClick={openControls}>Controls</BezelButton>

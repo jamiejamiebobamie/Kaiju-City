@@ -17,6 +17,7 @@ import { getSpeechMs } from './speechTiming';
 import { getTileCenter } from './GameBoard/hexGrid';
 import { getTorsoSpot, startRagdoll, stepRagdoll } from './Ragdoll';
 import { DIALOGUE, getIsClickThrough, getIsDialogueLog } from './DialogueLog';
+import { getIsSpacing } from './SpacingTest';
 
 export const GameResult = Object.freeze({
     PlayerWon: 0,
@@ -198,6 +199,12 @@ export class GameManager {
     }
 
     // no one uses powers while walking a scene, in a cutscene, or once the Agents have taken them
+    // with spacing on for this kind of scene, a tile with someone else standing on it
+    getIsTileTakenForSpacing = (pieceIndex, { i, j }) => {
+        if (!getIsSpacing(this.level.isWalkingLevel ? 'walking' : 'battle')) return false;
+        return this.getPieces().some(piece => piece.pieceIndex != pieceIndex && !piece.isDead && piece.isOnTiles && piece.tileIndex.i == i && piece.tileIndex.j == j);
+    }
+
     getIsPowersOff = (piece = undefined) => {
         if (this.isRecruitsFighting && !this.cutscene && piece && piece.isRecruit) return false; // the Lab trap: the recruits hold the Agents off
         if (piece && piece.teamIndex != this.gameBoardPiecesManager.getPlayerTeamIndex() && this.accTime < this.enemyPowersAtMs) return true; // a retry's head start
@@ -739,7 +746,7 @@ export class GameManager {
     // the whole scene, in on the Agent for his call, then back to the team, as at the train
     startGreeting() {
         const { text, speechSpot } = this.level.greeting;
-        const speech = this.getAgentSpeech(text, speechSpot);
+        const speech = { ...this.getAgentSpeech(text, speechSpot), isShout: true }; // a call across the street: a balloon, not the log
         const player = this.gameBoardPiecesManager.getPlayerPiece();
         const { rowStep, scale } = this.level.grid;
         const agentShot = { point: speech.focus || speechSpot, zoomScale: DIALOGUE.speakerZoomScale, isCover: true };
@@ -1319,6 +1326,7 @@ export class GameManager {
             setHoveredTileIndex: this.gameBoardManager.setHoveredTileIndex,
             getIsPieceInDanger: this.gameBoardManager.getIsPieceInDanger,
             getIsPowersOff: this.getIsPowersOff,
+            getIsTileTakenForSpacing: this.getIsTileTakenForSpacing,
             getIsTeamDamaged: this.gameBoardPiecesManager.getIsTeamDamaged,
             getIsPieceOnTile: this.gameBoardPiecesManager.getIsPieceOnTile,
             getIsContactDmg: this.gameBoardPiecesManager.getIsContactDmg,
