@@ -3,10 +3,16 @@ import { TILE_DIRS, TILE_STATUSES_AND_ABILITY_DATA } from 'Utils/gameState';
 /*
   A trained NPC's senses and controls, shared by the training bridge and the game.
   An action is one move (stay, or a step in one of the six tile directions) and one power (none, or one of the piece's three).
-  The observation is what the NPC knows about itself, the closest pieces, and the tiles around it, as numbers near -1 to 1.
+  The observation is what the NPC knows about itself, the closest pieces, how many are on each side, and the tiles around it,
+  as numbers near -1 to 1.
   Changing either one means training a new model: keep OBSERVATION_VERSION in step.
+  The last number is the NPC's aggression, 0 (careful) to 1 (reckless): it was trained across that whole range,
+  so the game can set it per piece, even mid-fight, as 'piece.aggression'.
 */
-export const OBSERVATION_VERSION = 1;
+export const OBSERVATION_VERSION = 3;
+export const DEFAULT_AGGRESSION = 0.5;
+
+export const getAggression = piece => Math.min(Math.max(piece.aggression ?? DEFAULT_AGGRESSION, 0), 1);
 
 export const MOVES = ['stay', ...TILE_DIRS];
 export const DECISION_TICKS = 3; // a trained NPC chooses every few piece ticks: about three times a second
@@ -21,7 +27,8 @@ const SCALE = {
   livesModifier: 3,
   speed: 3,
   tiles: 12, // distances, in rows
-  stacks: 4
+  stacks: 4,
+  team: 5 // pieces on a side
 };
 
 export const decodeAction = (action: number) => ({ move: Math.floor(action / (POWER_SLOTS + 1)), power: action % (POWER_SLOTS + 1) });
@@ -106,11 +113,14 @@ export const observe = (gm, piece) => {
     ...describePiece(piece, enemies[0], rowPx),
     ...describePiece(piece, enemies[1], rowPx),
     ...describePiece(piece, allies[0], rowPx).slice(0, 4),
-    ...tiles
+    ...tiles,
+    allies.length / SCALE.team, // so it knows when its side is outnumbered
+    enemies.length / SCALE.team,
+    getAggression(piece)
   ];
 };
 
-export const OBSERVATION_SIZE = 5 + POWER_SLOTS * (ELEMENTS.length + 5) + 5 + 5 + 4 + 19 * 4;
+export const OBSERVATION_SIZE = 5 + POWER_SLOTS * (ELEMENTS.length + 5) + 5 + 5 + 4 + 19 * 4 + 2 + 1;
 
 /*
   The piece acts on its latest action: it steps one tile when it is between tiles, and uses the power once.

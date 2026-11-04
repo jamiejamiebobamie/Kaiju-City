@@ -11,8 +11,8 @@ export const POWERS = TILE_STATUSES_AND_ABILITY_DATA.map(({ element }) => elemen
 
 const ATTACK_POWERS = ['ice', 'fire', 'water', 'wood', 'lightning', 'death', 'charm'];
 export const VERSUS_LIMIT_MS = 120000;
-const KAIJU_LIMIT_MS = 300000;
-const KAIJU_TO_WIN = 20;
+export const KAIJU_LIMIT_MS = 300000;
+export const KAIJU_TO_WIN = 20;
 export const TOP_SPOTS = [{ x: 230, y: 160 }, { x: 260, y: 190 }];
 export const BOTTOM_SPOTS = [{ x: 230, y: 660 }, { x: 200, y: 630 }];
 

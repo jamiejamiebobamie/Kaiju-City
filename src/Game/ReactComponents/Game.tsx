@@ -12,6 +12,7 @@ import { RecruitCalls } from "./RecruitCalls";
 import { AvatarChoice } from "./AvatarChoice";
 import { ControlsOverlay } from "./UI/ControlsOverlay";
 import { NpcModelDriver } from "Game/DataClasses/npcBrain/npcModel";
+import { DEFAULT_AGGRESSION } from "Game/DataClasses/npcBrain/brain";
 import { getKaijuSpeedMode, KaijuSpeedMode, setKaijuSpeedMode } from "../DataClasses/KaijuSpeedTest";
 import { BUBBLE_DRAWBACKS, BubbleDrawback, getIsDrawbackOn, setIsDrawbackOn } from "../DataClasses/BubbleTest";
 import { getAvatarColor, saveAvatarColor, saveTeamAvatars, unlockRecruitSkill, unlockTool } from "../DataClasses/Avatars";
@@ -349,6 +350,9 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const [isEnemyZoom, setIsEnemyZoom] = useState(true);
   const [isTeamColors, setIsTeamColors] = useState(true); // a playtest: statuses in their side's color
   const [isTrainedNpcs, setIsTrainedNpcs] = useState(false); // a playtest: NPCs play by the trained model in public/models
+  const [npcAggression, setNpcAggression] = useState(DEFAULT_AGGRESSION); // the trained NPCs', 0 careful to 1 reckless
+  const npcAggressionRef = useRef(npcAggression);
+  npcAggressionRef.current = npcAggression;
   const [isMonitorAlways, setIsMonitorAlways] = useState(true); // a playtest: the TV never opens up, and wide shots play inside it
   const [isAdjustingWindow, setIsAdjustingWindow] = useState(false);
   const [playWindow, setPlayWindow] = useState(() => import.meta.env.DEV ? loadPlayWindow() : FULL_WINDOW);
@@ -692,7 +696,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   useEffect(() => {
     const gm = gameManager.current;
     if (!gm) return;
-    gm.setNpcModelDriver(isTrainedNpcs ? new NpcModelDriver(gm.getTrainablePieces) : undefined);
+    gm.setNpcModelDriver(isTrainedNpcs ? new NpcModelDriver(gm.getTrainablePieces, () => npcAggressionRef.current) : undefined);
   }, [isTrainedNpcs, matchCount, levelId, campaignIndex]);
 
   // the first Peninsula fight opens with the controls, once the teammate's arrival has played
@@ -845,6 +849,12 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               <label>
                 <input type="checkbox" checked={isTrainedNpcs} onChange={() => setIsTrainedNpcs(!isTrainedNpcs)} /> Trained NPCs
               </label>
+              {isTrainedNpcs && (
+                <label>
+                  <input type="range" min={0} max={1} step={0.05} value={npcAggression} onChange={event => setNpcAggression(Number(event.target.value))} />
+                  {' '}Aggression {npcAggression.toFixed(2)}
+                </label>
+              )}
               <label>
                 <input type="checkbox" checked={isMonitorAlways} onChange={() => setIsMonitorAlways(!isMonitorAlways)} /> Monitor always
               </label>

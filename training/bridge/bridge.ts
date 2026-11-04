@@ -4,10 +4,13 @@
 //
 // Requests:                                             Responses:
 //   {"cmd": "spec"}                                     {"observationSize", "numActions", "observationVersion"}
-//   {"cmd": "reset", "seed"?: n, "isBaseline"?: bool}   a step result
+//   {"cmd": "reset", "seed"?: n, "isBaseline"?: bool,   a step result
+//    "kind"?: "versus" | "kaiju", "aggression"?: 0-1,
+//    "sizes"?: {"allies", "opponents"}}
 //   {"cmd": "step", "action": n}                        a step result
 // A step result is {"observation", "actionMask", "reward", "terminated", "truncated", "info"}. Errors are {"error": message}.
 // 'isBaseline': the learner's piece plays by the rules instead, and the action is ignored: to compare a model against.
+// 'kind', 'aggression' and 'sizes' are random each match unless given.
 import { createInterface } from 'node:readline';
 import { NUM_ACTIONS, OBSERVATION_SIZE, OBSERVATION_VERSION } from '../../src/Game/DataClasses/npcBrain/brain';
 import { TrainingEnv } from '../../src/Game/DataClasses/npcBrain/TrainingEnv';
@@ -21,7 +24,7 @@ const env = new TrainingEnv();
 const handle = request => {
   switch (request.cmd) {
     case 'spec': return { observationSize: OBSERVATION_SIZE, numActions: NUM_ACTIONS, observationVersion: OBSERVATION_VERSION };
-    case 'reset': return env.reset({ seed: request.seed, isBaseline: !!request.isBaseline });
+    case 'reset': return env.reset({ seed: request.seed, isBaseline: !!request.isBaseline, kind: request.kind, aggression: request.aggression, sizes: request.sizes });
     case 'step': return env.step(request.action);
     default: return { error: `unknown command: ${JSON.stringify(request)}` };
   }

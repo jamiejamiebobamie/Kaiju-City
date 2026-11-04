@@ -20,7 +20,7 @@ from stable_baselines3.common.callbacks import BaseCallback, CallbackList, Check
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.vec_env import SubprocVecEnv
 
-from evaluate import evaluate
+from evaluate import evaluate, print_table
 from kaiju_env import KaijuEnv
 from model_io import load_model
 
@@ -29,7 +29,7 @@ RUNS_DIR = pathlib.Path(__file__).parent / "runs"
 
 
 class GameStatsCallback(BaseCallback):
-    """Logs, per rollout: how often the team won, how often the agent died, and how long games lasted."""
+    """Logs, per rollout: how often the team won (and against the Kaiju), how often the agent died, and how long games lasted."""
 
     def __init__(self):
         super().__init__()
@@ -47,6 +47,9 @@ class GameStatsCallback(BaseCallback):
         self.logger.record("game/win_rate", float(np.mean([bool(g.get("isWon")) for g in self._games])))
         self.logger.record("game/death_rate", float(np.mean([bool(g.get("isLearnerDead")) for g in self._games])))
         self.logger.record("game/seconds", float(np.mean([g.get("timeMs", 0) for g in self._games])) / 1000)
+        kaiju = [g for g in self._games if g.get("kind") == "kaiju"]
+        if kaiju:
+            self.logger.record("game/kaiju_win_rate", float(np.mean([bool(g.get("isWon")) for g in kaiju])))
         self._games = []
 
 
@@ -62,7 +65,7 @@ def main():
     parser.add_argument("--steps", type=int, default=1_000_000, help="training steps (agent decisions, about 3 a second of game time)")
     parser.add_argument("--envs", type=int, default=12, help="games played in parallel, one process each")
     parser.add_argument("--resume", type=pathlib.Path, help="continue training this saved model")
-    parser.add_argument("--eval-games", type=int, default=200, help="games for the evaluation at the end")
+    parser.add_argument("--eval-games", type=int, default=100, help="games per row of the evaluation at the end")
     parser.add_argument("--seed", type=int, default=0)
     args = parser.parse_args()
 
@@ -86,7 +89,7 @@ def main():
     results = evaluate(model, args.eval_games)
     description = {"commit": git_commit(), "steps": args.steps, "resumedFrom": str(args.resume) if args.resume else None, "results": results}
     (MODELS_DIR / f"{run_name}.json").write_text(json.dumps(description, indent=2))
-    print(json.dumps(description, indent=2))
+    print_table(results)
     print(f"saved {model_path}")
 
 

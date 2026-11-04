@@ -3,7 +3,9 @@
 The game's rules live in JavaScript (src/Game). This environment starts the Node bridge (training/bridge, built with
 `npm run build:bridge`) and talks to it over stdin/stdout, so training always uses exactly the game's own rules.
 
-The agent is one NPC in a 2 v 2 on the Peninsula; its teammate and both opponents play by the game's rules.
+The agent is one NPC on the Peninsula, with 1 to 4 allies, against 1 to 5 opponents or the Kaiju; everyone else plays by the
+game's rules. Each match's kind, side sizes, and the agent's aggression (0 careful to 1 reckless, one of its inputs) are random,
+unless reset is given options={"kind": "versus" | "kaiju", "aggression": 0-1, "sizes": {"allies": n, "opponents": n}}.
 Observations, actions, legal-move masks and rewards are defined in src/Game/DataClasses/npcBrain.
 Use with sb3-contrib's MaskablePPO, which reads `action_masks()`.
 """
@@ -55,7 +57,9 @@ class KaijuEnv(gym.Env):
         super().reset(seed=seed)
         # the game's own randomness comes from this seed, so an episode replays exactly
         game_seed = int(self.np_random.integers(0, 2**31 - 1))
-        result = self._request({"cmd": "reset", "seed": game_seed, "isBaseline": self.is_baseline})
+        request = {"cmd": "reset", "seed": game_seed, "isBaseline": self.is_baseline}
+        request.update({key: value for key, value in (options or {}).items() if key in ("kind", "aggression", "sizes")})
+        result = self._request(request)
         return self._unpack(result), result["info"]
 
     def step(self, action):

@@ -27,13 +27,13 @@ export class NpcModelDriver {
   isDeciding = false;
   isBroken = false;
 
-  // 'getPieces': the pieces the model plays, asked each time
-  constructor(private getPieces: () => Array<any>) {}
+  // 'getPieces': the pieces the model plays, asked each time. 'getAggression': theirs, 0 to 1, asked at each decision
+  constructor(private getPieces: () => Array<any>, private getAggression?: () => number) {}
 
   // when it is switched off, every piece goes back to the rules
   stop() {
     this.isBroken = true;
-    this.getPieces().forEach(piece => { piece.brainAction = undefined; });
+    this.getPieces().forEach(piece => { piece.brainAction = undefined; piece.aggression = undefined; });
   }
 
   step(gm) {
@@ -47,6 +47,7 @@ export class NpcModelDriver {
         const ort = await loadOnnxRuntime();
         for (const piece of pieces) {
           if (this.isBroken) return; // switched off while deciding
+          if (this.getAggression) piece.aggression = this.getAggression();
           const observation = new ort.Tensor('float32', Float32Array.from(observe(gm, piece)), [1, OBSERVATION_SIZE]);
           const { logits } = await net.run({ observation });
           const action = chooseAction(logits.data as Float32Array, getActionMask(piece, gm.gameManagerProxy, gm.getAccTime()));
