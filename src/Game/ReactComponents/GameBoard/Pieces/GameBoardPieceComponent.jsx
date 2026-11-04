@@ -317,35 +317,49 @@ const Character = styled.div`
   }
 }
 `;
+// a number over someone, in the Hotline Miami manner: it pops in big, settles, then rises away.
+// the same colors as ever: a light-to-color gradient in the pixel font, with a dark border and a drop shadow.
 const ModiferText = styled.p`
   position: absolute;
-  margin-top: -30px;
+  margin-top: -34px;
   z-index: 20002;
   opacity: 0;
-  font-size: ${props => (props.fontSize ? `${props.fontSize}px` : "17px")};
+  font-family: gameboy;
+  font-size: ${props => (props.fontSize ? `${props.fontSize}px` : "19px")};
   ${Math.random() > 0.5
     ? `margin-left: ${Math.random() * 10}px`
     : `margin-right: ${Math.random() * 10}px`};
   color: ${props => props.color};
-  ${props => props.doNotAnimate ? 'opacity: 1;' : `animation-timing-function: ease-in;
-  -webkit-animation-duration: 2s;
-  animation-duration: 2s;
-  -webkit-animation-name: textRise;
-  animation-name: textRise;`}
-  @keyframes textRise {
+  background: linear-gradient(to bottom, #ffffff 0%, ${props => props.color} 55%, ${props => props.color} 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: 1.4px #140409;
+  filter: drop-shadow(1.5px 2px 0 rgba(0, 0, 0, 0.85)) drop-shadow(0 0 4px ${props => props.color});
+  transform-origin: 50% 80%;
+  ${props => props.doNotAnimate ? 'opacity: 1;' : `animation: textPop 2s ease-out forwards;`}
+  @keyframes textPop {
     0% {
       opacity: 0;
-      transform: translateY(0px);
+      transform: translateY(0px) scale(0.3);
     }
-    10% {
+    8% {
       opacity: 1;
+      transform: translateY(-4px) scale(1.45);
+    }
+    16% {
+      transform: translateY(-6px) scale(0.95);
+    }
+    24% {
+      transform: translateY(-7px) scale(1.08);
     }
     70% {
       opacity: 1;
+      transform: translateY(-18px) scale(1.08);
     }
     100% {
       opacity: 0;
-      transform: translateY(-30px);
+      transform: translateY(-34px) scale(1.18);
     }
   }
 `;

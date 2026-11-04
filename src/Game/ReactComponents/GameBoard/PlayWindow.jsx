@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import styled, { keyframes } from "styled-components";
 import { WIDE_SHOT } from "Game/DataClasses/Camera";
 
@@ -179,6 +179,50 @@ export const BezelDisplay = styled.div`
   border-radius: 0.25cqw;
   box-shadow: inset 0 0.12cqw 0.3cqw black, 0 0.08cqw 0 ${TV_LOOK.casingLight};
 `;
+
+const countPop = keyframes`
+  0% { opacity: 0; transform: translate(-50%, 0) scale(0.3); }
+  12% { opacity: 1; transform: translate(-50%, -0.6cqw) scale(1.5); }
+  24% { transform: translate(-50%, -0.9cqw) scale(1); }
+  70% { opacity: 1; transform: translate(-50%, -1.8cqw) scale(1.05); }
+  100% { opacity: 0; transform: translate(-50%, -2.8cqw) scale(1.15); }
+`;
+
+// a purple +1 that pops up from the count each time a Kaiju falls
+const CountPop = styled.span`
+  position: absolute;
+  left: 50%;
+  top: -0.6cqw;
+  font-family: gameboy;
+  font-size: 1.3cqw;
+  pointer-events: none;
+  background: linear-gradient(to bottom, #ffffff, #c06bff 55%, #9b30ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: 0.08cqw #12001f;
+  filter: drop-shadow(0.1cqw 0.12cqw 0 black) drop-shadow(0 0 0.35cqw #9b30ff);
+  animation: ${countPop} 1.8s ease-out forwards;
+`;
+
+const CounterHolder = styled.div`
+  position: relative;
+`;
+
+export const KaijuCounter = ({ count, toWin, style = undefined }) => {
+  const [pops, setPops] = useState([]);
+  const lastCount = useRef(count);
+  useEffect(() => {
+    if (count > lastCount.current) setPops(previous => [...previous.slice(-3), { key: count }]);
+    lastCount.current = count;
+  }, [count]);
+  return (
+    <CounterHolder style={style}>
+      <BezelDisplay>{`KAIJU ${String(count).padStart(2, "0")}/${toWin}`}</BezelDisplay>
+      {pops.map(({ key }) => <CountPop key={key}>+1</CountPop>)}
+    </CounterHolder>
+  );
+};
 
 export const BezelButton = styled.button`
   padding: 0.25cqw 0.8cqw;

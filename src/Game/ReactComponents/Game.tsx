@@ -4,7 +4,7 @@ import styled, { keyframes } from "styled-components";
 import { useSnapshot } from "valtio";
 import { GlobalSettingsContext } from "Home";
 import { GameBoard } from "./GameBoard/GameBoard";
-import { BezelButton, BezelDisplay, FULL_WINDOW, loadPlayWindow, PlayWindow, PORTRAIT_WINDOW, savePlayWindow } from "./GameBoard/PlayWindow";
+import { BezelButton, KaijuCounter, FULL_WINDOW, loadPlayWindow, PlayWindow, PORTRAIT_WINDOW, savePlayWindow } from "./GameBoard/PlayWindow";
 import { UI } from "./UI/UI";
 import { RadioCall } from "./RadioCall";
 import { IrradiationVat } from "./IrradiationVat";
@@ -967,7 +967,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 <BezelButton title="How to play" onClick={openControls}>Controls</BezelButton>
                 <BezelButton title="Goodbye!" onClick={handleClickHome}>Leave</BezelButton>
                 {!isWindowOpen && level.kaijuEntry && !isCutscene && !recruitScene && (
-                  <BezelDisplay style={{ opacity: isPaused ? 0 : 1 }}>{`KAIJU ${String(kaijuKillCount).padStart(2, "0")}/${kaijuToWin}`}</BezelDisplay>
+                  <KaijuCounter count={kaijuKillCount} toWin={kaijuToWin} style={{ opacity: isPaused ? 0 : 1 }} />
                 )}
               </>
             )}>

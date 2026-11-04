@@ -169,6 +169,63 @@ const drawSprite = (ctx, { sprite, size }, { x, y }, pixelRatio) => {
   ctx.drawImage(sprite, snap(x - size / 2), snap(y - size / 2), size, size);
 };
 
+// a portal over each end of a link or a wormhole: an upright oval, light purple at its rim, dark purple within,
+// with strands of light swirling into the middle like a tornado seen from above
+const PORTAL_LOOK = {
+  width: 0.62, // half its width and height, as fractions of a hex's radius
+  height: 1.05,
+  rimColor: "#d7b4ff",
+  outerColor: "#a970ff",
+  innerColor: "#1c0433",
+  strands: 6,
+  strandColor: "rgba(226, 200, 255, 0.85)",
+  turnSeconds: 2.4, // one full turn of the swirl
+  lift: 0.55 // how far above the tile's middle it hangs, as a fraction of a hex's radius
+};
+
+const drawPortal = (ctx, { x, y }, radius, opacity = 1) => {
+  const halfWidth = radius * PORTAL_LOOK.width;
+  const halfHeight = radius * PORTAL_LOOK.height;
+  const cy = y - radius * PORTAL_LOOK.lift;
+  const turn = (performance.now() / 1000 / PORTAL_LOOK.turnSeconds) * Math.PI * 2;
+  ctx.save();
+  ctx.globalAlpha = opacity;
+  ctx.translate(x, cy);
+  ctx.scale(halfWidth, halfHeight); // a circle of radius 1, stretched upright
+  const depth = ctx.createRadialGradient(0, 0, 0.05, 0, 0, 1);
+  depth.addColorStop(0, PORTAL_LOOK.innerColor);
+  depth.addColorStop(0.55, "#3b0a66");
+  depth.addColorStop(0.85, PORTAL_LOOK.outerColor);
+  depth.addColorStop(1, PORTAL_LOOK.rimColor);
+  ctx.beginPath();
+  ctx.arc(0, 0, 1, 0, Math.PI * 2);
+  ctx.fillStyle = depth;
+  ctx.fill();
+  // the strands: each spirals in from the rim, turning as it goes, and the whole swirl turns
+  ctx.lineCap = "round";
+  for (let k = 0; k < PORTAL_LOOK.strands; k++) {
+    const start = turn + (k / PORTAL_LOOK.strands) * Math.PI * 2;
+    ctx.beginPath();
+    for (let step = 0; step <= 16; step++) {
+      const t = step / 16;
+      const r = 0.95 * (1 - t);
+      const angle = start + t * Math.PI * 1.6;
+      const px = Math.cos(angle) * r;
+      const py = Math.sin(angle) * r;
+      if (step == 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.strokeStyle = PORTAL_LOOK.strandColor;
+    ctx.lineWidth = 0.07;
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.arc(0, 0, 1, 0, Math.PI * 2);
+  ctx.strokeStyle = PORTAL_LOOK.rimColor;
+  ctx.lineWidth = 0.08;
+  ctx.stroke();
+  ctx.restore();
+};
+
 const drawGoalBeam = (ctx, { x, y }, radius) => {
   const height = radius * TILE_LOOK.goalBeamHeight;
   const topHalfWidth = radius * TILE_LOOK.goalBeamTopWidth;
@@ -412,13 +469,17 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
       drawPerimeter(playerCenter);
       level.tileLinks.flat().forEach(tileIndex => {
         drawSprite(ctx, getSoftSprite(TILE_LOOK.linkColor, TILE_LOOK.linkTintOpacity), getTileCenter(grid, tileIndex), pixelRatio);
+        drawPortal(ctx, getTileCenter(grid, tileIndex), getHexRadius(grid));
       });
       const accTime = gameManager.getAccTime();
       const wormholePulse = (Math.sin((performance.now() / 1000 / TILE_LOOK.wormholePulseSeconds) * Math.PI * 2) + 1) / 2;
       gameManager.getWormholes().forEach(({ from, to, endsAt }) => {
         const closing = Math.min((endsAt - accTime) / TILE_LOOK.wormholeFadeMs, 1);
         ctx.globalAlpha = Math.max(closing, 0) * (0.55 + 0.45 * wormholePulse);
-        [from, to].forEach(tileIndex => drawSprite(ctx, getStatusSprite(TILE_LOOK.wormholeColor), getTileCenter(grid, tileIndex), pixelRatio));
+        [from, to].forEach(tileIndex => {
+          drawSprite(ctx, getStatusSprite(TILE_LOOK.wormholeColor), getTileCenter(grid, tileIndex), pixelRatio);
+          drawPortal(ctx, getTileCenter(grid, tileIndex), getHexRadius(grid), Math.max(closing, 0));
+        });
       });
       ctx.globalAlpha = 1;
       gameManager.getSoapyTiles().forEach(tileIndex => {
