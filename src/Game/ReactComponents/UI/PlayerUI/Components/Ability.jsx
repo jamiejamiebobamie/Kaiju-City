@@ -115,6 +115,7 @@ const AbilityIcon = styled.i`
   transform: scale(2);
   ${props =>
     props.isCoolDown && "animation: spin linear " + props.cooldownTime + "ms;"}
+  animation-play-state: ${props => props.isPaused ? "paused" : "running"};
   @keyframes spin {
     5% {
       transform: scale(2) rotate(0deg);
@@ -159,26 +160,22 @@ export const Ability = ({
   isPaused,
   isCharacterAlive
 }) => {
-  const { activeName, cooldownTime, element, color, accTime } = abilityData;
-  const [isOnCoolDown, setIsOnCoolDown] = useState(false);
+  const { activeName, cooldownTime, element, color, accTime, isOnCooldown: isOnCoolDown } = abilityData;
   const [isAnimating, setIsAnimating] = useState(false);
-  const [iconLookupString, setIconLookupString] = useState("active");
+  const [isJustUsed, setIsJustUsed] = useState(false);
 
-  /* ability button cooldown aesthetics: the engine updates accTime when an ability is used */
+  /* the press: a pop, and the loader shows a moment later. the cooldown itself is the game's, from 'isOnCooldown' */
   useEffect(() => {
     if (!accTime) return;
-    setIsOnCoolDown(true);
     setIsAnimating(true);
+    setIsJustUsed(true);
     const timeoutRefs = [
       setTimeout(() => setIsAnimating(false), 500),
-      setTimeout(() => setIconLookupString("loader"), 250),
-      setTimeout(() => {
-        setIsOnCoolDown(false);
-        setIconLookupString("active");
-      }, cooldownTime)
+      setTimeout(() => setIsJustUsed(false), 250)
     ];
     return () => timeoutRefs.forEach(clearTimeout);
   }, [accTime]);
+  const iconLookupString = isOnCoolDown && !isJustUsed ? "loader" : "active";
 
   return (
     <Wrapper
@@ -191,6 +188,7 @@ export const Ability = ({
         className={`fa ${ICON_LOOKUP[element][iconLookupString]}`}
         isCoolDown={isOnCoolDown}
         cooldownTime={cooldownTime}
+        isPaused={isPaused}
         color={color}
       />
       {keyNum !== undefined && <AbilityNum color={color}>

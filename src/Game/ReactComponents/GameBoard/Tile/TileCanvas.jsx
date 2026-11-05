@@ -43,9 +43,6 @@ const TILE_LOOK = {
   wormholeColor: "#8a2be2",
   wormholePulseSeconds: 0.6,
   wormholeFadeMs: 1500, // over its last moments
-  // Bubble's Suds: soapy tiles
-  soapColor: "#dff3ff",
-  soapTintOpacity: 0.45,
   // goal tiles: a glowing light shines upward from the tile
   goalColor: "#ffd24a",
   goalPulseSeconds: 1.4,
@@ -478,9 +475,6 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
         [from, to].forEach(tileIndex => drawSprite(ctx, getStatusSprite(TILE_LOOK.wormholeColor), getTileCenter(grid, tileIndex), pixelRatio));
       });
       ctx.globalAlpha = 1;
-      gameManager.getSoapyTiles().forEach(tileIndex => {
-        drawSprite(ctx, getSoftSprite(TILE_LOOK.soapColor, TILE_LOOK.soapTintOpacity), getTileCenter(grid, tileIndex), pixelRatio);
-      });
       const colorLookup = gameManager.getPieceColorsLookup();
 
       const pulse = (Math.sin((performance.now() / 1000 / TILE_LOOK.goalPulseSeconds) * Math.PI * 2) + 1) / 2;

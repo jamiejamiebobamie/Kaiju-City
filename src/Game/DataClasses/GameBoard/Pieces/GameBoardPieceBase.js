@@ -1,6 +1,5 @@
 import { getThrowVec } from 'Game/DataClasses/Ragdoll';
 import { followBrainAction } from 'Game/DataClasses/npcBrain/brain';
-import { BUBBLE_DRAWBACKS } from 'Game/DataClasses/BubbleTest';
 
 const CHARM_MS = 5000;
 const SLIPPERY_SLIDE_TILES = 1;
@@ -400,8 +399,7 @@ export class GameBoardPieceBase {
             currentLocation: this.charLocation,
             moveFromLocation: this.moveFromLocation,
             moveToLocation: this.moveToLocation,
-            // Bubble's Suds: soapy tiles slow anyone on them
-            moveSpeed: this.moveSpeed + this.moveSpeedModifier + (this.isOnTiles && this.gameManagerProxy.getIsSoapy(this.tileIndex) ? BUBBLE_DRAWBACKS.suds.speed : 0)
+            moveSpeed: this.moveSpeed + this.moveSpeedModifier
         });
         this.charLocation = newLocation;
         this.moveFromLocation = newLocation;
@@ -759,7 +757,7 @@ export class GameBoardPieceBase {
             moveSpeedModifier,
             numTilesModifier,
             tileCountModifier,
-            abilities: this.abilities.map(a => a.getUiState(this.isNpc))
+            abilities: this.abilities.map(a => a.getUiState(this.isNpc, this.accTime))
         };
     }
 
@@ -778,7 +776,6 @@ export class GameBoardPieceBase {
         this.numTilesModifier = 0;
         this.tileCountModifier = 0;
         this.slipperyModifier = 0;
-        this.soakedUntil = 0;
         this.dmgModifier = 0;
         // - - - - - - - - - -
 

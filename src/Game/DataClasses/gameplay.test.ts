@@ -11,7 +11,6 @@ import { findPath } from './GameBoard/findPath';
 import { CENTER_TILE, getLitTiles, makeGame, placePiece, putStatusOnTile } from './testHelpers';
 import { getThrowVec, startRagdoll, stepRagdoll } from './Ragdoll';
 import { KAIJU_SPEED, setKaijuSpeedMode } from './KaijuSpeedTest';
-import { BUBBLE_DRAWBACKS, setIsDrawbackOn } from './BubbleTest';
 
 const useAbility = ({ gm, player }, abilityIndex) => {
   const ability = player.abilities[abilityIndex];
@@ -552,75 +551,27 @@ describe('Kaiju speed playtest', () => {
   });
 });
 
-describe('Bubble drawbacks playtest', () => {
-  const DRAWBACKS = ['suds', 'burst', 'cleanSlate', 'soaked', 'fizzOut'] as const;
-  const only = (...ids) => DRAWBACKS.forEach(id => setIsDrawbackOn(id, ids.includes(id)));
-  afterEach(() => only('fizzOut'));
-
-  const setUp = () => {
+describe("Bubble's Clean Slate", () => {
+  it("a Dispel ends the other powers' passives", () => {
     const game = makeGame({ abilities: ['Bubble', 'Ice', 'Water'] });
     const bubble = game.player.abilities.find(a => a.gameBoardPieceAbilityData.element == 'bubble');
-    const dispel = accTime => {
-      game.gm.accTime = accTime;
-      game.gm.timeoutHandler.update(accTime);
-      game.gm.gameBoardManager.getTilesInFlatArray().forEach(tile => tile.clearTileStatus());
-      bubble.useAbility({ accTime, piece: game.player, registerTimeout: game.gm.gameManagerProxy.registerTimeout, updateTileWithAbilityStatus: game.gm.gameManagerProxy.updateTileWithAbilityStatus });
-    };
-    return { ...game, bubble, dispel };
-  };
-
-  it('Fizz Out: each quick Dispel asks for fewer tiles, and a pause resets it', () => {
-    only('fizzOut');
-    const { player, bubble } = setUp();
-    const areaBonuses = [];
-    const cast = accTime => bubble.useAbility({ accTime, piece: player, registerTimeout: () => 0, updateTileWithAbilityStatus: ({ areaBonus }) => areaBonuses.push(areaBonus) });
-    [1000, 2000, 3000, 10000].forEach(cast);
-    expect(areaBonuses).toEqual([-0, -1, -2, -0]);
-  });
-
-  it('Burst: the other powers wait after a Dispel', () => {
-    only('burst');
-    const { player, bubble, dispel } = setUp();
-    dispel(1000);
-    const others = player.abilities.filter(a => a !== bubble);
-    expect(others.every(a => a.getIsOnCooldown(2400, false))).toBe(true);
-    expect(others.every(a => !a.getIsOnCooldown(2500, false))).toBe(true);
-  });
-
-  it('Clean Slate: a Dispel ends the other powers\' passives', () => {
-    only('cleanSlate');
-    const game = setUp();
     const ice = game.player.abilities.find(a => a.gameBoardPieceAbilityData.element == 'ice');
     useAbility(game, game.player.abilities.indexOf(ice));
     expect(game.player.moveSpeedModifier).toBe(-1);
-    game.dispel(1500);
+    game.gm.accTime = 1500;
+    bubble.useAbility({ accTime: 1500, piece: game.player, registerTimeout: game.gm.gameManagerProxy.registerTimeout, updateTileWithAbilityStatus: game.gm.gameManagerProxy.updateTileWithAbilityStatus });
     expect(game.player.moveSpeedModifier).toBe(0);
     game.gm.timeoutHandler.update(20000); // the ended passive's own timer does nothing now
     expect(game.player.moveSpeedModifier).toBe(0);
   });
 
-  it('Soaked: slower for a while, and casting again restarts it rather than stacking', () => {
-    only('soaked');
-    const { player, gm, dispel } = setUp();
-    dispel(1000);
-    dispel(2000);
-    expect(player.moveSpeedModifier).toBe(-1);
-    gm.timeoutHandler.update(4500); // the first cast's time is up, the second's isn't
-    expect(player.moveSpeedModifier).toBe(-1);
-    gm.timeoutHandler.update(5000);
-    expect(player.moveSpeedModifier).toBe(0);
-  });
-
-  it('Suds: tiles a Dispel crosses stay soapy for a while', () => {
-    only('suds');
-    const { gm, dispel } = setUp();
-    dispel(1000);
-    gm.gameBoardManager.updateTileState(1160);
-    const [soapy] = gm.getSoapyTiles();
-    expect(soapy).toBeDefined();
-    gm.gameBoardManager.getTilesInFlatArray().forEach(tile => tile.clearTileStatus()); // the Dispel has passed
-    gm.gameBoardManager.updateTileState(1160 + BUBBLE_DRAWBACKS.suds.ms + 1);
-    expect(gm.gameBoardManager.getIsSoapy(soapy)).toBe(false);
+  it("the HUD's cooldown follows the game's time, not the wall clock", () => {
+    const game = makeGame({ abilities: ['Bubble', 'Ice', 'Love'] });
+    const heal = game.player.abilities.find(a => a.gameBoardPieceAbilityData.element == 'love');
+    heal.useAbility({ accTime: 1000, piece: game.player, registerTimeout: game.gm.gameManagerProxy.registerTimeout, updateTileWithAbilityStatus: game.gm.gameManagerProxy.updateTileWithAbilityStatus });
+    const { cooldownTime } = heal.getUiState(false, 1000);
+    expect(heal.getUiState(false, 1000 + cooldownTime - 1).isOnCooldown).toBe(true);
+    expect(heal.getUiState(false, 1000 + cooldownTime).isOnCooldown).toBe(false);
   });
 });
 

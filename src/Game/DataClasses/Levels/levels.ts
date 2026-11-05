@@ -287,7 +287,7 @@ const subwayRay = (n, seconds, delaySeconds) =>
 
 // a character standing in a scene. x is the middle of its feet, and y the ground under them, so it sorts with the pieces.
 // the Street's perspective: how tall a worker stands, for how far down the scene their feet are
-const getWorkerHeight = y => 80 + 0.592 * (y - 372);
+const getWorkerHeight = y => Math.max(80 + 0.592 * (y - 372), 24); // never smaller than this, far up the street
 
 const standingAgent = (x, y) => ({ avatar: 'agent', spot: { x, y }, facingDir: 'down' });
 
@@ -611,12 +611,13 @@ const STREET_TALK_MS = STREET_LINES.reduce((total, line) => total + getSpeechMs(
 const STREET_SCENE = {
   tileTone: 'dark' as const,
   walkers: [
-    // along the road just below the claw's goo, clear of the van's doors and wheels: about the size of the sweeper by the van
-    hazmatRunner('hazmat2', [[705, 622], [905, 600, 'pass'], [1075, 610], [905, 600, 'pass']], 150, 6),
-    // up and down the right sidewalk, beside the lamp post rather than over it
-    hazmatRunner('hazmat4', [[1262, 445], [1262, 545]], 120, 7),
-    // from the sidewalk out to the claw's edge
-    hazmatRunner('hazmat5', [[1230, 575], [1160, 612, 'pass'], [990, 628], [1160, 612, 'pass']], 140, 8)
+    // all behind where the team can walk (its tiles start at y 543), so they never cross in front of anyone.
+    // across the far street, between the tail's goo and the eye
+    hazmatRunner('hazmat2', [[795, 372], [965, 382]], 120, 5),
+    // up and down the right sidewalk, from the far end to the mid-ground, beside the lamp post
+    hazmatRunner('hazmat4', [[1258, 330], [1262, 505]], 120, 6),
+    // out of the far street toward the parked car and back, past the eye's far side
+    hazmatRunner('hazmat5', [[1040, 318], [1130, 300], [1175, 400, 'pass'], [1180, 505], [1175, 400, 'pass']], 110, 7)
   ],
   getWalkerHeight: getWorkerHeight, // how tall a worker stands at a spot's y, in scene pixels
   // the whole street, then in on the Agent as he calls the team over, then back to them. his words follow in the log.
@@ -905,13 +906,21 @@ const VISIT_ENTRANCE_EXITS = {
   rapidTransit: { walkInPx: { x: 40, y: 165 } } // down the left platform from the stairs, past the door's reach (two rows)
 };
 
+// where a visit's way out is, and where the team starts, when not the fight's own spots
+const VISIT_SPOTS = {
+  rooftop: { exit: { x: 958, y: 338 } }, // the stairwell door at the back, on the right
+  aquarium: { exit: { x: 270, y: 715 }, start: { x: 470, y: 605 } } // out at the bottom left; the team starts up by the tank
+};
+
 Object.keys(BATTLEGROUND_SITES).forEach(levelId => {
   const level = LEVELS[levelId];
   const entranceExit = VISIT_ENTRANCE_EXITS[levelId];
   const entrance = entranceExit && getTileCenter(level.grid, level.spawnTiles[0]);
-  const doorSpot = entrance || level.rival.recruitSpot;
+  const visitSpots = VISIT_SPOTS[levelId] || {};
+  const doorSpot = visitSpots.exit || entrance || level.rival.recruitSpot;
   const getClosest = target => level.walkableTiles.reduce((closest, tile) => getSpotDistance(level, tile, target) < getSpotDistance(level, closest, target) ? tile : closest);
-  const spawnTiles = entrance ? [getClosest({ x: entrance.x + entranceExit.walkInPx.x, y: entrance.y + entranceExit.walkInPx.y })] : level.spawnTiles;
+  const spawnTiles = visitSpots.start ? [getClosest(visitSpots.start)]
+    : entrance ? [getClosest({ x: entrance.x + entranceExit.walkInPx.x, y: entrance.y + entranceExit.walkInPx.y })] : level.spawnTiles;
   LEVELS[getVisitLevelId(levelId)] = {
     ...level,
     id: getVisitLevelId(levelId),

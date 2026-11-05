@@ -19,7 +19,7 @@ export class GameBoardTileStatusAndAbilityData {
         buffedCastBonus = undefined, // { range, trailTicks }: added to a cast made while this power's own passive is on
         isPassiveRefreshed = false, // casting again while the passive is on restarts its time, instead of stacking
         hasForwardWave = false, // a second wave starts a tile ahead of the first, and never turns around
-        hasDispelDrawbacks = false, // Bubble: see 'BubbleTest'
+        isCleanSlate = false, // Bubble: a Dispel ends the caster's other passives
         wormholeMs = 0, // Teleport: how long the wormhole it leaves stays open
         castStack = undefined, // { rangePerStack, maxStacks }: each cast while the passive is on goes further, to a cap
         hasSmokeOnBounce = false, // where it hits an edge it turns to smoke and burns out
@@ -80,7 +80,7 @@ export class GameBoardTileStatusAndAbilityData {
         this.buffedCastBonus = buffedCastBonus;
         this.isPassiveRefreshed = isPassiveRefreshed;
         this.hasForwardWave = hasForwardWave;
-        this.hasDispelDrawbacks = hasDispelDrawbacks;
+        this.isCleanSlate = isCleanSlate;
         this.wormholeMs = wormholeMs;
         this.castStack = castStack;
         this.hasSmokeOnBounce = hasSmokeOnBounce;

@@ -18,7 +18,6 @@ import { DialogueLogPanel } from "./DialogueLogPanel";
 import { ChoiceButton } from "./GameBoard/GameBoard";
 import { DEFAULT_AGGRESSION } from "Game/DataClasses/npcBrain/brain";
 import { getKaijuSpeedMode, KaijuSpeedMode, setKaijuSpeedMode } from "../DataClasses/KaijuSpeedTest";
-import { BUBBLE_DRAWBACKS, BubbleDrawback, getIsDrawbackOn, setIsDrawbackOn } from "../DataClasses/BubbleTest";
 import { getAvatarColor, saveAvatarColor, saveTeamAvatars, unlockRecruitSkill, unlockTool } from "../DataClasses/Avatars";
 import { AbilityPicker } from "./AbilityPicker";
 import { useKeyPress } from "Utils/utils";
@@ -368,7 +367,7 @@ const playUnlockDing = () => {
 const RECRUIT_TIMING = {
   titleMs: 2800, // how long the title and slow motion last before the choice
   confirmMs: 5000, // the choice locks in and the screen washes over in its color, held, then fades to black
-  cardMs: 3800
+  cardMs: 6300 // the unlock cards come in over 1.3 s, then hold 5 s to be read
 };
 
 const RECRUIT_CARDS = {
@@ -406,7 +405,6 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const [isShowingControls, setIsShowingControls] = useState(false);
   const isPausedForControls = useRef(false);
   const [kaijuSpeedMode, setKaijuSpeedModeState] = useState(getKaijuSpeedMode); // dev playtest
-  const [, setBubbleTestRevision] = useState(0); // redraws the Bubble drawback switches
   const [isChoosingAvatar, setIsChoosingAvatar] = useState(!startingLevelId); // a new campaign starts with the guy or the girl
   const isPickingPowersInLab = useRef(false);
   const [isLabPicker, setIsLabPicker] = useState(false); // the picker was opened from the Lab's tanks: it goes back there
@@ -822,6 +820,17 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     isCharacterDead: false
   });
 
+  // (1), (2)...: the number keys press the buttons showing them, wherever there is a choice or a Continue.
+  // powers are off whenever these show, so the keys never do both
+  useKeyPress({
+    keyCodes: [1, 2, 3, 4].flatMap(n => [`Digit${n}`, `Numpad${n}`]),
+    keyUpCallback: code => {
+      const button = document.querySelector<HTMLElement>(`[data-choice-key="${code.slice(-1)}"]`);
+      if (button) button.click();
+    },
+    isCharacterDead: false
+  });
+
   useKeyPress({
     keyCodes: ["BracketLeft", "BracketRight"],
     keyDownCallback: code => cycleLevel(code == "BracketRight" ? 1 : -1),
@@ -995,12 +1004,6 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 <option value="windUp">Kaiju: fast while glowing</option>
                 <option value="off">Kaiju: steady speed</option>
               </select>
-              <div>Bubble drawbacks:</div>
-              {(Object.keys(BUBBLE_DRAWBACKS) as Array<BubbleDrawback>).map(id => (
-                <label key={id}>
-                  <input type="checkbox" checked={getIsDrawbackOn(id)} onChange={e => { setIsDrawbackOn(id, e.target.checked); setBubbleTestRevision(revision => revision + 1); e.target.blur(); }} /> {BUBBLE_DRAWBACKS[id].label}
-                </label>
-              ))}
               {isEditingTiles && (
                 <TileEditor
                   key={`${level.id} ${matchCount}`}
@@ -1052,7 +1055,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               {matchEnd && (
                 <EndScreen>
                   <EndTitle>{matchEnd.title}</EndTitle>
-                  {(!level.rival || winner !== GameResult.PlayerWon) && <EndButtons>{matchEnd.buttons.map(({ text, onClick }, index) => <EndButton key={text} data-enter={index == 0 ? "" : undefined} onClick={onClick}>{text}</EndButton>)}</EndButtons>}
+                  {(!level.rival || winner !== GameResult.PlayerWon) && <EndButtons>{matchEnd.buttons.map(({ text, onClick }, index) => <EndButton key={text} data-enter={index == 0 ? "" : undefined} data-choice-key={index + 1} onClick={onClick}>({index + 1}) {text}</EndButton>)}</EndButtons>}
                 </EndScreen>
               )}
               {isWiping && <ScreenClip><BlackWipe /></ScreenClip>}
@@ -1061,7 +1064,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 <Toast key={label} style={{ animationDelay: `${0.4 + index * 0.45}s` }}>{image && <UnlockPortrait src={image} />}{label}</Toast>
               ))}</CardStack></FadeToBlack>}
               {campaignIndex !== null && level.isWalkingLevel && !level.sites && !level.exit && !level.walkIn && !isEditingTiles && (
-                <ContinueButton data-enter onClick={() => showSection(campaignIndex + 1)}>Continue</ContinueButton>
+                <ContinueButton data-enter data-choice-key={1} onClick={() => showSection(campaignIndex + 1)}>(1) Continue</ContinueButton>
               )}
               {!level.isWalkingLevel && !isEditingTiles && !recruitScene && winner === null && getCallableRecruits().length > 0 && (
                 <RecruitCalls key={matchCount} recruits={getCallableRecruits()} onCall={avatar => !!gameManager.current && gameManager.current.callRecruit(avatar)} isDisabled={isPaused} />

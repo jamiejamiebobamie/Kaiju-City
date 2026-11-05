@@ -1,4 +1,3 @@
-import { applyDispelDrawbacks, getFizzOutArea } from 'Game/DataClasses/BubbleTest';
 
 // the extra wait before an NPC can use an ability again, in milliseconds
 const AI_COOLDOWN_DELAY = 750;
@@ -25,10 +24,9 @@ export class GameBoardPieceAbility {
         registerTimeout,
         updateTileWithAbilityStatus
     }) {
-        const lastCastAt = this.lastCastAt;
         this.accTime = accTime;
         this.lastCastAt = accTime;
-        const { buffedCastBonus, isPassiveRefreshed, castStack, hasDispelDrawbacks } = this.gameBoardPieceAbilityData;
+        const { buffedCastBonus, isPassiveRefreshed, castStack, isCleanSlate } = this.gameBoardPieceAbilityData;
         // cast again while the passive is on, a stacking power builds up, to a cap
         this.stacks = castStack && this.isPassiveApplied ? Math.min((this.stacks || 0) + 1, castStack.maxStacks) : 0;
         // activate active ability. cast while its own passive is on, some powers come out stronger.
@@ -37,10 +35,10 @@ export class GameBoardPieceAbility {
             appliedStatus: this.gameBoardPieceAbilityData.appliedStatus,
             accTime,
             isBuffed: !!buffedCastBonus && this.isPassiveApplied,
-            stackRange: castStack ? this.stacks * castStack.rangePerStack : 0,
-            areaBonus: hasDispelDrawbacks ? getFizzOutArea(this, lastCastAt, accTime) : 0
+            stackRange: castStack ? this.stacks * castStack.rangePerStack : 0
         });
-        if (hasDispelDrawbacks) applyDispelDrawbacks({ ability: this, piece, accTime, registerTimeout });
+        // Bubble's Clean Slate: a Dispel ends the caster's other powers' passives
+        if (isCleanSlate) piece.abilities.filter(other => other !== this).forEach(other => other.endAllPassives(piece));
 
         const triggerPassive = () => {
             // a refreshed passive takes over the one that is on, and starts its time again, instead of stacking
@@ -99,9 +97,11 @@ export class GameBoardPieceAbility {
         return this.gameBoardPieceAbilityData.desiredAIRange;
     }
 
-    getUiState(isNpc) {
+    // 'now': the game's time. the HUD shows the cooldown by it, not by the wall clock, so pauses, wide shots and slow motion can't put them out of step
+    getUiState(isNpc, now = 0) {
         const { element, color, activeName, passiveName, cooldownTimeAI, cooldownTimePlayer } = this.gameBoardPieceAbilityData;
         return {
+            isOnCooldown: this.getIsOnCooldown(now, isNpc),
             element,
             color,
             activeName,

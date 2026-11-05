@@ -51,7 +51,8 @@ export const CUTSCENE = {
   exitLookMs: 1600, // the camera holds on a way out that has just opened
   exitLookFarRows: 6, // further than this from the Agent, it shows the whole scene instead
   choiceShotLiftRows: 1.5,
-  besideColumns: 2.5, // standing beside the bystander, this far either side // the Recruit or Terminate shot sits this much higher, so the team stands lower in it // the Lab trap: the camera holds on the clones, stepped out of their tanks
+  besideColumns: 2.5, // standing beside the bystander, this far either side
+  besideBodyRows: 0.6, // and the bystander lies this far down from their spot, on the first row of tiles // the Recruit or Terminate shot sits this much higher, so the team stands lower in it // the Lab trap: the camera holds on the clones, stepped out of their tanks
   recruitZoomScale: 1.3,
   recruitSpeechRows: 2.4, // how far above a character their words sit: just over their head
   speechTopY: 200, // words sit no higher than this, or they would go off the top of a wide shot or under the top buttons
@@ -218,7 +219,7 @@ export class GameManager {
         if (this.isRecruitsFighting && !this.cutscene && piece && piece.isRecruit) return false; // the Lab trap: the recruits hold the Agents off
         if (piece && piece.teamIndex != this.gameBoardPiecesManager.getPlayerTeamIndex() && this.accTime < this.enemyPowersAtMs) return true; // the Agents' head start
         if (this.getIsCatwalkAgentWaiting(piece)) return true;
-        return !!this.level.isWalkingLevel || !!this.cutscene || !!this.recruitScene;
+        return !!this.level.isWalkingLevel || !!this.cutscene || !!this.recruitScene || this.getGameResult() !== null;
     }
 
     // the camera starts its move back in before the game resumes
@@ -259,6 +260,7 @@ export class GameManager {
     handleTrainStage = (stage, accTime) => {
         const { walkableTiles } = this.level;
         this.setPhase('trainLights', stage != 'idle');
+        this.setPhase('trainWarning', stage == 'warning'); // only before the train: the title says it is coming
         if (stage == 'warning') this.closeTracks();
         const isTrainIn = stage == 'train';
         if (isTrainIn == this.activePhases.has('train')) return;
@@ -283,10 +285,6 @@ export class GameManager {
 
     getWormholes() {
         return this.gameBoardManager.getWormholes();
-    }
-
-    getSoapyTiles() {
-        return this.gameBoardManager.getSoapyTiles();
     }
 
     getActiveTiles() {
@@ -1163,9 +1161,11 @@ export class GameManager {
     startRecruitScene() {
         this.logChain += 1;
         this.dialogueLog = []; // the words before the fight are done with: the log shows only what is said over the bystander
-        const { avatar, pronoun, recruitSpot } = this.level.rival;
-        const { x, y } = recruitSpot;
+        const { avatar, pronoun, recruitSpot, isStandingBeside } = this.level.rival;
         const { rowStep, colStep, scale } = this.level.grid;
+        const getTileNearSpot = (columns, rows) => this.gameBoardManager.getClosestWalkableTileToLocation({ x: recruitSpot.x + columns * colStep * scale, y: recruitSpot.y + rows * rowStep * scale });
+        // standing beside them, they lie on a tile of their own, on the same row as the team: never across the scenery behind (the Rooftop's graves)
+        const { x, y } = isStandingBeside ? getTileCenter(this.level.grid, getTileNearSpot(0, CUTSCENE.besideBodyRows)) : recruitSpot;
         const getTileNear = (columns, rows) => this.gameBoardManager.getClosestWalkableTileToLocation({ x: x + columns * colStep * scale, y: y + rows * rowStep * scale });
         const [player, teammate] = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
 
@@ -1175,9 +1175,9 @@ export class GameManager {
             piece.facingDir = facingDir;
         };
         // 'beside': the teammate on the bystander's left and the player on the right, both turned to them
-        if (this.level.rival.isStandingBeside) {
-            stand(player, getTileNear(CUTSCENE.besideColumns, -0.5), 'downLeft');
-            if (teammate) stand(teammate, getTileNear(-CUTSCENE.besideColumns, -0.5), 'downRight');
+        if (isStandingBeside) {
+            stand(player, getTileNear(CUTSCENE.besideColumns, 0), 'downLeft');
+            if (teammate) stand(teammate, getTileNear(-CUTSCENE.besideColumns, 0), 'downRight');
         } else {
             stand(player, getTileNear(0, -CUTSCENE.recruitStandRows));
             if (teammate) stand(teammate, getTileNear(-3, -CUTSCENE.recruitStandRows));
@@ -1486,7 +1486,6 @@ export class GameManager {
             spawnDeathPieceAtLocation: this.gameBoardPiecesManager.spawnDeathPieceAtLocation,
             getStatusDirs: this.gameBoardManager.getStatusDirs,
             getStatusCaster: this.gameBoardManager.getStatusCaster,
-            getIsSoapy: this.gameBoardManager.getIsSoapy,
             addWormhole: this.gameBoardManager.addWormhole,
             getDirFromTiles: this.gameBoardManager.getDirFromTiles,
             updateTileWithAbilityStatus: this.gameBoardManager.updateTileWithAbilityStatus,

@@ -1,6 +1,5 @@
 import React, { useState, useContext } from "react";
 import styled from "styled-components";
-import { getDispelDrawbackText } from "Game/DataClasses/BubbleTest";
 import { GlobalSettingsContext } from 'Home';
 import { getSciFiClass } from "../DataClasses/sciFiClasses";
 import { getIsSkillOpen, getSkillUnlock } from "../DataClasses/Avatars";
@@ -275,7 +274,7 @@ export const AbilityPicker = ({
           <PowerName>Passive: {power.passiveName}</PowerName>
           {power.passiveDesc}
           <br />
-          <PassiveEffect style={{ color: power.color }}>{power.hasDispelDrawbacks ? getDispelDrawbackText() : power.passiveEffect1}</PassiveEffect>
+          <PassiveEffect style={{ color: power.color }}>{power.passiveEffect1}</PassiveEffect>
         </>
       );
     }

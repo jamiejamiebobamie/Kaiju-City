@@ -346,6 +346,11 @@ const KaijuPart = ({ element, activePhases, style }) => {
 // a sweeper swaps between the broom's two poses, to one side and then the other
 const SWEEP_LOOK = {
   poses: ['/levels/npcs/hazmatBroomLeft.png', '/levels/npcs/hazmatBroomRight.png'],
+  // where the boots are in each pose's image, in its pixels: each pose is placed by them, so the feet stay put as they swap
+  poseFeet: {
+    '/levels/npcs/hazmatBroomLeft.png': { width: 64, height: 103, feetX: 44.5, feetY: 93 },
+    '/levels/npcs/hazmatBroomRight.png': { width: 63, height: 110, feetX: 19, feetY: 91 }
+  },
   strokeSeconds: 0.55 // each pose is held this long
 };
 
@@ -725,13 +730,22 @@ export const SceneElements = ({ level, activePhases, isPaused, onHotspot, isDial
         const otherPose = SWEEP_LOOK.poses.find(pose => pose != src) || src;
         return (
           <React.Fragment key={id}>
-            {[src, otherPose].map((pose, k) => (
+            {[src, otherPose].map((pose, k) => {
+              const { width, height, feetX, feetY } = SWEEP_LOOK.poseFeet[pose];
+              const scale = element.height / feetY; // the figure stands as tall as its spot says, top of the head to the boots
+              return (
               <SweepPoseElement key={pose} src={pose} style={{
                 ...npcStyle,
+                left: `${x - feetX * scale}px`,
+                top: `${y - feetY * scale}px`,
+                width: `${width * scale}px`,
+                height: `${height * scale}px`,
+                transform: "none",
                 animationDelay: `${-k * SWEEP_LOOK.strokeSeconds}s`,
                 animationPlayState: isPaused ? "paused" : "running"
               }} />
-            ))}
+              );
+            })}
           </React.Fragment>
         );
       }

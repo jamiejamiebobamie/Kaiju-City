@@ -84,13 +84,14 @@ const EdgeCaret = styled.svg`
   filter: drop-shadow(0 0 2px black);
 `;
 
-// what a caret points at, shown at its base: a map site's icon, or a hologram window on an enemy coming in
+// what a caret points at, shown at its base: a map site's icon, or a badge for an enemy coming in
 const CARET_INFO = {
   iconHeight: 2.6, // a site icon, in caret sizes
-  windowWidth: 3.4, // a hologram, in caret sizes: about as wide as the sprite, so it sits right beside its caret
-  windowHeight: 5.6,
-  windowGap: -0.7, // the sprite is narrower than its window: this pulls it in to touch the caret, in caret sizes
-  windowFeet: 0.7, // where its feet stand down the window: high enough that the body is level with the caret
+  badgeSize: 2.4, // an off-screen enemy's badge, across, in caret sizes
+  caretBase: 0.5, // from the caret's middle to its base, in caret sizes
+  badgeGap: 0.15, // between the caret's base and the badge
+  badgeZoom: 2.3, // how tall the whole body is, in badge sizes: only the head and shoulders show
+  badgeFeet: 2.05, // where the feet are, down from the badge's top, in badge sizes
   inset: 1.3, // how far in from the caret, past it, in caret sizes
   nearTiles: 12, // an incoming enemy this close gets a window even with others on the board: about as far as the tiles show
   maxWindows: 2,
@@ -100,7 +101,7 @@ const CARET_INFO = {
 // the Subway's warning: while its lights flash and both are out of shot, two comic-book panels at the top show them
 const TRAIN_LOOK = {
   phase: "trainLights",
-  trainPhase: "train",
+  warningPhase: "trainWarning", // the lights before the train comes, not after it has gone
   sheetFrames: 3, // off, then the two flashing frames
   flashSeconds: 1 // both frames, at the lights' own 2 frames a second
 };
@@ -190,64 +191,43 @@ const CaretIcon = styled.img`
   translate: -50% -50%;
 `;
 
-const hologramFlicker = keyframes`
-  0%, 100% { opacity: 0.92; }
-  8% { opacity: 0.7; }
-  9% { opacity: 0.95; }
-  41% { opacity: 0.88; }
-  42% { opacity: 0.6; }
-  44% { opacity: 0.93; }
+// an enemy off the screen, in a round badge docked to its caret: their head and shoulders behind green glass.
+// framed like the recruit-call buttons and the map icons, so it reads as part of the screen, not a piece on the board.
+const badgeFlicker = keyframes`
+  0%, 100% { opacity: 1; }
+  41% { opacity: 1; }
+  42% { opacity: 0.75; }
+  44% { opacity: 1; }
 `;
 
-// a hologram of whoever the caret points at, like a holochess piece: their sprite alone, glowing green,
-// see-through, flickering, with a scan line rolling slowly down it. no box: it takes up no more of the screen than they do.
+const badgeScan = keyframes`
+  from { background-position: 0 -40%, 0 0, 0 0; }
+  to { background-position: 0 140%, 0 0, 0 0; }
+`;
 
-const CaretWindow = styled.div`
+const CaretBadge = styled.div`
   position: absolute;
   z-index: 2147483001;
   pointer-events: none;
   translate: -50% -50%;
-  animation: ${hologramFlicker} 2.7s steps(1) infinite;
-  /* a green glow round its outline */
-  filter: drop-shadow(0 0 2px ${CARET_INFO.green}) drop-shadow(0 0 7px rgba(109, 255, 160, 0.55));
-  /* fine scan lines across it: they only show where the sprite is */
-  -webkit-mask-image: repeating-linear-gradient(to bottom, black 0 2px, rgba(0, 0, 0, 0.6) 2px 3px);
-  mask-image: repeating-linear-gradient(to bottom, black 0 2px, rgba(0, 0, 0, 0.6) 2px 3px);
-`;
-
-// the hologram is the sprite three times over, each layer only where the sprite is:
-// its own colors, showing most in the middle; green light, strongest at its edges; and a bright band rolling down it
-const HologramLayer = styled.div`
-  position: absolute;
-  inset: 0;
-`;
-
-const HOLOGRAM_GREEN = "grayscale(1) sepia(1) hue-rotate(85deg) saturate(3.2) brightness(1.35)";
-
-const HologramColor = styled(HologramLayer)`
-  opacity: 0.85;
-`;
-
-const HologramEdge = styled(HologramLayer)`
-  filter: ${HOLOGRAM_GREEN};
-  -webkit-mask-image: radial-gradient(ellipse 46% 50% at 50% 55%, transparent 25%, black 85%);
-  mask-image: radial-gradient(ellipse 46% 50% at 50% 55%, transparent 25%, black 85%);
-`;
-
-const hologramBand = keyframes`
-  from { -webkit-mask-position: 0 -40%; mask-position: 0 -40%; }
-  to { -webkit-mask-position: 0 140%; mask-position: 0 140%; }
-`;
-
-const HologramScan = styled(HologramLayer)`
-  filter: ${HOLOGRAM_GREEN} brightness(1.6);
-  -webkit-mask-image: linear-gradient(to bottom, transparent, black 45% 55%, transparent);
-  mask-image: linear-gradient(to bottom, transparent, black 45% 55%, transparent);
-  -webkit-mask-size: 100% 22%;
-  mask-size: 100% 22%;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  animation: ${hologramBand} 2.4s linear infinite;
+  border-radius: 50%;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 40%, #0f3a22, #04140b 75%);
+  border: 2px solid ${CARET_INFO.green};
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.75), 0 0 8px rgba(109, 255, 160, 0.7);
+  animation: ${badgeFlicker} 3.1s steps(1) infinite;
+  /* the glass over them: a band of light rolling down, fine scan lines, and green at the rim */
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background:
+      linear-gradient(to bottom, transparent, rgba(200, 255, 220, 0.35) 50%, transparent) 0 0 / 100% 30% no-repeat,
+      repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.25) 0 1px, transparent 1px 3px),
+      radial-gradient(circle, transparent 48%, rgba(109, 255, 160, 0.45) 100%);
+    animation: ${badgeScan} 2.4s linear infinite;
+  }
 `;
 
 // the play window's size, while it is being adjusted
@@ -383,9 +363,12 @@ const ChoiceSuffix = styled.span`
 
 const CHOICE_WORDS = { recruit: "Recruit", terminate: "Terminate" };
 
+// (1) Recruit, (2) Terminate: the number keys choose too
+const CHOICE_KEYS = { recruit: 1, terminate: 2 };
+
 export const ChoiceButton = ({ choice, recruitChoice, onChooseRecruit }) => (
-  <RecruitButton $choice={choice} $isGone={!!recruitChoice} onClick={event => onChooseRecruit(choice, event.currentTarget.getBoundingClientRect())}>
-    {CHOICE_WORDS[choice]}
+  <RecruitButton data-choice-key={recruitChoice ? undefined : CHOICE_KEYS[choice]} $choice={choice} $isGone={!!recruitChoice} onClick={event => onChooseRecruit(choice, event.currentTarget.getBoundingClientRect())}>
+    ({CHOICE_KEYS[choice]}) {CHOICE_WORDS[choice]}
   </RecruitButton>
 );
 
@@ -397,7 +380,11 @@ const CHOICE_FX = {
   hopEverySeconds: 1.4, // RECRUITED's letters hop as a wave through the word this often (SpellCraft's "You Won", sped up)
   hopSeconds: 0.9,
   hopStagger: 0.07,
-  lurchSeconds: 3.6 // TERMINATED's trip round its stops
+  lurchSeconds: 4.8, // TERMINATED's trip round its stops: long enough at each to read it
+  // TERMINATED's stops: which way from the middle, and how big it bursts there. each stop goes only as far as the word still fits.
+  lurchStops: [{ x: -1, y: -0.8, scale: 1.55 }, { x: 0.8, y: -1, scale: 0.72 }, { x: 0.7, y: 0.9, scale: 1.45 }], // scale: its biggest there
+  burstPeak: 1.55, // the moment it lands, before it settles
+  edgeMargin: 0.04 // kept clear at the screen's edge, of its width
 };
 
 const warpStreak = keyframes`
@@ -444,12 +431,16 @@ const EffectLayer = styled.div`
   container-type: size;
 `;
 
+// each letter jumps and turns a full circle on its own upright axis as it goes up and comes down, like someone spinning as they jump
+const getHopAt = share => (100 - CHOICE_FX.hopSeconds / CHOICE_FX.hopEverySeconds * share).toFixed(1);
 const letterHop = keyframes`
-  0%, ${(100 - CHOICE_FX.hopSeconds / CHOICE_FX.hopEverySeconds * 100).toFixed(1)}% { transform: translate(0, 0) scale(1, 1); }
-  ${(100 - CHOICE_FX.hopSeconds / CHOICE_FX.hopEverySeconds * 74).toFixed(1)}% { transform: translate(0.05em, -0.32em) scale(0.92, 1.1); }
-  ${(100 - CHOICE_FX.hopSeconds / CHOICE_FX.hopEverySeconds * 50).toFixed(1)}% { transform: translate(-0.02em, 0.08em) scale(1.1, 0.9); }
-  ${(100 - CHOICE_FX.hopSeconds / CHOICE_FX.hopEverySeconds * 30).toFixed(1)}% { transform: translate(0.01em, -0.08em) scale(0.97, 1.03); }
-  100% { transform: translate(0, 0) scale(1, 1); }
+  0%, ${getHopAt(100)}% { transform: translate(0, 0) rotateY(0deg) scale(1, 1); }
+  ${getHopAt(85)}% { transform: translate(0, 0.04em) rotateY(0deg) scale(1.08, 0.9); }
+  ${getHopAt(62)}% { transform: translate(0, -0.38em) rotateY(180deg) scale(0.95, 1.08); }
+  ${getHopAt(40)}% { transform: translate(0, -0.1em) rotateY(330deg) scale(1, 1); }
+  ${getHopAt(28)}% { transform: translate(0, 0.06em) rotateY(360deg) scale(1.1, 0.9); }
+  ${getHopAt(14)}% { transform: translate(0, -0.03em) rotateY(360deg) scale(0.98, 1.02); }
+  100% { transform: translate(0, 0) rotateY(360deg) scale(1, 1); }
 `;
 
 const HopLetter = styled.span`
@@ -462,9 +453,9 @@ const HopLetter = styled.span`
 // round its stops, uneven: in from the middle, to the top left, the top right, the bottom right, and round again
 const lurch = keyframes`
   0% { transform: translate(0, 0); }
-  18%, 30% { transform: translate(-26cqw, -22cqh); }
-  48%, 60% { transform: translate(21cqw, -27cqh); }
-  78%, 90% { transform: translate(17cqw, 24cqh); }
+  18%, 30% { transform: translate(var(--x1), var(--y1)); }
+  48%, 60% { transform: translate(var(--x2), var(--y2)); }
+  78%, 90% { transform: translate(var(--x3), var(--y3)); }
   100% { transform: translate(0, 0); }
 `;
 
@@ -501,8 +492,16 @@ const ChoiceConfirm = ({ choice, from, board }) => {
   // as big as it was made, unless the word with its ending would not fit across the screen
   const word = CHOICE_WORDS[choice] + RECRUIT_LOOK[choice].suffix;
   const wordPx = Math.min(RECRUIT_LOOK.wordPx, (boardBox.width * 0.9) / (word.length * RECRUIT_LOOK.letterWidth));
-  // TERMINATED grows past its fitted size at its stops: it starts smaller, so it stays on the screen
-  const sizePx = choice == "terminate" ? wordPx * 0.62 : wordPx;
+  // TERMINATED grows past its fitted size at its stops: it is sized so even its biggest burst fits across
+  const sizePx = choice == "terminate" ? Math.min(wordPx, (boardBox.width * (1 - CHOICE_FX.edgeMargin * 2)) / (word.length * RECRUIT_LOOK.letterWidth * CHOICE_FX.burstPeak)) : wordPx;
+  // how far each stop goes: to the edge of the screen, less the word's own size there, so all of it stays readable
+  const lurchSpots = Object.fromEntries(CHOICE_FX.lurchStops.flatMap(({ x, y, scale }, k) => {
+    // (it moves while still bursting, so the biggest it gets there counts)
+    const margin = boardBox.width * CHOICE_FX.edgeMargin;
+    const freeX = Math.max((boardBox.width - word.length * RECRUIT_LOOK.letterWidth * sizePx * scale) / 2 - margin, 0);
+    const freeY = Math.max((boardBox.height - sizePx * 1.3 * scale) / 2 - margin, 0);
+    return [[`--x${k + 1}`, `${x * freeX}px`], [`--y${k + 1}`, `${y * freeY}px`]];
+  }));
   const fromScale = from ? Math.min(from.height / (sizePx * 1.6), 1) : 0.3;
   const letters = (CHOICE_WORDS[choice].toUpperCase() + RECRUIT_LOOK[choice].suffix).split("");
   const base = CHOICE_WORDS[choice].length;
@@ -520,7 +519,7 @@ const ChoiceConfirm = ({ choice, from, board }) => {
             const hop = <HopLetter key={k} style={{ "--delay": `${RECRUIT_LOOK.flyMs / 1000 + k * CHOICE_FX.hopStagger}s` }}>{letter}</HopLetter>;
             return k < base ? hop : <ChoiceSuffix key={k}>{hop}</ChoiceSuffix>;
           }) : (
-            <Lurch><Burst>{CHOICE_WORDS[choice].toUpperCase()}<ChoiceSuffix>{RECRUIT_LOOK[choice].suffix}</ChoiceSuffix></Burst></Lurch>
+            <Lurch style={lurchSpots}><Burst>{CHOICE_WORDS[choice].toUpperCase()}<ChoiceSuffix>{RECRUIT_LOOK[choice].suffix}</ChoiceSuffix></Burst></Lurch>
           )}
         </ChoiceWord>
       </EffectLayer>
@@ -779,7 +778,8 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
   }, [slowRate]);
 
   const focusPiece = pieces.length ? gameManager.getFocusPiece() : undefined;
-  const siteTargets = (level.sites || []).map(({ spot, color, icon }) => ({ key: `${spot.x} ${spot.y}`, color, charLocation: spot, icon }));
+  // a battleground already won has no glow on the map, so its caret's icon has none either
+  const siteTargets = (level.sites || []).map(({ spot, color, icon, visitLevelId }) => ({ key: `${spot.x} ${spot.y}`, color, charLocation: spot, icon, isGlowing: !visitLevelId }));
   // in a walking scene that fills the monitor, a caret points the way out once it is open (Sewer 1's "Deeper")
   const isCoverScene = getIsCoverScene();
   const caretCamera = isCoverScene ? coverCamera : closeCamera;
@@ -796,7 +796,7 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
       caret: caretCamera.getEdgeCaret(getWorldLocation(target.charLocation), getWorldLocation(focusPiece.charLocation), tilePx),
       tiles: Math.hypot(target.charLocation.x - focusPiece.charLocation.x, target.charLocation.y - focusPiece.charLocation.y) / tilePx
     }));
-  // a hologram window for an enemy off the screen: when no other is on the board in view, or when it comes in close.
+  // a badge for an enemy off the screen: when no other is on the board in view, or when it comes in close.
   // at most two, the closest.
   // the Subway's signal lights, flashing: shown in panels when neither is in shot
   const signalLights = (level.sceneElements || []).filter(({ phase }) => phase == TRAIN_LOOK.phase);
@@ -805,7 +805,7 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
     !!caretCamera.getEdgeCaret(getWorldLocation({ x: x + width / 2, y: y + height / 2 }), getWorldLocation(focusPiece.charLocation), tilePx));
   const trainWarning = isTrainWarning && (
     <>
-      {!activePhases.includes(TRAIN_LOOK.trainPhase) && <TrainTitle>Train incoming!</TrainTitle>}
+      {activePhases.includes(TRAIN_LOOK.warningPhase) && <TrainTitle>Train incoming!</TrainTitle>}
       {isLightsOutOfShot && (
         <LightInsets>
           {signalLights.map(({ id, src }, k) => (
@@ -829,39 +829,34 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
   });
   const edgeCarets = caretTargets
     .filter(({ caret }) => !!caret)
-    .map(({ key, color, icon, piece, caret }) => (
+    .map(({ key, color, icon, piece, caret, isGlowing }) => (
       <React.Fragment key={key}>
         {icon && (() => {
           const spot = getInward(caret, CARET_INFO.inset);
-          return <CaretIcon src={`/levels/map/${icon}.png`} style={{ left: `${spot.x}px`, top: `${spot.y}px`, height: `${caret.size * CARET_INFO.iconHeight}px`, "--glow": color }} />;
+          return <CaretIcon src={`/levels/map/${icon}.png`} style={{ left: `${spot.x}px`, top: `${spot.y}px`, height: `${caret.size * CARET_INFO.iconHeight}px`, "--glow": isGlowing ? color : "transparent" }} />;
         })()}
         {windowKeys.has(key) && (() => {
-          const width = caret.size * CARET_INFO.windowWidth;
-          const height = caret.size * CARET_INFO.windowHeight;
-          // right beside the caret, like a site's icon on the map walks
-          const spot = getInward(caret, CARET_INFO.inset + CARET_INFO.windowGap + CARET_INFO.windowWidth / 2);
-          const scale = height / (CHARACTER_HEIGHT_PX * (piece.avatar == 'kaiju' ? 1.6 : 1.15));
-          const sprite = (
-            <GameBoardPieceComponent
-              zIndex={0}
-              charLocation={{ x: width / 2 - CHARACTER_FEET.x * scale - CHARACTER_FEET.leftShift, y: height * CARET_INFO.windowFeet - CHARACTER_FEET.y * scale }}
-              avatar={piece.avatar}
-              color="transparent"
-              isVisible
-              dir={piece.dir}
-              facingDir={piece.getFacingDir()}
-              pieceScale={scale}
-              spriteSheetSrc={piece.spriteSheetSrc}
-              lives={piece.lives}
-              isQuiet
-            />
-          );
+          // docked to the caret: a hair's gap after the caret's base, then the badge
+          const size = caret.size * CARET_INFO.badgeSize;
+          const spot = getInward(caret, CARET_INFO.caretBase + CARET_INFO.badgeGap + CARET_INFO.badgeSize / 2);
+          // zoomed in on the head and shoulders: the body runs on below the badge, out of sight
+          const scale = (size * CARET_INFO.badgeZoom) / (CHARACTER_HEIGHT_PX * (piece.avatar == 'kaiju' ? 1.6 : 1.15));
           return (
-            <CaretWindow style={{ left: `${spot.x}px`, top: `${spot.y}px`, width: `${width}px`, height: `${height}px` }}>
-              <HologramColor>{sprite}</HologramColor>
-              <HologramEdge>{sprite}</HologramEdge>
-              <HologramScan>{sprite}</HologramScan>
-            </CaretWindow>
+            <CaretBadge style={{ left: `${spot.x}px`, top: `${spot.y}px`, width: `${size}px`, height: `${size}px` }}>
+              <GameBoardPieceComponent
+                zIndex={0}
+                charLocation={{ x: size / 2 - CHARACTER_FEET.x * scale - CHARACTER_FEET.leftShift, y: size * CARET_INFO.badgeFeet - CHARACTER_FEET.y * scale }}
+                avatar={piece.avatar}
+                color="transparent"
+                isVisible
+                dir="idle"
+                facingDir="down"
+                pieceScale={scale}
+                spriteSheetSrc={piece.spriteSheetSrc}
+                lives={piece.lives}
+                isQuiet
+              />
+            </CaretBadge>
           );
         })()}
         {renderCaret(color, caret)}
@@ -947,6 +942,7 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
       isShowHealthBarOnComponent={p.isShowHealthBarOnComponent}
       isQuiet={!!recruitScene}
       isSpeaking={p.pieceIndex === speakingPieceIndex}
+      isOnBoard={p.isOnTiles !== false}
     />
   );
 

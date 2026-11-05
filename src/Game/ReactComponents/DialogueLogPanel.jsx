@@ -29,7 +29,9 @@ const drift = keyframes`
   to { background-position: 0 6cqw; }
 `;
 
-const PANEL_MOTION = { buildMs: 650, breakMs: 750, blocks: 14, strips: 9 };
+// slow enough to see it build; the words start once it has. it breaks apart strip by strip, right to left.
+const PANEL_MOTION = { buildMs: 1500, breakMs: 650, stripStaggerMs: 90, blocks: 18, strips: 9 };
+const BREAK_TOTAL_MS = PANEL_MOTION.breakMs + (PANEL_MOTION.strips - 1) * PANEL_MOTION.stripStaggerMs;
 
 // it builds out from the screen's edge: revealed left to right
 const buildOut = keyframes`
@@ -40,7 +42,7 @@ const buildOut = keyframes`
 // and comes apart: the whole panel goes as its strips float off
 const breakAway = keyframes`
   0% { opacity: 1; }
-  25% { opacity: 0; }
+  8% { opacity: 0; }
   100% { opacity: 0; }
 `;
 
@@ -137,7 +139,7 @@ const BLOCKS = Array.from({ length: PANEL_MOTION.blocks }, (_, k) => ({
 }));
 const STRIPS = Array.from({ length: PANEL_MOTION.strips }, (_, k) => ({
   left: `${(k / PANEL_MOTION.strips) * 100}%`, width: `${100 / PANEL_MOTION.strips + 0.3}%`,
-  rise: `${-(8 + ((k * 5) % 7) * 2)}cqw`, tilt: `${((k % 3) - 1) * 3}deg`, delay: ((k * 3) % PANEL_MOTION.strips) * 40
+  rise: `${-(8 + ((k * 5) % 7) * 2)}cqw`, tilt: `${((k % 3) - 1) * 3}deg`, delay: (PANEL_MOTION.strips - 1 - k) * PANEL_MOTION.stripStaggerMs // the right-hand strip goes first
 }));
 
 const BuildEffect = () => (
@@ -291,16 +293,21 @@ export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, ac
   // it builds itself when it opens, and comes apart when it closes
   const isShown = !!entries.length && isVisible;
   const [isClosing, setIsClosing] = useState(false);
-  const wasShown = useRef(isShown);
+  const [isBuilt, setIsBuilt] = useState(false); // the words wait for the panel to finish building
+  const wasShown = useRef(false);
   useEffect(() => {
     if (wasShown.current && !isShown) {
       setIsClosing(true);
-      const timeoutRef = setTimeout(() => setIsClosing(false), PANEL_MOTION.breakMs + 400);
+      setIsBuilt(false);
+      const timeoutRef = setTimeout(() => setIsClosing(false), BREAK_TOTAL_MS + 200);
       wasShown.current = isShown;
       return () => clearTimeout(timeoutRef);
     }
-    if (isShown) setIsClosing(false);
     wasShown.current = isShown;
+    if (!isShown) return;
+    setIsClosing(false);
+    const timeoutRef = setTimeout(() => setIsBuilt(true), PANEL_MOTION.buildMs);
+    return () => clearTimeout(timeoutRef);
   }, [isShown]);
 
   if (!isShown && !isClosing) return null;
@@ -310,7 +317,7 @@ export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, ac
     <BuildEffect />
     <Panel onClick={() => isWaiting && onContinue()}>
       <Scroll ref={scrollRef} onScroll={({ currentTarget: scroll }) => { isAtBottom.current = scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight < 8; }}>
-        {entries.map(({ key, who, name, text, avatar, chain }, index) => {
+        {isBuilt && entries.map(({ key, who, name, text, avatar, chain }, index) => {
           const last = entries[index - 1];
           const isRepeat = !!last && last.name == name && last.avatar == avatar && last.chain == chain;
           return (
@@ -328,11 +335,11 @@ export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, ac
           );
         })}
       </Scroll>
-      {isWaiting && !actions.length && <ContinueBar data-enter onClick={event => { event.stopPropagation(); onContinue(); }}>Continue &#9654;</ContinueBar>}
-      {actions.map(({ text, onClick, isEnter }) => (
-        <ContinueBar key={text} data-enter={isEnter ? "" : undefined} onClick={event => { event.stopPropagation(); onClick(); }}>{text} &#9654;</ContinueBar>
+      {isBuilt && isWaiting && !actions.length && <ContinueBar data-enter data-choice-key={1} onClick={event => { event.stopPropagation(); onContinue(); }}>(1) Continue &#9654;</ContinueBar>}
+      {isBuilt && actions.map(({ text, onClick, isEnter }, index) => (
+        <ContinueBar key={text} data-enter={isEnter ? "" : undefined} data-choice-key={index + 1} onClick={event => { event.stopPropagation(); onClick(); }}>({index + 1}) {text} &#9654;</ContinueBar>
       ))}
-      {footer && <Footer onClick={event => event.stopPropagation()}>{footer}</Footer>}
+      {isBuilt && footer && <Footer onClick={event => event.stopPropagation()}>{footer}</Footer>}
     </Panel>
     </>
   );

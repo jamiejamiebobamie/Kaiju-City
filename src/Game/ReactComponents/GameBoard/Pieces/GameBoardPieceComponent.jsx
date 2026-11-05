@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import styled from "styled-components";
+import { createPortal } from "react-dom";
+import styled, { keyframes } from "styled-components";
 
 const Wrapper = styled.i.attrs(({ zIndex, charLocation, isVisible, pieceScale }) => ({
   style: {
@@ -324,50 +325,66 @@ const Character = styled.div`
   }
 }
 `;
-// a number over someone, in the Hotline Miami manner: it pops in big, settles, then rises away.
-// the same colors as ever: a light-to-color gradient in the pixel font, with a dark border and a drop shadow.
+// a number over someone, in the Hotline Miami manner: it pops in small, grows as it rises away, and fades.
+// it is drawn over the whole monitor, not inside the screen, so it can float on past the screen's edge.
+const NUMBER_LOOK = {
+  seconds: 0.9,
+  size: "2.3cqw", // of the monitor's frame
+  zipScale: 0.55 // "Zip!" is smaller
+};
+
+const numberRise = keyframes`
+  0% { opacity: 0; transform: translate(-50%, 0) scale(0.35); }
+  12% { opacity: 1; transform: translate(calc(-50% - 2px), -0.4cqw) scale(0.8); }
+  40% { transform: translate(calc(-50% + 3px), -1.4cqw) scale(1); }
+  65% { opacity: 1; transform: translate(calc(-50% - 2px), -2.3cqw) scale(1.1); }
+  100% { opacity: 0; transform: translate(calc(-50% + 2px), -3.6cqw) scale(1.2); }
+`;
+
 const ModiferText = styled.p`
   position: absolute;
-  margin-top: -50px;
-  z-index: 20002;
-  opacity: 0;
+  margin: 0;
+  z-index: 2147483300;
+  pointer-events: none;
+  white-space: nowrap;
   font-family: gameboy;
-  font-size: ${props => (props.fontSize ? `${props.fontSize * 1.4}px` : "28px")};
-  ${Math.random() > 0.5
-    ? `margin-left: ${Math.random() * 10}px`
-    : `margin-right: ${Math.random() * 10}px`};
   color: ${props => props.color};
   background: linear-gradient(to bottom, #ffffff 0%, ${props => props.color} 55%, ${props => props.color} 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  -webkit-text-stroke: 1.4px #140409;
+  -webkit-text-stroke: 1.2px #140409;
   filter: drop-shadow(1.5px 2px 0 rgba(0, 0, 0, 0.85)) drop-shadow(0 0 4px ${props => props.color});
   transform-origin: 50% 80%;
-  ${props => props.doNotAnimate ? 'opacity: 1;' : `animation: textPop 1.3s ease-out forwards;`}
-  /* it starts small and grows as it floats up, swaying a little, and fades */
-  @keyframes textPop {
-    0% {
-      opacity: 0;
-      transform: translate(0px, 0px) scale(0.35);
-    }
-    10% {
-      opacity: 1;
-      transform: translate(-2px, -6px) scale(0.75);
-    }
-    35% {
-      transform: translate(3px, -18px) scale(1);
-    }
-    60% {
-      opacity: 1;
-      transform: translate(-2px, -30px) scale(1.12);
-    }
-    100% {
-      opacity: 0;
-      transform: translate(2px, -48px) scale(1.25);
-    }
-  }
+  opacity: 0;
+  animation: ${numberRise} ${NUMBER_LOOK.seconds}s ease-out forwards;
 `;
+
+// where a number starts: just over the head, in the scene
+const NumberAnchor = styled.span`
+  position: absolute;
+  left: 22px;
+  top: -14px;
+  width: 0;
+  height: 0;
+`;
+
+// placed once, where the head was when it showed, then left to float up on its own
+const FloatingNumber = ({ anchorRef, color, text, sizeScale = 1 }) => {
+  const [spot, setSpot] = useState(undefined);
+  useEffect(() => {
+    const frame = document.querySelector("[data-game-frame]");
+    if (!frame || !anchorRef.current) return;
+    const anchorBox = anchorRef.current.getBoundingClientRect();
+    const frameBox = frame.getBoundingClientRect();
+    setSpot({ frame, x: anchorBox.left - frameBox.left + (Math.random() - 0.5) * 12, y: anchorBox.top - frameBox.top });
+  }, []);
+  if (!spot) return null;
+  return createPortal(
+    <ModiferText color={color} style={{ left: `${spot.x}px`, top: `${spot.y}px`, fontSize: `calc(${NUMBER_LOOK.size} * ${sizeScale})` }}>{text}</ModiferText>,
+    spot.frame
+  );
+};
 
 export const GameBoardPieceComponent = ({
   zIndex,
@@ -387,8 +404,10 @@ export const GameBoardPieceComponent = ({
   facingDir,
   pieceScale,
   isQuiet = false, // the Recruit or Terminate choice: no shaking, and no numbers
-  isSpeaking = false // their line is up: they jitter as they talk
+  isSpeaking = false, // their line is up: they jitter as they talk
+  isOnBoard = true // not yet on the tiles (a Kaiju still walking in): no numbers
 }) => {
+  const numberAnchor = React.useRef(null);
   const [modifierText, setModifierText] = useState([]);
   const [isDamaged, setIsDamaged] = useState(null);
   const [isHealedLocal, setIsHealedLocal] = useState(false);
@@ -408,13 +427,11 @@ export const GameBoardPieceComponent = ({
     if (isFirstLoad) {
       setIsFirstLoad(false);
     } else {
-      if (isLostWhileStanding && isHealed === isHealedCached && !isDamaged && !isQuiet) {
+      if (isLostWhileStanding && isHealed === isHealedCached && !isDamaged && !isQuiet && isOnBoard) {
         setIsDamaged(true);
         setModifierText(prevText => [
           ...prevText,
-          <ModiferText key={Math.random()} color={"#FF383B"}>
-            {"-1"}
-          </ModiferText>
+          <FloatingNumber key={Math.random()} anchorRef={numberAnchor} color={"#FF383B"} text="-1" />
         ]);
         setTimeout(() => setIsDamaged(null), 2000);
       }
@@ -424,14 +441,12 @@ export const GameBoardPieceComponent = ({
     if (isFirstLoad) {
       setIsFirstLoad(false);
     } else {
-      if (!isHealedLocal && !isQuiet) {
+      if (!isHealedLocal && !isQuiet && isOnBoard) {
         setIsHealedLocal(true);
         setTimeout(() => setIsHealedLocal(false), 2000);
         setModifierText(prevText => [
           ...prevText,
-          <ModiferText key={Math.random()} color={"#9FEA4F"}>
-            {"+1"}
-          </ModiferText>
+          <FloatingNumber key={Math.random()} anchorRef={numberAnchor} color={"#9FEA4F"} text="+1" />
         ]);
       }
     }
@@ -446,9 +461,7 @@ export const GameBoardPieceComponent = ({
         setTimeout(() => setIsTeleportedLocal(false), 2000);
         setModifierText(prevText => [
           ...prevText,
-          <ModiferText key={Math.random()} fontSize={13} color={"#9338E9"}>
-            Zip!
-          </ModiferText>
+          <FloatingNumber key={Math.random()} anchorRef={numberAnchor} color={"#9338E9"} text="Zip!" sizeScale={NUMBER_LOOK.zipScale} />
         ]);
       }
     }
@@ -457,6 +470,7 @@ export const GameBoardPieceComponent = ({
   const bars = !isShowHealthBarOnComponent ? undefined : Array(lives).fill(0).map((_, i) => <Bar lives={lives} key={i} />)
   return (
     <Wrapper zIndex={zIndex} isVisible={isVisible} charLocation={charLocation} pieceScale={pieceScale}>
+      <NumberAnchor ref={numberAnchor} />
       {!isQuiet && modifierText}
       <HealthBarWrapper lives={lives}>{bars}</HealthBarWrapper>
       <Character isDamaged={isDamaged && !isQuiet} isSpeaking={isSpeaking}>

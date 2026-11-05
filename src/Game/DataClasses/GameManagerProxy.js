@@ -54,9 +54,6 @@ export class GameManagerProxy {
         this.props.addWormhole(from, to, accTime, durationMs);
     }
 
-    getIsSoapy(tileIndex) {
-        return this.props.getIsSoapy(tileIndex);
-    }
 
     getStatusCaster(tileIndex) {
         return this.props.getStatusCaster(tileIndex);

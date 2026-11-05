@@ -2907,7 +2907,7 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
 
     // PASSIVE ability data
     isTriggerPassiveImmediately: true,
-    hasDispelDrawbacks: true, // its passive is a drawback, being playtested: see 'BubbleTest'
+    isCleanSlate: true, // its passive is a drawback: a Dispel ends your other powers' passives
     modifierVal: 0,
     fieldToModify: '',
     // - - - - - - - - - - -
@@ -2926,9 +2926,9 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     activeDesc: "Dispel all tile effects around you",
     activeEffect1: "Clears both positive and negative statuses",
 
-    passiveName: "Like My Dreams",
+    passiveName: "Clean Slate",
     passiveDesc: "...they fade and die.",
-    passiveEffect1: "See 'BubbleTest': the picker shows the drawbacks that are on",
+    passiveEffect1: "A Dispel ends your other powers' passives",
 
     activeEffect2: '',
     passiveEffect2: '',

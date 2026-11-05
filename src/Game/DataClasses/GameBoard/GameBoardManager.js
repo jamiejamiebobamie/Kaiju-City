@@ -1,5 +1,4 @@
 import { TILE_DIRS, TILE_DIR_NORM_VECS, TILE_STATUS_RANKS } from 'Utils/gameState';
-import { BUBBLE_DRAWBACKS, getIsDrawbackOn } from 'Game/DataClasses/BubbleTest';
 import { getRandomIntInRange, getDistanceToFrom, getNormVecFromDestAndOrigin } from 'Game/utils'
 import { GameBoardTile } from 'Game/DataClasses/GameBoard/Tile/GameBoardTile'
 import { findPath } from 'Game/DataClasses/GameBoard/findPath'
@@ -31,18 +30,6 @@ export class GameBoardManager {
         this.walkableTileKeys = new Set(level.walkableTiles.map(({ i, j }) => `${i} ${j}`));
         this.linkedTiles = new Map(level.tileLinks.flatMap(([a, b]) => [[`${a.i} ${a.j}`, b], [`${b.i} ${b.j}`, a]]));
         this.wormholes = []; // links a teleport leaves behind for a while: { from, to, startsAt, endsAt }
-        this.soapUntil = new Map(); // Bubble's Suds: tiles a Dispel crossed, by tile, until when they are soapy
-    }
-
-    getIsSoapy = ({ i, j }) => {
-        return (this.soapUntil.get(`${i} ${j}`) || 0) > this.accTime;
-    }
-
-    getSoapyTiles() {
-        return [...this.soapUntil.entries()].filter(([, until]) => until > this.accTime).map(([key]) => {
-            const [i, j] = key.split(' ').map(Number);
-            return { i, j };
-        });
     }
 
     // anyone can go through, both ways, until it closes. a tile the level already links keeps its own link.
@@ -209,7 +196,6 @@ export class GameBoardManager {
     */
     updateTileState(accTime) {
         this.accTime = accTime;
-        const isSudsOn = getIsDrawbackOn('suds');
         const contenders = {};
         for (let i = 0; i < this.numTileColumns; i++) {
             for (let j = 0; j < this.numTileRows; j++) {
@@ -231,7 +217,6 @@ export class GameBoardManager {
                 tile.setUpdateKey(accTime);
                 if (winner) {
                     tile.updateTileStatus({ updateKey: accTime, ...winner.getTileStatusValues() });
-                    if (isSudsOn && winner.getAppliedStatus() == 'isBubble') this.soapUntil.set(key, accTime + BUBBLE_DRAWBACKS.suds.ms);
                 } else {
                     tile.clearTileStatus();
                 }
