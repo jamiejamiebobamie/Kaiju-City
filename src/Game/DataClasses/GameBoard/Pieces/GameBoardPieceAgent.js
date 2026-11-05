@@ -2,6 +2,7 @@ import { GameBoardPieceBase } from './GameBoardPieceBase';
 
 const WALK_IN_SPEED_SCALE = 1.5;
 const FALL_SPEED_SCALE = 3;
+const RUN_AWAY_TILES = 12; // the head start: as far off as they can get
 
 /*
     Walks in from off-shot along a catwalk, drops to the floor, then fights like any other piece.
@@ -19,7 +20,47 @@ export class GameBoardPieceAgent extends GameBoardPieceBase {
     }
 
     getIdealDistanceFromEnemy() {
-        return this.isChaser ? 0 : super.getIdealDistanceFromEnemy();
+        if (this.isChaser) return 0;
+        if (this.getIsRunningAway && this.getIsRunningAway()) return RUN_AWAY_TILES;
+        return super.getIdealDistanceFromEnemy();
+    }
+
+    // on the catwalk, with no one up there: he stands and waits for his clones
+    moveWithEnemy(enemy) {
+        if (this.getIsWaitingOnCatwalk && this.getIsWaitingOnCatwalk()) {
+            this.moveToTiles = [];
+            return;
+        }
+        super.moveWithEnemy(enemy);
+    }
+
+    // held on the catwalk: he never takes the portal back down
+    getNextDestination() {
+        if (this.isHeldOnCatwalk) {
+            const [nextTileIndex] = this.moveToTiles;
+            const linkedTile = this.gameManagerProxy.getLinkedTile(this.tileIndex);
+            if (!!linkedTile && linkedTile.i == nextTileIndex.i && linkedTile.j == nextTileIndex.j) {
+                this.moveToTiles = [];
+                return;
+            }
+        }
+        super.getNextDestination();
+    }
+
+    followTileLink() {
+        if (!this.isHeldOnCatwalk) super.followTileLink();
+    }
+
+    // from the catwalk to the floor, like the clones did
+    dropDown(landingTile) {
+        this.isOnTiles = false;
+        this.isEntering = true;
+        this.isFalling = true;
+        this.moveToTiles = [];
+        this.tileIndex = landingTile;
+        this.moveFromLocation = this.charLocation;
+        this.moveToLocation = this.gameManagerProxy.getCharXAndYFromTileIndex(landingTile);
+        this.setDir('idle');
     }
 
     startChase({ startLocation, landingTile }) {

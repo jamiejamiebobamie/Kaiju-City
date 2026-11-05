@@ -113,35 +113,34 @@ const hologramFlicker = keyframes`
   44% { opacity: 0.93; }
 `;
 
-const fray = keyframes`
-  from { background-position: 0 0, 0 0; }
-  to { background-position: 0 24px, 7px 0; }
+// a hologram of whoever the caret points at, like a holochess piece: their sprite alone, glowing green,
+// see-through, flickering, with a scan line rolling slowly down it. no box: it takes up no more of the screen than they do.
+const hologramRoll = keyframes`
+  from { top: -15%; }
+  to { top: 105%; }
 `;
 
-// an unstable hologram: full color in the middle, fading to green toward its frayed edges
 const CaretWindow = styled.div`
   position: absolute;
   z-index: 2147483001;
-  overflow: hidden;
   pointer-events: none;
   translate: -50% -50%;
-  background: radial-gradient(ellipse at 50% 45%, rgba(10, 30, 20, 0.35), rgba(4, 30, 16, 0.85) 75%);
-  border: 2px solid ${CARET_INFO.green};
-  box-shadow: 0 0 10px ${CARET_INFO.green}, inset 0 0 12px rgba(109, 255, 160, 0.6);
   animation: ${hologramFlicker} 2.7s steps(1) infinite;
+  /* the sprite in green light: tinted, brightened, glowing at its edges */
+  filter: grayscale(1) sepia(1) hue-rotate(85deg) saturate(3.2) brightness(1.35) drop-shadow(0 0 4px ${CARET_INFO.green}) drop-shadow(0 0 10px rgba(109, 255, 160, 0.6));
+  opacity: 0.82;
+  /* fine scan lines across it, only where it is */
+  -webkit-mask-image: repeating-linear-gradient(to bottom, black 0 2px, rgba(0, 0, 0, 0.55) 2px 3px);
+  mask-image: repeating-linear-gradient(to bottom, black 0 2px, rgba(0, 0, 0, 0.55) 2px 3px);
   &::after {
     content: "";
     position: absolute;
-    inset: 0;
-    pointer-events: none;
-    /* green over the edges, clear in the middle; scan lines; and lines fraying off the sides */
-    background:
-      repeating-linear-gradient(to bottom, rgba(109, 255, 160, 0.16) 0 1px, transparent 1px 4px),
-      repeating-linear-gradient(to right, rgba(109, 255, 160, 0.5) 0 1px, transparent 1px 9px, transparent 9px 23px);
-    -webkit-mask-image: radial-gradient(ellipse at 50% 45%, transparent 40%, black 85%);
-    mask-image: radial-gradient(ellipse at 50% 45%, transparent 40%, black 85%);
+    left: 15%;
+    right: 15%;
+    height: 12%;
+    background: linear-gradient(to bottom, transparent, rgba(200, 255, 220, 0.55), transparent);
     mix-blend-mode: screen;
-    animation: ${fray} 0.9s linear infinite;
+    animation: ${hologramRoll} 2.4s linear infinite;
   }
 `;
 
@@ -626,7 +625,13 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
         return;
       }
       if (getIsCoverScene()) {
-        coverCamera.follow(getWorldLocation(player.charLocation));
+        // the view slides across the scene as the player does: at its left edge, the scene's left edge shows, and so on,
+        // so whatever is at the sides (the Lab's tanks and their labels) comes into view as the player heads that way
+        const viewWidth = shotView.viewWidth / coverCamera.zoom;
+        const viewHeight = shotView.viewHeight / coverCamera.zoom;
+        const { x, y } = getWorldLocation(player.charLocation);
+        const across = (value, size, view) => view / 2 + Math.min(Math.max(value / size, 0), 1) * (size - view);
+        coverCamera.centerOn({ x: across(x, world.width, viewWidth), y: across(y, world.height, viewHeight) });
         worldRef.current.style.transform = coverCamera.getTransform();
         return;
       }

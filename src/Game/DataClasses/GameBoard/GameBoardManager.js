@@ -683,7 +683,8 @@ export class GameBoardManager {
         const avgLocation = { x: sumLocations.x / otherTeamsPieces.length, y: sumLocations.y / otherTeamsPieces.length };
 
         // only tiles the piece could walk from: a teleport must not strand it, eg. on the Lab's catwalk
-        const reachableTiles = this.getReachableTiles(this.gameManagerProxy.getPieceTileIndex(pieceIndex));
+        const reachableTiles = this.getReachableTiles(this.gameManagerProxy.getPieceTileIndex(pieceIndex))
+            .filter(tileIndex => !this.gameManagerProxy.getIsOffLimitsTile(pieceIndex, tileIndex));
         let safeTileObj = {
             distance: Number.MIN_SAFE_INTEGER,
             tileIndex: reachableTiles[getRandomIntInRange({ max: reachableTiles.length - 1 })]

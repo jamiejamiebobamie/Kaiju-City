@@ -12,7 +12,9 @@ const VAT_LOOK = {
   dunkMs: 900,
   holdMs: 500,
   praiseMs: 2800, // how long the off-screen voice's words stay up
-  praiseBaseWidth: 1600 // the screen width its balloon is drawn for
+  praiseBaseWidth: 1600, // the screen width its balloon is drawn for
+  praiseScale: 1.8, // and this much bigger than that
+  praisePan: "-7%" // the scene slides left as they speak: they are off to the right
 };
 
 const hsvToHex = (hue, saturation, value) => {
@@ -111,8 +113,8 @@ const Beams = styled.div`
   position: absolute;
   left: 22%;
   right: 22%;
-  top: 8%;
-  height: 70%;
+  top: 42%;
+  height: 36%;
   pointer-events: none;
   mix-blend-mode: screen;
   background:
@@ -163,6 +165,13 @@ const Figure = styled.div`
   background-repeat: no-repeat;
 `;
 
+// the room, which slides a little as the off-screen voice speaks
+const Scene = styled.div`
+  position: absolute;
+  inset: 0;
+  transition: transform 0.7s ease-in-out;
+`;
+
 const Heading = styled.div`
   position: absolute;
   top: 2cqw;
@@ -184,26 +193,29 @@ const PraiseSpot = styled.div`
 
 const Panel = styled.div`
   position: absolute;
-  left: 2cqw;
-  bottom: 2cqw;
+  top: 6cqw;
+  right: 6cqw;
+  width: 27cqw;
+  z-index: 2147483640;
   display: flex;
-  align-items: stretch;
-  gap: 1cqw;
-  padding: 1cqw;
+  flex-direction: column;
+  gap: 1.4cqw;
+  padding: 1.4cqw;
+  font-family: gameboy;
   background: linear-gradient(#3a3c42, #1c1d21);
   border: 0.15cqw solid #8d9097;
+  box-shadow: 0 0 2cqw black;
 `;
 
 const Picker = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 0.6cqw;
-  width: 14cqw;
+  gap: 1cqw;
 `;
 
 const ColorField = styled.div`
   position: relative;
-  height: 9cqw;
+  height: 20cqw;
   cursor: crosshair;
   touch-action: none;
   background: linear-gradient(to top, black, transparent), linear-gradient(to right, white, transparent);
@@ -222,7 +234,7 @@ const Cursor = styled.div`
 
 const HueSlider = styled.input`
   width: 100%;
-  height: 0.9cqw;
+  height: 1.6cqw;
   margin: 0;
   -webkit-appearance: none;
   appearance: none;
@@ -230,9 +242,9 @@ const HueSlider = styled.input`
 `;
 
 const HexInput = styled.input`
-  padding: 0.3cqw;
+  padding: 0.5cqw;
   font-family: gameboy;
-  font-size: 0.85cqw;
+  font-size: 1.1cqw;
   color: #d9dade;
   background: #111214;
   border: 0.1cqw solid #5a5d64;
@@ -241,14 +253,13 @@ const HexInput = styled.input`
 const Actions = styled.div`
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 0.6cqw;
+  gap: 0.8cqw;
 `;
 
 const ActionButton = styled.button`
-  padding: 0.7cqw 1cqw;
+  padding: 1cqw;
   font-family: gameboy;
-  font-size: ${props => props.$isMain ? "1.1cqw" : "0.8cqw"};
+  font-size: ${props => props.$isMain ? "1.4cqw" : "1.1cqw"};
   cursor: pointer;
   color: ${props => props.$isMain ? "#0b0c0e" : "#d9dade"};
   background: ${props => props.$isMain ? "#d9dade" : "#26282c"};
@@ -303,6 +314,7 @@ export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose }) => 
 
   return createPortal(
     <Page style={{ "--vat-color": color }}>
+      <Scene style={{ transform: isPraising ? `translateX(${VAT_LOOK.praisePan})` : "none" }}>
       <Layer src="/levels/vat-room.png" />
       <Beams />
       <Glow />
@@ -312,17 +324,18 @@ export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose }) => 
       </Hanging>
       <Layer src="/levels/vat-front.png" />
       {FOAM.map(([left, size], index) => (
-        <Foam key={index} style={{ left: `${left}%`, width: `${size}vw`, height: `${size}vw`, animationDelay: `${-index * 0.17}s` }} />
+        <Foam key={index} style={{ left: `${left}%`, width: `${size}cqw`, height: `${size}cqw`, animationDelay: `${-index * 0.17}s` }} />
       ))}
       {DRIPS.map(([left, width, height, seconds]) => (
-        <Drip key={left} style={{ left: `${left}%`, width: `${width}vw`, height: `${height}%`, animationDuration: `${seconds}s` }} />
+        <Drip key={left} style={{ left: `${left}%`, width: `${width}cqw`, height: `${height}%`, animationDuration: `${seconds}s` }} />
       ))}
       {BUBBLES.map(([left, size, seconds, delay]) => (
-        <Bubble key={left} style={{ left: `${left}%`, width: `${size}vw`, height: `${size}vw`, animationDuration: `${seconds}s`, animationDelay: `${delay}s` }} />
+        <Bubble key={left} style={{ left: `${left}%`, width: `${size}cqw`, height: `${size}cqw`, animationDuration: `${seconds}s`, animationDelay: `${delay}s` }} />
       ))}
+      </Scene>
       <Heading>Choose Color</Heading>
-      {isPraising && <PraiseSpot><SpeechBalloon name="Lab Tech" text="Looking good!" x={0} y={0} isFlipped scale={(document.querySelector("[data-play-screen]") || document.body).clientWidth / VAT_LOOK.praiseBaseWidth} /></PraiseSpot>}
-      <Panel>
+      {isPraising && <PraiseSpot><SpeechBalloon name="Lab Tech" text="Looking good!" x={0} y={0} isFlipped scale={(document.querySelector("[data-play-screen]") || document.body).clientWidth / VAT_LOOK.praiseBaseWidth * VAT_LOOK.praiseScale} /></PraiseSpot>}
+      {createPortal(<Panel>
         <Picker>
           <ColorField
             ref={fieldRef}
@@ -338,9 +351,9 @@ export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose }) => 
         </Picker>
         <Actions>
           <ActionButton $isMain disabled={isBusy} onClick={irradiate}>Irradiate</ActionButton>
-          <ActionButton disabled={isBusy} onClick={onClose}>Done</ActionButton>
+          <ActionButton disabled={isBusy} onClick={onClose}>Back to Lab</ActionButton>
         </Actions>
-      </Panel>
+      </Panel>, document.querySelector("[data-game-frame]") || document.body)}
     </Page>,
     document.querySelector("[data-play-screen]") || document.body
   );

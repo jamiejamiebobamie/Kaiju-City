@@ -6,6 +6,8 @@ const getPieceInfo = avatar => ({ ...PIECES_INFO[avatar], color: getAvatarColor(
 import { GameBoardPieceBase } from './GameBoardPieceBase';
 import { Team } from './Team';
 
+export const POWERLESS_TILE_COLOR = '#ffffff';
+
 export class GameBoardPiecesManager {
     constructor({ gameManagerProxy }) {
         this.pieces = [];
@@ -256,7 +258,8 @@ export class GameBoardPiecesManager {
     getPieceColorsLookup() {
         // create lookup of tileindex string: '0 1' to GamePiece color for 'redrawTiles' method
         return this.pieces.filter(p => p.isOnTiles && !p.isDead && !p.isTileHidden).reduce((lookup, piece) => {
-            lookup[`${piece.tileIndex.i} ${piece.tileIndex.j}`] = piece.getColor();
+            // no powers yet: a plain white tile, till they are given some and take their color
+            lookup[`${piece.tileIndex.i} ${piece.tileIndex.j}`] = piece.abilities.length ? piece.getColor() : POWERLESS_TILE_COLOR;
             return lookup;
         }, {});
     }

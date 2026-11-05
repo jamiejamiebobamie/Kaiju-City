@@ -652,13 +652,55 @@ describe('the Lab fight', () => {
     expect(gm.speech).not.toBe(first);
   });
 
-  it('on a retry, the Agents hold their powers for a moment', () => {
-    const gm = makeLabFight(true);
-    const agent = gm.getPieces().find(piece => piece.teamIndex != 0 && !piece.isDead);
-    expect(gm.getIsPowersOff(agent)).toBe(true);
-    gm.accTime += LEVELS.lab.agentDrops.retryPowersMs;
+  it('every attempt, the Agents run and hold their powers for 3 to 5 seconds', () => {
+    [true, false].forEach(isRetry => {
+      const gm = makeLabFight(isRetry);
+      const agent: any = gm.catwalkAgent;
+      const [fewestMs, mostMs] = LEVELS.lab.agentDrops.headStartMs;
+      const headStartMs = gm.enemyPowersAtMs - gm.accTime;
+      expect(headStartMs).toBeGreaterThanOrEqual(fewestMs);
+      expect(headStartMs).toBeLessThanOrEqual(mostMs);
+      expect(agent.getIsRunningAway()).toBe(true);
+      expect(gm.getIsPowersOff(agent)).toBe(true);
+      gm.accTime = gm.enemyPowersAtMs;
+      expect(agent.getIsRunningAway()).toBe(false);
+    });
+  });
+
+  it('the talker teleports to the catwalk, leaving a portal, and waits there with his powers held', () => {
+    const gm = makeLabFight(false);
+    const agent: any = gm.catwalkAgent;
+    expect(gm.getIsOnCatwalk(agent.getTileIndex())).toBe(true);
+    expect(gm.getWormholes()).toHaveLength(1);
+    const [{ from, to }] = gm.getWormholes();
+    expect(gm.getIsOnCatwalk(from)).toBe(false);
+    expect(gm.getIsOnCatwalk(to)).toBe(true);
+    gm.accTime = gm.enemyPowersAtMs;
+    expect(gm.getIsPowersOff(agent)).toBe(true); // no one is up there with him
+    // the player follows him up: he fights
+    const player = gm.gameBoardPiecesManager.getPlayerPiece();
+    player.initCharLocation(true, to);
     expect(gm.getIsPowersOff(agent)).toBe(false);
-    expect(makeLabFight(false).getIsPowersOff(agent)).toBe(false);
+  });
+
+  it('each Agent has their own kit, each kit used once', () => {
+    const gm = makeLabFight(false);
+    const { drops, kits, talkerKit } = LEVELS.lab.agentDrops;
+    const used = [talkerKit, ...drops.map(({ kit }) => kit)];
+    expect(new Set(used).size).toBe(Object.keys(kits).length);
+    expect(used).toHaveLength(Object.keys(kits).length);
+    expect(gm.catwalkAgent.abilities.map(a => a.gameBoardPieceAbilityData.element)).toHaveLength(3);
+  });
+
+  it('the talker comes down only once every clone has', () => {
+    const gm = makeLabFight(false);
+    const agent: any = gm.catwalkAgent;
+    for (let k = 0; k < 3000 && gm.agentsDropped < LEVELS.lab.agentDrops.drops.length; k++) gm.stepPieces();
+    expect(agent.isHeldOnCatwalk).toBe(true);
+    for (let k = 0; k < 3000 && agent.isHeldOnCatwalk; k++) gm.stepPieces();
+    expect(agent.isHeldOnCatwalk).toBe(false);
+    for (let k = 0; k < 3000 && agent.isEntering; k++) gm.stepPieces();
+    expect(gm.getIsOnCatwalk(agent.getTileIndex())).toBe(false);
   });
 });
 

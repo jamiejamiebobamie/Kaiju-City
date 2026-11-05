@@ -268,11 +268,18 @@ const blackWipe = keyframes`
   to { transform: translateY(-100%); }
 `;
 
-const SlideAway = styled.div`
+// the screen's edge holds still while the scene slides inside it, so the slide never passes over the monitor's border
+const SlideClip = styled.div`
   position: absolute;
   inset: 0;
   overflow: hidden;
   border-radius: 1.8cqw;
+`;
+
+const SlideAway = styled.div`
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
   transition: transform 0.9s ease-in, opacity 0.9s ease-in;
 `;
 
@@ -402,6 +409,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const [, setBubbleTestRevision] = useState(0); // redraws the Bubble drawback switches
   const [isChoosingAvatar, setIsChoosingAvatar] = useState(!startingLevelId); // a new campaign starts with the guy or the girl
   const isPickingPowersInLab = useRef(false);
+  const [isLabPicker, setIsLabPicker] = useState(false); // the picker was opened from the Lab's tanks: it goes back there
   const [isWholeScene, setIsWholeScene] = useState(false);
   const [isMouseLook, setIsMouseLook] = useState(true);
   const [isEnemyZoom, setIsEnemyZoom] = useState(true);
@@ -595,6 +603,19 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   };
 
   // goes back through the ability picker, which returns to this section's call
+  // back into the walking Lab, beside the tanks, with the talk there already had
+  const returnToLab = () => {
+    isPickingPowersInLab.current = false;
+    setIsLabPicker(false);
+    const labLevel = LEVELS[level.id];
+    const tank = (labLevel.sceneElements || []).find(({ action }) => action == "powers");
+    const returnSpot = tank ? { x: tank.x + tank.width / 2, y: tank.y + tank.height } : undefined;
+    triggerTransition(() => {
+      startMatch(labLevel, false, undefined, { returnSpot, isRetry: true });
+      setIsPlayingGame(true);
+    });
+  };
+
   const handleChangePowers = lastLine => {
     setRadioLines([lastLine]);
     setIsResumingRadio(true);
@@ -603,8 +624,8 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
 
   const handleClickPlay = () => {
     if (isPickingPowersInLab.current) {
-      isPickingPowersInLab.current = false;
-      startMatch(LEVELS[level.id]);
+      returnToLab();
+      return;
     } else if (isResumingRadio) {
       // back to the end of the call
     } else if (campaignIndex !== null) {
@@ -660,6 +681,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     // the power picker, and back into the Lab with the new powers
     if (screen == "powers") {
       isPickingPowersInLab.current = true;
+      setIsLabPicker(true);
       setPickedAbilities([]);
       triggerTransition(() => {
         endMatch(); // the Lab starts again with the new powers
@@ -875,6 +897,8 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
         pickedAbilities={pickedAbilities}
         setPickedAbilities={setPickedAbilities}
         handleClickPlay={handleClickPlay}
+        playLabel={isLabPicker ? "Back to Lab" : undefined}
+        onBack={isLabPicker ? returnToLab : undefined}
         isTeammate={isTeammate}
         setIsTeammate={setIsTeammate}
       />
@@ -1000,7 +1024,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               </>
             )}>
               {/* for a Lab screen, the scene slides away inside the monitor, and the screen takes its place there */}
-              <SlideAway style={leavingFor ? { transform: `translateX(${leavingFor == "colors" ? -45 : 45}%)`, opacity: 0 } : undefined}>
+              <SlideClip><SlideAway style={leavingFor ? { transform: `translateX(${leavingFor == "colors" ? -45 : 45}%)`, opacity: 0 } : undefined}>
               <GameBoard
                 key={`${level.id} ${matchCount}`}
                 choiceFromRef={recruitChoiceFrom}
@@ -1024,7 +1048,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 onChooseRecruit={handleChooseRecruit}
                 onHotspot={openLabScreen}
               />
-              </SlideAway>
+              </SlideAway></SlideClip>
               {matchEnd && (
                 <EndScreen>
                   <EndTitle>{matchEnd.title}</EndTitle>
@@ -1055,7 +1079,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               )}
               entries={dialogueLog}
               isWaiting={isDialogueWaiting}
-              isVisible={!isPaused && (isCutscene || !!recruitScene || isTalking)}
+              isVisible={!isPaused && labScreen != "colors" && (isCutscene || !!recruitScene || isTalking)}
               onContinue={() => gameManager.current && gameManager.current.advanceDialogue()}
             />
             {!isEditingTiles && <UI

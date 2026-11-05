@@ -118,7 +118,6 @@ type TileTone = keyof typeof TILE_TONES;
 type Rival = {
   avatar: string;
   abilities: Array<string>; // ability elements
-  isRandomPowers?: boolean; // each Agent gets three powers at random instead
   maxLives: number;
   moveSpeed: number;
   touchPhase: string; // the phase where they touch the Kaiju part. the fight starts once it plays out.
@@ -137,15 +136,18 @@ type Rival = {
 
 // Agents who walk in along a catwalk and drop to the floor, one after another
 type AgentDrops = {
-  abilities: Array<string>; // ability elements
+  kits: Record<string, Array<string>>; // each Agent's three powers, by kit: every kit is used once
+  talkerKit: string; // the kit of the Agent who did the talking
   maxLives: number;
   moveSpeed: number;
   firstDropMs: number;
   dropIntervalMs: number;
   catwalkY: number; // in scene pixels
+  catwalkLastRow: number; // the catwalk's tile rows end here: the floor is below, out of reach but by the portal
+  portalColumns: number; // the portal's top end, this many columns over from where the talker waits
   floorY: number; // where they land, in scene pixels
-  drops: Array<{ x: number; isFromLeft: boolean }>; // one for each Agent. x is where they drop, in scene pixels.
-  retryPowersMs?: number; // on a retry, how long before the Agents can use powers
+  drops: Array<{ x: number; isFromLeft: boolean; kit: string }>; // one for each Agent. x is where they drop, in scene pixels.
+  headStartMs: [number, number]; // every attempt, the Agents run and hold their powers for a time between these
 };
 
 type MapSite = { spot: { x: number; y: number }; color: string; icon?: string; isDetour?: boolean; visitLevelId?: string };
@@ -545,6 +547,8 @@ const SEWER1_SCENE = {
   ]
 };
 
+const SEWER_PART_SECONDS = 4; // the shared beat of Sewer 2's glowing parts
+
 const sewerPart = (id, x, y, width, height, seconds, delaySeconds, glowColor) => ({
   id, type: 'part' as const, src: `/levels/sewer2/${id}-spritesheet.png`, x, y, width, height, zIndex: -2, seconds, delaySeconds, brightPhase: 'blinding', glowColor
 });
@@ -576,12 +580,13 @@ const SEWER2_SCENE = {
   walkIn: SEWER2_WALK_IN,
   phases: [{ id: 'blinding', label: 'Blinding light' }],
   sceneElements: [
-    sewerPart('eye', 601, 133, 284, 369, 3.1, 0, '#e6ff3a'),
-    sewerPart('tail', 28, 96, 455, 349, 5.3, 1.1, '#b13cff'),
-    sewerPart('tooth', 458, 330, 165, 179, 2.3, 0.4, '#2a9cff'),
-    sewerPart('viscera', 320, 191, 219, 157, 3.7, 2.2, '#ff9a1f'),
-    sewerPart('bone', 287, 410, 602, 358, 6.1, 0.8, '#ff3d6e'),
-    sewerPart('claw', 5, 411, 379, 271, 4.3, 1.7, '#22e08a'),
+    // all on one beat, a little apart: one creature's parts pulsing together
+    sewerPart('eye', 601, 133, 284, 369, SEWER_PART_SECONDS, 0, '#e6ff3a'),
+    sewerPart('tail', 28, 96, 455, 349, SEWER_PART_SECONDS, 0.35, '#b13cff'),
+    sewerPart('tooth', 458, 330, 165, 179, SEWER_PART_SECONDS, 0.15, '#2a9cff'),
+    sewerPart('viscera', 320, 191, 219, 157, SEWER_PART_SECONDS, 0.5, '#ff9a1f'),
+    sewerPart('bone', 287, 410, 602, 358, SEWER_PART_SECONDS, 0.25, '#ff3d6e'),
+    sewerPart('claw', 5, 411, 379, 271, SEWER_PART_SECONDS, 0.6, '#22e08a'),
     { id: 'whiteout', type: 'whiteout' as const, phase: 'blinding', x: 0, y: 0, width: 1408, height: 768, sortY: ABOVE_CHARACTERS * 2 }
   ]
 };
@@ -641,7 +646,7 @@ const agentClone = (id, x) => ({ ...npc(id, 'agent', x, 170, 95), phase: 'clones
 export const LAB_TALK_PHASE = 'labTalk';
 
 const LAB_INTRO_SCENE = {
-  exit: { spot: { x: 1060, y: 740 }, afterMs: 0 },
+  exit: { spot: { x: 925, y: 700 }, afterMs: 0 }, // at the back, clear of the color tank and its label
   extras: [standingAgent(720, 660)],
   sceneElements: [
     {
@@ -655,7 +660,7 @@ const LAB_INTRO_SCENE = {
     { id: 'avatarTank', type: 'hotspot' as const, action: 'powers', label: 'Change powers', labelY: 345, outline: '/levels/lab-outline-avatars.png', x: 62, y: 235, width: 175, height: 440, rotate: -24, sortY: ABOVE_CHARACTERS },
     { id: 'specimenTank', type: 'hotspot' as const, action: 'agentTalk', label: 'What is this?', labelY: 300, outline: '/levels/lab-outline-specimen.png', x: 290, y: 310, width: 170, height: 300, rotate: -24, sortY: ABOVE_CHARACTERS, hidePhase: LAB_TALK_PHASE },
     { id: 'colorTank', type: 'hotspot' as const, action: 'colors', label: 'Choose color', labelY: 330, outline: '/levels/lab-outline-colors.png', x: 1225, y: 370, width: 170, height: 340, rotate: 34, sortY: ABOVE_CHARACTERS },
-    { id: 'exit', type: 'door' as const, phase: EXIT_OPEN_PHASE, x: 1060, y: 700, width: 0, height: 0, sortY: ABOVE_CHARACTERS, label: 'Exit' }
+    { id: 'exit', type: 'door' as const, phase: EXIT_OPEN_PHASE, x: 925, y: 660, width: 0, height: 0, sortY: ABOVE_CHARACTERS, label: 'Exit' }
   ]
 };
 
@@ -677,18 +682,25 @@ const LAB_SCENE = {
   showdown: { script: LAB_SHOWDOWN_SCRIPT, speechSpot: { x: 700, y: 365 } },
   extras: [standingAgent(700, 480)],
   agentDrops: {
-    abilities: ['death', 'lightning', 'glass'], // when not random
-    isRandomPowers: true, // each Agent gets three powers at random, Kaiju Fire among them
+    kits: {
+      enforcer: ['fire', 'lightning', 'metal'], // Wildfire, Discharge, Aegis
+      frostWarden: ['ice', 'water', 'bubble'], // Ice Slice, Tidal Wave, Dispel
+      reaper: ['death', 'wood', 'glass'], // Haunt, Overgrowth, Escape
+      handler: ['charm', 'kaijuFire', 'love'] // Charm, Kaiju Fire, Heal
+    },
+    // the Agent who did the talking: he teleports up to the catwalk, leaving a portal, and comes down once his clones have
+    talkerKit: 'reaper',
     maxLives: 4,
     moveSpeed: 5,
     firstDropMs: 1500,
     dropIntervalMs: 7000,
     catwalkY: 130,
+    catwalkLastRow: 6,
+    portalColumns: 2,
     floorY: 450,
-    // the Agent who did the talking fights too, from where he stood
-    // halved from five, with the talker: three in all
-    drops: [{ x: 330, isFromLeft: true }, { x: 1080, isFromLeft: false }],
-    retryPowersMs: 3500 // on a retry, the Agents can't use powers for this long
+    // four in all, with the talker
+    drops: [{ x: 330, isFromLeft: true, kit: 'enforcer' }, { x: 1080, isFromLeft: false, kit: 'frostWarden' }, { x: 470, isFromLeft: true, kit: 'handler' }],
+    headStartMs: [3000, 5000] as [number, number]
   },
   phases: [{ id: 'clones', label: 'Agent clones' }],
   sceneElements: [

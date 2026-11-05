@@ -154,6 +154,11 @@ export class GameManagerProxy {
         return !!this.props.getIsWormholeTile && this.props.getIsWormholeTile(tileIndex);
     }
 
+    // a tile this piece must keep off: the Lab's catwalk, for the Agents' side, but for the talker waiting up there
+    getIsOffLimitsTile(pieceIndex, tileIndex) {
+        return !!this.props.getIsOffLimitsTile && this.props.getIsOffLimitsTile(pieceIndex, tileIndex);
+    }
+
     getLinkedTile(tileIndex) {
         return this.props.getLinkedTile(tileIndex);
     }

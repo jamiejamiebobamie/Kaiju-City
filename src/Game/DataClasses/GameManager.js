@@ -71,8 +71,6 @@ export const TEAM_COLORS = {
 };
 
 // the Lab fight's Agents: three of these each, at random
-const AGENT_POWER_POOL = ['ice', 'fire', 'water', 'wood', 'lightning', 'death', 'bubble', 'metal', 'glass', 'love', 'charm', 'kaijuFire'];
-const AGENT_POWER_COUNT = 3;
 
 const ARRIVAL_LINE = "Heads-up, teammate. They're coming!";
 
@@ -213,7 +211,8 @@ export class GameManager {
 
     getIsPowersOff = (piece = undefined) => {
         if (this.isRecruitsFighting && !this.cutscene && piece && piece.isRecruit) return false; // the Lab trap: the recruits hold the Agents off
-        if (piece && piece.teamIndex != this.gameBoardPiecesManager.getPlayerTeamIndex() && this.accTime < this.enemyPowersAtMs) return true; // a retry's head start
+        if (piece && piece.teamIndex != this.gameBoardPiecesManager.getPlayerTeamIndex() && this.accTime < this.enemyPowersAtMs) return true; // the Agents' head start
+        if (this.getIsCatwalkAgentWaiting(piece)) return true;
         return !!this.level.isWalkingLevel || !!this.cutscene || !!this.recruitScene;
     }
 
@@ -838,24 +837,51 @@ export class GameManager {
         ]);
     }
 
-    // the Agent who did the talking fights from where he stands. the rest drop in from the catwalk.
+    // the Agent who did the talking teleports up to the catwalk, leaving a portal where he stood, and waits there for his clones.
+    // whoever follows him through it fights him up there. the rest drop in from the catwalk.
     startShowdownFight = () => {
-        // a retry skips the talk: the Agents hold their powers a moment, so the team isn't hit the instant it starts
-        if (this.isRetry) this.enemyPowersAtMs = this.accTime + ((this.level.agentDrops && this.level.agentDrops.retryPowersMs) || 0);
+        const { talkerKit, catwalkY, portalColumns, headStartMs: [fewestMs, mostMs] } = this.level.agentDrops;
+        // every attempt: the Agents scatter and hold their powers a moment, so the team isn't hit the instant it starts
+        this.enemyPowersAtMs = this.accTime + fewestMs + Math.random() * (mostMs - fewestMs);
         this.extras.forEach(extra => {
             extra.leave();
-            this.addAgent({ standTile: extra.getTileIndex() });
+            const floorTile = extra.getTileIndex();
+            const catwalkTile = this.gameBoardManager.getClosestWalkableTileToLocation({ x: extra.charLocation.x, y: catwalkY });
+            const agent = this.addAgent({ standTile: catwalkTile, kit: talkerKit });
+            agent.isHeldOnCatwalk = true;
+            agent.getIsWaitingOnCatwalk = () => this.getIsCatwalkAgentWaiting(agent);
+            // the portal's top end is beside him, so whoever comes up lands next to him; it stays open, so they can go back down
+            const portalTop = this.gameBoardManager.getClosestWalkableTileToLocation({ x: extra.charLocation.x + portalColumns * this.level.grid.colStep * this.level.grid.scale, y: catwalkY });
+            this.gameBoardManager.addWormhole(floorTile, portalTop, this.accTime, Infinity);
+            this.catwalkAgent = agent;
         });
     }
 
-    // Agents with powers picked at random, Kaiju Fire among them
-    getAgentAbilities() {
-        const { abilities, isRandomPowers } = this.level.agentDrops;
-        if (!isRandomPowers) return this.settingsManager.getAbilitiesFromElements(abilities);
-        const pool = [...AGENT_POWER_POOL];
-        const picked = [];
-        while (picked.length < AGENT_POWER_COUNT) picked.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
-        return this.settingsManager.getAbilitiesFromElements(picked);
+    // the kit's three powers
+    getAgentAbilities(kit) {
+        return this.settingsManager.getAbilitiesFromElements(this.level.agentDrops.kits[kit]);
+    }
+
+    getIsOnCatwalk = ({ j }) => {
+        return !!this.level.agentDrops && j <= this.level.agentDrops.catwalkLastRow;
+    }
+
+    // the Agent on the catwalk holds his powers unless someone came up after him
+    getIsCatwalkAgentWaiting(piece) {
+        if (!piece || !piece.isHeldOnCatwalk) return false;
+        return !this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex())
+            .some(other => !other.isDead && other.isOnTiles && this.getIsOnCatwalk(other.getTileIndex()));
+    }
+
+    // once every clone has come down from the catwalk, he drops down after them
+    updateCatwalkAgent() {
+        const agent = this.catwalkAgent;
+        if (!agent || !agent.isHeldOnCatwalk) return;
+        const { drops, floorY } = this.level.agentDrops;
+        const isAllDown = this.agentsDropped >= drops.length && this.getPieces().every(piece => !piece.isEntering || piece.isDead);
+        if (!isAllDown || agent.isDead) return;
+        agent.isHeldOnCatwalk = false;
+        agent.dropDown(this.gameBoardManager.getClosestWalkableTileToLocation({ x: agent.charLocation.x, y: floorY }));
     }
 
     // everyone stands facing the Agent while he has his say, each line once, and then the chase is on
@@ -1252,24 +1278,27 @@ export class GameManager {
         const { drops, firstDropMs, dropIntervalMs } = this.level.agentDrops;
         const isDue = this.accTime >= firstDropMs + this.agentsDropped * dropIntervalMs;
         if (this.agentsDropped < drops.length && isDue) this.addAgent(drops[this.agentsDropped]);
+        this.updateCatwalkAgent();
     }
 
-    addAgent({ x = 0, isFromLeft = false, standTile = undefined }) {
+    addAgent({ x = 0, isFromLeft = false, standTile = undefined, kit = undefined }) {
         const { maxLives, moveSpeed, catwalkY, floorY } = this.level.agentDrops;
         const piece = this.gameBoardPiecesManager.addPiece({
             pieceClass: GameBoardPieceAgent,
             pieceInfo: {
                 ...PIECES_INFO.agent,
-                abilities: this.getAgentAbilities(),
+                abilities: this.getAgentAbilities(kit),
                 maxLives,
                 moveSpeed
             },
             teamIndex: 1
         });
+        piece.kit = kit;
+        piece.getIsRunningAway = () => this.accTime < this.enemyPowersAtMs; // the head start: they scatter before they fight
         if (standTile) {
             piece.isEntering = false;
             piece.initCharLocation(true, standTile);
-            return;
+            return piece;
         }
         const offShot = 60;
         piece.startEntrance({
@@ -1279,6 +1308,7 @@ export class GameManager {
             walkDir: isFromLeft ? 'downRight' : 'downLeft'
         });
         this.agentsDropped += 1;
+        return piece;
     }
 
     getKillsToWin() {
@@ -1418,6 +1448,14 @@ export class GameManager {
             getIsInBounds: this.gameBoardManager.getIsInBounds,
             getIsClosedTile: this.gameBoardManager.getIsClosedTile,
             getLinkedTile: this.gameBoardManager.getLinkedTile,
+            getIsOffLimitsTile: (pieceIndex, tileIndex) => {
+                if (!this.catwalkAgent) return false;
+                const piece = this.gameBoardPiecesManager.getPiece(pieceIndex);
+                // the talker, held up there, can't escape down before his clones
+                if (piece == this.catwalkAgent && piece.isHeldOnCatwalk) return !this.getIsOnCatwalk(tileIndex);
+                if (!this.getIsOnCatwalk(tileIndex)) return false;
+                return !!piece && piece.teamIndex == this.catwalkAgent.teamIndex && piece != this.catwalkAgent;
+            },
             getIsWormholeTile: ({ i, j }) => this.gameBoardManager.getWormholes().some(({ from, to }) => [from, to].some(end => end.i == i && end.j == j)),
             getSafeTileIndex: this.gameBoardManager.getSafeTileIndex,
             getHighlightedTiles: this.gameBoardManager.getHighlightedTiles,

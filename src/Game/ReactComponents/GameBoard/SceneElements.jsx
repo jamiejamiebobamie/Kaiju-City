@@ -662,7 +662,12 @@ const HotspotLabel = styled.div`
   pointer-events: none;
   z-index: 1;
   color: white;
-  text-shadow: 0 0 4px black, 2px 2px 0 black;
+  /* on a dark plate, so it reads over the bright lab */
+  padding: 4px 8px;
+  background: rgba(8, 10, 14, 0.82);
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 2px 2px 0 black;
+  text-shadow: 2px 2px 0 black;
 `;
 
 // 'isDialogueLog': a scene's speech goes to the log beside the monitor instead

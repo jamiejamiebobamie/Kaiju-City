@@ -236,6 +236,8 @@ export const AbilityPicker = ({
   pickedAbilities,
   setPickedAbilities,
   handleClickPlay,
+  playLabel = undefined, // from the Lab, the button says where it goes
+  onBack = undefined,
   isTeammate,
   setIsTeammate
 }) => {
@@ -330,8 +332,8 @@ export const AbilityPicker = ({
           <input type="checkbox" checked={isTeammate} onChange={() => setIsTeammate(value => !value)} /> Teammate
         </TeammateToggle>
         <Buttons>
-          <MetalButton disabled={!isReady} onClick={handleClickPlay}>Play!</MetalButton>
-          <MetalButton onClick={handleClickHome}>Back</MetalButton>
+          <MetalButton disabled={!isReady} onClick={handleClickPlay}>{playLabel || "Play!"}</MetalButton>
+          {!onBack && <MetalButton onClick={handleClickHome}>Back</MetalButton>}
         </Buttons>
       </Footer>
     </Panel>

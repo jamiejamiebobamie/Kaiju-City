@@ -634,8 +634,10 @@ describe('the Agents in the Lab', () => {
 
   it('never teleport somewhere they could not walk back from', () => {
     const { gm } = makeLab();
-    while (getAgents(gm).length < 1 || !getAgents(gm)[0].isOnTiles) gm.stepPieces();
-    const [agent] = getAgents(gm);
+    // a clone that dropped to the floor (the talker waits up on the catwalk)
+    const getDropped = () => getAgents(gm).find(agent => agent != gm.catwalkAgent && agent.isOnTiles);
+    while (!getDropped()) gm.stepPieces();
+    const agent = getDropped();
     const board = gm.gameBoardManager;
     for (let k = 0; k < 40; k++) {
       const tile = board.getSafeTileIndex(agent.pieceIndex);
