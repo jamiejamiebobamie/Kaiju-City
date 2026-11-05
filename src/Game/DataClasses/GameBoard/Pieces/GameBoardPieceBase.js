@@ -577,7 +577,7 @@ export class GameBoardPieceBase {
 
     moveWithEnemy(enemy) {
         const idealDistance = this.getIdealDistanceFromEnemy();
-        const moveToTilesToEnemy = this.gameManagerProxy.getPathFromTileToTile({ fromTile: this.tileIndex, toTile: enemy.tileIndex });
+        const moveToTilesToEnemy = this.gameManagerProxy.getPathFromTileToTile({ fromTile: this.tileIndex, toTile: enemy.tileIndex, pieceIndex: this.pieceIndex });
 
         // the furthest a ready attack reaches. without this, two NPCs could settle just out of each other's range for good.
         const attackReach = this.getReadyAttackReach();

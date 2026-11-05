@@ -156,6 +156,11 @@ export class GameManagerProxy {
         return !!this.props.getIsOffLimitsTile && this.props.getIsOffLimitsTile(pieceIndex, tileIndex);
     }
 
+    // what each tile adds to this piece's path: others standing there, or headed there (empty with spacing off)
+    getCrowdCosts(pieceIndex) {
+        return this.props.getCrowdCosts ? this.props.getCrowdCosts(pieceIndex) : new Map();
+    }
+
     getLinkedTile(tileIndex) {
         return this.props.getLinkedTile(tileIndex);
     }

@@ -485,7 +485,10 @@ export class GameBoardManager {
         return this.walkableTileKeys.has(`${tileIndex.i} ${tileIndex.j}`);
     }
 
-    findPathFromTo = (startIndex, goalIndex, /* and (optionally) avoid: */ enemyTiles = undefined, isAlwaysAvoid = false) => {
+    // 'crowdPieceIndex': an NPC's path, which goes round tiles others stand on or are headed for, where there is room (A*'s weights)
+    findPathFromTo = (startIndex, goalIndex, /* and (optionally) avoid: */ enemyTiles = undefined, isAlwaysAvoid = false, crowdPieceIndex = undefined) => {
+        const crowdCosts = crowdPieceIndex === undefined ? undefined : this.gameManagerProxy.getCrowdCosts(crowdPieceIndex);
+        const getCrowdCost = tile => (crowdCosts && crowdCosts.get(`${tile.i} ${tile.j}`)) || 0;
         const getIsEnemyTile = tile => !!enemyTiles && enemyTiles.some(e => e.i === tile.i && e.j === tile.j);
         const getIsNextToEnemy = tile => !!enemyTiles && this.getAdjacentAdjacentTileIndices(tile).some(getIsEnemyTile);
         const avoidedPath = findPath({
@@ -494,7 +497,7 @@ export class GameBoardManager {
             getAdjacentTiles: this.getPathStepsFrom(startIndex),
             getLocation: this.getCharXAndYFromTileIndex,
             getIsBlocked: tile => getIsEnemyTile(tile) || (isAlwaysAvoid && getIsNextToEnemy(tile)),
-            getExtraCost: tile => getIsNextToEnemy(tile) ? ENEMY_NEARBY_TILE_COST : 0
+            getExtraCost: tile => (getIsNextToEnemy(tile) ? ENEMY_NEARBY_TILE_COST : 0) + getCrowdCost(tile)
         });
         if (!!avoidedPath.length || !enemyTiles || isAlwaysAvoid) return avoidedPath;
 
@@ -588,12 +591,12 @@ export class GameBoardManager {
     getPathToClosestEnemy = (pieceIndex) => {
         const tileIndex = this.gameManagerProxy.getPieceTileIndex(pieceIndex);
         const enemy = this.getClosestEnemy(pieceIndex);
-        const path = !!enemy ? this.findPathFromTo(tileIndex, enemy.tileIndex) : [];
+        const path = !!enemy ? this.findPathFromTo(tileIndex, enemy.tileIndex, undefined, false, pieceIndex) : [];
         return path;  // aka: 'moveToTiles'
     }
 
-    getPathFromTileToTile = ({ fromTile, toTile, avoidTiles, isAlwaysAvoid }) => {
-        return this.findPathFromTo(fromTile, toTile, avoidTiles, isAlwaysAvoid);
+    getPathFromTileToTile = ({ fromTile, toTile, avoidTiles, isAlwaysAvoid, pieceIndex = undefined }) => {
+        return this.findPathFromTo(fromTile, toTile, avoidTiles, isAlwaysAvoid, pieceIndex);
     }
 
     getClosestPieceFromTileIndex = (pieces, tileIndex) => {
@@ -615,7 +618,7 @@ export class GameBoardManager {
     getPathToTeamLeader = (pieceIndex) => {
         const piece = this.gameManagerProxy.getPiece(pieceIndex);
         const leaderPiece = this.gameManagerProxy.getTeamLeaderPiece(pieceIndex);
-        const path = this.findPathFromTo(piece.getTileIndex(), leaderPiece.getTileIndex());
+        const path = this.findPathFromTo(piece.getTileIndex(), leaderPiece.getTileIndex(), undefined, false, pieceIndex);
         return path;  // aka: 'moveToTiles'
     }
 
@@ -730,7 +733,7 @@ export class GameBoardManager {
     getPathToSafeTile = (pieceIndex) => {
         const safeTileIndex = this.getSafeTileIndex(pieceIndex);
         const tileIndex = this.gameManagerProxy.getPieceTileIndex(pieceIndex);
-        const path = this.findPathFromTo(tileIndex, safeTileIndex);
+        const path = this.findPathFromTo(tileIndex, safeTileIndex, undefined, false, pieceIndex);
         return path;  // aka: 'moveToTiles'
     }
 
@@ -738,7 +741,7 @@ export class GameBoardManager {
         const safeTileIndex = this.getSafeTileIndex(pieceIndex);
         const tileIndex = this.gameManagerProxy.getPieceTileIndex(pieceIndex);
         const otherTeamsPieces = this.gameManagerProxy.getOtherTeamsPieces(pieceIndex);
-        const path = this.findPathFromTo(tileIndex, safeTileIndex, /* ...and avoid: */ otherTeamsPieces.map(({ tileIndex }) => tileIndex));
+        const path = this.findPathFromTo(tileIndex, safeTileIndex, /* ...and avoid: */ otherTeamsPieces.map(({ tileIndex }) => tileIndex), false, pieceIndex);
         return path;  // aka: 'moveToTiles'
     }
 

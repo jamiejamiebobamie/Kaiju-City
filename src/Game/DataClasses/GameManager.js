@@ -120,6 +120,9 @@ const WALKER_BODY_FRACTION = 0.69;
 // what the piece component adds to every piece's z-index, so pieces sort with the scene's own layers
 const PIECE_Z_BASE = 20001;
 
+// A*'s extra cost of a tile, in steps: someone standing on it, or someone headed for it
+const CROWD_COST = { standing: 3, headedFor: 1.5 };
+
 export class GameManager {
     // 'returnSpot': back on a map walk from a site, the team starts beside it.
     // 'isRetry': the match is played again after a loss, so its opening scene is skipped.
@@ -215,6 +218,24 @@ export class GameManager {
     getIsTileTakenForSpacing = (pieceIndex, { i, j }) => {
         if (!getIsSpacing(this.level.isWalkingLevel ? 'walking' : 'battle')) return false;
         return this.getPieces().some(piece => piece.pieceIndex != pieceIndex && !piece.isDead && piece.isOnTiles && piece.tileIndex.i == i && piece.tileIndex.j == j);
+    }
+
+    // A*'s weights for an NPC's path: a tile someone stands on costs more, and one someone is headed for a little more,
+    // so they take a free tile beside others rather than walking through or onto them. off with spacing off.
+    getCrowdCosts = (pieceIndex) => {
+        const costs = new Map();
+        if (!getIsSpacing(this.level.isWalkingLevel ? 'walking' : 'battle')) return costs;
+        const add = ({ i, j }, cost) => {
+            const key = `${i} ${j}`;
+            costs.set(key, Math.max(costs.get(key) || 0, cost));
+        };
+        this.getPieces().forEach(piece => {
+            if (piece.pieceIndex == pieceIndex || piece.isDead || !piece.isOnTiles || !piece.tileIndex) return;
+            add(piece.tileIndex, CROWD_COST.standing);
+            const headedFor = piece.moveToTiles && piece.moveToTiles[piece.moveToTiles.length - 1];
+            if (headedFor) add(headedFor, CROWD_COST.headedFor);
+        });
+        return costs;
     }
 
     getIsPowersOff = (piece = undefined) => {
@@ -623,14 +644,23 @@ export class GameManager {
         if (step.phase) this.activePhases.add(step.phase);
     }
 
+    // with spacing on, no two pieces stop on one tile: a taken one gives way to the nearest free tile beside it
+    getUnclaimedTile(piece, tile) {
+        if (!this.getIsTileTakenForSpacing(piece.pieceIndex, tile)) return tile;
+        const free = this.gameBoardManager.getAdjacentTileIndices(tile)
+            .filter(this.gameBoardManager.getIsInBounds)
+            .find(next => !this.getIsTileTakenForSpacing(piece.pieceIndex, next));
+        return free || tile;
+    }
+
     // a piece walks to where it stands, from a tile, or from where it is to a new tile
     // it follows the tiles, so it goes round walls and water. off the tiles, it walks straight.
     startPieceArrival({ piece, startTile, toTile, dir }) {
         const start = startTile ? this.gameBoardManager.getCharXAndYFromTileIndex(startTile) : piece.charLocation;
         const fromTile = startTile || piece.getTileIndex();
-        if (toTile) piece.initCharLocation(true, toTile);
+        if (toTile) piece.initCharLocation(true, this.getUnclaimedTile(piece, toTile));
         const isOnTiles = fromTile && this.gameBoardManager.getIsInBounds(fromTile) && this.gameBoardManager.getIsInBounds(piece.getTileIndex());
-        const path = isOnTiles ? this.gameBoardManager.findPathFromTo(fromTile, piece.getTileIndex()) : [];
+        const path = isOnTiles ? this.gameBoardManager.findPathFromTo(fromTile, piece.getTileIndex(), undefined, false, piece.pieceIndex) : [];
         piece.startArrival(start, dir, path.slice(0, -1).map(this.gameBoardManager.getCharXAndYFromTileIndex));
     }
 
@@ -1478,6 +1508,7 @@ export class GameManager {
             getIsInBounds: this.gameBoardManager.getIsInBounds,
             getIsClosedTile: this.gameBoardManager.getIsClosedTile,
             getLinkedTile: this.gameBoardManager.getLinkedTile,
+            getCrowdCosts: this.getCrowdCosts,
             getIsOffLimitsTile: (pieceIndex, tileIndex) => {
                 if (!this.catwalkAgent) return false;
                 const piece = this.gameBoardPiecesManager.getPiece(pieceIndex);

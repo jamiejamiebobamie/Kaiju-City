@@ -551,6 +551,22 @@ describe('Kaiju speed playtest', () => {
   });
 });
 
+describe('NPC paths and crowding', () => {
+  it("an NPC's path goes round a tile someone stands on, when there is room", () => {
+    setIsSpacing('battle', true);
+    const { gm, player, kaiju, board } = makeGame();
+    const { i, j } = CENTER_TILE;
+    const start = { i, j: j - 3 };
+    const goal = { i, j: j + 3 };
+    const straight = board.findPathFromTo(start, goal);
+    const blocker = straight[Math.floor(straight.length / 2)];
+    placePiece(gm, player, blocker);
+    const around = board.findPathFromTo(start, goal, undefined, false, kaiju.pieceIndex);
+    expect(around.some(({ i: bi, j: bj }) => bi == blocker.i && bj == blocker.j)).toBe(false);
+    expect(around[around.length - 1]).toEqual(goal);
+  });
+});
+
 describe("Bubble's Clean Slate", () => {
   it("a Dispel ends the other powers' passives", () => {
     const game = makeGame({ abilities: ['Bubble', 'Ice', 'Water'] });
