@@ -581,7 +581,8 @@ const STREET_SCENE = {
     { id: 'exit', type: 'door' as const, phase: EXIT_OPEN_PHASE, x: 135, y: 660, width: 0, height: 0, sortY: ABOVE_CHARACTERS, label: 'Go To Peninsula' },
     {
       id: 'agentSpeech', type: 'speech' as const, x: 335, y: 372, width: 0, height: 0, sortY: ABOVE_CHARACTERS,
-      lines: STREET_LINES
+      lines: STREET_LINES,
+      dialogue: 'street.talk' // who says each line, from the dialogue file
     },
     streetGlow('hand', 586, 0, 168, 129, 4.7, 0),
     streetGlow('tail', 571, 126, 348, 266, 6.3, 1.4),
@@ -604,11 +605,13 @@ const LAB_INTRO_SCENE = {
   sceneElements: [
     {
       id: 'agentWelcome', type: 'speech' as const, x: 720, y: 445, width: 0, height: 0, sortY: ABOVE_CHARACTERS, hidePhase: LAB_TALK_PHASE,
-      lines: getDialogueTexts('labIntro.welcome')
+      lines: getDialogueTexts('labIntro.welcome'),
+      dialogue: 'labIntro.welcome'
     },
     {
       id: 'agentNervous', type: 'speech' as const, phase: LAB_TALK_PHASE, x: 720, y: 445, width: 0, height: 0, sortY: ABOVE_CHARACTERS,
-      lines: getDialogueTexts('labIntro.nervous')
+      lines: getDialogueTexts('labIntro.nervous'),
+      dialogue: 'labIntro.nervous'
     },
     { id: 'avatarTank', type: 'hotspot' as const, action: 'powers', label: 'Change powers', labelY: 345, outline: '/levels/lab-outline-avatars.png', x: 62, y: 235, width: 175, height: 440, rotate: -24, sortY: ABOVE_CHARACTERS },
     { id: 'specimenTank', type: 'hotspot' as const, action: 'agentTalk', label: 'What is this?', labelY: 300, outline: '/levels/lab-outline-specimen.png', x: 290, y: 310, width: 170, height: 300, rotate: -24, sortY: ABOVE_CHARACTERS, hidePhase: LAB_TALK_PHASE },

@@ -1,4 +1,4 @@
-import { fillPronouns, getDialogueTexts, getRecruitChoiceLines } from './Dialogue/dialogue';
+import { fillPronouns, getDialogueTexts, getRecruitChoiceLines, getSpokenLines } from './Dialogue/dialogue';
 import { GameMode, GAME_TICK, PIECES_INFO, ZoomLvl } from 'Utils/gameState';
 import { TimeoutHandler } from './TimeoutHandler';
 import { GameManagerProxy } from './GameManagerProxy';
@@ -763,6 +763,22 @@ export class GameManager {
         this.dialogueLog = [];
     }
 
+    // who says a line from the dialogue file: a role ('player', 'teammate', 'agent', 'recruit') or a name, as a piece in the scene if there is one
+    getLineSpeaker(speaker) {
+        const [player, teammate] = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
+        const byName = name => ROSTER.find(({ name: rosterName }) => rosterName == name);
+        if (speaker == 'player' && player) return { name: ROSTER.find(({ id }) => id == player.avatar).name, avatar: player.avatar, piece: player };
+        if (speaker == 'teammate' && teammate) return { name: this.getTeammateName(), avatar: teammate.avatar, piece: teammate };
+        if (speaker == 'agent') return { name: 'Agent', avatar: 'agent', piece: this.extras.find(extra => extra.avatar == 'agent') };
+        if (speaker == 'recruit' && this.followers && this.followers[0]) {
+            const recruit = this.followers[0];
+            return { name: ROSTER.find(({ id }) => id == recruit.avatar).name, avatar: recruit.avatar, piece: recruit };
+        }
+        const entry = byName(speaker);
+        const piece = entry && this.getPieces().find(({ avatar }) => avatar == entry.id);
+        return { name: speaker, avatar: entry && entry.id, piece };
+    }
+
     // a line's pronoun words ({you:he}, {teammate:his}) fit whoever is playing
     fillSpeech(speech) {
         if (!speech) return speech;
@@ -781,11 +797,15 @@ export class GameManager {
     // a scene's speech elements go to the log, while their phase is on (and before their 'hidePhase')
     addSceneTalks() {
         // back in a scene from one of its screens (the Lab's power picker), what was said on the way in isn't said again
-        this.level.sceneElements.filter(({ type, phase }) => type == 'speech' && !(this.returnSpot && !phase)).forEach(({ name = 'Agent', lines, phase, hidePhase }) => {
+        this.level.sceneElements.filter(({ type, phase }) => type == 'speech' && !(this.returnSpot && !phase)).forEach(({ name = 'Agent', lines, phase, hidePhase, dialogue }) => {
             // a scene that opens with a call waits for the team to come over
             const isActive = () => !this.cutscene && (!this.level.greeting || this.isGreetingAnswered) && (!phase || this.activePhases.has(phase)) && !(hidePhase && this.activePhases.has(hidePhase));
-            const agent = name == 'Agent' ? this.extras.find(extra => extra.avatar == 'agent') : undefined;
-            this.addTalk(lines.map(text => ({ name, text, avatar: name == 'Agent' ? 'agent' : undefined, speakerIndex: agent && agent.pieceIndex })), isActive, !!phase || !!hidePhase);
+            // from the dialogue file, each line by whoever says it; otherwise all of them by the element's speaker
+            const spoken = dialogue ? getSpokenLines(dialogue) : lines.map(text => ({ speaker: name == 'Agent' ? 'agent' : name, text }));
+            this.addTalk(spoken.map(({ speaker, text }) => {
+                const { name: speakerName, avatar, piece } = this.getLineSpeaker(speaker);
+                return { name: speakerName, text, avatar, speakerIndex: piece && piece.pieceIndex };
+            }), isActive, !!phase || !!hidePhase);
         });
     }
 
@@ -877,7 +897,10 @@ export class GameManager {
             ...lines.flatMap(({ isTeammate, name, text, isFlipped, shot: lineShot }) => lineShot == 'wide'
                 ? [{ shot: WHOLE_SCENE_SHOT, ms: getSpeechMs(text), speech: isTeammate ? this.getSpeechOver(teammate, this.getTeammateName(), text) : { ...this.getSpeechOver(rival, name, text), isFlipped } }]
                 : isTeammate ? getTeammateSteps(text) : [
-                    { shot, ms: getSpeechMs(text), speech: { ...this.getSpeechOver(rival, name, text), isFlipped } }
+                    // the bystander, by name; or anyone else the dialogue file gives a line (the player, the Agent)
+                    { shot, ms: getSpeechMs(text), speech: ['player', 'agent', 'recruit'].includes(name)
+                        ? (() => { const { piece, name: who } = this.getLineSpeaker(name); return piece ? this.getSpeechOver(piece, who, text) : { ...this.getSpeechOver(rival, who, text), isFlipped }; })()
+                        : { ...this.getSpeechOver(rival, name, text), isFlipped } }
                 ]),
             { shot: isTouchWide ? { isWide: true } : shot, ms: CUTSCENE.touchMs, phase: touchPhase, onStart: () => { rival.isPlain = false; } },
             ...(afterTouch ? [
@@ -920,7 +943,12 @@ export class GameManager {
     startVisitScene() {
         const [, teammate] = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
         if (!teammate) return;
-        this.startCutscene(this.level.visitLines.map(text => ({ shot: { isWide: true }, ms: getSpeechMs(text), speech: this.getSpeechOver(teammate, this.getTeammateName(), text) })));
+        // each visit line by whoever the dialogue file says (the teammate, as written)
+        this.startCutscene(getSpokenLines('visit').map(({ speaker, text }) => {
+            const { name, piece } = this.getLineSpeaker(speaker);
+            const over = piece || teammate;
+            return { shot: { isWide: true }, ms: getSpeechMs(text), speech: over ? this.getSpeechOver(over, name, text) : { name, text } };
+        }));
     }
 
     // the whole map, to show where to go, then in on the player as in a battle

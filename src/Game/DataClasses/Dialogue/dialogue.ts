@@ -66,6 +66,9 @@ export const getIntroLines = (sceneId: string) => getDialogueScene(sceneId).line
   return line.shot ? { ...intro, shot: line.shot } : intro;
 });
 
+// a scene's lines with who says each (a role like 'agent' or 'teammate', or a name): for scenes whose speakers can change
+export const getSpokenLines = (sceneId: string) => getDialogueScene(sceneId).lines.map(({ speaker, text }: any) => ({ speaker, text: text || '' }));
+
 // one line, by name and words
 export const getDialogueLine = (sceneId: string) => {
   const [line] = getDialogueScene(sceneId).lines as Array<any>;

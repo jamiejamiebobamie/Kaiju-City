@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
 import { TILE_STATUSES_AND_ABILITY_DATA } from "Utils/gameState";
-import { getDialogueScene } from "Game/DataClasses/Dialogue/dialogue";
+import DIALOGUE from "Game/DataClasses/Dialogue/dialogue.json";
 import { DEFAULT_PATH, getIsBranchingSection, getSectionItems, RIVALS, STORY } from "./storyPath";
 
 /*
@@ -11,7 +11,31 @@ import { DEFAULT_PATH, getIsBranchingSection, getSectionItems, RIVALS, STORY } f
 
   Keys: up/down a line, Page Up/Down a section, N/P the next or previous branch,
   left/right a branch's versions, Enter opens a branch, Esc closes it (back up to the parent).
+  The panel on the right edits the selected line; Save (or Ctrl+S) writes dialogue.json through the dev server.
 */
+
+// who can say a line: the roles the game fills in, and the people met by name
+const SPEAKERS = [
+  ["player", "The player (Guy or Girl)"], ["teammate", "The teammate (the other one)"], ["agent", "Agent"], ["recruit", "A recruit"],
+  ["Punk Guy", "Punk Guy"], ["Punk Girl", "Punk Girl"], ["Aquarium Worker", "Aquarium Worker"], ["Lab Tech", "Lab Tech"]
+];
+
+// the scenes whose lines each get a camera shot: the bystander intros, the walk-ins, the showdown and the trap
+const getHasShots = sceneId => /\.intro$|\.walkIn$|\.showdown$|^labTrap\.trap$/.test(sceneId);
+
+const PRONOUN_WORDS = ["{you:he}", "{you:him}", "{you:his}", "{teammate:he}", "{teammate:him}", "{teammate:his}"];
+
+// a line by its id, anywhere in a scene: in its lines, or in the replies to a choice
+const findLine = (lines, id) => {
+  for (let index = 0; index < lines.length; index++) {
+    if (lines[index].id == id) return { list: lines, index };
+    for (const choice of lines[index].choices || []) {
+      const found = findLine(choice.reply, id);
+      if (found) return found;
+    }
+  }
+  return undefined;
+};
 const LOOK = {
   bg: "#0d1117",
   panel: "#161b22",
@@ -178,6 +202,29 @@ const Side = styled.aside`
   background: ${LOOK.panel};
   & dt { color: ${LOOK.dim}; font-size: 12px; margin-top: 10px; }
   & dd { margin: 2px 0 0; }
+  & textarea, & select { width: 100%; box-sizing: border-box; background: ${LOOK.bg}; color: ${LOOK.text}; border: 1px solid ${LOOK.line}; padding: 5px; font: inherit; }
+  & textarea { min-height: 90px; resize: vertical; }
+`;
+
+const ButtonRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  & button { background: ${LOOK.line}; color: ${LOOK.text}; border: 1px solid #30363d; border-radius: 4px; padding: 4px 8px; cursor: pointer; font: inherit; font-size: 12px; }
+  & button:hover { border-color: ${LOOK.accent}; }
+  & button[data-danger]:hover { border-color: #ff6b6b; color: #ff6b6b; }
+`;
+
+const SaveButton = styled.button`
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: 1px solid ${props => props.disabled ? LOOK.line : LOOK.accent};
+  color: ${props => props.disabled ? LOOK.dim : LOOK.bg};
+  background: ${props => props.disabled ? "none" : LOOK.accent};
+  cursor: ${props => props.disabled ? "default" : "pointer"};
+  font: inherit;
+  font-weight: 600;
 `;
 
 const Keys = styled.div`
@@ -202,6 +249,11 @@ const LineView = ({ item, isSelected, isMatch, onSelect, refFor, isCompact = fal
 );
 
 export const DialogueViewer = () => {
+  const [dialogue, setDialogue] = useState(() => structuredClone(DIALOGUE));
+  const [savedJson, setSavedJson] = useState(() => JSON.stringify(DIALOGUE));
+  const [saveNote, setSaveNote] = useState("");
+  const isDirty = JSON.stringify(dialogue) != savedJson;
+  const scenes = dialogue.scenes;
   const [path, setPath] = useState(DEFAULT_PATH);
   const [selectedKey, setSelectedKey] = useState(undefined);
   const [openBranches, setOpenBranches] = useState(() => new Set());
@@ -211,7 +263,53 @@ export const DialogueViewer = () => {
   const sectionRefs = useRef([]);
   const refFor = key => element => { rowRefs.current[key] = element; };
 
-  const sections = useMemo(() => STORY.map((section, index) => ({ ...section, index, items: getSectionItems(index, path), isBranching: getIsBranchingSection(index) })), [path]);
+  const sections = useMemo(() => STORY.map((section, index) => ({ ...section, index, items: getSectionItems(index, path, scenes), isBranching: getIsBranchingSection(index, scenes) })), [path, scenes]);
+
+  // every edit works on a fresh copy of the dialogue: (scenes) => change them in place
+  const editDialogue = change => setDialogue(current => {
+    const next = structuredClone(current);
+    change(next.scenes);
+    return next;
+  });
+  const updateLine = (sceneId, lineId, patch) => editDialogue(all => {
+    const found = findLine(all[sceneId].lines, lineId);
+    if (!found) return;
+    const line = found.list[found.index];
+    Object.entries(patch).forEach(([field, value]) => {
+      if (value === undefined) delete line[field];
+      else line[field] = value;
+    });
+  });
+  const deleteLine = (sceneId, lineId) => {
+    editDialogue(all => {
+      const found = findLine(all[sceneId].lines, lineId);
+      if (found) found.list.splice(found.index, 1);
+    });
+    goTo(Math.max(selectedIndex - 1, 0));
+  };
+  // a new line after this one, in the same branch: same speaker and conditions, for you to change
+  const addLineAfter = (sceneId, lineId) => {
+    const id = `${sceneId}.x${Date.now().toString(36)}`;
+    editDialogue(all => {
+      const found = findLine(all[sceneId].lines, lineId);
+      if (!found) return;
+      const { speaker, when, isBalloon, ifRecruits } = found.list[found.index];
+      found.list.splice(found.index + 1, 0, { speaker: speaker || "agent", text: "New line", ...(when ? { when } : {}), ...(isBalloon ? { isBalloon } : {}), ...(ifRecruits ? { ifRecruits } : {}), id });
+    });
+    const branchKey = selected && selected.branch ? `${selected.branch.key}/` : "";
+    setSelectedKey(`${branchKey}${id}`);
+  };
+  const save = async () => {
+    setSaveNote("Saving...");
+    try {
+      const response = await fetch("/__dialogue/save", { method: "POST", body: JSON.stringify(dialogue) });
+      if (!response.ok) throw new Error(await response.text());
+      setSavedJson(JSON.stringify(dialogue));
+      setSaveNote("Saved to dialogue.json. Reload the game to hear it.");
+    } catch (error) {
+      setSaveNote(`Not saved: ${error.message}`);
+    }
+  };
 
   // everything that can be selected, top to bottom: lines, and branch heads (with the lines of the version shown)
   const order = useMemo(() => sections.flatMap(({ index, items }) => items.flatMap(item => {
@@ -240,7 +338,12 @@ export const DialogueViewer = () => {
 
   useEffect(() => {
     const onKey = event => {
-      if (event.target.tagName == "INPUT" || event.target.tagName == "SELECT") return;
+      if ((event.ctrlKey || event.metaKey) && event.code == "KeyS") {
+        event.preventDefault();
+        if (isDirty) save();
+        return;
+      }
+      if (["INPUT", "SELECT", "TEXTAREA"].includes(event.target.tagName)) return;
       const branch = getBranchOf(selected);
       const moves = {
         ArrowDown: () => goTo(selectedIndex + 1),
@@ -322,6 +425,8 @@ export const DialogueViewer = () => {
     <Page>
       <TopBar>
         <strong>Kaiju City dialogue</strong>
+        <SaveButton disabled={!isDirty} onClick={save}>{isDirty ? "Save (Ctrl+S)" : "Saved"}</SaveButton>
+        {saveNote && <span style={{ color: LOOK.dim, fontSize: 12 }}>{saveNote}</span>}
         <label>Player <select value={path.avatar} onChange={e => setPath({ ...path, avatar: e.target.value })}><option value="guy">Guy</option><option value="girl">Girl</option></select></label>
         <label>A power <select value={path.powerName} onChange={e => setPath({ ...path, powerName: e.target.value })}>{POWER_NAMES.map(name => <option key={name}>{name}</option>)}</select></label>
         {RIVALS.map(({ id, name }) => (
@@ -347,15 +452,15 @@ export const DialogueViewer = () => {
       </Timeline>
 
       <Script>
-        {sections.map(({ label, index, items, scenes }) => (
+        {sections.map(({ label, index, items, scenes: sceneIds }) => (
           <section key={label} ref={element => { sectionRefs.current[index] = element; }}>
             <SectionHeader>{index + 1}. {label}</SectionHeader>
             {!items.length && <SceneLabel>no lines here</SceneLabel>}
-            {scenes.map(sceneId => {
+            {sceneIds.map(sceneId => {
               const sceneItems = items.filter(item => item.sceneId == sceneId);
               return sceneItems.length ? (
                 <React.Fragment key={sceneId}>
-                  <SceneLabel>{getDialogueScene(sceneId).label}</SceneLabel>
+                  <SceneLabel>{scenes[sceneId].label}</SceneLabel>
                   {sceneItems.map(item => item.kind == "branch"
                     ? renderBranch(item, index)
                     : <LineView key={item.key} item={item} isSelected={selectedKey == item.key} isMatch={getIsMatch(item)} onSelect={setSelectedKey} refFor={refFor} />)}
@@ -367,22 +472,51 @@ export const DialogueViewer = () => {
       </Script>
 
       <Side>
-        {selectedLine ? (
-          <dl>
-            <dt>Who</dt><dd>{selectedLine.speakerName || "(a stage direction)"}</dd>
-            <dt>Says</dt><dd>{selectedLine.text}</dd>
-            <dt>Scene</dt><dd>{getDialogueScene(selectedLine.sceneId).label}</dd>
-            <dt>Shown as</dt><dd>{selectedLine.line.isBalloon ? "a speech balloon" : "a line in the log"}</dd>
-            {selectedLine.line.note == "jamie" && <><dt>Written by</dt><dd>Jamie</dd></>}
-            <dt>Line id</dt><dd style={{ color: LOOK.dim }}>{selectedLine.line.id}</dd>
-          </dl>
-        ) : selected && selected.isBranch ? (
+        {selectedLine ? (() => {
+          const { line, sceneId } = selectedLine;
+          const isStageDirection = !line.speaker;
+          return (
+            <dl>
+              <dt>Scene</dt><dd>{scenes[sceneId].label}</dd>
+              {isStageDirection ? <><dt>Stage direction</dt><dd>{selectedLine.text}</dd></> : <>
+                <dt>Who says it</dt>
+                <dd>
+                  <select value={line.speaker} onChange={e => updateLine(sceneId, line.id, { speaker: e.target.value })}>
+                    {[...SPEAKERS, ...(SPEAKERS.some(([id]) => id == line.speaker) ? [] : [[line.speaker, line.speaker]])].map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+                  </select>
+                </dd>
+                <dt>The words <span style={{ fontSize: 11 }}>({"{power}"} is a power; pronoun words fit whoever plays)</span></dt>
+                <dd>
+                  <textarea value={line.text || ""} onChange={e => updateLine(sceneId, line.id, { text: e.target.value })} />
+                  <ButtonRow>{PRONOUN_WORDS.map(word => <button key={word} onClick={() => updateLine(sceneId, line.id, { text: `${line.text || ""}${word}` })}>{word}</button>)}</ButtonRow>
+                </dd>
+                <dt>On this path it reads</dt><dd>{selectedLine.text}</dd>
+                {getHasShots(sceneId) && <>
+                  <dt>Camera</dt>
+                  <dd>
+                    <select value={line.shot || ""} onChange={e => updateLine(sceneId, line.id, { shot: e.target.value || undefined })}>
+                      <option value="">The scene's own shot (on the speaker)</option>
+                      <option value="wide">The whole scene</option>
+                    </select>
+                  </dd>
+                </>}
+                <dt>Shown as</dt><dd>{line.isBalloon ? "a speech balloon" : "a line in the log"}</dd>
+                {line.note == "jamie" && <><dt>Written by</dt><dd>Jamie</dd></>}
+              </>}
+              <ButtonRow>
+                <button onClick={() => addLineAfter(sceneId, line.id)}>+ Add a line after</button>
+                <button data-danger onClick={() => deleteLine(sceneId, line.id)}>Delete this line</button>
+              </ButtonRow>
+              <dt>Line id</dt><dd style={{ color: LOOK.dim }}>{line.id}</dd>
+            </dl>
+          );
+        })() : selected && selected.isBranch ? (
           <dl>
             <dt>Branch</dt><dd>{selected.item.label}</dd>
             <dt>Versions</dt><dd>{selected.item.versions.map(({ label }) => label).join(" / ")}</dd>
             <dt>This path takes</dt><dd>{selected.item.versions[selected.item.taken] ? selected.item.versions[selected.item.taken].label : "-"}</dd>
           </dl>
-        ) : <div style={{ color: LOOK.dim }}>Select a line to see it here. Editing comes next.</div>}
+        ) : <div style={{ color: LOOK.dim }}>Select a line to edit it here.</div>}
         <Keys>
           ↑ ↓ a line · Page Up / Down a section<br />
           N / P the next or previous branch<br />
