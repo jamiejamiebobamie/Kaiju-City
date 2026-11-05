@@ -662,6 +662,9 @@ const getLabelX = (x, label = "", worldWidth) => {
   return Math.min(Math.max(x, half), worldWidth - half);
 };
 
+// the pieces start at 20001 (GameBoardPieceComponent): just under them
+const HOTSPOT_OUTLINE_Z = 20000;
+
 const HotspotLabel = styled.div`
   position: absolute;
   transform: translate(-50%, -100%);
@@ -760,7 +763,8 @@ export const SceneElements = ({ level, activePhases, isPaused, onHotspot, isDial
       if (type == "hotspot") {
         return (
           <React.Fragment key={id}>
-            <HotspotOutline src={element.outline} style={{ zIndex: style.zIndex }} />
+            {/* the outline is under everyone standing in the scene; its label stays over them */}
+            <HotspotOutline src={element.outline} style={{ zIndex: HOTSPOT_OUTLINE_Z }} />
             <HotspotLabel style={{ left: `${getLabelX(x + width / 2, element.label, level.world.width)}px`, top: `${element.labelY || y - 14}px`, zIndex: style.zIndex }}>
               {element.label}
               <i className="fa fa-caret-down" />

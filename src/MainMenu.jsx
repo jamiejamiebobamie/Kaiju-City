@@ -12,6 +12,7 @@ import { Logo } from "./Components/Logo";
 import { GlobalSettingsContext } from "Home";
 import { IrradiationVat } from "./Game/ReactComponents/IrradiationVat";
 import { getAvatarColor, getIsToolOpen, saveAvatarColor } from "./Game/DataClasses/Avatars";
+import { PIECES_INFO } from "Utils/gameState";
 
 export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
   const { selectedAvatar } = useContext(GlobalSettingsContext);
@@ -60,6 +61,6 @@ export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
   return <Wrapper>
     <Logo />
     {navButtons}
-    {toolScreen == "colors" && <IrradiationVat avatar={selectedAvatar} startColor={getAvatarColor(selectedAvatar)} onIrradiate={color => saveAvatarColor(selectedAvatar, color)} onClose={() => setToolScreen(undefined)} />}
+    {toolScreen == "colors" && <IrradiationVat avatar={selectedAvatar} startColor={getAvatarColor(selectedAvatar) || PIECES_INFO[selectedAvatar].color} onIrradiate={color => saveAvatarColor(selectedAvatar, color)} onClose={() => setToolScreen(undefined)} />}
   </Wrapper>
 }

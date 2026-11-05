@@ -21,7 +21,7 @@ import { getKaijuSpeedMode, KaijuSpeedMode, setKaijuSpeedMode } from "../DataCla
 import { getAvatarColor, saveAvatarColor, saveTeamAvatars, unlockRecruitSkill, unlockTool } from "../DataClasses/Avatars";
 import { AbilityPicker } from "./AbilityPicker";
 import { useKeyPress } from "Utils/utils";
-import { ABILITY_KEY_CODES, GAME_TICK, TILE_STATUSES_AND_ABILITY_DATA } from "Utils/gameState";
+import { ABILITY_KEY_CODES, GAME_TICK, PIECES_INFO, TILE_STATUSES_AND_ABILITY_DATA } from "Utils/gameState";
 import { FullscreenPage } from "Components/FullscreenPage.jsx";
 import { GameManager, GameResult } from '../DataClasses/GameManager';
 import { addUnlock, getBattlegroundUnlockId, getRecruitChoices, getWonBattlegrounds, resetUnlocks, saveRecruitChoice } from '../DataClasses/Unlocks';
@@ -290,6 +290,9 @@ const SlideClip = styled.div`
   overflow: hidden;
   border-radius: 1.8cqw;
 `;
+
+// how long the Lab scene takes to slide away to one of its screens
+const LAB_SLIDE_MS = 900;
 
 const SlideAway = styled.div`
   position: absolute;
@@ -636,11 +639,11 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   // back into the walking Lab, beside the tanks, with the talk there already had
   const returnToLab = () => {
     isPickingPowersInLab.current = false;
-    setIsLabPicker(false);
     const labLevel = LEVELS[level.id];
     const tank = (labLevel.sceneElements || []).find(({ action }) => action == "powers");
     const returnSpot = tank ? { x: tank.x + tank.width / 2, y: tank.y + tank.height } : undefined;
     triggerTransition(() => {
+      setIsLabPicker(false); // only once the clouds cover the picker: its other buttons don't flash up first
       startMatch(labLevel, false, undefined, { returnSpot, isRetry: true });
       setIsPlayingGame(true);
     });
@@ -705,6 +708,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
       return;
     }
     if (screen == "agentTalk") {
+      gameManager.current.startNewLog(); // a new conversation: the welcome is gone, and the Agent's face and name show again
       gameManager.current.setPhase(LAB_TALK_PHASE, true);
       return;
     }
@@ -713,10 +717,13 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
       isPickingPowersInLab.current = true;
       setIsLabPicker(true);
       setPickedAbilities([...settingsManager.getSortedPlayerChosenAbilityElementsString()]); // the powers they have now, picked already
-      triggerTransition(() => {
+      // the scene slides away to the right, as if the camera turned left to the tanks, as it slides left for the color vat
+      setLeavingFor(screen);
+      setTimeout(() => {
         endMatch(); // the Lab starts again with the new powers
         setIsPlayingGame(false);
-      });
+        setLeavingFor(undefined);
+      }, LAB_SLIDE_MS);
       return;
     }
     unlockTool(screen);
@@ -1078,7 +1085,8 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               <GameBoard
                 key={`${level.id} ${matchCount}`}
                 choiceFromRef={recruitChoiceFrom}
-                speakingPieceIndex={isMonitorAlways && !isLogBuilt ? undefined : speakingPieceIndex}
+                // a line in the log: they shake once it shows there. a balloon (a shout across the street) shows at once
+                speakingPieceIndex={isMonitorAlways && !isLogBuilt && !(speech && speech.isShout) ? undefined : speakingPieceIndex}
                 isWindowOpen={isWindowOpen}
                 isPaused={isPaused}
                 gameManager={gameManager.current}
@@ -1123,7 +1131,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 <RecruitCalls key={matchCount} recruits={getCallableRecruits()} onCall={avatar => !!gameManager.current && gameManager.current.callRecruit(avatar)} isDisabled={isPaused} />
               )}
             </PlayWindow>
-            {labScreen == "colors" && <IrradiationVat avatar={selectedAvatar} startColor={getAvatarColor(selectedAvatar)} onIrradiate={irradiate} onClose={closeLabScreen} />}
+            {labScreen == "colors" && <IrradiationVat avatar={selectedAvatar} startColor={getAvatarColor(selectedAvatar) || PIECES_INFO[selectedAvatar].color} onIrradiate={irradiate} onClose={closeLabScreen} />}
             {isShowingControls && <ControlsOverlay onClose={closeControls} />}
             <DialogueLogPanel
               footer={recruitScene && isMonitorAlways && isRecruitTalkDone && (

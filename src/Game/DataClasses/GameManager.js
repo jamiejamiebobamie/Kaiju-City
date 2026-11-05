@@ -757,6 +757,12 @@ export class GameManager {
         return entry ? entry.name : 'Teammate';
     }
 
+    // a new conversation: the log starts empty, and the next speaker shows with their face and name
+    startNewLog() {
+        this.logChain += 1;
+        this.dialogueLog = [];
+    }
+
     // who said it, for the log's color and portrait
     addToLog({ name, text, avatar }) {
         const player = this.gameBoardPiecesManager.getPlayerPiece();
@@ -766,7 +772,8 @@ export class GameManager {
 
     // a scene's speech elements go to the log, while their phase is on (and before their 'hidePhase')
     addSceneTalks() {
-        this.level.sceneElements.filter(({ type }) => type == 'speech').forEach(({ name = 'Agent', lines, phase, hidePhase }) => {
+        // back in a scene from one of its screens (the Lab's power picker), what was said on the way in isn't said again
+        this.level.sceneElements.filter(({ type, phase }) => type == 'speech' && !(this.returnSpot && !phase)).forEach(({ name = 'Agent', lines, phase, hidePhase }) => {
             // a scene that opens with a call waits for the team to come over
             const isActive = () => !this.cutscene && (!this.level.greeting || this.isGreetingAnswered) && (!phase || this.activePhases.has(phase)) && !(hidePhase && this.activePhases.has(hidePhase));
             const agent = name == 'Agent' ? this.extras.find(extra => extra.avatar == 'agent') : undefined;
@@ -826,7 +833,7 @@ export class GameManager {
             const heldShot = { ...closeShot, panMs: undefined };
             steps.push(
                 { shot: heldShot, arrivals: [{ piece: teammate, startTile: getTile(CUTSCENE.arrivalTeammateStart) }] },
-                { shot: heldShot, ms: getSpeechMs(ARRIVAL_LINE), speech: { name: this.getTeammateName(), text: ARRIVAL_LINE, x, y: y - CUTSCENE.recruitSpeechRows * rowStep * scale, isShout: true } }
+                { shot: heldShot, ms: getSpeechMs(ARRIVAL_LINE), speech: { name: this.getTeammateName(), text: ARRIVAL_LINE, x, y: y - CUTSCENE.recruitSpeechRows * rowStep * scale, isShout: true, speakerIndex: teammate.pieceIndex } }
             );
         }
         this.startCutscene(steps);
@@ -848,7 +855,7 @@ export class GameManager {
             if (!teammate) return [];
             const { x, y } = teammate.charLocation;
             const teammateShot = closeShot({ x, y: y - CUTSCENE.shotHeadRows * rowStep * scale });
-            const speech = { name: this.getTeammateName(), text, x, y: y - CUTSCENE.recruitSpeechRows * rowStep * scale, avatar: teammate.avatar };
+            const speech = { name: this.getTeammateName(), text, x, y: y - CUTSCENE.recruitSpeechRows * rowStep * scale, avatar: teammate.avatar, speakerIndex: teammate.pieceIndex };
             return [
                 { shot: teammateShot, ms: CUTSCENE.pullInMs },
                 { shot: teammateShot, ms: getSpeechMs(text), speech },

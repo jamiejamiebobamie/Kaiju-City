@@ -186,7 +186,7 @@ const TrainTitle = styled.div`
 
 // in a walking scene that fills the monitor, the camera leans toward what the player is nearing
 const COVER_LOOK = {
-  nearRows: 6, // it starts to lean this close
+  nearRows: 9.5, // it starts to lean this close: from the middle of the Lab, the side tanks start to come in
   fullShare: 0.45, // and leans all the way once this much nearer
   margin: 0.06, // of the view, kept clear around the player and the spot
   labelHalfWidthPx: 90 // a hotspot's label is about this wide either side of its middle
