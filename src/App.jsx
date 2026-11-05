@@ -11,6 +11,9 @@ const isLevelEditor = import.meta.env.DEV && window.location.pathname == "/level
 const LevelEditor = import.meta.env.DEV ? lazy(() => import("./Game/ReactComponents/Levels/LevelEditor").then(({ LevelEditor }) => ({ default: LevelEditor }))) : null;
 // every line of the story, to read and edit. it is not part of the built game either.
 const isDialogueViewer = import.meta.env.DEV && window.location.pathname == "/dialogue";
+// picking a class name for each power combo. not part of the built game.
+const isClassReview = import.meta.env.DEV && window.location.pathname == "/classes";
+const ClassReview = import.meta.env.DEV ? lazy(() => import("./Game/ReactComponents/ClassReview/ClassReview").then(({ ClassReview }) => ({ default: ClassReview }))) : null;
 const DialogueViewer = import.meta.env.DEV ? lazy(() => import("./Game/ReactComponents/Dialogue/DialogueViewer").then(({ DialogueViewer }) => ({ default: DialogueViewer }))) : null;
 
 const App = () => {
@@ -44,6 +47,7 @@ const App = () => {
 
   if (isLevelEditor) return <Suspense fallback={null}><LevelEditor /></Suspense>;
   if (isDialogueViewer) return <Suspense fallback={null}><DialogueViewer /></Suspense>;
+  if (isClassReview) return <Suspense fallback={null}><ClassReview /></Suspense>;
 
   return (
     <div className="App">

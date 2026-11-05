@@ -8,6 +8,43 @@ import type { Plugin } from 'vite';
 */
 const LEVEL_ID = /^[a-zA-Z0-9]+$/;
 
+// the class review saves its progress over classOptions.json, and writes each confirmed pick into sciFiClasses.ts,
+// whose line for that combo it replaces: the drafts stay in classOptions.json either way
+export const classReviewSave = (optionsPath: string, classesPath: string): Plugin => ({
+  name: 'class-review-save',
+  apply: 'serve',
+  handleHotUpdate({ file }) {
+    if (path.normalize(file) == path.normalize(optionsPath)) return [];
+  },
+  configureServer(server) {
+    server.middlewares.use('/__classes/save', (request, response) => {
+      let body = '';
+      request.on('data', chunk => { body += chunk; });
+      request.on('end', () => {
+        try {
+          const options = JSON.parse(body);
+          if (!options || typeof options.combos != 'object') throw new Error('not a class options file');
+          fs.writeFileSync(optionsPath, `${JSON.stringify(options, null, 2)}
+`);
+          let classes = fs.readFileSync(classesPath, 'utf8');
+          Object.entries(options.combos).forEach(([key, combo]: [string, any]) => {
+            if (!combo.confirmed) return;
+            // a combo's key is its power names and commas only, so it is safe in the pattern as it is
+            const line = new RegExp(`^  '${key}': .*$`, 'm');
+            classes = classes.replace(line, `  '${key}': [${JSON.stringify(combo.confirmed.name)}, ${JSON.stringify(combo.confirmed.description)}],`);
+          });
+          fs.writeFileSync(classesPath, classes);
+          response.statusCode = 200;
+          response.end('saved');
+        } catch (error) {
+          response.statusCode = 400;
+          response.end(String(error));
+        }
+      });
+    });
+  }
+});
+
 // the dialogue viewer saves the story's words over Dialogue/dialogue.json. the viewer keeps its own copy,
 // so the file changing doesn't reload it; the game picks the new words up on its next load
 export const dialogueSave = (filePath: string): Plugin => ({

@@ -998,6 +998,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
             <PhaseToggles>
               <button onClick={() => setIsDevHidden(true)}>Hide dev options (F2)</button>
               <a href="/dialogue" target="_blank" rel="noreferrer" style={{ color: "#6dffa0" }}>Dialogue viewer</a>
+              <a href="/classes" target="_blank" rel="noreferrer" style={{ color: "#6dffa0" }}>Class review</a>
               <select aria-label="Level" value={level.id} onChange={e => { switchLevel(e.target.value); e.target.blur(); }}>
                 {levelOptions}
               </select>
