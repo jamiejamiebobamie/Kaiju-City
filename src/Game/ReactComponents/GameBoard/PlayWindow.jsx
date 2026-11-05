@@ -117,9 +117,10 @@ const RollingBar = styled.div`
 // off (no siren), it sits dark.
 const SIREN_LIGHT = { seconds: 1.1 }; // the same beat as the border's pulse
 
-const sirenSweep = keyframes`
-  from { transform: translateX(0); }
-  to { transform: translateX(6px); }
+// its light turns: a beam sweeping round the dome, in pixel steps
+const sirenTurn = keyframes`
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 `;
 
 const sirenBeam = keyframes`
@@ -129,11 +130,11 @@ const sirenBeam = keyframes`
 
 const SirenBox = styled.div`
   position: absolute;
-  right: 1.2cqw;
-  bottom: -2.25cqw;
+  right: 1.1cqw;
+  bottom: -2.15cqw;
   z-index: 2147483002;
-  width: 1.6cqw;
-  height: 2cqw;
+  width: 1.9cqw;
+  height: 1.9cqw;
   pointer-events: none;
   & svg {
     width: 100%;
@@ -142,8 +143,9 @@ const SirenBox = styled.div`
     shape-rendering: crispEdges;
     overflow: visible;
   }
-  & .sweep {
-    animation: ${sirenSweep} ${SIREN_LIGHT.seconds}s steps(6) infinite;
+  & .turn {
+    transform-origin: 6px 6px;
+    animation: ${sirenTurn} ${SIREN_LIGHT.seconds}s steps(8) infinite;
   }
 `;
 
@@ -159,28 +161,43 @@ const SirenBeam = styled.div`
   animation: ${sirenBeam} ${SIREN_LIGHT.seconds}s ease-in-out infinite;
 `;
 
+// seen from above: a round base set into the casing, the red glass dome on it, the lamp in the middle, and its turning beam
+const PIXEL_CIRCLE = (cx, r) => {
+  // rows of a pixel circle: for each row, the run of pixels inside it
+  const rows = [];
+  for (let y = -r; y < r; y++) {
+    const half = Math.round(Math.sqrt(r * r - (y + 0.5) * (y + 0.5)));
+    rows.push({ x: cx - half, y: cx + y, width: half * 2 });
+  }
+  return rows;
+};
+
+const PixelDisc = ({ r, fill }) => PIXEL_CIRCLE(6, r).map(({ x, y, width }) => <rect key={y} x={x} y={y} width={width} height={1} fill={fill} />);
+
 const SirenLight = ({ isOn }) => (
   <SirenBox>
     {isOn && <SirenBeam />}
-    <svg viewBox="0 0 8 10">
+    <svg viewBox="0 0 12 12">
       <defs>
-        <clipPath id="sirenDome"><rect x="1" y="2" width="6" height="6" /><rect x="2" y="1" width="4" height="1" /></clipPath>
+        <clipPath id="sirenTop">{PIXEL_CIRCLE(6, 5).map(({ x, y, width }) => <rect key={y} x={x} y={y} width={width} height={1} />)}</clipPath>
       </defs>
-      {/* the dome: see-through red, darker when off */}
-      <rect x="2" y="1" width="4" height="1" fill={isOn ? "rgba(255, 70, 60, 0.75)" : "rgba(120, 20, 24, 0.7)"} />
-      <rect x="1" y="2" width="6" height="6" fill={isOn ? "rgba(255, 40, 40, 0.55)" : "rgba(90, 14, 18, 0.75)"} />
-      <rect x="1" y="2" width="1" height="6" fill="rgba(0, 0, 0, 0.25)" />
-      {/* the lamp, and its light turning: a bright stripe stepping across the dome */}
-      <rect x="3" y="4" width="2" height="3" fill={isOn ? "#ffe2d6" : "#5a1a1c"} />
+      {/* the base, coming up out of the casing, with its lit rim */}
+      <PixelDisc r={6} fill="#26262b" />
+      <rect x="2" y="1" width="8" height="1" fill="#5c5c64" />
+      {/* the dome from above: see-through red, darker when off */}
+      <PixelDisc r={5} fill={isOn ? "rgba(255, 45, 45, 0.6)" : "rgba(95, 14, 18, 0.8)"} />
+      {/* the turning light: a beam from the lamp out to the dome's edge */}
       {isOn && (
-        <g clipPath="url(#sirenDome)">
-          <rect className="sweep" x="-1" y="1" width="2" height="7" fill="rgba(255, 235, 220, 0.85)" />
+        <g clipPath="url(#sirenTop)">
+          <g className="turn">
+            <rect x="6" y="5" width="5" height="2" fill="rgba(255, 230, 215, 0.9)" />
+            <rect x="6" y="4" width="4" height="4" fill="rgba(255, 150, 130, 0.35)" />
+          </g>
         </g>
       )}
-      {/* a glint on the dome, and the base it stands on */}
-      <rect x="5" y="2" width="1" height="2" fill="rgba(255, 255, 255, 0.45)" />
-      <rect x="0" y="8" width="8" height="2" fill="#2b2b31" />
-      <rect x="0" y="8" width="8" height="1" fill="#55555d" />
+      {/* the lamp, and a glint on the glass */}
+      <rect x="5" y="5" width="2" height="2" fill={isOn ? "#fff1ea" : "#4a1416"} />
+      <rect x="3" y="3" width="1" height="1" fill="rgba(255, 255, 255, 0.5)" />
     </svg>
   </SirenBox>
 );

@@ -29,14 +29,11 @@ const drift = keyframes`
   to { background-position: 0 6cqw; }
 `;
 
-// slow enough to see it build; the words start once it has.
-// it comes apart a piece at a time, right to left: each breaks off, rises and tilts, then fades,
-// and the next one goes once the last is 70% of the way up
-const PANEL_MOTION = { buildMs: 1000, pieceMs: 520, strips: 8, nextAt: 0.7, blocks: 16, tiltDegrees: 15 };
-const PIECE_BREAK = 0.15; // of a piece's time: the jolt as it breaks off
-const PIECE_RISEN = 0.75; // by now it has risen and tilted all the way; then it fades
-const PIECE_STAGGER_MS = PANEL_MOTION.pieceMs * (PIECE_BREAK + (PIECE_RISEN - PIECE_BREAK) * PANEL_MOTION.nextAt);
-export const BREAK_TOTAL_MS = PANEL_MOTION.pieceMs + (PANEL_MOTION.strips - 1) * PIECE_STAGGER_MS;
+// it builds in 0.75 s, and the words start once it has.
+// it comes apart as before, its strips floating up, but right to left and quicker, and in perspective:
+// each strip tips back as it rises, so the ones that go highest look farthest away
+const PANEL_MOTION = { buildMs: 750, pieceMs: 480, strips: 9, staggerMs: 45, blocks: 16, tiltDegrees: 6, tipDegrees: 35 };
+export const BREAK_TOTAL_MS = PANEL_MOTION.pieceMs + (PANEL_MOTION.strips - 1) * PANEL_MOTION.staggerMs;
 
 // it builds out from the screen's edge: revealed left to right
 const buildOut = keyframes`
@@ -47,7 +44,7 @@ const buildOut = keyframes`
 // and comes apart: the whole panel goes as its strips float off
 const breakAway = keyframes`
   0% { opacity: 1; }
-  8% { opacity: 0; }
+  25% { opacity: 0; }
   100% { opacity: 0; }
 `;
 
@@ -119,12 +116,10 @@ const Block = styled.span`
   animation: ${blockLife} 0.9s ease-out both;
 `;
 
-// coming apart: a piece jolts loose, rises and tilts about its middle (over its neighbor a little), then fades
+// coming apart: a strip floats up and away, tipping back into the distance and tilting a little, and fades
 const stripFloat = keyframes`
-  0% { opacity: 1; transform: translate(0, 0) rotate(0deg); }
-  ${PIECE_BREAK * 100}% { opacity: 1; transform: translate(0.25cqw, -0.4cqw) rotate(calc(var(--tilt) * 0.15)); }
-  ${PIECE_RISEN * 100}% { opacity: 1; transform: translate(0.4cqw, var(--rise)) rotate(var(--tilt)); }
-  100% { opacity: 0; transform: translate(0.5cqw, calc(var(--rise) * 1.2)) rotate(var(--tilt)); }
+  0% { opacity: 0.9; transform: perspective(40cqw) translate3d(0, 0, 0) rotateX(0deg) rotate(0deg); }
+  100% { opacity: 0; transform: perspective(40cqw) translate3d(0, var(--rise), var(--depth)) rotateX(${PANEL_MOTION.tipDegrees}deg) rotate(var(--tilt)); }
 `;
 
 const Strip = styled.span`
@@ -136,8 +131,8 @@ const Strip = styled.span`
     rgba(4, 30, 16, 0.6);
   border-left: 0.08cqw solid rgba(109, 255, 160, 0.4);
   box-shadow: inset 0 0 0.8cqw rgba(60, 255, 140, 0.15);
-  transform-origin: 50% 50%;
-  animation: ${stripFloat} ${PANEL_MOTION.pieceMs}ms ease-in-out both;
+  transform-origin: 50% 100%;
+  animation: ${stripFloat} ${PANEL_MOTION.pieceMs}ms ease-in both;
 `;
 
 // fixed once, so the blocks and strips don't jump about between renders
@@ -145,13 +140,16 @@ const BLOCKS = Array.from({ length: PANEL_MOTION.blocks }, (_, k) => ({
   top: `${(k * 37) % 96}%`, size: `${0.5 + ((k * 7) % 5) * 0.25}cqw`, spread: `${1 + (k % 4)}cqw`, rise: `${3 + (k % 5) * 1.5}cqw`,
   delay: (k / PANEL_MOTION.blocks) * PANEL_MOTION.buildMs * 0.85
 }));
-const STRIPS = Array.from({ length: PANEL_MOTION.strips }, (_, k) => ({
-  left: `${(k / PANEL_MOTION.strips) * 100}%`, width: `${100 / PANEL_MOTION.strips + 0.3}%`,
-  rise: `${-(6 + ((k * 5) % 4) * 1.5)}cqw`,
-  tilt: `${(k % 2 ? 1 : -1) * PANEL_MOTION.tiltDegrees * (0.7 + ((k * 3) % 4) * 0.1)}deg`,
-  delay: (PANEL_MOTION.strips - 1 - k) * PIECE_STAGGER_MS, // the right-hand piece goes first
-  zIndex: k // a piece breaking off rides over the ones still in place
-}));
+const STRIPS = Array.from({ length: PANEL_MOTION.strips }, (_, k) => {
+  const rise = 8 + ((k * 5) % 7) * 2; // in cqw, uneven as before
+  return {
+    left: `${(k / PANEL_MOTION.strips) * 100}%`, width: `${100 / PANEL_MOTION.strips + 0.3}%`,
+    rise: `${-rise}cqw`, depth: `${-rise * 2.5}cqw`, // the higher it goes, the farther back
+    tilt: `${((k % 3) - 1) * PANEL_MOTION.tiltDegrees}deg`,
+    delay: (PANEL_MOTION.strips - 1 - k) * PANEL_MOTION.staggerMs, // right to left
+    zIndex: k
+  };
+});
 
 const BuildEffect = () => (
   <Frame>
@@ -165,8 +163,8 @@ const BuildEffect = () => (
 
 const BreakEffect = () => (
   <Frame>
-    {STRIPS.map(({ left, width, rise, tilt, delay, zIndex }, k) => (
-      <Strip key={k} style={{ left, width, zIndex, "--rise": rise, "--tilt": tilt, animationDelay: `${delay}ms` }} />
+    {STRIPS.map(({ left, width, rise, depth, tilt, delay, zIndex }, k) => (
+      <Strip key={k} style={{ left, width, zIndex, "--rise": rise, "--depth": depth, "--tilt": tilt, animationDelay: `${delay}ms` }} />
     ))}
   </Frame>
 );
@@ -268,6 +266,11 @@ const ContinueBar = styled.button`
   }
 `;
 
+// the key that presses a log button: orange, a color no speaker's name uses
+const KeyNumber = styled.span`
+  color: #c24f00;
+`;
+
 const Footer = styled.div`
   display: flex;
   flex-direction: column;
@@ -353,9 +356,9 @@ export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, ac
           );
         })}
       </Scroll>
-      {isBuilt && isWaiting && !actions.length && <ContinueBar data-enter data-choice-key={1} onClick={event => { event.stopPropagation(); onContinue(); }}><span>Continue &#9654;</span><span>1</span></ContinueBar>}
+      {isBuilt && isWaiting && !actions.length && <ContinueBar data-enter data-choice-key={1} onClick={event => { event.stopPropagation(); onContinue(); }}><span>Continue &#9654;</span><KeyNumber>1</KeyNumber></ContinueBar>}
       {isBuilt && actions.map(({ text, onClick, isEnter }, index) => (
-        <ContinueBar key={text} data-enter={isEnter ? "" : undefined} data-choice-key={index + 1} onClick={event => { event.stopPropagation(); onClick(); }}><span>{text} &#9654;</span><span>{index + 1}</span></ContinueBar>
+        <ContinueBar key={text} data-enter={isEnter ? "" : undefined} data-choice-key={index + 1} onClick={event => { event.stopPropagation(); onClick(); }}><span>{text} &#9654;</span><KeyNumber>{index + 1}</KeyNumber></ContinueBar>
       ))}
       {isBuilt && footer && <Footer onClick={event => event.stopPropagation()}>{footer}</Footer>}
     </Panel>

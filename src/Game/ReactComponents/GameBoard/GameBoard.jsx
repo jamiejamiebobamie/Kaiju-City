@@ -15,6 +15,7 @@ import { CUTSCENE } from 'Game/DataClasses/GameManager';
 import { SpeechBubbleScale } from 'Game/ReactComponents/GameBoard/recruitLook';
 import { getHexRadius } from 'Game/DataClasses/GameBoard/hexGrid';
 import { BADGE_HEADS } from './badgeHeads';
+import { PIECES_INFO } from 'Utils/gameState';
 import { startRagdoll } from 'Game/DataClasses/Ragdoll';
 
 // a body lying at rest where its feet were: on its side, still
@@ -221,11 +222,20 @@ const badgeScan = keyframes`
   to { background-position: 0 140%, 0 0, 0 0; }
 `;
 
+// it runs through its own frames as the piece moves: the same walk as on the board
+const badgeFrames = keyframes`
+  from { background-position-x: var(--from-x); }
+  to { background-position-x: var(--to-x); }
+`;
+
 const BadgeSprite = styled.div`
   position: absolute;
   inset: 0;
   background-repeat: no-repeat;
   image-rendering: pixelated;
+  &[data-moving] {
+    animation: ${badgeFrames} 1s steps(10) infinite;
+  }
 `;
 
 const CaretBadge = styled.div`
@@ -236,8 +246,8 @@ const CaretBadge = styled.div`
   border-radius: 50%;
   overflow: hidden;
   background: radial-gradient(circle at 50% 40%, #0f3a22, #04140b 75%);
-  border: 2px solid ${CARET_INFO.green};
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.75), 0 0 8px rgba(109, 255, 160, 0.7);
+  border: 2px solid var(--ring);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.75), 0 0 8px var(--ring);
   animation: ${badgeFlicker} 3.1s steps(1) infinite;
   /* the glass over them: a band of light rolling down, fine scan lines, and green at the rim */
   &::after {
@@ -890,13 +900,20 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
           const facing = piece.dir && piece.dir != 'idle' ? piece.dir : piece.getFacingDir();
           const head = heads && (heads.dirs[facing] || heads.dirs.down);
           return (
-            <CaretBadge style={{ left: `${spot.x}px`, top: `${spot.y}px`, width: `${size}px`, height: `${size}px` }}>
+            <CaretBadge style={{ left: `${spot.x}px`, top: `${spot.y}px`, width: `${size}px`, height: `${size}px`, "--ring": (PIECES_INFO[piece.avatar] || {}).color || CARET_INFO.green }}>
               {head && (() => {
                 const zoom = size / (heads.bodyH * CARET_INFO.badgeBodyShare);
-                return <BadgeSprite style={{
+                // the head was measured on the walk's second frame; a Kaiju's walk starts a frame earlier than a person's
+                const frameW = heads.sheetW / heads.columns * zoom;
+                const x = size / 2 - head.x * zoom;
+                const fromX = x + (piece.avatar == 'kaiju' ? frameW : 0);
+                const isMoving = !!piece.dir && piece.dir != 'idle';
+                return <BadgeSprite data-moving={isMoving ? "" : undefined} style={{
                   backgroundImage: `url(${piece.spriteSheetSrc})`,
                   backgroundSize: `${heads.sheetW * zoom}px ${heads.sheetH * zoom}px`,
-                  backgroundPosition: `${size / 2 - head.x * zoom}px ${size * CARET_INFO.badgeHeadY - (head.y + heads.bodyH * 0.1) * zoom}px`
+                  backgroundPosition: `${x}px ${size * CARET_INFO.badgeHeadY - (head.y + heads.bodyH * 0.1) * zoom}px`,
+                  "--from-x": `${fromX}px`,
+                  "--to-x": `${fromX - 10 * frameW}px`
                 }} />;
               })()}
             </CaretBadge>

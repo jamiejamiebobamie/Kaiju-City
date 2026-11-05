@@ -2318,7 +2318,7 @@ export const PIECES_INFO = {
     avatar: 'hazmat'
   },
   'punk': {
-    color: "#57E931",
+    color: "#a6ff1a", // acid green
     spriteSheetSrc: 'spritesheet/punk.png',
     deadSpriteSrc: 'dead_teammate.png',
     avatar: 'punk'
