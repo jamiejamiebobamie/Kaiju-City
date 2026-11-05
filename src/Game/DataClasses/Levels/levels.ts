@@ -321,7 +321,6 @@ const moths = (id, x, y, flip, flutterSeconds, delaySeconds) => ({
 });
 
 const PART_TOUCH_HOLD_MS = 4200; // long enough for the part's whole transformation and flash
-const TRAIN_WARNING_HOLD_MS = 1500;
 const SHATTER_HOLD_MS = 2500;
 
 const RAPID_TRANSIT_SCENE = {
@@ -343,7 +342,6 @@ const RAPID_TRANSIT_SCENE = {
   },
   shakePhases: ['train'],
   wideShots: { eyeTouched: PART_TOUCH_HOLD_MS },
-  liveWideShots: { trainLights: TRAIN_WARNING_HOLD_MS },
   phases: [{ id: 'eye', label: 'Kaiju eye' }, { id: 'eyeTouched', label: 'Touch part' }, { id: 'train', label: 'Train' }],
   defaultPhases: ['eye'],
   sceneElements: [
@@ -799,7 +797,8 @@ const getSiteElements = ({ spot, color, icon, isDetour = false, visitLevelId = u
 ];
 
 // walking the map to the next site, from one spot to another, in scene pixels
-const buildMapWalk = (id, name, start, sites) => {
+// 'teammateStart': where the teammate starts, when not just beside the player
+const buildMapWalk = (id, name, { start, teammateStart = undefined }, sites) => {
   const level = LEVEL_BUILDERS.peninsula(peninsula);
   const getClosest = target => level.walkableTiles.reduce((closest, tile) => getSpotDistance(level, tile, target) < getSpotDistance(level, closest, target) ? tile : closest);
   return {
@@ -810,7 +809,7 @@ const buildMapWalk = (id, name, start, sites) => {
     isMapWalk: true,
     kaijuEntry: undefined,
     sites,
-    spawnTiles: [start, { x: start.x + 25, y: start.y }].map(getClosest),
+    spawnTiles: [start, teammateStart || { x: start.x + 25, y: start.y }].map(getClosest),
     phases: [],
     defaultPhases: [],
     sceneElements: sites.flatMap(getSiteElements)
@@ -824,18 +823,18 @@ export const LEVELS: Record<string, LevelConfig> = Object.fromEntries(
 );
 
 // sites are placed as in the mission map mockup
-const CITY_END = { x: 230, y: 160 };
 const FOOT = { x: 230, y: 660 };
 const BATTLEGROUND_SITES = {
   rapidTransit: { spot: { x: 126, y: 279 }, color: '#57E931', icon: 'subway' },
   rooftop: { spot: { x: 238, y: 122 }, color: '#ff2a2a', icon: 'rooftop' },
   aquarium: { spot: { x: 222, y: 480 }, color: '#C5063F', icon: 'aquarium' } // up the east coast, clear of the Lab
 };
+// each walk starts where the last fight left off (Jamie's marks on the map)
 const MAP_WALKS = [
-  ['mapSubway', 'Map to Subway', CITY_END, [BATTLEGROUND_SITES.rapidTransit, LAB_SITE]],
-  ['mapRooftop', 'Map to Rooftop', FOOT, [BATTLEGROUND_SITES.rooftop, LAB_SITE]],
-  ['mapAquarium', 'Map to Aquarium', CITY_END, [BATTLEGROUND_SITES.aquarium, LAB_SITE]],
-  ['mapLab', 'Map to Lab', CITY_END, [{ ...LAB_SITE, isDetour: false }]]
+  ['mapSubway', 'Map to Subway', { start: { x: 250, y: 505 } }, [BATTLEGROUND_SITES.rapidTransit, LAB_SITE]],
+  ['mapRooftop', 'Map to Rooftop', { start: FOOT }, [BATTLEGROUND_SITES.rooftop, LAB_SITE]],
+  ['mapAquarium', 'Map to Aquarium', { start: { x: 90, y: 345 }, teammateStart: { x: 70, y: 470 } }, [BATTLEGROUND_SITES.aquarium, LAB_SITE]],
+  ['mapLab', 'Map to Lab', { start: { x: 143, y: 214 }, teammateStart: { x: 104, y: 131 } }, [{ ...LAB_SITE, isDetour: false }]]
 ] as const;
 
 // a battleground the player has won on can be visited again from the map: a walk around it, and back

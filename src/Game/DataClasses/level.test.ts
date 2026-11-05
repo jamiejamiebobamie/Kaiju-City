@@ -1205,15 +1205,14 @@ describe('playtest fixes', () => {
     }
   });
 
-  it('the train warning pulls the camera out without stopping the game', () => {
+  it('the train warning keeps the camera close: the lights show in panels instead', () => {
     const { gm } = makeGame({ ...LEVELS.rapidTransit, rival: undefined });
     gm.trainSchedule.setStage('warning', 0);
-    expect(gm.getIsWideShot()).toBe(true);
+    expect(gm.getActivePhases()).toContain('trainLights');
+    expect(gm.getIsWideShot()).toBe(false);
     const { accTime } = gm;
     gm.stepPieces();
     expect(gm.accTime).toBeGreaterThan(accTime);
-    for (let k = 0; k < 25; k++) gm.stepPieces();
-    expect(gm.getIsWideShot()).toBe(false);
   });
 
   it('the camera stays pulled out while an Agent enters, and the game keeps going', () => {

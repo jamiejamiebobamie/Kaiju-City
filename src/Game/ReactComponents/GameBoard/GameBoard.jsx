@@ -95,6 +95,90 @@ const CARET_INFO = {
   green: "#6dffa0"
 };
 
+// the Subway's warning: while its lights flash and both are out of shot, two comic-book panels at the top show them
+const TRAIN_LOOK = {
+  phase: "trainLights",
+  trainPhase: "train",
+  sheetFrames: 3, // off, then the two flashing frames
+  flashSeconds: 1 // both frames, at the lights' own 2 frames a second
+};
+
+const lightFlash = keyframes`
+  from { background-position: 50% 0; }
+  to { background-position: 150% 0; }
+`;
+
+const LightInsets = styled.div`
+  position: absolute;
+  top: 2cqw;
+  left: 0;
+  right: 0;
+  z-index: 2147483002;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 4cqw;
+  pointer-events: none;
+`;
+
+// a panel cut from a comic: thick black edge, a white border, tilted a little, with halftone dots behind the light
+const LightInset = styled.div`
+  width: 7cqw;
+  height: 9cqw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle, rgba(255, 60, 60, 0.35) 1px, transparent 1.5px) 0 0 / 0.6cqw 0.6cqw, #1a0d10;
+  border: 0.35cqw solid white;
+  outline: 0.25cqw solid black;
+  box-shadow: 0.5cqw 0.5cqw 0 black;
+  transform: rotate(var(--tilt));
+  animation: ${keyframes`from { transform: rotate(var(--tilt)) scale(0.4); opacity: 0; } to { transform: rotate(var(--tilt)) scale(1); opacity: 1; }`} 0.25s ease-out both;
+`;
+
+const LightSprite = styled.div`
+  width: 4.4cqw;
+  height: 8.6cqw;
+  background-size: ${TRAIN_LOOK.sheetFrames * 100}% 100%;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0 0.8cqw #ff3030);
+  animation: ${lightFlash} ${TRAIN_LOOK.flashSeconds}s steps(2) infinite;
+`;
+
+const trainTitleIn = keyframes`
+  0% { transform: scale(0.2); opacity: 0; }
+  60% { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+`;
+
+const trainTitlePulse = keyframes`
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.35); }
+`;
+
+// styled like the fight's end title, in purple with acid green-yellow
+const TrainTitle = styled.div`
+  position: absolute;
+  top: 14cqw;
+  left: 0;
+  right: 0;
+  z-index: 2147483003;
+  text-align: center;
+  pointer-events: none;
+  font-family: gameboy;
+  font-size: 2.5cqw;
+  white-space: nowrap;
+  text-transform: uppercase;
+  color: #a03cff;
+  -webkit-text-stroke: 0.12cqw #d8ff3a;
+  text-shadow:
+    0 0 0.6cqw #c8ff2a,
+    -0.12cqw 0.12cqw 0 #5a14a0, -0.24cqw 0.24cqw 0 #4a1088, -0.36cqw 0.36cqw 0 #3a0c6e, -0.48cqw 0.48cqw 0 #2a0852,
+    -0.6cqw 0.6cqw 0 #1a0436, -0.72cqw 0.72cqw 0 black, -0.9cqw 0.9cqw 0.6cqw rgba(0, 0, 0, 0.8),
+    0 0 2.5cqw #b6ff00;
+  animation: ${trainTitleIn} 0.5s ease-out both, ${trainTitlePulse} 0.5s ease-in-out 0.5s infinite;
+`;
+
 const CaretIcon = styled.img`
   position: absolute;
   z-index: 2147483001;
@@ -692,6 +776,25 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
     }));
   // a hologram window for an enemy off the screen: when no other is on the board in view, or when it comes in close.
   // at most two, the closest.
+  // the Subway's signal lights, flashing: shown in panels when neither is in shot
+  const signalLights = (level.sceneElements || []).filter(({ phase }) => phase == TRAIN_LOOK.phase);
+  const isTrainWarning = activePhases.includes(TRAIN_LOOK.phase);
+  const isLightsOutOfShot = isTrainWarning && !isWideShot && !!focusPiece && signalLights.length > 0 && signalLights.every(({ x, y, width, height }) =>
+    !!caretCamera.getEdgeCaret(getWorldLocation({ x: x + width / 2, y: y + height / 2 }), getWorldLocation(focusPiece.charLocation), tilePx));
+  const trainWarning = isTrainWarning && (
+    <>
+      {!activePhases.includes(TRAIN_LOOK.trainPhase) && <TrainTitle>Train incoming!</TrainTitle>}
+      {isLightsOutOfShot && (
+        <LightInsets>
+          {signalLights.map(({ id, src }, k) => (
+            <LightInset key={id} style={{ "--tilt": `${k % 2 ? 4 : -4}deg` }}>
+              <LightSprite style={{ backgroundImage: `url(${src})` }} />
+            </LightInset>
+          ))}
+        </LightInsets>
+      )}
+    </>
+  );
   const enemiesInView = caretTargets.filter(({ piece, caret }) => piece && !caret && piece.isOnTiles);
   const windowKeys = new Set(caretTargets
     .filter(({ piece, caret, tiles }) => piece && caret && (!enemiesInView.length || tiles <= CARET_INFO.nearTiles))
@@ -920,6 +1023,7 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
       </SceneShake>
       {recruitScene && recruitChoice && <ChoiceConfirm choice={recruitChoice} from={choiceFrom.current} board={boardRef.current} />}
       {!isPaused && edgeCarets}
+      {!isPaused && trainWarning}
       {isShowingWindowSize && (
         <WindowSize>
           {Math.round((playWindow.right - playWindow.left) * 100)}% x {Math.round((playWindow.bottom - playWindow.top) * 100)}% of the frame:
