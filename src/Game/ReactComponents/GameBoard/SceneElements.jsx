@@ -655,6 +655,13 @@ const HotspotElement = styled.button`
   border: 0;
 `;
 
+// a label is kept inside the scene: a tank at the art's very edge would push half of it off
+const LABEL_LETTER_PX = 16; // the pixel font at 18px, with its spacing and the plate's padding
+const getLabelX = (x, label = "", worldWidth) => {
+  const half = (label.length * LABEL_LETTER_PX + 24) / 2 + 8;
+  return Math.min(Math.max(x, half), worldWidth - half);
+};
+
 const HotspotLabel = styled.div`
   position: absolute;
   transform: translate(-50%, -100%);
@@ -754,7 +761,7 @@ export const SceneElements = ({ level, activePhases, isPaused, onHotspot, isDial
         return (
           <React.Fragment key={id}>
             <HotspotOutline src={element.outline} style={{ zIndex: style.zIndex }} />
-            <HotspotLabel style={{ left: `${x + width / 2}px`, top: `${element.labelY || y - 14}px`, zIndex: style.zIndex }}>
+            <HotspotLabel style={{ left: `${getLabelX(x + width / 2, element.label, level.world.width)}px`, top: `${element.labelY || y - 14}px`, zIndex: style.zIndex }}>
               {element.label}
               <i className="fa fa-caret-down" />
             </HotspotLabel>
