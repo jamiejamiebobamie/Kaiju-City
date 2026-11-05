@@ -350,7 +350,7 @@ const RECRUIT_CARDS = {
 
 export const Game = ({ handleClickHome, triggerTransition }) => {
   const { selectedAvatar, setSelectedAvatar, selectedTeammate, setSelectedTeammate, selectedDifficulty, settingsManager } = useContext(GlobalSettingsContext);
-  const { isPaused, winner, isPlayerDead, players, recruits, kaijuKillCount, kaijuToWin, activePhases, isWideShot, isCutscene, unlockMessage, unlockImage, speech, recruitScene, dialogueLog, isDialogueWaiting } = useSnapshot(gameUiStore);
+  const { isPaused, winner, isPlayerDead, players, recruits, kaijuKillCount, kaijuToWin, activePhases, isWideShot, isCutscene, unlockMessage, unlockImage, speech, recruitScene, dialogueLog, isDialogueWaiting, isTalking, isRecruitTalkDone, speakingPieceIndex } = useSnapshot(gameUiStore);
   const [isRadioAlarm, setIsRadioAlarm] = useState(false); // the radio call has told of Kaiju coming: the siren glows
   const recruitChoiceFrom = useRef(undefined); // where the pressed Recruit or Terminate button was, for its word to fly from
   const [isClickThrough, setClickThrough] = useState(getIsClickThrough); // a playtest: each line in the log waits for a key or a click
@@ -982,6 +982,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               <GameBoard
                 key={`${level.id} ${matchCount}`}
                 choiceFromRef={recruitChoiceFrom}
+                speakingPieceIndex={speakingPieceIndex}
                 isWindowOpen={isWindowOpen}
                 isPaused={isPaused}
                 gameManager={gameManager.current}
@@ -1023,7 +1024,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
             {labScreen == "colors" && <IrradiationVat avatar={selectedAvatar} startColor={getAvatarColor(selectedAvatar)} onIrradiate={irradiate} onClose={closeLabScreen} />}
             {isShowingControls && <ControlsOverlay onClose={closeControls} />}
             <DialogueLogPanel
-              footer={recruitScene && isMonitorAlways && (
+              footer={recruitScene && isMonitorAlways && isRecruitTalkDone && (
                 <>
                   {["recruit", "terminate"].map(choice => (
                     <ChoiceButton key={choice} choice={choice} recruitChoice={recruitChoice} onChooseRecruit={(chosen, box) => { recruitChoiceFrom.current = box; handleChooseRecruit(chosen); }} />
@@ -1032,7 +1033,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               )}
               entries={dialogueLog}
               isWaiting={isDialogueWaiting}
-              isVisible={!isPaused && (level.isWalkingLevel || isCutscene || !!recruitScene)}
+              isVisible={!isPaused && (isCutscene || !!recruitScene || isTalking)}
               onContinue={() => gameManager.current && gameManager.current.advanceDialogue()}
             />
             {!isEditingTiles && <UI

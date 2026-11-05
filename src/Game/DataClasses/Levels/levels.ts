@@ -175,7 +175,7 @@ export type LevelConfig = {
   hasTrainSchedule: boolean;
   shakePhases: Array<string>; // phases that shake the whole scene
   rival?: Rival;
-  exit?: { spot: { x: number; y: number }; afterMs?: number; afterPhase?: string }; // opens after a time or a phase. reaching it ends the level.
+  exit?: { spot: { x: number; y: number }; afterMs?: number; afterPhase?: string; isShownWhenOpen?: boolean }; // opens after a time or a phase. reaching it ends the level.
   walkIn?: { // the opening of a scene: who stands where, and who says what
     teammateSpot?: { x: number; y: number };
     doorTile: { i: number; j: number }; // where recruits walk in from
@@ -516,7 +516,8 @@ const SEWER1_WALK_IN = {
     ...SEWER1_LINES.slice(3).map(text => ({ who: 'teammate', text }))
   ],
   // then the doorway lights up, someone sees it, and after a beat the way on shows. draft words.
-  reveal: { glowPhase: 'glow', line: { who: 'recruit', text: "What's that glow?" }, beatMs: 2500, shownPhase: 'deeperShown' }
+  // the line goes to the log; the camera then looks at the glow for 3 s, the way on shows, 2 s more, and back
+  reveal: { glowPhase: 'glow', line: { who: 'recruit', text: "What's that glow?" }, beatMs: 2500, shownPhase: 'deeperShown', lookSpot: { x: 315, y: 362 }, lookMs: 3000, labelMs: 2000 }
 };
 
 const SEWER1_TALK = [
@@ -739,7 +740,7 @@ const LEVEL_BUILDERS: Record<string, (file) => LevelConfig> = {
     ...STREET_SCENE,
     // on the tile of the hazmat worker sweeping by the van, once the Agent has had his say
     unlock: { id: 'hazmat', label: 'Hazmat worker', image: '/levels/portraits/hazmat.png', spot: { x: 740, y: 600 }, afterMs: STREET_TALK_MS },
-    exit: { spot: { x: 112, y: 690 }, afterMs: STREET_TALK_MS } // after one full loop of the Agent's words
+    exit: { spot: { x: 112, y: 690 }, afterMs: STREET_TALK_MS, isShownWhenOpen: true } // after the Agent's words, and the camera shows it
   })
 };
 

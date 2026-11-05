@@ -20,7 +20,10 @@ export const gameUiStore = proxy({
   winner: null,
   isPlayerDead: false,
   dialogueLog: [], // every line said in the scene so far (DialogueLog.ts)
-  isDialogueWaiting: false
+  isDialogueWaiting: false,
+  isTalking: false, // talk outside of a cutscene is going on
+  isRecruitTalkDone: false,
+  speakingPieceIndex: undefined
 });
 
 // writes only the values that changed, so valtio only notifies the components that care

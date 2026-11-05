@@ -1,8 +1,9 @@
 // a speech bubble types itself out, letter by letter, and then stays up long enough to read
+// the longer the line, the longer it stays: a short shout goes by quickly
 export const SPEECH_TIMING = {
-  typeMsPerLetter: 32,
-  readMsPerLetter: 48,
-  holdMs: 2000
+  typeMsPerLetter: 22,
+  readMsPerLetter: 36,
+  holdMs: 1200
 };
 
 export const getSpeechMs = (text: string) => {

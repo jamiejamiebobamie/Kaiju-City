@@ -359,7 +359,7 @@ const MOVEMENT_KEYS = ["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowLeft", "
 
 const getIsTouchScreen = () => window.matchMedia("(pointer: coarse)").matches;
 
-export const GameBoard = ({ choiceFromRef = undefined, isWindowOpen = true, isPaused, gameManager, level, activePhases, isWholeScene, playWindow, isShowingWindowSize, isEditingTiles, isMouseLook, isEnemyZoom, isSlowMotion, isTeamColors, speech, recruitScene, recruitChoice, onChooseRecruit, onHotspot }) => {
+export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = undefined, isWindowOpen = true, isPaused, gameManager, level, activePhases, isWholeScene, playWindow, isShowingWindowSize, isEditingTiles, isMouseLook, isEnemyZoom, isSlowMotion, isTeamColors, speech, recruitScene, recruitChoice, onChooseRecruit, onHotspot }) => {
   // redraws the pieces when the game updates. the tiles draw themselves.
   useSyncExternalStore(gameManager.subscribeToBoard, gameManager.getBoardRevision);
   const pieces = gameManager.getPieces();
@@ -683,6 +683,7 @@ export const GameBoard = ({ choiceFromRef = undefined, isWindowOpen = true, isPa
       isGoingToSpewFire={p.isGoingToSpewFire}
       isShowHealthBarOnComponent={p.isShowHealthBarOnComponent}
       isQuiet={!!recruitScene}
+      isSpeaking={p.pieceIndex === speakingPieceIndex}
     />
   );
 

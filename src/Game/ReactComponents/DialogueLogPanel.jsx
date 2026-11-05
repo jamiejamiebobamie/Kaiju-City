@@ -29,6 +29,21 @@ const drift = keyframes`
   to { background-position: 0 6cqw; }
 `;
 
+const PANEL_MOTION = { buildMs: 650, breakMs: 750, blocks: 14, strips: 9 };
+
+// it builds out from the screen's edge: revealed left to right
+const buildOut = keyframes`
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+`;
+
+// and comes apart: the whole panel goes as its strips float off
+const breakAway = keyframes`
+  0% { opacity: 1; }
+  25% { opacity: 0; }
+  100% { opacity: 0; }
+`;
+
 const Panel = styled.div`
   position: absolute;
   top: 6cqw;
@@ -46,9 +61,102 @@ const Panel = styled.div`
   border-left: 0.15cqw solid ${LOG_LOOK.dim};
   box-shadow: -0.4cqw 0 1.6cqw rgba(60, 255, 140, 0.18), inset 0.4cqw 0 1.2cqw rgba(60, 255, 140, 0.08);
   text-shadow: 0 0 0.4cqw rgba(109, 255, 160, 0.7);
-  animation: ${flicker} ${LOG_LOOK.flickerSeconds}s linear infinite, ${drift} 3s linear infinite;
-  pointer-events: auto;
+  animation: ${flicker} ${LOG_LOOK.flickerSeconds}s linear infinite, ${drift} 3s linear infinite,
+    ${props => props.$isClosing ? breakAway : buildOut} ${props => props.$isClosing ? PANEL_MOTION.breakMs : PANEL_MOTION.buildMs}ms ease-out both;
+  pointer-events: ${props => props.$isClosing ? "none" : "auto"};
 `;
+
+// the frame the panel's own pieces build and break inside of
+const Frame = styled.div`
+  position: absolute;
+  top: 6cqw;
+  bottom: 6cqw;
+  right: 6cqw;
+  width: 27cqw;
+  z-index: 2147483641;
+  pointer-events: none;
+`;
+
+// the building edge: it sweeps right with the reveal, throwing off glowing blocks
+const sweep = keyframes`
+  from { left: 0%; opacity: 1; }
+  85% { opacity: 1; }
+  to { left: 100%; opacity: 0; }
+`;
+
+const BuildEdge = styled.div`
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0.2cqw;
+  background: ${LOG_LOOK.green};
+  box-shadow: 0 0 1cqw ${LOG_LOOK.green};
+  animation: ${sweep} ${PANEL_MOTION.buildMs}ms ease-out both;
+`;
+
+// each block springs out from the edge, spreads right, then drifts up as a ghost and is gone
+const blockLife = keyframes`
+  0% { opacity: 0; transform: translate(0, 0) scale(0.4); }
+  20% { opacity: 1; transform: translate(var(--spread), 0) scale(1); }
+  100% { opacity: 0; transform: translate(calc(var(--spread) * 1.6), calc(-1 * var(--rise))) scale(0.7); }
+`;
+
+const Block = styled.span`
+  position: absolute;
+  left: 0;
+  width: var(--size);
+  height: var(--size);
+  background: rgba(109, 255, 160, 0.35);
+  border: 0.08cqw solid ${LOG_LOOK.green};
+  box-shadow: 0 0 0.6cqw rgba(109, 255, 160, 0.7);
+  animation: ${blockLife} 0.9s ease-out both;
+`;
+
+// coming apart: tall strips break off and float up, fading
+const stripFloat = keyframes`
+  0% { opacity: 0.9; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(var(--rise)) rotate(var(--tilt)); }
+`;
+
+const Strip = styled.span`
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background:
+    repeating-linear-gradient(to bottom, rgba(109, 255, 160, 0.08) 0 1px, transparent 1px 4px),
+    rgba(4, 30, 16, 0.6);
+  border-left: 0.08cqw solid rgba(109, 255, 160, 0.4);
+  box-shadow: inset 0 0 0.8cqw rgba(60, 255, 140, 0.15);
+  animation: ${stripFloat} ${PANEL_MOTION.breakMs}ms ease-in both;
+`;
+
+// fixed once, so the blocks and strips don't jump about between renders
+const BLOCKS = Array.from({ length: PANEL_MOTION.blocks }, (_, k) => ({
+  top: `${(k * 37) % 96}%`, size: `${0.5 + ((k * 7) % 5) * 0.25}cqw`, spread: `${1 + (k % 4)}cqw`, rise: `${3 + (k % 5) * 1.5}cqw`,
+  delay: (k / PANEL_MOTION.blocks) * PANEL_MOTION.buildMs * 0.85
+}));
+const STRIPS = Array.from({ length: PANEL_MOTION.strips }, (_, k) => ({
+  left: `${(k / PANEL_MOTION.strips) * 100}%`, width: `${100 / PANEL_MOTION.strips + 0.3}%`,
+  rise: `${-(8 + ((k * 5) % 7) * 2)}cqw`, tilt: `${((k % 3) - 1) * 3}deg`, delay: ((k * 3) % PANEL_MOTION.strips) * 40
+}));
+
+const BuildEffect = () => (
+  <Frame>
+    <BuildEdge>
+      {BLOCKS.map(({ top, size, spread, rise, delay }, k) => (
+        <Block key={k} style={{ top, "--size": size, "--spread": spread, "--rise": rise, animationDelay: `${delay}ms` }} />
+      ))}
+    </BuildEdge>
+  </Frame>
+);
+
+const BreakEffect = () => (
+  <Frame>
+    {STRIPS.map(({ left, width, rise, tilt, delay }, k) => (
+      <Strip key={k} style={{ left, width, "--rise": rise, "--tilt": tilt, animationDelay: `${delay}ms` }} />
+    ))}
+  </Frame>
+);
 
 const Scroll = styled.div`
   flex: 1;
@@ -75,7 +183,23 @@ const Speaker = styled.div`
   margin-bottom: 0.6cqw;
 `;
 
+const portraitFlicker = keyframes`
+  0%, 100% { opacity: 1; }
+  31% { opacity: 1; }
+  32% { opacity: 0.55; }
+  34% { opacity: 1; }
+  68% { opacity: 0.85; }
+  70% { opacity: 1; }
+`;
+
+const scanLine = keyframes`
+  from { top: -20%; }
+  to { top: 110%; }
+`;
+
+// a CRT feed: it flickers, and a bright line rolls slowly down it
 const Portrait = styled.div`
+  position: relative;
   flex-shrink: 0;
   width: 6cqw;
   aspect-ratio: 3 / 4;
@@ -84,6 +208,16 @@ const Portrait = styled.div`
   background: #041a10 center top / cover no-repeat;
   image-rendering: pixelated;
   filter: ${LOG_LOOK.portraitFilter};
+  animation: ${portraitFlicker} 3.7s steps(1) infinite;
+  &::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 18%;
+    background: linear-gradient(to bottom, transparent, rgba(200, 255, 220, 0.35), transparent);
+    animation: ${scanLine} 3.2s linear infinite;
+  }
 `;
 
 const Name = styled.div`
@@ -154,8 +288,26 @@ export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, ac
     keepAtBottom();
   }, [entries.length]);
 
-  if (!entries.length || !isVisible) return null;
+  // it builds itself when it opens, and comes apart when it closes
+  const isShown = !!entries.length && isVisible;
+  const [isClosing, setIsClosing] = useState(false);
+  const wasShown = useRef(isShown);
+  useEffect(() => {
+    if (wasShown.current && !isShown) {
+      setIsClosing(true);
+      const timeoutRef = setTimeout(() => setIsClosing(false), PANEL_MOTION.breakMs + 400);
+      wasShown.current = isShown;
+      return () => clearTimeout(timeoutRef);
+    }
+    if (isShown) setIsClosing(false);
+    wasShown.current = isShown;
+  }, [isShown]);
+
+  if (!isShown && !isClosing) return null;
+  if (isClosing) return <><Panel $isClosing /><BreakEffect /></>;
   return (
+    <>
+    <BuildEffect />
     <Panel onClick={() => isWaiting && onContinue()}>
       <Scroll ref={scrollRef} onScroll={({ currentTarget: scroll }) => { isAtBottom.current = scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight < 8; }}>
         {entries.map(({ key, who, name, text, avatar, chain }, index) => {
@@ -182,5 +334,6 @@ export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, ac
       ))}
       {footer && <Footer onClick={event => event.stopPropagation()}>{footer}</Footer>}
     </Panel>
+    </>
   );
 };

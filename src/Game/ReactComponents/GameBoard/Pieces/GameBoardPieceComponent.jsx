@@ -279,7 +279,14 @@ const Character = styled.div`
     z-index: 1;
   pointer-events: none;
   animation-iteration-count: 2s;
-  ${props => props.isDamaged && "animation: shake 0.5s;"};
+  ${props => props.isDamaged ? "animation: shake 0.5s;" : props.isSpeaking ? "animation: speakShake 0.35s steps(2) infinite;" : ""};
+  /* talking: a small jitter, like a character in an old game when they have the floor */
+  @keyframes speakShake {
+    0%, 100% { transform: translate(0, 0); }
+    25% { transform: translate(-1px, -1px); }
+    50% { transform: translate(1px, 0); }
+    75% { transform: translate(0, -1px); }
+  }
   @keyframes shake {
     0% {
       transform: translate(1px, 1px) rotate(0deg);
@@ -379,7 +386,8 @@ export const GameBoardPieceComponent = ({
   isShowHealthBarOnComponent,
   facingDir,
   pieceScale,
-  isQuiet = false // the Recruit or Terminate choice: no shaking, and no numbers
+  isQuiet = false, // the Recruit or Terminate choice: no shaking, and no numbers
+  isSpeaking = false // their line is up: they jitter as they talk
 }) => {
   const [modifierText, setModifierText] = useState([]);
   const [isDamaged, setIsDamaged] = useState(null);
@@ -451,7 +459,7 @@ export const GameBoardPieceComponent = ({
     <Wrapper zIndex={zIndex} isVisible={isVisible} charLocation={charLocation} pieceScale={pieceScale}>
       {!isQuiet && modifierText}
       <HealthBarWrapper lives={lives}>{bars}</HealthBarWrapper>
-      <Character isDamaged={isDamaged && !isQuiet}>
+      <Character isDamaged={isDamaged && !isQuiet} isSpeaking={isSpeaking}>
         {isFalling ? <FallingFrame src="/levels/npcs/agentFalling.png" /> : <SpriteSheet
           avatar={avatar}
           spriteSheetSrc={spriteSheetSrc}
