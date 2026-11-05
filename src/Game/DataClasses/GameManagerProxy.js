@@ -173,8 +173,9 @@ export class GameManagerProxy {
         return this.props.getIsClosedTile(tileIndex);
     }
 
-    getSafeTileIndex(pieceIndex) {
-        return this.props.getSafeTileIndex(pieceIndex);
+    // 'isTeleport': where a Teleport lands. a piece that can teleport across (the Subway's Punk Guy) may pick a tile it can't walk to
+    getSafeTileIndex(pieceIndex, isTeleport = false) {
+        return this.props.getSafeTileIndex(pieceIndex, isTeleport);
     }
 
     resetHightlightedTiles() {

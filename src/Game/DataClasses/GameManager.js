@@ -477,6 +477,7 @@ export class GameManager {
         });
         piece.initCharLocation(true, this.gameBoardManager.getClosestWalkableTileToLocation(spot));
         piece.isPlain = true; // no glow until they touch the part
+        piece.canTeleportAcross = !!this.level.rival.canTeleportAcross;
         piece.isTileHidden = true;
         piece.facingDir = startFacing;
         piece.introZIndex = getSortZIndex(this.level, introSortY);

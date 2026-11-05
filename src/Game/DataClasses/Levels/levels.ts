@@ -123,7 +123,8 @@ type Rival = {
   touchPhase: string; // the phase where they touch the Kaiju part. the fight starts once it plays out.
   spot: { x: number; y: number }; // where the fight starts from, in scene pixels
   recruitSpot: { x: number; y: number }; // where they lie for the player's choice, in scene pixels
-  isStandingBeside?: boolean; // for the choice, the team stands either side of them (the Rooftop, below the RIP stone)
+  isStandingBeside?: boolean;
+  canTeleportAcross?: boolean; // a Teleport may land on tiles it can't walk to, like the other platforms // for the choice, the team stands either side of them (the Rooftop, below the RIP stone)
   pronoun: string;
   intro: {
     focus: { x: number; y: number }; // what the camera pulls in on, in scene pixels
@@ -329,6 +330,7 @@ const RAPID_TRANSIT_SCENE = {
     ...RIVAL_LOOK,
     avatar: 'punk',
     abilities: ['wood', 'glass', 'metal'], touchPhase: 'eyeTouched', spot: { x: 1213, y: 530 }, recruitSpot: { x: 690, y: 560 }, pronoun: 'him',
+    canTeleportAcross: true, // his Teleport takes him over the tracks to another platform, away from the team
     startFacing: 'up',
     introSortY: 640, // stands in front of the eye
     intro: {

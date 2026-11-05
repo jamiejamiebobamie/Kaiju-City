@@ -228,7 +228,7 @@ export class GameBoardPieceBase {
 
         if (this.isThere) {
             // anyone, on either side, who steps into a Teleport's wormhole comes out of the other end
-            if (this.isNpc && this.isOnTiles && this.gameManagerProxy.getIsWormholeTile(this.tileIndex)) {
+            if (this.isOnTiles && this.gameManagerProxy.getIsWormholeTile(this.tileIndex)) {
                 const wasLinked = this.linkArrivalTile;
                 this.followTileLink();
                 if (this.linkArrivalTile != wasLinked) this.moveToTiles = []; // it is somewhere else now: a new path next time
@@ -482,7 +482,7 @@ export class GameBoardPieceBase {
         // updates useEffect to trigger floating text 'Zip!'
         this.isTeleported = !this.isTeleported;
 
-        const teleportTileIndex = this.isNpc ? this.gameManagerProxy.getSafeTileIndex(this.pieceIndex) : this.moveToTiles[this.moveToTiles.length - 1];
+        const teleportTileIndex = this.isNpc ? this.gameManagerProxy.getSafeTileIndex(this.pieceIndex, true) : this.moveToTiles[this.moveToTiles.length - 1];
 
         if (teleportTileIndex) {
             // it leaves a wormhole between where it was and where it lands

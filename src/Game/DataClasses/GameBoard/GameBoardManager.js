@@ -650,7 +650,7 @@ export class GameBoardManager {
         };
     };
 
-    getSafeTileIndex = (pieceIndex) => {
+    getSafeTileIndex = (pieceIndex, isTeleport = false) => {
         const otherTeamsPieces = this.gameManagerProxy.getOtherTeamsPieces(pieceIndex).filter(({ isDead }) => !isDead);
 
         if (!otherTeamsPieces.length) {
@@ -671,7 +671,9 @@ export class GameBoardManager {
         const avgLocation = { x: sumLocations.x / otherTeamsPieces.length, y: sumLocations.y / otherTeamsPieces.length };
 
         // only tiles the piece could walk from: a teleport must not strand it, eg. on the Lab's catwalk
-        const reachableTiles = this.getReachableTiles(this.gameManagerProxy.getPieceTileIndex(pieceIndex))
+        // the Subway's Punk Guy teleports over the tracks to the other platforms, to get away: his portal lets the team follow
+        const isAcross = isTeleport && !!this.gameManagerProxy.getPiece(pieceIndex).canTeleportAcross;
+        const reachableTiles = (isAcross ? this.walkableTiles.filter(tile => !this.getIsClosedTile(tile)) : this.getReachableTiles(this.gameManagerProxy.getPieceTileIndex(pieceIndex)))
             .filter(tileIndex => !this.gameManagerProxy.getIsOffLimitsTile(pieceIndex, tileIndex));
         let safeTileObj = {
             distance: Number.MIN_SAFE_INTEGER,
