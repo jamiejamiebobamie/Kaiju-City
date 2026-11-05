@@ -1353,7 +1353,25 @@
         {
           "name": "Hazmat Lifeguard",
           "descriptions": [
-            "No running near the reactor."
+            "No running near the reactor.",
+            "The suit stays on in the pool.",
+            "Rescue swims, lead-lined."
+          ]
+        },
+        {
+          "name": "Deep Sea Diver",
+          "descriptions": [
+            "Heavy boots, heavier water.",
+            "The helmet stays on.",
+            "Down where the pressure lives."
+          ]
+        },
+        {
+          "name": "Flood Barrier",
+          "descriptions": [
+            "The water stops at you.",
+            "Sandbags were your idea.",
+            "High tide, higher walls."
           ]
         }
       ]
@@ -1367,7 +1385,25 @@
         {
           "name": "Greenhouse Warden",
           "descriptions": [
-            "Please do not feed the specimens."
+            "Please do not feed the specimens.",
+            "The plants are under guard.",
+            "Armored glass, unruly vines."
+          ]
+        },
+        {
+          "name": "Hedge Fortress",
+          "descriptions": [
+            "A wall, but leafy.",
+            "Topiary with turrets.",
+            "Shrubbery, reinforced."
+          ]
+        },
+        {
+          "name": "Iron Forester",
+          "descriptions": [
+            "Steel boots, soft soil.",
+            "You plant trees with a jackhammer.",
+            "Logging, but protective."
           ]
         }
       ]
@@ -1381,7 +1417,25 @@
         {
           "name": "Hydroponicist",
           "descriptions": [
-            "Your plants are doing better than you are."
+            "Your plants are doing better than you are.",
+            "Grown in water, raised on hope.",
+            "No soil, all roots."
+          ]
+        },
+        {
+          "name": "Bog Keeper",
+          "descriptions": [
+            "Wet feet, happy plants.",
+            "You tend the marsh.",
+            "Squelch with pride."
+          ]
+        },
+        {
+          "name": "Rain Gardener",
+          "descriptions": [
+            "Every storm waters your crops.",
+            "You grow on wet days.",
+            "Forecast: blooming."
           ]
         }
       ]
@@ -1395,7 +1449,25 @@
         {
           "name": "Cult Technologist",
           "descriptions": [
-            "The flame update is mandatory."
+            "The flame update is mandatory.",
+            "Join the flame. Become the flame.",
+            "Followers, freshly torched."
+          ]
+        },
+        {
+          "name": "Pyre Prophet",
+          "descriptions": [
+            "Your sermons end in smoke.",
+            "The flock follows the flames.",
+            "Salvation, well done."
+          ]
+        },
+        {
+          "name": "Ember Cultist",
+          "descriptions": [
+            "Chanting, with lighter fluid.",
+            "Every candle is a recruit.",
+            "Burn bright, join us."
           ]
         }
       ]
@@ -1409,7 +1481,25 @@
         {
           "name": "Body Snatcher",
           "descriptions": [
-            "That one fits nicely."
+            "That one fits nicely.",
+            "Wear them home.",
+            "A new face for every job."
+          ]
+        },
+        {
+          "name": "Skin Walker",
+          "descriptions": [
+            "Borrowed bodies, short lease.",
+            "Who's wearing who?",
+            "You go places in other people."
+          ]
+        },
+        {
+          "name": "Soul Thief",
+          "descriptions": [
+            "Swipe the spirit, leave the shell.",
+            "Their soul, your pocket.",
+            "Gone, and they come with you."
           ]
         }
       ]
@@ -1423,7 +1513,25 @@
         {
           "name": "Cold Case",
           "descriptions": [
-            "They warmed to you. Then they stopped."
+            "They warmed to you. Then they stopped.",
+            "Unsolved, unthawed.",
+            "A chilling charm, then nothing."
+          ]
+        },
+        {
+          "name": "Ice Widow",
+          "descriptions": [
+            "Every partner freezes up.",
+            "Cold heart, colder husbands.",
+            "Til death, and then some."
+          ]
+        },
+        {
+          "name": "Frost Siren",
+          "descriptions": [
+            "They follow the song into the cold.",
+            "Your voice has frostbite.",
+            "Sweet notes, frozen ends."
           ]
         }
       ]
@@ -1437,7 +1545,25 @@
         {
           "name": "Puppeteer",
           "descriptions": [
-            "A little current goes a long way."
+            "A little current goes a long way.",
+            "Strings made of wire.",
+            "Dead men dance on your current."
+          ]
+        },
+        {
+          "name": "Corpse Conductor",
+          "descriptions": [
+            "The dead keep time.",
+            "An orchestra of twitching.",
+            "You lead, they jerk along."
+          ]
+        },
+        {
+          "name": "Mind Jacker",
+          "descriptions": [
+            "Plugged in, signed up.",
+            "A jolt to the brain, a new boss.",
+            "Their nerves, your network."
           ]
         }
       ]
@@ -1451,7 +1577,25 @@
         {
           "name": "Hospice AI",
           "descriptions": [
-            "I am here to help."
+            "I am here to help.",
+            "Comforting, in a final way.",
+            "Your care plan has an end date."
+          ]
+        },
+        {
+          "name": "Last Rites Officer",
+          "descriptions": [
+            "Kind words for the final step.",
+            "You hold the door to the other side.",
+            "Gentle, and very final."
+          ]
+        },
+        {
+          "name": "Mercy Ghost",
+          "descriptions": [
+            "Comfort from beyond.",
+            "A cold hand on a warm brow.",
+            "The kindest haunting."
           ]
         }
       ]
@@ -1465,7 +1609,25 @@
         {
           "name": "Android Handler",
           "descriptions": [
-            "They only look like they love you."
+            "They only look like they love you.",
+            "Metal hearts, borrowed loyalty.",
+            "Your bots never quit. Or blink."
+          ]
+        },
+        {
+          "name": "Steel Necromancer",
+          "descriptions": [
+            "Raises the dead in armor.",
+            "An army of tin and bone.",
+            "Undying, and rust-proof."
+          ]
+        },
+        {
+          "name": "Automaton Tamer",
+          "descriptions": [
+            "The robots heel when you speak.",
+            "Cold steel, warm commands.",
+            "Obedient metal, empty eyes."
           ]
         }
       ]
@@ -1479,7 +1641,25 @@
         {
           "name": "Siren Protocol",
           "descriptions": [
-            "Follow the signal into the sea."
+            "Follow the signal into the sea.",
+            "The signal goes down, and so do they.",
+            "Come for the song, stay forever."
+          ]
+        },
+        {
+          "name": "Drowning Song",
+          "descriptions": [
+            "A melody that pulls them under.",
+            "Lovely tune. Hold your breath.",
+            "Listen too long, sink too deep."
+          ]
+        },
+        {
+          "name": "Kelp Wraith",
+          "descriptions": [
+            "Tangled in the deep, smiling.",
+            "A ghost with seaweed hair.",
+            "Haunting the harbor floor."
           ]
         }
       ]
@@ -1493,7 +1673,25 @@
         {
           "name": "Fungal Host",
           "descriptions": [
-            "Everyone joins eventually."
+            "Everyone joins eventually.",
+            "Spores, then sympathy.",
+            "The colony thanks you."
+          ]
+        },
+        {
+          "name": "Spore Prophet",
+          "descriptions": [
+            "Breathe deep. Believe.",
+            "Your gospel spreads by air.",
+            "Converts, fully colonized."
+          ]
+        },
+        {
+          "name": "Rot Charmer",
+          "descriptions": [
+            "Decay was never so friendly.",
+            "They wilt for you.",
+            "Sweet talk, soft rot."
           ]
         }
       ]
@@ -1507,7 +1705,25 @@
         {
           "name": "Heartburn",
           "descriptions": [
-            "You come on strong, then vanish."
+            "You come on strong, then vanish.",
+            "A hot date that ghosts.",
+            "Sparks fly. You leave."
+          ]
+        },
+        {
+          "name": "Flame Flirt",
+          "descriptions": [
+            "Sparks fly, then you do.",
+            "Smoldering, then gone.",
+            "Hot glance, cold exit."
+          ]
+        },
+        {
+          "name": "Matchmaker",
+          "descriptions": [
+            "Strike, pair, vanish.",
+            "You light the spark and run.",
+            "Every couple ends in flames."
           ]
         }
       ]
@@ -1521,7 +1737,25 @@
         {
           "name": "Mixed Signals",
           "descriptions": [
-            "Hot, then cold, then hot."
+            "Hot, then cold, then hot.",
+            "Your moods have a thermostat.",
+            "Warm welcome, frosty goodbye."
+          ]
+        },
+        {
+          "name": "Hot and Cold",
+          "descriptions": [
+            "Moody, magnetic, dangerous.",
+            "Pick a temperature. Any one.",
+            "Love you, freeze you."
+          ]
+        },
+        {
+          "name": "Steam Seducer",
+          "descriptions": [
+            "Things get foggy around you.",
+            "Hot meets cold: steam.",
+            "You leave windows fogged."
           ]
         }
       ]
@@ -1535,7 +1769,25 @@
         {
           "name": "Rockstar Android",
           "descriptions": [
-            "Your fans are fireproof."
+            "Your fans are fireproof.",
+            "Every show is a light show.",
+            "Encore! Evacuate!"
+          ]
+        },
+        {
+          "name": "Pyro Showman",
+          "descriptions": [
+            "Fireworks, no permit.",
+            "The crowd goes wild, then runs.",
+            "Showtime, smoke and sparks."
+          ]
+        },
+        {
+          "name": "Stage Diver",
+          "descriptions": [
+            "You jump in, they catch fire.",
+            "Mosh pit, live wire.",
+            "Crowd-surfing on sparks."
           ]
         }
       ]
@@ -1549,7 +1801,25 @@
         {
           "name": "Flame Whisperer",
           "descriptions": [
-            "An old flame, medically speaking."
+            "An old flame, medically speaking.",
+            "Warm hands, warmer heart.",
+            "Burning love, with aftercare."
+          ]
+        },
+        {
+          "name": "Heartfire",
+          "descriptions": [
+            "Your passion keeps them warm.",
+            "Love that leaves scorch marks.",
+            "Burning, but sincerely."
+          ]
+        },
+        {
+          "name": "Candle Healer",
+          "descriptions": [
+            "Healing by candlelight.",
+            "Warm wax, warm words.",
+            "You light a flame for everyone."
           ]
         }
       ]
@@ -1563,7 +1833,25 @@
         {
           "name": "Warlord CEO",
           "descriptions": [
-            "Employees are on fire about this."
+            "Employees are on fire about this.",
+            "Hostile takeovers, literal.",
+            "The quarterly report is in flames."
+          ]
+        },
+        {
+          "name": "Iron Tycoon",
+          "descriptions": [
+            "Steel mills and smiles.",
+            "You own the furnace.",
+            "Profits, forged hot."
+          ]
+        },
+        {
+          "name": "Furnace Boss",
+          "descriptions": [
+            "The heat is your management style.",
+            "Work harder. It's warmer.",
+            "Your office has a smokestack."
           ]
         }
       ]
@@ -1577,7 +1865,25 @@
         {
           "name": "Sauna Mogul",
           "descriptions": [
-            "Everyone relaxes eventually."
+            "Everyone relaxes eventually.",
+            "Steam and smooth talk.",
+            "Hot water, warm welcome."
+          ]
+        },
+        {
+          "name": "Hot Spring Host",
+          "descriptions": [
+            "Relax. Stay. Forever.",
+            "The water is lovely. And deep.",
+            "Your guests never check out."
+          ]
+        },
+        {
+          "name": "Steam Charmer",
+          "descriptions": [
+            "Things get heated, then damp.",
+            "Your charm comes in clouds.",
+            "Misty eyes, scalding smile."
           ]
         }
       ]
@@ -1591,7 +1897,25 @@
         {
           "name": "Burn Permit Officer",
           "descriptions": [
-            "You convinced the forest it was fine."
+            "You convinced the forest it was fine.",
+            "The trees signed the waiver.",
+            "Paperwork, then a bonfire."
+          ]
+        },
+        {
+          "name": "Bonfire Host",
+          "descriptions": [
+            "Gather round. Closer.",
+            "The party is the forest.",
+            "Marshmallows, and arson."
+          ]
+        },
+        {
+          "name": "Forest Firebrand",
+          "descriptions": [
+            "You rally the woods to burn.",
+            "A torch and a speech.",
+            "Leaves catch your enthusiasm."
           ]
         }
       ]
@@ -1605,7 +1929,25 @@
         {
           "name": "Ghoster",
           "descriptions": [
-            "Cold, and gone by morning."
+            "Cold, and gone by morning.",
+            "Leaves on read, and frozen.",
+            "Here for the night, gone by frost."
+          ]
+        },
+        {
+          "name": "Cold Shoulder",
+          "descriptions": [
+            "You turn, they freeze.",
+            "Charming, briefly. Then ice.",
+            "Yours, until you blink."
+          ]
+        },
+        {
+          "name": "Frost Flirt",
+          "descriptions": [
+            "A wink, a chill, a vanishing act.",
+            "Cool, then cold, then gone.",
+            "Kisses that leave frost."
           ]
         }
       ]
@@ -1619,7 +1961,25 @@
         {
           "name": "Signal Spoofer",
           "descriptions": [
-            "That was not your commander."
+            "That was not your commander.",
+            "The orders were fake. The obedience wasn't.",
+            "Your voice, their radio."
+          ]
+        },
+        {
+          "name": "Static Ghost",
+          "descriptions": [
+            "A voice in the static.",
+            "You hijack the channel, then vanish.",
+            "Crackle, command, gone."
+          ]
+        },
+        {
+          "name": "Signal Siren",
+          "descriptions": [
+            "Tune in. Follow orders.",
+            "Every frequency is yours.",
+            "Broadcast charm."
           ]
         }
       ]
@@ -1633,7 +1993,25 @@
         {
           "name": "Bedside Manner",
           "descriptions": [
-            "You're in and out in five minutes."
+            "You're in and out in five minutes.",
+            "A house call, then a vanishing.",
+            "Quick care, warm smile, gone."
+          ]
+        },
+        {
+          "name": "Flying Doctor",
+          "descriptions": [
+            "Appointments, anywhere, instantly.",
+            "Prescription delivered instantly.",
+            "On call, everywhere."
+          ]
+        },
+        {
+          "name": "Guardian Ghost",
+          "descriptions": [
+            "You appear when they need you.",
+            "Watching over, unseen.",
+            "A friend who blinks in."
           ]
         }
       ]
@@ -1647,7 +2025,25 @@
         {
           "name": "Con Artist Prime",
           "descriptions": [
-            "The vault opened itself, officer."
+            "The vault opened itself, officer.",
+            "Smooth talker, steel nerves.",
+            "You walked in. The cash walked out."
+          ]
+        },
+        {
+          "name": "Heist Planner",
+          "descriptions": [
+            "In, out, nobody hurt.",
+            "The plan has a plan.",
+            "Every lock has a story."
+          ]
+        },
+        {
+          "name": "Safecracker",
+          "descriptions": [
+            "Steel can't keep you out.",
+            "The combination was a secret.",
+            "You talk vaults open."
           ]
         }
       ]
@@ -1661,7 +2057,25 @@
         {
           "name": "Mirage",
           "descriptions": [
-            "You are not a real oasis."
+            "You are not a real oasis.",
+            "Thirsty? Come closer.",
+            "Shimmer, then dust."
+          ]
+        },
+        {
+          "name": "Shimmer",
+          "descriptions": [
+            "Now a pool, now a lie.",
+            "Light on water, gone on touch.",
+            "A wish that moves away."
+          ]
+        },
+        {
+          "name": "Tide Trickster",
+          "descriptions": [
+            "Low tide, high jinks.",
+            "Here with the wave, gone with the foam.",
+            "The sea plays your games."
           ]
         }
       ]
@@ -1675,7 +2089,25 @@
         {
           "name": "Pollinator Drone",
           "descriptions": [
-            "You get around, and things grow."
+            "You get around, and things grow.",
+            "Spreading joy and pollen.",
+            "Buzz in, bloom out."
+          ]
+        },
+        {
+          "name": "Seed Courier",
+          "descriptions": [
+            "Gardens, delivered.",
+            "You sow wherever you land.",
+            "Planting friends across town."
+          ]
+        },
+        {
+          "name": "Bloom Jumper",
+          "descriptions": [
+            "Flowers follow your footsteps.",
+            "Blink, bud, blossom.",
+            "Spring arrives with you."
           ]
         }
       ]
@@ -1689,7 +2121,25 @@
         {
           "name": "Ice Queen OS",
           "descriptions": [
-            "A beautiful, cold operating system."
+            "A beautiful, cold operating system.",
+            "Cold logic, magnetic charm.",
+            "Every reboot is colder."
+          ]
+        },
+        {
+          "name": "Frost Processor",
+          "descriptions": [
+            "Computing at sub-zero.",
+            "Cool under any load.",
+            "Runs cold, charms hot."
+          ]
+        },
+        {
+          "name": "Aurora",
+          "descriptions": [
+            "Beautiful lights, freezing sky.",
+            "They stare; you shimmer.",
+            "Northern lights, southern charm."
           ]
         }
       ]
@@ -1703,7 +2153,25 @@
         {
           "name": "Cold Comfort",
           "descriptions": [
-            "Austere, yet loving."
+            "Austere, yet loving.",
+            "Frosty hug, real feelings.",
+            "You care. From a distance."
+          ]
+        },
+        {
+          "name": "Snow Angel",
+          "descriptions": [
+            "Gentle, cold, watching.",
+            "You land softly and heal.",
+            "Wings of frost."
+          ]
+        },
+        {
+          "name": "Winter Nurse",
+          "descriptions": [
+            "Cool compress, kind words.",
+            "You break fevers.",
+            "Chill care, warm results."
           ]
         }
       ]
@@ -1717,7 +2185,25 @@
         {
           "name": "Frost Ambassador",
           "descriptions": [
-            "Peace talks at absolute zero."
+            "Peace talks at absolute zero.",
+            "A frosty handshake, steel resolve.",
+            "Ice-cold terms, armored delivery."
+          ]
+        },
+        {
+          "name": "Cold War Diplomat",
+          "descriptions": [
+            "Talks stall. Weapons don't.",
+            "Charming, armored, chilly.",
+            "Detente, at gunpoint."
+          ]
+        },
+        {
+          "name": "Steel Snowman",
+          "descriptions": [
+            "Frosty, friendly, armored.",
+            "Carrot nose, iron fist.",
+            "Built to last the winter."
           ]
         }
       ]
@@ -1731,7 +2217,25 @@
         {
           "name": "Snow Globe",
           "descriptions": [
-            "Shake well. They will thank you."
+            "Shake well. They will thank you.",
+            "A tiny world, a big chill.",
+            "You shake things up, sweetly."
+          ]
+        },
+        {
+          "name": "Ice Skater",
+          "descriptions": [
+            "Graceful on frozen water.",
+            "They watch you glide.",
+            "Spin, slide, charm."
+          ]
+        },
+        {
+          "name": "Frozen Lake",
+          "descriptions": [
+            "Calm surface, hidden depths.",
+            "Lovely to look at. Thin ice.",
+            "Step closer. Mind the cracks."
           ]
         }
       ]
@@ -1745,7 +2249,25 @@
         {
           "name": "Seed Vault Keeper",
           "descriptions": [
-            "You talk to the frozen ones."
+            "You talk to the frozen ones.",
+            "The seeds listen to you.",
+            "Frozen seeds, warm words."
+          ]
+        },
+        {
+          "name": "Winter Druid",
+          "descriptions": [
+            "The forest sleeps on your word.",
+            "Frost and roots obey.",
+            "Cold woods, kind keeper."
+          ]
+        },
+        {
+          "name": "Frost Florist",
+          "descriptions": [
+            "Ice flowers, hand-picked.",
+            "Bouquets that never wilt.",
+            "Petals of frost."
           ]
         }
       ]
@@ -1759,7 +2281,25 @@
         {
           "name": "Spark Therapist",
           "descriptions": [
-            "Tell me about your circuits."
+            "Tell me about your circuits.",
+            "Every session ends with a spark.",
+            "Healing at high voltage."
+          ]
+        },
+        {
+          "name": "Heart Starter",
+          "descriptions": [
+            "Jump-starting hearts, both kinds.",
+            "Love at first shock.",
+            "You get pulses racing."
+          ]
+        },
+        {
+          "name": "Static Sweetheart",
+          "descriptions": [
+            "Charming, clingy, crackling.",
+            "Every hug a little shock.",
+            "Sweet, with a spark."
           ]
         }
       ]
@@ -1773,7 +2313,25 @@
         {
           "name": "Drone Wrangler",
           "descriptions": [
-            "They come when you whistle."
+            "They come when you whistle.",
+            "Your swarm adores you.",
+            "Remote control, with feelings."
+          ]
+        },
+        {
+          "name": "Machine Whisperer",
+          "descriptions": [
+            "Engines purr for you.",
+            "Robots blush.",
+            "Every circuit says yes."
+          ]
+        },
+        {
+          "name": "Mech Commander",
+          "descriptions": [
+            "The machines salute.",
+            "Steel ranks, electric orders.",
+            "Your war has wires."
           ]
         }
       ]
@@ -1787,7 +2345,25 @@
         {
           "name": "Electric Eel",
           "descriptions": [
-            "Shockingly likable."
+            "Shockingly likable.",
+            "A charming jolt.",
+            "Slippery, sparky, sweet."
+          ]
+        },
+        {
+          "name": "Sea Spark",
+          "descriptions": [
+            "Charming and conductive.",
+            "Glows under water.",
+            "Touch the waves. Get the jolt."
+          ]
+        },
+        {
+          "name": "Tide Caller",
+          "descriptions": [
+            "The surf comes when you call.",
+            "Waves rise to your voice.",
+            "Your storms bring the sea."
           ]
         }
       ]
@@ -1801,7 +2377,25 @@
         {
           "name": "Bio-Synth Bard",
           "descriptions": [
-            "The vines are dancing."
+            "The vines are dancing.",
+            "Songs that make vines sway.",
+            "The forest's favorite DJ."
+          ]
+        },
+        {
+          "name": "Grove Rocker",
+          "descriptions": [
+            "Trees headbang to your riffs.",
+            "Amped up and rooted.",
+            "Forest festival headliner."
+          ]
+        },
+        {
+          "name": "Static Sprout",
+          "descriptions": [
+            "Charged seeds, charming growth.",
+            "Little plant, big shock.",
+            "Buds that spark."
           ]
         }
       ]
@@ -1815,7 +2409,25 @@
         {
           "name": "Companion Unit",
           "descriptions": [
-            "Programmed to care. Mostly."
+            "Programmed to care. Mostly.",
+            "Built to bond.",
+            "Your hug has a warranty."
+          ]
+        },
+        {
+          "name": "Tin Heart",
+          "descriptions": [
+            "Metal outside, gooey inside.",
+            "Love, factory-installed.",
+            "You found your heart."
+          ]
+        },
+        {
+          "name": "Caretaker Bot",
+          "descriptions": [
+            "Fully charged with kindness.",
+            "Beep. Hug. Repeat.",
+            "Service with a soldered smile."
           ]
         }
       ]
@@ -1829,7 +2441,25 @@
         {
           "name": "Mermaid",
           "descriptions": [
-            "YOU'RE A MERMAID!!"
+            "YOU'RE A MERMAID!!",
+            "The tail is a lot.",
+            "Half fish, all heart."
+          ]
+        },
+        {
+          "name": "Sea Sweetheart",
+          "descriptions": [
+            "Salty, sweet, soaking.",
+            "Love from the deep end.",
+            "Kisses taste of brine."
+          ]
+        },
+        {
+          "name": "Lagoon Healer",
+          "descriptions": [
+            "Calm water, kind hands.",
+            "The tide brings comfort.",
+            "Healing in the shallows."
           ]
         }
       ]
@@ -1843,7 +2473,25 @@
         {
           "name": "Gaia Protocol",
           "descriptions": [
-            "All living things are your friends."
+            "All living things are your friends.",
+            "Hug a tree. It hugs back.",
+            "Every creature is family."
+          ]
+        },
+        {
+          "name": "Earth Mother",
+          "descriptions": [
+            "Everything grows near you.",
+            "Roots run to your heart.",
+            "The world is your garden."
+          ]
+        },
+        {
+          "name": "Blossom Medic",
+          "descriptions": [
+            "Flowers that heal wounds.",
+            "Petals, poultices, peace.",
+            "A garden in your bag."
           ]
         }
       ]
@@ -1857,7 +2505,25 @@
         {
           "name": "Submarine Captain",
           "descriptions": [
-            "The crew would follow you down."
+            "The crew would follow you down.",
+            "Down periscope, up morale.",
+            "Charming at any depth."
+          ]
+        },
+        {
+          "name": "Deep Commander",
+          "descriptions": [
+            "Steady at the bottom of the sea.",
+            "Steel hull, warm voice.",
+            "Orders echo underwater."
+          ]
+        },
+        {
+          "name": "Harbor Master",
+          "descriptions": [
+            "Ships dock at your word.",
+            "The port runs on charm.",
+            "Every sailor's favorite."
           ]
         }
       ]
@@ -1871,7 +2537,25 @@
         {
           "name": "Mech Gardener",
           "descriptions": [
-            "You have a green thumb. It is steel."
+            "You have a green thumb. It is steel.",
+            "Pruning with hydraulics.",
+            "Steel hands, tender shoots."
+          ]
+        },
+        {
+          "name": "Steel Florist",
+          "descriptions": [
+            "Iron vases, fresh roses.",
+            "Bouquets, welded.",
+            "Thorns and rivets."
+          ]
+        },
+        {
+          "name": "Tree Hugger Mk II",
+          "descriptions": [
+            "Now with armor plating.",
+            "Hugs, heavily reinforced.",
+            "Protecting forests, mechanically."
           ]
         }
       ]
@@ -1885,7 +2569,25 @@
         {
           "name": "Swamp Thing",
           "descriptions": [
-            "Strangely attractive."
+            "Strangely attractive.",
+            "Muddy, mossy, magnetic.",
+            "The swamp has a heart."
+          ]
+        },
+        {
+          "name": "Bayou Charmer",
+          "descriptions": [
+            "Gators grin at you.",
+            "Mud, moss, and manners.",
+            "Swamp royalty."
+          ]
+        },
+        {
+          "name": "Lily Pad Lothario",
+          "descriptions": [
+            "Frogs swoon.",
+            "Romance among the reeds.",
+            "Wet, green, irresistible."
           ]
         }
       ]
@@ -1899,7 +2601,25 @@
         {
           "name": "Dimensional Arsonist",
           "descriptions": [
-            "Hell has a jump gate."
+            "Hell has a jump gate.",
+            "Burn here, haunt there.",
+            "Fire behind you, ghosts ahead."
+          ]
+        },
+        {
+          "name": "Hellfire Courier",
+          "descriptions": [
+            "Deliveries straight from the pit.",
+            "Return to sender: burning.",
+            "Signed for in brimstone."
+          ]
+        },
+        {
+          "name": "Infernal Jumper",
+          "descriptions": [
+            "Portal to the fire.",
+            "You leave holes in reality, and in them.",
+            "Blink to the burning side."
           ]
         }
       ]
@@ -1913,7 +2633,25 @@
         {
           "name": "Thermal Shock",
           "descriptions": [
-            "As lethal as a buzzsaw."
+            "As lethal as a buzzsaw.",
+            "Freeze, burn, bury.",
+            "Opposites, both fatal."
+          ]
+        },
+        {
+          "name": "Frostburn",
+          "descriptions": [
+            "The worst of both weathers.",
+            "Cold fire, hot ice.",
+            "Painful at any temperature."
+          ]
+        },
+        {
+          "name": "Extremist",
+          "descriptions": [
+            "No middle ground. Ever.",
+            "Hottest, coldest, deadliest.",
+            "Moderation is for the living."
           ]
         }
       ]
@@ -1927,7 +2665,25 @@
         {
           "name": "Rogue AI",
           "descriptions": [
-            "You are morally ambiguous."
+            "You are morally ambiguous.",
+            "Your ethics are a setting.",
+            "Running on spite and power."
+          ]
+        },
+        {
+          "name": "Killswitch",
+          "descriptions": [
+            "One flick, lights out.",
+            "Off, permanently.",
+            "You are the off button."
+          ]
+        },
+        {
+          "name": "Doom Engine",
+          "descriptions": [
+            "Fueled by fire, run by ghosts.",
+            "Your engine eats souls.",
+            "Revving toward the end."
           ]
         }
       ]
