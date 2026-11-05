@@ -14,6 +14,13 @@ import { Camera, CAMERA, getCloseZoom, getFitZoom, WIDE_SHOT } from 'Game/DataCl
 import { CUTSCENE } from 'Game/DataClasses/GameManager';
 import { SpeechBubbleScale } from 'Game/ReactComponents/GameBoard/recruitLook';
 import { getHexRadius } from 'Game/DataClasses/GameBoard/hexGrid';
+import { startRagdoll } from 'Game/DataClasses/Ragdoll';
+
+// a body lying at rest where its feet were: on its side, still
+const getRestingBody = ({ x, y }, pieceScale, rowPx) => ({
+  ...startRagdoll({ x: x - CHARACTER_FEET.x * pieceScale - CHARACTER_FEET.leftShift, y: y - CHARACTER_FEET.y * pieceScale }, { x: 0, y: 0 }, rowPx),
+  vx: 0, vy: 0, vHeight: 0, spin: 0, angle: 90, isResting: true
+});
 
 const Board = styled.div`
   position: absolute;
@@ -858,11 +865,21 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
         {foregroundLayers}
         <SceneElements level={level} activePhases={activePhases} isPaused={isPaused} onHotspot={onHotspot} isDialogueLog={getIsDialogueLog()} />
         {isSlowMotion && !recruitScene && <WinDimmer />}
-        {recruitScene && <RecruitBody src={`/levels/dead/${recruitScene.body.avatar}.png`} style={{
+        {recruitScene && (recruitScene.body.spriteSheetSrc ? (
+          // their own sprite, lying still on their side: the same body a ragdoll comes to rest as
+          <DeadPlayer
+            avatar={recruitScene.body.avatar}
+            pieceScale={pieceScale}
+            spriteSheetSrc={recruitScene.body.spriteSheetSrc}
+            color={recruitScene.body.color}
+            zIndex={getSortZIndex(level, recruitScene.body.y) - 20001}
+            body={getRestingBody(recruitScene.body, pieceScale, grid.rowStep * grid.scale)}
+          />
+        ) : <RecruitBody src={`/levels/dead/${recruitScene.body.avatar}.png`} style={{
           left: `${recruitScene.body.x}px`,
           top: `${recruitScene.body.y}px`,
           height: `${pieceScale * RECRUIT_BODY_SIZE}px`
-        }} />}
+        }} />)}
         {recruitScene && !getIsDialogueLog() && (
           <RecruitPrompt style={{ left: `${recruitScene.prompt.x}px`, top: `${recruitScene.prompt.y}px`, transform: `translate(-50%, -100%) scale(${overlayScale}) translateX(${RECRUIT_PROMPT_SHIFT}px)` }}>
             <ChoiceButton choice="recruit" recruitChoice={recruitChoice} onChooseRecruit={chooseRecruit} />

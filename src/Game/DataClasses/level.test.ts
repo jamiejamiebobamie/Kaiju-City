@@ -749,8 +749,19 @@ describe('cutscenes', () => {
     expect(gm.getIsWalkable(teammate.getTileIndex())).toBe(true);
   });
 
-  it('after the fight the player stands over the rival, and the teammate is offset', () => {
+  it('on the Rooftop the team stands either side of her, turned to her', () => {
     const gm = makeGame(LEVELS.rooftop);
+    while (gm.cutscene) gm.stepPieces();
+    gm.stepPieces();
+    gm.startRecruitScene();
+    const [player, teammate] = gm.getPieces();
+    expect(teammate.charLocation.x).toBeLessThan(player.charLocation.x);
+    expect(player.facingDir).toBe('downLeft');
+    expect(teammate.facingDir).toBe('downRight');
+  });
+
+  it('after the fight the player stands over the rival, and the teammate is offset', () => {
+    const gm = makeGame(LEVELS.rapidTransit);
     while (gm.cutscene) gm.stepPieces();
     gm.stepPieces();
     const rival = gm.rivalPiece;
@@ -763,7 +774,7 @@ describe('cutscenes', () => {
     const [player, teammate] = gm.getPieces();
     expect(player.charLocation.y).toBeLessThan(gm.recruitScene.body.y);
     expect(teammate.charLocation.x).toBeLessThan(player.charLocation.x);
-    expect(gm.speech.lines).toEqual(getRecruitLines('her', []));
+    expect(gm.speech.lines).toEqual(getRecruitLines('him', []));
     expect(gm.recruitScene.shot.isFollowingMouse).toBeFalsy(); // the camera holds still for the choice
   });
 

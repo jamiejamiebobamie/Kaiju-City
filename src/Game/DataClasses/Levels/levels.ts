@@ -124,11 +124,14 @@ type Rival = {
   touchPhase: string; // the phase where they touch the Kaiju part. the fight starts once it plays out.
   spot: { x: number; y: number }; // where the fight starts from, in scene pixels
   recruitSpot: { x: number; y: number }; // where they lie for the player's choice, in scene pixels
+  isStandingBeside?: boolean; // for the choice, the team stands either side of them (the Rooftop, below the RIP stone)
   pronoun: string;
   intro: {
     focus: { x: number; y: number }; // what the camera pulls in on, in scene pixels
     zoomScale: number;
     lines: Array<{ name?: string; text: string; x?: number; y?: number; isTeammate?: boolean; isFlipped?: boolean }>;
+    isTouchWide?: boolean; // the touch is shown on the whole scene, so all of the Kaiju part is in it
+    afterTouch?: { name: string; text: string }; // the bystander's line once the power is in them, close on them
   };
 };
 
@@ -376,7 +379,7 @@ const ROOFTOP_SCENE = {
   rival: {
     ...RIVAL_LOOK,
     avatar: 'black_female',
-    abilities: ['death', 'glass', 'metal'], touchPhase: 'headTouched', spot: { x: 733, y: 542 }, recruitSpot: { x: 735, y: 490 }, pronoun: 'her',
+    abilities: ['death', 'glass', 'metal'], touchPhase: 'headTouched', spot: { x: 733, y: 542 }, recruitSpot: { x: 712, y: 345 }, isStandingBeside: true, pronoun: 'her',
     startFacing: 'up',
     introSortY: 600, // stands in front of the head
     intro: {
@@ -387,7 +390,10 @@ const ROOFTOP_SCENE = {
         { name: 'Punk Girl', text: "It's my ancestors... they're calling to me from the graves.", isFlipped: false },
         { isTeammate: true, text: 'Step away from that!' },
         { name: 'Punk Girl', text: "They're so ANGRY. They want me to take it!", isFlipped: false }
-      ]
+      ],
+      // the touch plays out on the whole Kaiju part, then a beat on her, filled with its power. draft words.
+      isTouchWide: true,
+      afterTouch: { name: 'Punk Girl', text: 'I can feel their power flowing through me!' }
     }
   },
   phases: [{ id: 'head', label: 'Kaiju head' }, { id: 'headTouched', label: 'Touch part' }],

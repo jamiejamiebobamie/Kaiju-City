@@ -50,7 +50,8 @@ export const CUTSCENE = {
   clonesLookMs: 2200,
   exitLookMs: 1600, // the camera holds on a way out that has just opened
   exitLookFarRows: 6, // further than this from the Agent, it shows the whole scene instead
-  choiceShotLiftRows: 1.5, // the Recruit or Terminate shot sits this much higher, so the team stands lower in it // the Lab trap: the camera holds on the clones, stepped out of their tanks
+  choiceShotLiftRows: 1.5,
+  besideColumns: 2.5, // standing beside the bystander, this far either side // the Recruit or Terminate shot sits this much higher, so the team stands lower in it // the Lab trap: the camera holds on the clones, stepped out of their tanks
   recruitZoomScale: 1.3,
   recruitSpeechRows: 2.4, // how far above a character their words sit: just over their head
   speechTopY: 200, // words sit no higher than this, or they would go off the top of a wide shot or under the top buttons
@@ -737,7 +738,7 @@ export class GameManager {
 
     // the whole level, a pull in on the bystander and the part, their words, then the touch
     startRivalIntro() {
-        const { touchPhase, intro: { focus, zoomScale, lines } } = this.level.rival;
+        const { touchPhase, intro: { focus, zoomScale, lines, isTouchWide, afterTouch } } = this.level.rival;
         this.addRival();
         const rival = this.rivalPiece;
         const [, teammate] = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
@@ -765,7 +766,11 @@ export class GameManager {
             ...lines.flatMap(({ isTeammate, name, text, isFlipped }) => isTeammate ? getTeammateSteps(text) : [
                 { shot, ms: getSpeechMs(text), speech: { ...this.getSpeechOver(rival, name, text), isFlipped } }
             ]),
-            { shot, ms: CUTSCENE.touchMs, phase: touchPhase, onStart: () => { rival.isPlain = false; } }
+            { shot: isTouchWide ? { isWide: true } : shot, ms: CUTSCENE.touchMs, phase: touchPhase, onStart: () => { rival.isPlain = false; } },
+            ...(afterTouch ? [
+                { shot: closeShot({ x: rival.charLocation.x, y: rival.charLocation.y }), ms: CUTSCENE.pullInMs },
+                { shot: closeShot({ x: rival.charLocation.x, y: rival.charLocation.y }), ms: getSpeechMs(afterTouch.text), speech: () => this.getSpeechOver(rival, afterTouch.name, afterTouch.text) }
+            ] : [])
         ]);
     }
 
@@ -1132,13 +1137,19 @@ export class GameManager {
         const getTileNear = (columns, rows) => this.gameBoardManager.getClosestWalkableTileToLocation({ x: x + columns * colStep * scale, y: y + rows * rowStep * scale });
         const [player, teammate] = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
 
-        const stand = (piece, tile) => {
+        const stand = (piece, tile, facingDir = 'down') => {
             if (piece.getIsDead()) piece.respawn(this.accTime);
             piece.initCharLocation(true, tile);
-            piece.facingDir = 'down';
+            piece.facingDir = facingDir;
         };
-        stand(player, getTileNear(0, -CUTSCENE.recruitStandRows));
-        if (teammate) stand(teammate, getTileNear(-3, -CUTSCENE.recruitStandRows));
+        // 'beside': the teammate on the bystander's left and the player on the right, both turned to them
+        if (this.level.rival.isStandingBeside) {
+            stand(player, getTileNear(CUTSCENE.besideColumns, -0.5), 'downLeft');
+            if (teammate) stand(teammate, getTileNear(-CUTSCENE.besideColumns, -0.5), 'downRight');
+        } else {
+            stand(player, getTileNear(0, -CUTSCENE.recruitStandRows));
+            if (teammate) stand(teammate, getTileNear(-3, -CUTSCENE.recruitStandRows));
+        }
         // a clean field for the choice: no powers left on the tiles, and no portals
         this.gameBoardManager.getTilesInFlatArray().forEach(tile => tile.clearTileStatus());
         this.gameBoardManager.updateWormholes(Infinity);
@@ -1160,7 +1171,8 @@ export class GameManager {
             : { point: { x, y: y - CUTSCENE.recruitShotRows * rowStep * scale }, zoomScale, isCut: true };
         this.recruitScene = {
             shot,
-            body: { x, y, avatar },
+            // drawn from their own sprite sheet, lying where they fell
+            body: { x, y, avatar, spriteSheetSrc: this.rivalPiece && this.rivalPiece.spriteSheetSrc, color: this.rivalPiece && this.rivalPiece.color },
             prompt: { x: player.charLocation.x, y: player.charLocation.y - CUTSCENE.recruitButtonRows * rowStep * scale }
         };
     }
