@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
 import { TILE_STATUSES_AND_ABILITY_DATA } from "Utils/gameState";
 import DIALOGUE from "Game/DataClasses/Dialogue/dialogue.json";
+import SUMMARIES from "./summaries.json";
+import { fillSummary, getCardStatus, getPathCards, getSummaryCards } from "./summaryCards";
 import { DEFAULT_PATH, getIsBranchingSection, getSectionItems, RIVALS, STORY } from "./storyPath";
 
 /*
@@ -196,7 +198,10 @@ const VersionLabel = styled.button`
 `;
 
 const Side = styled.aside`
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
   padding: 14px;
   border-left: 1px solid ${LOOK.line};
   background: ${LOOK.panel};
@@ -225,6 +230,43 @@ const SaveButton = styled.button`
   cursor: ${props => props.disabled ? "default" : "pointer"};
   font: inherit;
   font-weight: 600;
+`;
+
+// the line editor, and the keys, take what room they need; the story so far scrolls below them
+const SideTop = styled.div`
+  flex: 0 1 auto;
+  max-height: 55%;
+  overflow-y: auto;
+`;
+
+const StoryPanel = styled.div`
+  flex: 1 1 0;
+  min-height: 120px;
+  overflow-y: auto;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid ${LOOK.line};
+`;
+
+const StoryHead = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: ${LOOK.accent};
+`;
+
+const Card = styled.div`
+  margin-bottom: 10px;
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 1.45;
+  background: ${props => props.$isCurrent ? "rgba(109, 255, 160, 0.08)" : LOOK.bg};
+  border: 1px solid ${props => props.$isCurrent ? LOOK.accent : LOOK.line};
+  & h4 { margin: 0 0 4px; font-size: 12px; color: ${LOOK.dim}; }
 `;
 
 const Keys = styled.div`
@@ -262,6 +304,21 @@ export const DialogueViewer = () => {
   const rowRefs = useRef({});
   const sectionRefs = useRef([]);
   const refFor = key => element => { rowRefs.current[key] = element; };
+
+  // the story-so-far cards, and which of them need writing, as of the dialogue being edited
+  const summaryCards = useMemo(() => getSummaryCards(scenes), [scenes]);
+  const storedSummaries = SUMMARIES.cards;
+  const staleCount = summaryCards.filter(card => getCardStatus(card, storedSummaries) != "ok").length;
+  const [copyNote, setCopyNote] = useState("");
+  const askForSummaries = async () => {
+    const request = "Please rebuild the Kaiju City story summaries (dialogue viewer step 4: export the out-of-date cards, write them, save).";
+    try {
+      await navigator.clipboard.writeText(request);
+      setCopyNote("Copied: paste it to Claude in a Claude Code session.");
+    } catch {
+      setCopyNote(`Ask Claude: "${request}"`);
+    }
+  };
 
   const sections = useMemo(() => STORY.map((section, index) => ({ ...section, index, items: getSectionItems(index, path, scenes), isBranching: getIsBranchingSection(index, scenes) })), [path, scenes]);
 
@@ -472,6 +529,7 @@ export const DialogueViewer = () => {
       </Script>
 
       <Side>
+        <SideTop>
         {selectedLine ? (() => {
           const { line, sceneId } = selectedLine;
           const isStageDirection = !line.speaker;
@@ -523,6 +581,31 @@ export const DialogueViewer = () => {
           ← → a branch's versions<br />
           Enter open a branch · Esc close it, back up to it
         </Keys>
+        </SideTop>
+        <StoryPanel>
+          <StoryHead>
+            <span>Story so far, on this path</span>
+            <SaveButton disabled={!staleCount} onClick={askForSummaries} title="Claude writes them in a Claude Code session">
+              {staleCount ? `Regenerate summaries (${staleCount})` : "All up to date"}
+            </SaveButton>
+          </StoryHead>
+          {copyNote && <div style={{ color: LOOK.dim, fontSize: 12, marginBottom: 8 }}>{copyNote}</div>}
+          {isDirty && <div style={{ color: LOOK.branch, fontSize: 12, marginBottom: 8 }}>Save your edits first: summaries are written from the saved dialogue.</div>}
+          {getPathCards(summaryCards, path, currentSection).map(card => {
+            const status = getCardStatus(card, storedSummaries);
+            const stored = storedSummaries[card.id];
+            return (
+              <Card key={card.id} $isCurrent={card.sectionIndex == currentSection}>
+                <h4>
+                  {card.sectionIndex + 1}. {card.label}
+                  {status == "stale" && <Tag $color={LOOK.branch}>out of date</Tag>}
+                  {status == "missing" && <Tag $color="#ff6b6b">not written yet</Tag>}
+                </h4>
+                {stored ? fillSummary(stored.text, path.avatar).replace(/\{power\}/g, path.powerName) : <span style={{ color: LOOK.dim }}>This version of the section has no summary yet.</span>}
+              </Card>
+            );
+          })}
+        </StoryPanel>
       </Side>
     </Page>
   );

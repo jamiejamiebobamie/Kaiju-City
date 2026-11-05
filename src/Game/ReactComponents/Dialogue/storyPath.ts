@@ -37,7 +37,8 @@ export const RIVALS = [
 ];
 const POSSESSIVES = { him: 'his', her: 'her' };
 
-export type StoryPath = { avatar: 'guy' | 'girl'; powerName: string; choices: Record<string, 'recruit' | 'terminate'> };
+// 'neutral': the summaries' own reading, with the player and the teammate by role, not as Guy or Girl
+export type StoryPath = { avatar: 'guy' | 'girl' | 'neutral'; powerName: string; choices: Record<string, 'recruit' | 'terminate'> };
 
 export const DEFAULT_PATH: StoryPath = { avatar: 'guy', powerName: 'Wildfire', choices: { punk: 'recruit', black_female: 'recruit', mermaid: 'recruit' } };
 
@@ -52,8 +53,8 @@ const getName = (id: string) => (ROSTER.find(entry => entry.id == id) || { name:
 // who says it, by name, on this path: the teammate is whichever of Guy and Girl the player isn't
 export const getSpeakerName = (speaker: string | undefined, path: StoryPath) => {
   if (!speaker) return '';
-  if (speaker == 'player') return `${getName(path.avatar)} (you)`;
-  if (speaker == 'teammate') return getName(path.avatar == 'guy' ? 'girl' : 'guy');
+  if (speaker == 'player') return path.avatar == 'neutral' ? 'The player' : `${getName(path.avatar)} (you)`;
+  if (speaker == 'teammate') return path.avatar == 'neutral' ? 'The teammate' : getName(path.avatar == 'guy' ? 'girl' : 'guy');
   if (speaker == 'agent') return 'Agent';
   if (speaker == 'recruit') return 'A recruit';
   return speaker;
@@ -68,6 +69,9 @@ const getPast = (rival: string, path: StoryPath) => {
 };
 
 const PAST_LABELS = { none: 'No one met yet', recruit: 'Recruited the last one', terminate: 'Terminated the last one', allSame: 'Did the same with everyone', mixed: 'Recruited some, terminated some' };
+
+// pronoun words fit the avatar; in the summaries' own reading they stay as written, for either
+const fillAvatar = (text: string, path: StoryPath) => path.avatar == 'neutral' ? text : fillPronouns(text, path.avatar);
 
 const fill = (text: string, values: Record<string, string>) => text.replace(/\{(\w+)\}/g, (all, name) => values[name] ?? all);
 
@@ -88,7 +92,7 @@ export const getSectionItems = (sectionIndex: number, path: StoryPath, scenes: R
     const values = { power: path.powerName, him: rival ? rival.pronoun : 'them', his: rival ? POSSESSIVES[rival.pronoun] : 'their', last: '' };
     const toLine = (line: DialogueLine, extraTags: Array<string> = []): StoryLine => ({
       kind: 'line', key: line.id, sceneId, line, speakerName: line.ray ? '' : getSpeakerName(line.speaker, path),
-      text: line.ray ? '[ The Agent fires the ray: the team\'s powers drain away ]' : fillPronouns(fill(line.text || '', values), path.avatar),
+      text: line.ray ? '[ The Agent fires the ray: the team\'s powers drain away ]' : fillAvatar(fill(line.text || '', values), path),
       tags: [...(line.isBalloon ? ['balloon'] : []), ...(line.isAlarm ? ['siren'] : []), ...(line.note == 'jamie' ? ['Jamie'] : []), ...extraTags]
     });
 
@@ -100,7 +104,7 @@ export const getSectionItems = (sectionIndex: number, path: StoryPath, scenes: R
         const last = past == 'allSame' ? path.choices[RIVALS[0].id] : '';
         return {
           label: PAST_LABELS[past],
-          items: scene.lines.filter(line => line.when && line.when.past == past).map(line => ({ ...toLine(line), text: fillPronouns(fill(line.text || '', { ...values, last }), path.avatar) }))
+          items: scene.lines.filter(line => line.when && line.when.past == past).map(line => ({ ...toLine(line), text: fillAvatar(fill(line.text || '', { ...values, last }), path) }))
         };
       });
       items.push({ kind: 'branch', key: `${sceneId}@${sectionIndex}`, sceneId, label: 'The teammate, over the downed bystander', versions, taken: pasts.indexOf(taken) });
