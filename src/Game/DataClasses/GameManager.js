@@ -84,7 +84,9 @@ const RECRUIT_ORDER = ['punk', 'black_female', 'mermaid']; // as they are met in
 export const getRecruitLines = (pronoun, pastChoices = []) => {
     // the words are in Dialogue/dialogue.json ('recruit.choice'), one set for each way the earlier choices went
     const last = pastChoices[pastChoices.length - 1];
-    const past = pastChoices.length >= 2 ? (pastChoices.every(choice => choice == last) ? 'allSame' : 'mixed') : (last || 'none');
+    // 'allSame': recruited everyone; 'allTerminate': terminated everyone (no crew to grow)
+    const isAllSame = pastChoices.length >= 2 && pastChoices.every(choice => choice == last);
+    const past = isAllSame ? (last == 'terminate' ? 'allTerminate' : 'allSame') : pastChoices.length >= 2 ? 'mixed' : (last || 'none');
     return getRecruitChoiceLines(past, { him: pronoun, his: POSSESSIVES[pronoun] || 'their', last: last || '' });
 };
 

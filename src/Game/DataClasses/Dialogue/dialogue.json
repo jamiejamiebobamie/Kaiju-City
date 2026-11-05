@@ -716,6 +716,33 @@
         },
         {
           "speaker": "teammate",
+          "text": "I guess we're going to terminate {him}, like the others?",
+          "when": {
+            "past": "allTerminate"
+          },
+          "note": "draft",
+          "id": "recruit.choice.allTerminate.0"
+        },
+        {
+          "speaker": "teammate",
+          "text": "There's no crew to grow... it's just been the two of us.",
+          "when": {
+            "past": "allTerminate"
+          },
+          "note": "draft",
+          "id": "recruit.choice.allTerminate.1"
+        },
+        {
+          "speaker": "teammate",
+          "text": "We could recruit {him}, and start one... or take {his} power, and it would be fatal for {him}.",
+          "when": {
+            "past": "allTerminate"
+          },
+          "note": "draft",
+          "id": "recruit.choice.allTerminate.2"
+        },
+        {
+          "speaker": "teammate",
           "text": "We have recruited, and we have terminated...",
           "when": {
             "past": "mixed"

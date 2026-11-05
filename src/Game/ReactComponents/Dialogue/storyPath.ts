@@ -64,11 +64,11 @@ export const getSpeakerName = (speaker: string | undefined, path: StoryPath) => 
 const getPast = (rival: string, path: StoryPath) => {
   const earlier = RIVALS.slice(0, RIVALS.findIndex(({ id }) => id == rival)).map(({ id }) => path.choices[id]);
   const last = earlier[earlier.length - 1];
-  if (earlier.length >= 2) return earlier.every(choice => choice == last) ? 'allSame' : 'mixed';
+  if (earlier.length >= 2) return earlier.every(choice => choice == last) ? (last == 'terminate' ? 'allTerminate' : 'allSame') : 'mixed';
   return last || 'none';
 };
 
-const PAST_LABELS = { none: 'No one met yet', recruit: 'Recruited the last one', terminate: 'Terminated the last one', allSame: 'Did the same with everyone', mixed: 'Recruited some, terminated some' };
+const PAST_LABELS = { none: 'No one met yet', recruit: 'Recruited the last one', terminate: 'Terminated the last one', allSame: 'Recruited everyone', allTerminate: 'Terminated everyone', mixed: 'Recruited some, terminated some' };
 
 // pronoun words fit the avatar; in the summaries' own reading they stay as written, for either
 const fillAvatar = (text: string, path: StoryPath) => path.avatar == 'neutral' ? text : fillPronouns(text, path.avatar);
@@ -90,15 +90,17 @@ export const getSectionItems = (sectionIndex: number, path: StoryPath, scenes: R
     if (!scene) return;
     const rival = RIVALS.find(({ id }) => id == section.rival);
     const values = { power: path.powerName, him: rival ? rival.pronoun : 'them', his: rival ? POSSESSIVES[rival.pronoun] : 'their', last: '' };
+    // with no recruits, the game gives a recruit's lines to the player
+    const getLineSpeaker = (speaker?: string) => speaker == 'recruit' && !getIsAnyRecruited(path, sectionIndex) ? 'player' : speaker;
     const toLine = (line: DialogueLine, extraTags: Array<string> = []): StoryLine => ({
-      kind: 'line', key: line.id, sceneId, line, speakerName: line.ray ? '' : getSpeakerName(line.speaker, path),
+      kind: 'line', key: line.id, sceneId, line, speakerName: line.ray ? '' : getSpeakerName(getLineSpeaker(line.speaker), path),
       text: line.ray ? '[ The Agent fires the ray: the team\'s powers drain away ]' : fillAvatar(fill(line.text || '', values), path),
       tags: [...(line.isBalloon ? ['balloon'] : []), ...(line.isAlarm ? ['siren'] : []), ...(line.note == 'jamie' ? ['Jamie'] : []), ...extraTags]
     });
 
     if (sceneId == 'recruit.choice') {
       // one version for each way the earlier choices could have gone
-      const pasts = ['none', 'recruit', 'terminate', 'allSame', 'mixed'];
+      const pasts = ['none', 'recruit', 'terminate', 'allSame', 'allTerminate', 'mixed'];
       const taken = getPast(section.rival as string, path);
       const versions = pasts.map(past => {
         const last = past == 'allSame' ? path.choices[RIVALS[0].id] : '';

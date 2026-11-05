@@ -133,13 +133,6 @@
         "1hsx67y"
       ]
     },
-    "10:1oumc3h": {
-      "section": "Aquarium",
-      "text": "In the grand hall of the Kaiju City Aquarium, among fish tanks and Kaiju skeletons displayed like dinosaur fossils, a worker has taken up a giant Kaiju tongue and declares 'I'M A MERMAID!!'. {teammate} sees the pattern now: the Kaiju radiation scrambles people's minds, 'like the others'. After the fight (the skylight shatters and the hall floods), {teammate} expects to terminate her like the others, but {player} breaks the pattern and recruits her: the only one spared.",
-      "ancestorHashes": [
-        "ptrr8i"
-      ]
-    },
     "10:10ys3xl": {
       "section": "Aquarium",
       "text": "In the grand hall of the Kaiju City Aquarium, among fish tanks and Kaiju skeletons displayed like dinosaur fossils, a worker has taken up a giant Kaiju tongue and declares 'I'M A MERMAID!!'. {teammate} sees the pattern now: the Kaiju radiation scrambles people's minds, 'like the others'. After the fight (the skylight shatters and the hall floods), {teammate} expects to recruit her like the others, but {player} breaks the pattern and terminates her.",
@@ -155,13 +148,6 @@
         "1hsx67y"
       ]
     },
-    "10:3ww1g6": {
-      "section": "Aquarium",
-      "text": "In the grand hall of the Kaiju City Aquarium, among fish tanks and Kaiju skeletons displayed like dinosaur fossils, a worker has taken up a giant Kaiju tongue and declares 'I'M A MERMAID!!'. {teammate} sees the pattern now: the Kaiju radiation scrambles people's minds, 'like the others'. After the fight (the skylight shatters and the hall floods), {teammate} expects to terminate her like the others, and {player} does. Every changed person the team has met is dead, and their powers belong to the player.",
-      "ancestorHashes": [
-        "ptrr8i"
-      ]
-    },
     "11:jo2gbu": {
       "section": "Peninsula 4",
       "text": "The Agent reports the mermaid is in re-education ('mental state: she is a mermaid... the tail is a lot'). Then every approach to the city fills with Kaiju at once, and the Agent calls it everything they have: hold the Peninsula, whatever it takes. The war on the coast reaches its peak.",
@@ -169,7 +155,7 @@
         "1eaevd6",
         "1dqrfmp",
         "sqirrx",
-        "1ag2znt"
+        "dds3o1"
       ]
     },
     "11:1x9wk4k": {
@@ -179,7 +165,7 @@
         "hcxmn5",
         "2apelu",
         "18kjet2",
-        "1huhcmy"
+        "30q8ua"
       ]
     },
     "12:1n8r7rt": {
@@ -189,11 +175,11 @@
         "11yyvbi",
         "12l6ei5",
         "1v4b4s9",
-        "rl8d91",
+        "1bfg2rh",
         "rivtkf",
         "37lds0",
         "1q6mfpw",
-        "186vmns"
+        "1q4s45s"
       ]
     },
     "13:2y6rol": {
@@ -203,7 +189,7 @@
         "1quhgch",
         "158atim",
         "1qyjvhu",
-        "p0dmuu",
+        "1eqp7tq",
         "g1futs",
         "kds7e3",
         "hxtkfr"
@@ -213,7 +199,7 @@
       "section": "Lab trap",
       "text": "The Lab reveals itself as a trap. The Agent thanks the soldiers, says their powers were only on loan, and introduces 'the new team': clones of himself stepping out of the tanks, the specimens seen before. {teammate} realizes what was in the tanks. The Agent reclaims the powers as 'Lab property' and fires a ray that drains the team completely: every power they harvested goes with it. The Agent orders them seized and {player} and {teammate} flee alone. The authority that gave them purpose turns on them, and no one is left to help.",
       "ancestorHashes": [
-        "p8l5fn"
+        "gunkyj"
       ]
     },
     "14:a47dvu": {
@@ -223,17 +209,10 @@
         "1tvi8fc",
         "7hveil",
         "xbeb41",
-        "b5gik5",
+        "1ljtfyl",
         "edh24r",
         "bn7p32",
         "tbe3yi"
-      ]
-    },
-    "14:sdmycq": {
-      "section": "Sewer 1",
-      "text": "Escaped into the dark, wet sewer below the Lab, {teammate} works it out aloud: the Lab only lent their powers through nano-tech, but powers gained by touching Kaiju parts, the way the bystanders got theirs, last. If they can find and touch Kaiju parts, they can get their powers back and fight back. A doorway begins to glow. The turn: the thing they were taught to fear is their only way to fight. (On this path the sewer's first and last lines still come from 'a recruit', though there are none.)",
-      "ancestorHashes": [
-        "go3u1"
       ]
     },
     "15:1u25y4r": {
@@ -243,11 +222,11 @@
         "1px4qs",
         "s6clel",
         "1tl3d61",
-        "1puou39",
+        "lx6kkt",
         "17a4vxv",
         "etlhvm",
         "1qufveu",
-        "1vxt3k1"
+        "3p5ewa"
       ]
     },
     "16:wpacjj": {
@@ -257,11 +236,11 @@
         "p8wrot",
         "ob1582",
         "1o5hbqe",
-        "tdg8l6",
+        "ceowo2",
         "17g5m0c",
         "1o3psf3",
         "14d0vrf",
-        "w9327i"
+        "uvjbnb"
       ]
     },
     "17:1w9ri76": {
@@ -271,11 +250,11 @@
         "1wjrf9o",
         "1gf5qbf",
         "reegbj",
-        "qr405f",
+        "1ie2g4r",
         "9k8b2l",
         "1oqem46",
         "4pwm8y",
-        "1eie13b"
+        "tjw3hq"
       ]
     },
     "18:rgxdw5": {
@@ -285,11 +264,32 @@
         "14jto3c",
         "ad7i1h",
         "1vjrlrd",
-        "9aonp9",
+        "kssd8l",
         "zw7gfr",
         "j6d95e",
         "rj6p1a",
-        "svc8r5"
+        "1sr44tm"
+      ]
+    },
+    "10:1851mut": {
+      "section": "Aquarium",
+      "text": "In the grand hall of the Kaiju City Aquarium, among fish tanks and Kaiju skeletons displayed like dinosaur fossils, a worker has taken up a giant Kaiju tongue and declares 'I'M A MERMAID!!'. {teammate} sees the pattern now: the Kaiju radiation scrambles people's minds, 'like the others'. After the fight (the skylight shatters and the hall floods), {teammate} expects to terminate her like the others, and admits there is no crew to grow: it has only ever been the two of them. {player} breaks the pattern and recruits her, starting a crew at last: the only one spared.",
+      "ancestorHashes": [
+        "ptrr8i"
+      ]
+    },
+    "10:1gzij7y": {
+      "section": "Aquarium",
+      "text": "In the grand hall of the Kaiju City Aquarium, among fish tanks and Kaiju skeletons displayed like dinosaur fossils, a worker has taken up a giant Kaiju tongue and declares 'I'M A MERMAID!!'. {teammate} sees the pattern now: the Kaiju radiation scrambles people's minds, 'like the others'. After the fight (the skylight shatters and the hall floods), {teammate} expects to terminate her like the others, and notes it has only ever been the two of them, with no crew. {player} terminates her too. Every changed person the team has met is dead, and their powers belong to the player.",
+      "ancestorHashes": [
+        "ptrr8i"
+      ]
+    },
+    "14:18k9sln": {
+      "section": "Sewer 1",
+      "text": "Escaped into the dark, wet sewer below the Lab, {player} catches {you:his} breath: jumping into the sewers was quick thinking, and the Agent will never look down here. {teammate} works it out aloud: the Lab only lent their powers through nano-tech, but powers gained by touching Kaiju parts, the way the bystanders got theirs, last. If they can find and touch Kaiju parts, they can get their powers back and fight back. {player} spots a doorway beginning to glow. With no one else left, it is just the two of them; the thing they were taught to fear is their only way to fight.",
+      "ancestorHashes": [
+        "1iesi9t"
       ]
     }
   }
