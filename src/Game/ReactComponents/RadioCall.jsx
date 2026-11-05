@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import styled from "styled-components";
 import { getIsClickThrough } from "Game/DataClasses/DialogueLog";
 import { DialogueLogPanel } from "./DialogueLogPanel";
+import { ROSTER } from "Game/DataClasses/Avatars";
 
 /*
   A radio call from the Agent: its lines go to the dialogue log beside the monitor, as every conversation does,
@@ -70,7 +71,7 @@ export const RadioCall = ({ lines, playerAvatar, teammateAvatar, isResuming, onG
   const getAvatar = speaker => speaker == "agent" ? "agent" : speaker == "teammate" ? teammateAvatar : playerAvatar;
   const entries = script.slice(0, lineIndex + 1)
     .filter(({ choices }) => !choices)
-    .map(({ speaker, text }, key) => ({ key, who: speaker == "agent" ? "agent" : speaker, name: NAMES[speaker], text, avatar: getAvatar(speaker) }));
+    .map(({ speaker, text }, key) => ({ key, who: speaker == "agent" ? "agent" : speaker, name: speaker == "teammate" ? ((ROSTER.find(({ id }) => id == teammateAvatar) || {}).name || NAMES.teammate) : NAMES[speaker], text, avatar: getAvatar(speaker) }));
   const actions = isChoice ? line.choices.map(choice => ({ text: choice.text, onClick: () => choose(choice) }))
     : isLastLine ? [{ text: "Go!", onClick: onGo, isEnter: true }, { text: "Change powers", onClick: () => onChangePowers(line) }]
     : [];

@@ -52,7 +52,8 @@ export const CUTSCENE = {
   exitLookFarRows: 6, // further than this from the Agent, it shows the whole scene instead
   choiceShotLiftRows: 1.5,
   besideColumns: 2.5, // standing beside the bystander, this far either side
-  besideBodyRows: 0.6, // and the bystander lies this far down from their spot, on the first row of tiles // the Recruit or Terminate shot sits this much higher, so the team stands lower in it // the Lab trap: the camera holds on the clones, stepped out of their tanks
+  besideBodyRows: 0.6, // and the bystander lies this far down from their spot, on the first row of tiles
+  besideBodyDropRows: 0.5, // drawn this much lower, so the body lies on the tiles rather than over the graves behind // the Recruit or Terminate shot sits this much higher, so the team stands lower in it // the Lab trap: the camera holds on the clones, stepped out of their tanks
   recruitZoomScale: 1.3,
   recruitSpeechRows: 2.4, // how far above a character their words sit: just over their head
   speechTopY: 200, // words sit no higher than this, or they would go off the top of a wide shot or under the top buttons
@@ -156,6 +157,7 @@ export class GameManager {
         this.agentsDropped = 0;
         this.wideShotMs = 0; // what is left of the current wide shot. the game holds still during it.
         this.liveWideShotMs = 0; // what is left of a wide shot the game keeps running through
+        this.holdMs = 0; // the game waits this long, as the log comes apart before a fight
         this.unlockMessage = '';
         this.unlockImage = '';
         this.isEditingTiles = false; // dev: the game holds still and shows the whole level
@@ -226,6 +228,10 @@ export class GameManager {
     getIsWideShot = () => {
         const isAgentEntering = this.getPieces().some(({ isEntering, isDead }) => isEntering && !isDead);
         return !!this.cutscene || !!this.recruitScene || this.isEditingTiles || this.wideShotMs > WIDE_SHOT.pullMs || this.liveWideShotMs > 0 || isAgentEntering;
+    }
+
+    holdFor(ms) {
+        this.holdMs = Math.max(this.holdMs, ms);
     }
 
     setIsEditingTiles(isEditingTiles) {
@@ -664,10 +670,17 @@ export class GameManager {
         return this.talks.some(({ lines, index, isWaiting, msLeft, isActive }) => isActive() && (index < lines.length || isWaiting || msLeft > 0));
     }
 
+    // the teammate goes by their own name in what is said: Guy or Girl
+    getTeammateName() {
+        const [, teammate] = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
+        const entry = teammate && ROSTER.find(({ id }) => id == teammate.avatar);
+        return entry ? entry.name : 'Teammate';
+    }
+
     // who said it, for the log's color and portrait
     addToLog({ name, text, avatar }) {
         const player = this.gameBoardPiecesManager.getPlayerPiece();
-        const who = avatar == 'agent' ? 'agent' : name == 'Teammate' ? 'teammate' : player && avatar == player.avatar ? 'player' : 'other';
+        const who = avatar == 'agent' ? 'agent' : name == this.getTeammateName() ? 'teammate' : player && avatar == player.avatar ? 'player' : 'other';
         this.dialogueLog = [...this.dialogueLog, { key: this.dialogueLog.length, who, name, text, avatar, chain: this.logChain }];
     }
 
@@ -733,7 +746,7 @@ export class GameManager {
             const heldShot = { ...closeShot, panMs: undefined };
             steps.push(
                 { shot: heldShot, arrivals: [{ piece: teammate, startTile: getTile(CUTSCENE.arrivalTeammateStart) }] },
-                { shot: heldShot, ms: getSpeechMs(ARRIVAL_LINE), speech: { name: 'Teammate', text: ARRIVAL_LINE, x, y: y - CUTSCENE.recruitSpeechRows * rowStep * scale, isShout: true } }
+                { shot: heldShot, ms: getSpeechMs(ARRIVAL_LINE), speech: { name: this.getTeammateName(), text: ARRIVAL_LINE, x, y: y - CUTSCENE.recruitSpeechRows * rowStep * scale, isShout: true } }
             );
         }
         this.startCutscene(steps);
@@ -755,7 +768,7 @@ export class GameManager {
             if (!teammate) return [];
             const { x, y } = teammate.charLocation;
             const teammateShot = closeShot({ x, y: y - CUTSCENE.shotHeadRows * rowStep * scale });
-            const speech = { name: 'Teammate', text, x, y: y - CUTSCENE.recruitSpeechRows * rowStep * scale, avatar: teammate.avatar };
+            const speech = { name: this.getTeammateName(), text, x, y: y - CUTSCENE.recruitSpeechRows * rowStep * scale, avatar: teammate.avatar };
             return [
                 { shot: teammateShot, ms: CUTSCENE.pullInMs },
                 { shot: teammateShot, ms: getSpeechMs(text), speech },
@@ -810,7 +823,7 @@ export class GameManager {
     startVisitScene() {
         const [, teammate] = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
         if (!teammate) return;
-        this.startCutscene(this.level.visitLines.map(text => ({ shot: { isWide: true }, ms: getSpeechMs(text), speech: this.getSpeechOver(teammate, 'Teammate', text) })));
+        this.startCutscene(this.level.visitLines.map(text => ({ shot: { isWide: true }, ms: getSpeechMs(text), speech: this.getSpeechOver(teammate, this.getTeammateName(), text) })));
     }
 
     // the whole map, to show where to go, then in on the player as in a battle
@@ -829,7 +842,7 @@ export class GameManager {
         const playerName = ROSTER.find(({ id }) => id == player.avatar).name;
         const getSpeech = ({ who, text }) => {
             if (who == 'agent') return this.getAgentSpeech(text, speechSpot);
-            return who == 'teammate' ? this.getSpeechOver(teammate, 'Teammate', text) : this.getSpeechOver(player, playerName, text);
+            return who == 'teammate' ? this.getSpeechOver(teammate, this.getTeammateName(), text) : this.getSpeechOver(player, playerName, text);
         };
         this.getPieces().forEach(piece => { piece.facingDir = 'up'; });
         const shot = { isWide: true };
@@ -940,7 +953,7 @@ export class GameManager {
                 return [rayStep];
             }
             const speaker = getSpeaker(who);
-            const name = who == 'teammate' ? 'Teammate' : speaker && getName(speaker);
+            const name = who == 'teammate' ? this.getTeammateName() : speaker && getName(speaker);
             const speech = speaker ? this.getSpeechOver(speaker, name, text) : this.getAgentSpeech(text, speechSpot);
             // once the beam has done its work, the glow is gone
             const step = { shot: { ...shot }, ms: getSpeechMs(text), phase, speech, onStart: () => { if (this.rayBeam) this.endRay(); lastShot = step.shot; } };
@@ -1000,7 +1013,7 @@ export class GameManager {
         const speakers = this.followers.length ? this.followers : [player];
         let recruitLines = 0;
         const getSpeech = ({ who, text }) => {
-            if (who == 'teammate') return this.getSpeechOver(teammate, 'Teammate', text);
+            if (who == 'teammate') return this.getSpeechOver(teammate, this.getTeammateName(), text);
             const speaker = who == 'player' ? player : speakers[recruitLines++ % speakers.length];
             return this.getSpeechOver(speaker, getName(speaker), text);
         };
@@ -1086,7 +1099,7 @@ export class GameManager {
         const { speechSpot } = this.level.trap;
         const lines = [
             { name: 'Agent', text: agent, getSpot: () => speechSpot },
-            ...(teammatePiece && !this.followers.includes(teammatePiece) ? [{ name: 'Teammate', text: this.isRecruitsFighting ? teammateWithRecruits : teammate, piece: teammatePiece }] : [])
+            ...(teammatePiece && !this.followers.includes(teammatePiece) ? [{ name: this.getTeammateName(), text: this.isRecruitsFighting ? teammateWithRecruits : teammate, piece: teammatePiece }] : [])
         ];
         let atMs = 1; // after the cutscene has cleared its own words
         lines.forEach(({ name, text, getSpot, piece }) => {
@@ -1189,9 +1202,9 @@ export class GameManager {
         const zoomScale = this.level.cameraZoom * CUTSCENE.recruitZoomScale;
         const recruitLines = teammate ? getRecruitLines(pronoun, RECRUIT_ORDER.filter(id => id != avatar && getRecruitChoices()[id]).map(id => getRecruitChoices()[id])) : [];
         // with the log, the teammate's words go there, each once
-        if (teammate && getIsDialogueLog()) this.addTalk(recruitLines.map(text => ({ name: 'Teammate', text, avatar: teammate.avatar, speakerIndex: teammate.pieceIndex })), () => !!this.recruitScene);
+        if (teammate && getIsDialogueLog()) this.addTalk(recruitLines.map(text => ({ name: this.getTeammateName(), text, avatar: teammate.avatar, speakerIndex: teammate.pieceIndex })), () => !!this.recruitScene);
         this.speech = teammate && !getIsDialogueLog() ? {
-            name: 'Teammate',
+            name: this.getTeammateName(),
             lines: recruitLines,
             x: teammate.charLocation.x,
             y: teammate.charLocation.y - CUTSCENE.recruitSpeechRows * rowStep * scale,
@@ -1204,7 +1217,8 @@ export class GameManager {
         this.recruitScene = {
             shot,
             // drawn from their own sprite sheet, lying where they fell
-            body: { x, y, avatar, spriteSheetSrc: this.rivalPiece && this.rivalPiece.spriteSheetSrc, color: this.rivalPiece && this.rivalPiece.color },
+            // a lying body draws a little above where it is placed: it is lowered onto the tile's ground, level with the team's feet
+            body: { x, y: y + (isStandingBeside ? CUTSCENE.besideBodyDropRows * rowStep * scale : 0), avatar, spriteSheetSrc: this.rivalPiece && this.rivalPiece.spriteSheetSrc, color: this.rivalPiece && this.rivalPiece.color },
             prompt: { x: player.charLocation.x, y: player.charLocation.y - CUTSCENE.recruitButtonRows * rowStep * scale }
         };
     }
@@ -1350,6 +1364,10 @@ export class GameManager {
         }
         if (this.wideShotMs > 0) {
             this.wideShotMs -= GAME_TICK.pieceMs;
+            return;
+        }
+        if (this.holdMs > 0) {
+            this.holdMs -= GAME_TICK.pieceMs;
             return;
         }
         this.accTime += GAME_TICK.pieceMs;

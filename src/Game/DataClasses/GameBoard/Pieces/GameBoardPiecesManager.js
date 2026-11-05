@@ -259,7 +259,7 @@ export class GameBoardPiecesManager {
         // create lookup of tileindex string: '0 1' to GamePiece color for 'redrawTiles' method
         return this.pieces.filter(p => p.isOnTiles && !p.isDead && !p.isTileHidden).reduce((lookup, piece) => {
             // no powers yet: a plain white tile, till they are given some and take their color
-            lookup[`${piece.tileIndex.i} ${piece.tileIndex.j}`] = piece.abilities.length ? piece.getColor() : POWERLESS_TILE_COLOR;
+            lookup[`${piece.tileIndex.i} ${piece.tileIndex.j}`] = piece.abilities.length && !piece.isPlain ? piece.getColor() : POWERLESS_TILE_COLOR; // no powers, or none showing (the Sewers, after the ray)
             return lookup;
         }, {});
     }

@@ -29,9 +29,14 @@ const drift = keyframes`
   to { background-position: 0 6cqw; }
 `;
 
-// slow enough to see it build; the words start once it has. it breaks apart strip by strip, right to left.
-const PANEL_MOTION = { buildMs: 1500, breakMs: 650, stripStaggerMs: 90, blocks: 18, strips: 9 };
-const BREAK_TOTAL_MS = PANEL_MOTION.breakMs + (PANEL_MOTION.strips - 1) * PANEL_MOTION.stripStaggerMs;
+// slow enough to see it build; the words start once it has.
+// it comes apart a piece at a time, right to left: each breaks off, rises and tilts, then fades,
+// and the next one goes once the last is 70% of the way up
+const PANEL_MOTION = { buildMs: 1000, pieceMs: 520, strips: 8, nextAt: 0.7, blocks: 16, tiltDegrees: 15 };
+const PIECE_BREAK = 0.15; // of a piece's time: the jolt as it breaks off
+const PIECE_RISEN = 0.75; // by now it has risen and tilted all the way; then it fades
+const PIECE_STAGGER_MS = PANEL_MOTION.pieceMs * (PIECE_BREAK + (PIECE_RISEN - PIECE_BREAK) * PANEL_MOTION.nextAt);
+export const BREAK_TOTAL_MS = PANEL_MOTION.pieceMs + (PANEL_MOTION.strips - 1) * PIECE_STAGGER_MS;
 
 // it builds out from the screen's edge: revealed left to right
 const buildOut = keyframes`
@@ -64,7 +69,7 @@ const Panel = styled.div`
   box-shadow: -0.4cqw 0 1.6cqw rgba(60, 255, 140, 0.18), inset 0.4cqw 0 1.2cqw rgba(60, 255, 140, 0.08);
   text-shadow: 0 0 0.4cqw rgba(109, 255, 160, 0.7);
   animation: ${flicker} ${LOG_LOOK.flickerSeconds}s linear infinite, ${drift} 3s linear infinite,
-    ${props => props.$isClosing ? breakAway : buildOut} ${props => props.$isClosing ? PANEL_MOTION.breakMs : PANEL_MOTION.buildMs}ms ease-out both;
+    ${props => props.$isClosing ? breakAway : buildOut} ${props => props.$isClosing ? 400 : PANEL_MOTION.buildMs}ms ease-out both;
   pointer-events: ${props => props.$isClosing ? "none" : "auto"};
 `;
 
@@ -114,10 +119,12 @@ const Block = styled.span`
   animation: ${blockLife} 0.9s ease-out both;
 `;
 
-// coming apart: tall strips break off and float up, fading
+// coming apart: a piece jolts loose, rises and tilts about its middle (over its neighbor a little), then fades
 const stripFloat = keyframes`
-  0% { opacity: 0.9; transform: translateY(0); }
-  100% { opacity: 0; transform: translateY(var(--rise)) rotate(var(--tilt)); }
+  0% { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+  ${PIECE_BREAK * 100}% { opacity: 1; transform: translate(0.25cqw, -0.4cqw) rotate(calc(var(--tilt) * 0.15)); }
+  ${PIECE_RISEN * 100}% { opacity: 1; transform: translate(0.4cqw, var(--rise)) rotate(var(--tilt)); }
+  100% { opacity: 0; transform: translate(0.5cqw, calc(var(--rise) * 1.2)) rotate(var(--tilt)); }
 `;
 
 const Strip = styled.span`
@@ -129,7 +136,8 @@ const Strip = styled.span`
     rgba(4, 30, 16, 0.6);
   border-left: 0.08cqw solid rgba(109, 255, 160, 0.4);
   box-shadow: inset 0 0 0.8cqw rgba(60, 255, 140, 0.15);
-  animation: ${stripFloat} ${PANEL_MOTION.breakMs}ms ease-in both;
+  transform-origin: 50% 50%;
+  animation: ${stripFloat} ${PANEL_MOTION.pieceMs}ms ease-in-out both;
 `;
 
 // fixed once, so the blocks and strips don't jump about between renders
@@ -139,7 +147,10 @@ const BLOCKS = Array.from({ length: PANEL_MOTION.blocks }, (_, k) => ({
 }));
 const STRIPS = Array.from({ length: PANEL_MOTION.strips }, (_, k) => ({
   left: `${(k / PANEL_MOTION.strips) * 100}%`, width: `${100 / PANEL_MOTION.strips + 0.3}%`,
-  rise: `${-(8 + ((k * 5) % 7) * 2)}cqw`, tilt: `${((k % 3) - 1) * 3}deg`, delay: (PANEL_MOTION.strips - 1 - k) * PANEL_MOTION.stripStaggerMs // the right-hand strip goes first
+  rise: `${-(6 + ((k * 5) % 4) * 1.5)}cqw`,
+  tilt: `${(k % 2 ? 1 : -1) * PANEL_MOTION.tiltDegrees * (0.7 + ((k * 3) % 4) * 0.1)}deg`,
+  delay: (PANEL_MOTION.strips - 1 - k) * PIECE_STAGGER_MS, // the right-hand piece goes first
+  zIndex: k // a piece breaking off rides over the ones still in place
 }));
 
 const BuildEffect = () => (
@@ -154,8 +165,8 @@ const BuildEffect = () => (
 
 const BreakEffect = () => (
   <Frame>
-    {STRIPS.map(({ left, width, rise, tilt, delay }, k) => (
-      <Strip key={k} style={{ left, width, "--rise": rise, "--tilt": tilt, animationDelay: `${delay}ms` }} />
+    {STRIPS.map(({ left, width, rise, tilt, delay, zIndex }, k) => (
+      <Strip key={k} style={{ left, width, zIndex, "--rise": rise, "--tilt": tilt, animationDelay: `${delay}ms` }} />
     ))}
   </Frame>
 );
@@ -234,6 +245,10 @@ const Words = styled.div`
 `;
 
 const ContinueBar = styled.button`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1cqw;
   margin: 0.6cqw 1.4cqw 0;
   padding: 0.55cqw 1cqw;
   font-family: gameboy;
@@ -277,7 +292,8 @@ const TypedText = ({ text, isTyping, onType }) => {
   'actions': buttons in place of Continue, for a choice ({ text, onClick, isEnter }), as in a radio call.
   'footer': anything else to choose from, stacked under the words (the Recruit or Terminate buttons).
 */
-export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, actions = [], footer = null }) => {
+// 'onClosing': told when it starts and stops coming apart, so the HUDs can wait for it
+export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, actions = [], footer = null, onClosing = undefined, onBuilt = undefined }) => {
   const scrollRef = useRef(null);
   // it keeps to the bottom as lines come and type out, unless the player has scrolled up to read back
   const isAtBottom = useRef(true);
@@ -295,11 +311,13 @@ export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, ac
   const [isClosing, setIsClosing] = useState(false);
   const [isBuilt, setIsBuilt] = useState(false); // the words wait for the panel to finish building
   const wasShown = useRef(false);
+  useEffect(() => { onBuilt && onBuilt(isBuilt); }, [isBuilt]); // the words are showing: whoever says them can start to shake
   useEffect(() => {
     if (wasShown.current && !isShown) {
       setIsClosing(true);
       setIsBuilt(false);
-      const timeoutRef = setTimeout(() => setIsClosing(false), BREAK_TOTAL_MS + 200);
+      onClosing && onClosing(true);
+      const timeoutRef = setTimeout(() => { setIsClosing(false); onClosing && onClosing(false); }, BREAK_TOTAL_MS + 100);
       wasShown.current = isShown;
       return () => clearTimeout(timeoutRef);
     }
@@ -335,9 +353,9 @@ export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, ac
           );
         })}
       </Scroll>
-      {isBuilt && isWaiting && !actions.length && <ContinueBar data-enter data-choice-key={1} onClick={event => { event.stopPropagation(); onContinue(); }}>1 Continue &#9654;</ContinueBar>}
+      {isBuilt && isWaiting && !actions.length && <ContinueBar data-enter data-choice-key={1} onClick={event => { event.stopPropagation(); onContinue(); }}><span>Continue &#9654;</span><span>1</span></ContinueBar>}
       {isBuilt && actions.map(({ text, onClick, isEnter }, index) => (
-        <ContinueBar key={text} data-enter={isEnter ? "" : undefined} data-choice-key={index + 1} onClick={event => { event.stopPropagation(); onClick(); }}>{index + 1} {text} &#9654;</ContinueBar>
+        <ContinueBar key={text} data-enter={isEnter ? "" : undefined} data-choice-key={index + 1} onClick={event => { event.stopPropagation(); onClick(); }}><span>{text} &#9654;</span><span>{index + 1}</span></ContinueBar>
       ))}
       {isBuilt && footer && <Footer onClick={event => event.stopPropagation()}>{footer}</Footer>}
     </Panel>

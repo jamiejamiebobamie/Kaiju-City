@@ -843,7 +843,7 @@ const MAP_WALKS = [
 
 // a battleground the player has won on can be visited again from the map: a walk around it, and back
 export const getVisitLevelId = (levelId: string) => `visit-${levelId}`;
-const VISIT_LINES = ['Not much to do here...', '...but it would be a good place to train.'];
+const VISIT_LINES = ['Not much to do here...', '...but it could be a good place to train.'];
 
 // the map walks show the battlegrounds already won on, as well as where to go next
 // only those that come before this walk in the campaign: a battleground not reached yet never shows, even if won in an earlier playthrough

@@ -301,6 +301,10 @@ const RECRUIT_LOOK = {
 };
 
 const RecruitButton = styled.button`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
   padding: 12px 22px;
   font-family: gameboy;
   font-size: 22px;
@@ -370,7 +374,7 @@ const CHOICE_KEYS = { recruit: 1, terminate: 2 };
 
 export const ChoiceButton = ({ choice, recruitChoice, onChooseRecruit }) => (
   <RecruitButton data-choice-key={recruitChoice ? undefined : CHOICE_KEYS[choice]} $choice={choice} $isGone={!!recruitChoice} onClick={event => onChooseRecruit(choice, event.currentTarget.getBoundingClientRect())}>
-    {CHOICE_KEYS[choice]} {CHOICE_WORDS[choice]}
+    <span>{CHOICE_WORDS[choice]}</span><span>{CHOICE_KEYS[choice]}</span>
   </RecruitButton>
 );
 

@@ -14,7 +14,7 @@ import { ControlsOverlay } from "./UI/ControlsOverlay";
 import { NpcModelDriver } from "Game/DataClasses/npcBrain/npcModel";
 import { getIsClickThrough, setIsClickThrough, setIsDialogueLog } from "Game/DataClasses/DialogueLog";
 import { getIsSpacing, setIsSpacing } from "Game/DataClasses/SpacingTest";
-import { DialogueLogPanel } from "./DialogueLogPanel";
+import { BREAK_TOTAL_MS, DialogueLogPanel } from "./DialogueLogPanel";
 import { ChoiceButton } from "./GameBoard/GameBoard";
 import { DEFAULT_AGGRESSION } from "Game/DataClasses/npcBrain/brain";
 import { getKaijuSpeedMode, KaijuSpeedMode, setKaijuSpeedMode } from "../DataClasses/KaijuSpeedTest";
@@ -407,7 +407,9 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const [kaijuSpeedMode, setKaijuSpeedModeState] = useState(getKaijuSpeedMode); // dev playtest
   const [isChoosingAvatar, setIsChoosingAvatar] = useState(!startingLevelId); // a new campaign starts with the guy or the girl
   const isPickingPowersInLab = useRef(false);
-  const [isLabPicker, setIsLabPicker] = useState(false); // the picker was opened from the Lab's tanks: it goes back there
+  const [isLabPicker, setIsLabPicker] = useState(false);
+  const [isLogClosing, setIsLogClosing] = useState(false); // the HUDs wait for the log to come apart
+  const [isLogBuilt, setIsLogBuilt] = useState(false); // a speaker shakes only once their words are in the log // the picker was opened from the Lab's tanks: it goes back there
   const [isWholeScene, setIsWholeScene] = useState(false);
   const [isMouseLook, setIsMouseLook] = useState(true);
   const [isEnemyZoom, setIsEnemyZoom] = useState(true);
@@ -680,7 +682,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     if (screen == "powers") {
       isPickingPowersInLab.current = true;
       setIsLabPicker(true);
-      setPickedAbilities([]);
+      setPickedAbilities([...settingsManager.getSortedPlayerChosenAbilityElementsString()]); // the powers they have now, picked already
       triggerTransition(() => {
         endMatch(); // the Lab starts again with the new powers
         setIsPlayingGame(false);
@@ -813,7 +815,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   useKeyPress({
     keyCodes: ["Enter", "NumpadEnter"],
     keyUpCallback: () => {
-      const button = document.querySelector<HTMLElement>("[data-enter]");
+      const button = document.querySelector<HTMLElement>('[data-choice-key="1"]') || document.querySelector<HTMLElement>("[data-enter]");
       if (button) button.click();
       else if (gameManager.current) gameManager.current.advanceDialogue();
     },
@@ -1031,7 +1033,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               <GameBoard
                 key={`${level.id} ${matchCount}`}
                 choiceFromRef={recruitChoiceFrom}
-                speakingPieceIndex={speakingPieceIndex}
+                speakingPieceIndex={isMonitorAlways && !isLogBuilt ? undefined : speakingPieceIndex}
                 isWindowOpen={isWindowOpen}
                 isPaused={isPaused}
                 gameManager={gameManager.current}
@@ -1055,7 +1057,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               {matchEnd && (
                 <EndScreen>
                   <EndTitle>{matchEnd.title}</EndTitle>
-                  {(!level.rival || winner !== GameResult.PlayerWon) && <EndButtons>{matchEnd.buttons.map(({ text, onClick }, index) => <EndButton key={text} data-enter={index == 0 ? "" : undefined} data-choice-key={index + 1} onClick={onClick}>{index + 1} {text}</EndButton>)}</EndButtons>}
+                  {(!level.rival || winner !== GameResult.PlayerWon) && <EndButtons>{matchEnd.buttons.map(({ text, onClick }, index) => <EndButton key={text} data-enter={index == 0 ? "" : undefined} onClick={onClick}>{text}</EndButton>)}</EndButtons>}
                 </EndScreen>
               )}
               {isWiping && <ScreenClip><BlackWipe /></ScreenClip>}
@@ -1064,7 +1066,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 <Toast key={label} style={{ animationDelay: `${0.4 + index * 0.45}s` }}>{image && <UnlockPortrait src={image} />}{label}</Toast>
               ))}</CardStack></FadeToBlack>}
               {campaignIndex !== null && level.isWalkingLevel && !level.sites && !level.exit && !level.walkIn && !isEditingTiles && (
-                <ContinueButton data-enter data-choice-key={1} onClick={() => showSection(campaignIndex + 1)}>1 Continue</ContinueButton>
+                <ContinueButton data-enter onClick={() => showSection(campaignIndex + 1)}>Continue</ContinueButton>
               )}
               {!level.isWalkingLevel && !isEditingTiles && !recruitScene && winner === null && getCallableRecruits().length > 0 && (
                 <RecruitCalls key={matchCount} recruits={getCallableRecruits()} onCall={avatar => !!gameManager.current && gameManager.current.callRecruit(avatar)} isDisabled={isPaused} />
@@ -1084,8 +1086,14 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               isWaiting={isDialogueWaiting}
               isVisible={!isPaused && labScreen != "colors" && (isCutscene || !!recruitScene || isTalking)}
               onContinue={() => gameManager.current && gameManager.current.advanceDialogue()}
+              onBuilt={setIsLogBuilt}
+              onClosing={isClosing => {
+                setIsLogClosing(isClosing);
+                // a fight waits for the log to finish coming apart before it starts
+                if (isClosing && gameManager.current && !level.isWalkingLevel) gameManager.current.holdFor(BREAK_TOTAL_MS);
+              }}
             />
-            {!isEditingTiles && <UI
+            {!isEditingTiles && !isLogClosing && <UI
               players={players}
               recruits={recruits}
               kaijuKillCount={kaijuKillCount}
