@@ -197,7 +197,7 @@ export class GameBoardPiecesManager {
     spawnDeathPieceAtLocation = (charLocation, avatar, tileIndex, color, pieceIndex, throwVec, spriteSheetSrc) => {
         const zIndex = this.gameManagerProxy.getFlattenedArrayIndex(tileIndex);
         // a person's body is thrown. 'body' is set going by the game manager, which knows the level's scale.
-        this.deathPieces.push({ key: this.deathPieces.length, charLocation, avatar, zIndex, color, pieceIndex, throwVec, spriteSheetSrc, body: undefined });
+        this.deathPieces.push({ key: `death ${pieceIndex} ${this.deathPieces.length}`, charLocation, avatar, zIndex, color, pieceIndex, throwVec, spriteSheetSrc, body: undefined });
     }
 
     getIsTeamDamaged = (pieceIndex) => {

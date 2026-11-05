@@ -186,6 +186,11 @@ export class GameBoardPieceBase {
         if (this.isDead) return;
 
         this.accTime = accTime;
+        // knocked down by the train: lying where they were thrown until they get up
+        if (this.knockedUntil > accTime) {
+            this.moveToTiles = [];
+            return;
+        }
         this.updateCharm(accTime);
 
         // intention: even the player can be Charmed and lose control for a moment of his piece....

@@ -123,6 +123,9 @@ const PIECE_Z_BASE = 20001;
 // A*'s extra cost of a tile, in steps: someone standing on it, or someone headed for it
 const CROWD_COST = { standing: 3, headedFor: 1.5 };
 
+// a train hit that doesn't kill: down this long as a ragdoll, then up again
+const TRAIN_KNOCKDOWN = { downMs: 3000 };
+
 export class GameManager {
     // 'returnSpot': back on a map walk from a site, the team starts beside it.
     // 'isRetry': the match is played again after a loss, so its opening scene is skipped.
@@ -296,7 +299,9 @@ export class GameManager {
         if (isTrainIn) {
             this.closeTracks();
             this.gameBoardPiecesManager.updatePiecesForWalkableTiles(piece => {
+                const hitAt = { ...piece.charLocation };
                 piece.hitByTrain(accTime, TRAIN_HIT, this.gameBoardManager.getClosestWalkableTile(piece.getTileIndex()));
+                if (!piece.isDead && piece.avatar != 'kaiju') this.knockDown(piece, hitAt);
             });
         } else {
             this.gameBoardManager.setWalkableTiles(walkableTiles);
@@ -568,11 +573,51 @@ export class GameManager {
     getCameraShot() {
         if (this.recruitScene) return this.recruitScene.shot;
         if (this.cutscene) return this.cutscene.steps[this.cutscene.index].shot;
-        return this.outcomeShot;
+        return this.outcomeShot || this.knockShot; // the player knocked down by the train: in close on them
     }
 
     getTimeScale = () => {
         return this.timeScale;
+    }
+
+    // hit by the train and still standing: thrown as a ragdoll, down a moment, then up where they landed and on with the fight
+    knockDown(piece, hitAt) {
+        const side = piece.charLocation.x >= hitAt.x ? 1 : -1; // flung the way they were pushed off the tracks
+        const knock = {
+            key: `knock ${piece.pieceIndex} ${this.accTime}`, charLocation: hitAt, avatar: piece.avatar, zIndex: piece.getZIndex(), color: piece.color,
+            pieceIndex: piece.pieceIndex, throwVec: { x: side, y: -0.35 }, spriteSheetSrc: piece.spriteSheetSrc, body: undefined,
+            isKnockdown: true, upAt: this.accTime + TRAIN_KNOCKDOWN.downMs
+        };
+        this.gameBoardPiecesManager.deathPieces.push(knock);
+        piece.knockedUntil = knock.upAt;
+        piece.isVisible = false;
+        piece.moveToTiles = [];
+        if (piece == this.gameBoardPiecesManager.getPlayerPiece()) {
+            this.knockShot = { point: { ...hitAt }, zoomScale: PENINSULA.cameraZoom * CUTSCENE.outcomeZoomScale, panMs: CUTSCENE.outcomePullMs, isPeninsulaSized: true };
+            this.knockShotDeath = knock;
+        }
+    }
+
+    // up again: where the body came to rest, on the nearest tile
+    updateKnockdowns() {
+        const deaths = this.gameBoardPiecesManager.deathPieces;
+        deaths.filter(({ isKnockdown, upAt }) => isKnockdown && this.accTime >= upAt).forEach(knock => {
+            const piece = this.gameBoardPiecesManager.getPiece(knock.pieceIndex);
+            if (piece && !piece.isDead) {
+                piece.initCharLocation(true, this.gameBoardManager.getClosestWalkableTileToLocation(this.getDeathLocation(knock)));
+                piece.isVisible = true;
+            }
+            if (this.knockShotDeath == knock) {
+                this.knockShot = undefined;
+                this.knockShotDeath = undefined;
+            }
+        });
+        this.gameBoardPiecesManager.deathPieces = deaths.filter(({ isKnockdown, upAt }) => !isKnockdown || this.accTime < upAt);
+        if (this.knockShot) {
+            const target = this.getDeathLocation(this.knockShotDeath);
+            this.knockShot.point.x += (target.x - this.knockShot.point.x) * CUTSCENE.outcomeFollow;
+            this.knockShot.point.y += (target.y - this.knockShot.point.y) * CUTSCENE.outcomeFollow;
+        }
     }
 
     // bodies fly on game time, so slow motion slows them too
@@ -1183,7 +1228,7 @@ export class GameManager {
     }
 
     startOutcomeShot() {
-        const deaths = this.getDeathPieces();
+        const deaths = this.getDeathPieces().filter(({ isKnockdown }) => !isKnockdown);
         const lastDeath = deaths[deaths.length - 1];
         if (!lastDeath) return;
         this.outcomeDeath = lastDeath;
@@ -1394,6 +1439,7 @@ export class GameManager {
         }
         if (this.npcModelDriver && this.getGameResult() === null) this.npcModelDriver.step(this);
         this.stepRagdolls();
+        this.updateKnockdowns();
         if (this.getGameResult() !== null) {
             this.updateSlowMotion();
             return;

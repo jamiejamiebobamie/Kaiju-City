@@ -140,7 +140,7 @@ export class PlayerInputHandler {
 
         const pieceIndex = Math.floor(i / 3); // each player-team piece gets 3 abilities
         const piece = this.gameManagerProxy.getPiece(pieceIndex);
-        if (piece.getIsDead() || a.getIsOnCooldown(accTime, piece.isNpc)) return;
+        if (piece.getIsDead() || piece.knockedUntil > accTime || a.getIsOnCooldown(accTime, piece.isNpc)) return;
 
         const passiveAbility = a.useAbility({
             accTime,

@@ -1125,6 +1125,21 @@ describe('fourth playtest', () => {
     expect(gm.getPieceColorsLookup()[getKey(teammate.tileIndex)]).toBeDefined();
   });
 
+  it('a train hit that does not kill knocks them down as a ragdoll, and they get up 3 s later', () => {
+    const gm = makeGame(LEVELS.rapidTransit);
+    while (gm.cutscene) gm.stepPieces();
+    gm.stepPieces();
+    const player = gm.gameBoardPiecesManager.getPlayerPiece();
+    gm.knockDown(player, { ...player.charLocation });
+    expect(player.isVisible).toBe(false);
+    expect(gm.getDeathPieces().some(({ isKnockdown }) => isKnockdown)).toBe(true);
+    expect(gm.getCameraShot()).toBeDefined(); // in close on the player
+    const { accTime } = gm;
+    for (let k = 0; k < 400 && gm.accTime < accTime + 3100; k++) gm.stepPieces();
+    expect(player.isVisible).toBe(true);
+    expect(gm.getDeathPieces().some(({ isKnockdown }) => isKnockdown)).toBe(false);
+  });
+
   it('winning sends the train away for good', () => {
     const gm = makeGame(LEVELS.rapidTransit);
     while (gm.cutscene) gm.stepPieces();
