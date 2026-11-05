@@ -820,7 +820,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     isCharacterDead: false
   });
 
-  // (1), (2)...: the number keys press the buttons showing them, wherever there is a choice or a Continue.
+  // 1, 2...: the number keys press the buttons showing them, wherever there is a choice or a Continue.
   // powers are off whenever these show, so the keys never do both
   useKeyPress({
     keyCodes: [1, 2, 3, 4].flatMap(n => [`Digit${n}`, `Numpad${n}`]),
@@ -1055,7 +1055,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               {matchEnd && (
                 <EndScreen>
                   <EndTitle>{matchEnd.title}</EndTitle>
-                  {(!level.rival || winner !== GameResult.PlayerWon) && <EndButtons>{matchEnd.buttons.map(({ text, onClick }, index) => <EndButton key={text} data-enter={index == 0 ? "" : undefined} data-choice-key={index + 1} onClick={onClick}>({index + 1}) {text}</EndButton>)}</EndButtons>}
+                  {(!level.rival || winner !== GameResult.PlayerWon) && <EndButtons>{matchEnd.buttons.map(({ text, onClick }, index) => <EndButton key={text} data-enter={index == 0 ? "" : undefined} data-choice-key={index + 1} onClick={onClick}>{index + 1} {text}</EndButton>)}</EndButtons>}
                 </EndScreen>
               )}
               {isWiping && <ScreenClip><BlackWipe /></ScreenClip>}
@@ -1064,7 +1064,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 <Toast key={label} style={{ animationDelay: `${0.4 + index * 0.45}s` }}>{image && <UnlockPortrait src={image} />}{label}</Toast>
               ))}</CardStack></FadeToBlack>}
               {campaignIndex !== null && level.isWalkingLevel && !level.sites && !level.exit && !level.walkIn && !isEditingTiles && (
-                <ContinueButton data-enter data-choice-key={1} onClick={() => showSection(campaignIndex + 1)}>(1) Continue</ContinueButton>
+                <ContinueButton data-enter data-choice-key={1} onClick={() => showSection(campaignIndex + 1)}>1 Continue</ContinueButton>
               )}
               {!level.isWalkingLevel && !isEditingTiles && !recruitScene && winner === null && getCallableRecruits().length > 0 && (
                 <RecruitCalls key={matchCount} recruits={getCallableRecruits()} onCall={avatar => !!gameManager.current && gameManager.current.callRecruit(avatar)} isDisabled={isPaused} />

@@ -90,8 +90,10 @@ const CARET_INFO = {
   badgeSize: 2.4, // an off-screen enemy's badge, across, in caret sizes
   caretBase: 0.5, // from the caret's middle to its base, in caret sizes
   badgeGap: 0.15, // between the caret's base and the badge
-  badgeZoom: 2.3, // how tall the whole body is, in badge sizes: only the head and shoulders show
-  badgeFeet: 2.05, // where the feet are, down from the badge's top, in badge sizes
+  badgeZoom: 3.9, // how tall the whole body is, in badge sizes: only the head and shoulders show
+  badgeFeet: 2.26, // where the feet are, down from the badge's top, in badge sizes
+  badgeFeetKaiju: 1.0, // a Kaiju's sheet draws lower in its frame: its feet go higher to bring its head in
+  badgeKaijuShift: 0.22, // and its body sits left of its frame's middle
   inset: 1.3, // how far in from the caret, past it, in caret sizes
   nearTiles: 12, // an incoming enemy this close gets a window even with others on the board: about as far as the tiles show
   maxWindows: 2,
@@ -363,12 +365,12 @@ const ChoiceSuffix = styled.span`
 
 const CHOICE_WORDS = { recruit: "Recruit", terminate: "Terminate" };
 
-// (1) Recruit, (2) Terminate: the number keys choose too
+// 1 Recruit, 2 Terminate: the number keys choose too (no brackets: the pixel font has none)
 const CHOICE_KEYS = { recruit: 1, terminate: 2 };
 
 export const ChoiceButton = ({ choice, recruitChoice, onChooseRecruit }) => (
   <RecruitButton data-choice-key={recruitChoice ? undefined : CHOICE_KEYS[choice]} $choice={choice} $isGone={!!recruitChoice} onClick={event => onChooseRecruit(choice, event.currentTarget.getBoundingClientRect())}>
-    ({CHOICE_KEYS[choice]}) {CHOICE_WORDS[choice]}
+    {CHOICE_KEYS[choice]} {CHOICE_WORDS[choice]}
   </RecruitButton>
 );
 
@@ -845,12 +847,12 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
             <CaretBadge style={{ left: `${spot.x}px`, top: `${spot.y}px`, width: `${size}px`, height: `${size}px` }}>
               <GameBoardPieceComponent
                 zIndex={0}
-                charLocation={{ x: size / 2 - CHARACTER_FEET.x * scale - CHARACTER_FEET.leftShift, y: size * CARET_INFO.badgeFeet - CHARACTER_FEET.y * scale }}
+                charLocation={{ x: size * (0.5 + (piece.avatar == 'kaiju' ? CARET_INFO.badgeKaijuShift : 0)) - CHARACTER_FEET.x * scale - CHARACTER_FEET.leftShift, y: size * (piece.avatar == 'kaiju' ? CARET_INFO.badgeFeetKaiju : CARET_INFO.badgeFeet) - CHARACTER_FEET.y * scale }}
                 avatar={piece.avatar}
                 color="transparent"
                 isVisible
-                dir="idle"
-                facingDir="down"
+                dir={piece.dir}
+                facingDir={piece.getFacingDir()}
                 pieceScale={scale}
                 spriteSheetSrc={piece.spriteSheetSrc}
                 lives={piece.lives}

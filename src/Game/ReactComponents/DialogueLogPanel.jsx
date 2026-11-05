@@ -335,9 +335,9 @@ export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, ac
           );
         })}
       </Scroll>
-      {isBuilt && isWaiting && !actions.length && <ContinueBar data-enter data-choice-key={1} onClick={event => { event.stopPropagation(); onContinue(); }}>(1) Continue &#9654;</ContinueBar>}
+      {isBuilt && isWaiting && !actions.length && <ContinueBar data-enter data-choice-key={1} onClick={event => { event.stopPropagation(); onContinue(); }}>1 Continue &#9654;</ContinueBar>}
       {isBuilt && actions.map(({ text, onClick, isEnter }, index) => (
-        <ContinueBar key={text} data-enter={isEnter ? "" : undefined} data-choice-key={index + 1} onClick={event => { event.stopPropagation(); onClick(); }}>({index + 1}) {text} &#9654;</ContinueBar>
+        <ContinueBar key={text} data-enter={isEnter ? "" : undefined} data-choice-key={index + 1} onClick={event => { event.stopPropagation(); onClick(); }}>{index + 1} {text} &#9654;</ContinueBar>
       ))}
       {isBuilt && footer && <Footer onClick={event => event.stopPropagation()}>{footer}</Footer>}
     </Panel>
