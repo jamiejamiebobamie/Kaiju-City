@@ -13,17 +13,21 @@ const KEY_COLORS = {
   plain: "#3a3d44"
 };
 
+// the hands are silhouettes, each one merged shape: a skin fill over a dark outline, a little see-through
 const HAND_LOOK = {
-  skin: "#e8b48a",
-  shade: "#c98f66", // the creases at each joint
-  nail: "#f6d9c4",
-  outline: "#5a3a26",
-  opacity: 0.72,
-  fingerWidths: [3.4, 3.9, 4.2, 4.1], // pinky, ring, middle, index
-  thumbWidth: 4.6,
-  palmDrop: 21, // how far below the fingertips the middle of the palm is
-  palmHalfWidth: 10,
-  palmHalfHeight: 9
+  skin: "#e2ad85",
+  outline: "#3d2618",
+  opacity: 0.8,
+  outlineWidth: 1.3,
+  fingerWidths: [3.1, 3.6, 3.8, 3.7], // pinky, ring, middle, index
+  knuckleSpread: [-1.65, -0.55, 0.55, 1.6], // across the top of the palm, outer to inner, in finger widths
+  knuckleDrop: [2.6, 0.7, 0, 0.6], // the pinky's knuckle sits lowest
+  thumbWidth: 4.2,
+  palmHalfWidth: 9.5,
+  palmHalfHeight: 9,
+  palmBelowTips: 24, // how far below the fingertips the middle of the palm sits
+  wristLength: 16,
+  wristHalfWidth: 6.5
 };
 
 const KEY = 10; // one key, in drawing units
@@ -55,8 +59,8 @@ const PAGES = [
     // the keys each hand's fingertips rest on
     // each finger's key, pinky to index, and where the thumb rests. a spot can be a key or a point.
     hands: [
-      { side: "left", fingers: ["Digit1", "Digit2", "Digit3", "Digit4"], thumb: { x: 50, y: 58 } },
-      { side: "right", fingers: [{ x: 166, y: 52 }, "ArrowRight", "ArrowUp", "ArrowLeft"], thumb: { x: 122, y: 74 } }
+      { side: "left", fingers: ["Digit1", "Digit2", "Digit3", "Digit4"], thumb: { x: 45, y: 60 } },
+      { side: "right", fingers: [{ x: 166, y: 52 }, "ArrowRight", "ArrowUp", "ArrowLeft"], thumb: { x: 133, y: 77 } }
     ],
     lines: [
       { keys: "1 2 3", text: "Your powers", color: KEY_COLORS.player },
@@ -74,7 +78,7 @@ const PAGES = [
       ...Object.fromEntries([7, 8, 9].map(n => [`Numpad${n}`, KEY_COLORS.recruit]))
     },
     hands: [
-      { side: "left", fingers: [{ x: 11, y: 37 }, "KeyA", "KeyW", "KeyD"], thumb: { x: 52, y: 64 } },
+      { side: "left", fingers: [{ x: 11, y: 37 }, "KeyA", "KeyW", "KeyD"], thumb: { x: 45, y: 67 } },
       { side: "right", fingers: [{ x: 210, y: 38 }, "Numpad6", "Numpad5", "Numpad4"], thumb: { x: 177, y: 59 } }
     ],
     lines: [
@@ -101,71 +105,87 @@ const along = (from, to, amount, bend = 0) => {
   return { x: from.x + dx * amount - (dy / length) * bend, y: from.y + dy * amount + (dx / length) * bend };
 };
 
-// a finger in three bones, from its knuckle to its tip, with a crease at each joint and a nail
-const Finger = ({ base, tip, width, bend }) => {
-  const joints = [base, along(base, tip, 0.45, bend), along(base, tip, 0.76, bend * 0.6), tip];
-  const bones = joints.slice(1).map((end, k) => ({ from: joints[k], to: end, width: width * (1 - k * 0.1) }));
-  const drawBones = (color, extra) => bones.map(({ from, to, width: boneWidth }, k) => (
-    <line key={k} x1={from.x} y1={from.y} x2={to.x} y2={to.y} stroke={color} strokeWidth={boneWidth + extra} strokeLinecap="round" />
-  ));
-  const nail = along(tip, joints[2], 0.18);
-  return (
-    <g>
-      {drawBones(HAND_LOOK.outline, 1.2)}
-      {drawBones(HAND_LOOK.skin, 0)}
-      {joints.slice(1, 3).map(({ x, y }, k) => <circle key={k} cx={x} cy={y} r={width * 0.22} fill={HAND_LOOK.shade} />)}
-      <ellipse cx={nail.x} cy={nail.y} rx={width * 0.3} ry={width * 0.38} fill={HAND_LOOK.nail} />
-    </g>
-  );
+const add = (a, b, scale = 1) => ({ x: a.x + b.x * scale, y: a.y + b.y * scale });
+
+// a finger's three bones, knuckle to tip, curled a little toward the keys as fingers are when typing
+const getFingerBones = (base, tip, width, bend) => {
+  const joints = [base, along(base, tip, 0.48, bend), along(base, tip, 0.78, bend * 0.55), tip];
+  return joints.slice(1).map((end, k) => ({ from: joints[k], to: end, width: width * (1 - k * 0.12) }));
 };
 
-// a left or right hand: the palm sits below the fingertips, the fingers fan out from its top edge, and the thumb from its inner side
-const Hand = ({ side, fingers, thumb }) => {
+/*
+  A left or right hand over the keys, seen from above. The palm sits below the fingertips, along the hand's own line.
+  The fingers fan from a curved row of knuckles: middle longest, pinky shortest and set lowest.
+  The thumb grows from a pad low on the inner side of the palm and reaches in under the hand, toward the space bar.
+  The wrist runs on down and fades out.
+*/
+const Hand = ({ side, fingers, thumb, id }) => {
   const tips = fingers.map(getSpot);
   const thumbTip = getSpot(thumb);
-  const { palmDrop, palmHalfWidth, palmHalfHeight, thumbWidth } = HAND_LOOK;
-  const palm = {
-    x: tips.reduce((total, { x }) => total + x, 0) / tips.length,
-    y: Math.max(...tips.map(({ y }) => y)) + palmDrop
-  };
-  const inward = side == "left" ? 1 : -1; // toward the thumb
-  // pinky to index: across the top of the palm, from its outer edge to its inner edge
-  const bases = tips.map((_, k) => ({
-    x: palm.x + inward * (k - 1.5) * palmHalfWidth * 0.55,
-    y: palm.y - palmHalfHeight * 0.75 + Math.abs(k - 1.8) * 0.8
-  }));
-  const thumbBase = { x: palm.x + inward * palmHalfWidth * 0.8, y: palm.y + palmHalfHeight * 0.1 };
-  const thumbJoint = along(thumbBase, thumbTip, 0.5, -inward * 1.5);
-  const palmPath = `M ${palm.x - palmHalfWidth} ${palm.y - palmHalfHeight * 0.6}
-    Q ${palm.x} ${palm.y - palmHalfHeight * 1.2} ${palm.x + palmHalfWidth} ${palm.y - palmHalfHeight * 0.6}
-    L ${palm.x + palmHalfWidth * 0.85} ${palm.y + palmHalfHeight}
-    L ${palm.x + palmHalfWidth * 0.55} ${palm.y + palmHalfHeight * 2.4}
-    L ${palm.x - palmHalfWidth * 0.55} ${palm.y + palmHalfHeight * 2.4}
-    L ${palm.x - palmHalfWidth * 0.85} ${palm.y + palmHalfHeight} Z`;
-  const thumbBones = [[thumbBase, thumbJoint, thumbWidth], [thumbJoint, thumbTip, thumbWidth * 0.9]];
-  const drawThumb = (color, extra) => thumbBones.map(([from, to, width], k) => (
-    <line key={k} x1={from.x} y1={from.y} x2={to.x} y2={to.y} stroke={color} strokeWidth={width + extra} strokeLinecap="round" />
-  ));
-  return (
-    <g opacity={HAND_LOOK.opacity}>
-      {drawThumb(HAND_LOOK.outline, 1.2)}
-      <path d={palmPath} fill={HAND_LOOK.skin} stroke={HAND_LOOK.outline} strokeWidth={0.8} strokeLinejoin="round" />
-      {drawThumb(HAND_LOOK.skin, 0)}
-      <circle cx={thumbJoint.x} cy={thumbJoint.y} r={1} fill={HAND_LOOK.shade} />
-      {tips.map((tip, k) => (
-        <Finger key={k} base={bases[k]} tip={tip} width={HAND_LOOK.fingerWidths[k]} bend={inward * (k - 1.5) * 0.6} />
+  const { palmBelowTips, palmHalfWidth, palmHalfHeight, thumbWidth, fingerWidths, knuckleSpread, knuckleDrop, wristLength, wristHalfWidth } = HAND_LOOK;
+  const middleTips = { x: (tips[1].x + tips[2].x) / 2, y: (tips[1].y + tips[2].y) / 2 };
+  const palm = { x: middleTips.x, y: Math.max(...tips.map(({ y }) => y)) + palmBelowTips };
+  // the hand's line, from the palm up to the fingertips, and across it, toward the thumb
+  const upLength = Math.hypot(middleTips.x - palm.x, middleTips.y - palm.y) || 1;
+  const up = { x: (middleTips.x - palm.x) / upLength, y: (middleTips.y - palm.y) / upLength };
+  const inward = side == "left" ? 1 : -1;
+  const across = { x: -up.y * inward, y: up.x * inward };
+  const knuckleRow = add(palm, up, palmHalfHeight * 0.9);
+  const bases = tips.map((_, k) => add(add(knuckleRow, across, knuckleSpread[k] * fingerWidths[2]), up, -knuckleDrop[k]));
+  const fingerBones = tips.flatMap((tip, k) => getFingerBones(bases[k], tip, fingerWidths[k], inward * (k - 1.5) * 0.5));
+
+  const thumbBase = add(add(palm, across, palmHalfWidth * 0.75), up, -palmHalfHeight * 0.35);
+  const thumbJoint = along(thumbBase, thumbTip, 0.5, -inward * 1.8);
+  const thumbBones = [{ from: thumbBase, to: thumbJoint, width: thumbWidth }, { from: thumbJoint, to: thumbTip, width: thumbWidth * 0.85 }];
+
+  const corner = (a, b) => add(add(palm, across, a * palmHalfWidth), up, b * palmHalfHeight);
+  const outerTop = corner(-1, 0.75);
+  const innerTop = corner(1, 0.75);
+  const innerBottom = corner(0.95, -0.7);
+  const outerBottom = corner(-0.9, -0.8);
+  const wristInner = add(add(palm, across, wristHalfWidth), up, -(palmHalfHeight + wristLength));
+  const wristOuter = add(add(palm, across, -wristHalfWidth), up, -(palmHalfHeight + wristLength));
+  const top = add(palm, up, palmHalfHeight * 1.25);
+  const palmPath = `M ${outerTop.x} ${outerTop.y} Q ${top.x} ${top.y} ${innerTop.x} ${innerTop.y}
+    Q ${innerBottom.x + across.x * 2} ${innerBottom.y + across.y * 2} ${innerBottom.x} ${innerBottom.y}
+    L ${wristInner.x} ${wristInner.y} L ${wristOuter.x} ${wristOuter.y}
+    L ${outerBottom.x} ${outerBottom.y} Z`;
+  const thenar = add(add(palm, across, palmHalfWidth * 0.55), up, -palmHalfHeight * 0.3);
+
+  // every part twice: dark and a little wider first, then the skin over it, so the hand reads as one outlined shape
+  const drawParts = (color, extra, fill) => (
+    <>
+      <path d={palmPath} fill={fill} stroke={color} strokeWidth={extra * 2} strokeLinejoin="round" />
+      <ellipse cx={thenar.x} cy={thenar.y} rx={palmHalfWidth * 0.55 + extra} ry={palmHalfHeight * 0.75 + extra} fill={color} />
+      {[...thumbBones, ...fingerBones].map(({ from, to, width }, k) => (
+        <line key={k} x1={from.x} y1={from.y} x2={to.x} y2={to.y} stroke={color} strokeWidth={width + extra * 2} strokeLinecap="round" />
       ))}
+    </>
+  );
+  return (
+    <g opacity={HAND_LOOK.opacity} mask={`url(#${id}-fade)`}>
+      <defs>
+        <linearGradient id={`${id}-fadeGradient`} gradientUnits="userSpaceOnUse" x1={palm.x} y1={palm.y} x2={wristOuter.x} y2={wristOuter.y}>
+          <stop offset="0.35" stopColor="white" />
+          <stop offset="1" stopColor="black" />
+        </linearGradient>
+        <mask id={`${id}-fade`} maskUnits="userSpaceOnUse" x="-50" y="-50" width="320" height="220">
+          <rect x="-50" y="-50" width="320" height="220" fill={`url(#${id}-fadeGradient)`} />
+        </mask>
+      </defs>
+      {drawParts(HAND_LOOK.outline, HAND_LOOK.outlineWidth / 2, HAND_LOOK.outline)}
+      {drawParts(HAND_LOOK.skin, 0, HAND_LOOK.skin)}
     </g>
   );
 };
 
 const Keyboard = ({ page }) => (
-  <svg viewBox="0 0 215 100" width="100%" role="img" aria-label={page.title}>
+  <svg viewBox="0 0 215 108" width="100%" role="img" aria-label={page.title}>
     <rect x={4} y={4} width={207} height={64} rx={4} fill="#1b1c20" stroke="#55585f" strokeWidth={1} />
     {Object.entries(KEYS).map(([code, { x, y, width = KEY }]) => (
       <rect key={code} x={x} y={y} width={width} height={KEY} rx={1.5} fill={page.colors[code] || KEY_COLORS.plain} stroke="#101114" strokeWidth={0.6} />
     ))}
-    {page.hands.map((hand, k) => <Hand key={k} {...hand} />)}
+    {page.hands.map((hand, k) => <Hand key={k} id={`hand${k}`} {...hand} />)}
     {/* the labels go over the hands, so every key can still be read */}
     {Object.entries(KEYS).map(([code, { label, x, y, width = KEY }]) => (
       <text key={code} x={x + width / 2} y={y + 7} textAnchor="middle" fontSize={5} fontFamily="gameboy" fill={page.colors[code] ? "#101018" : "#9a9da4"}>{label}</text>

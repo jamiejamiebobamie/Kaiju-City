@@ -8,7 +8,7 @@ import { GameBoardPieceComponent } from 'Game/ReactComponents/GameBoard/Pieces/G
 import { getSpeechScreenBox, PagedSpeechBalloon, SpeechBalloon } from 'Game/ReactComponents/GameBoard/SceneElements';
 import { TileCanvas } from 'Game/ReactComponents/GameBoard/Tile/TileCanvas';
 import { SceneElements } from 'Game/ReactComponents/GameBoard/SceneElements';
-import { EXIT_OPEN_PHASE, getSortZIndex, getTileTone } from 'Game/DataClasses/Levels/levels';
+import { CHARACTER_FEET, CHARACTER_HEIGHT_PX, EXIT_OPEN_PHASE, getSortZIndex, getTileTone } from 'Game/DataClasses/Levels/levels';
 import { WakeCanvas } from 'Game/ReactComponents/GameBoard/WakeCanvas';
 import { Camera, CAMERA, getCloseZoom, getFitZoom, WIDE_SHOT } from 'Game/DataClasses/Camera';
 import { CUTSCENE } from 'Game/DataClasses/GameManager';
@@ -75,6 +75,67 @@ const EdgeCaret = styled.svg`
   overflow: visible;
   pointer-events: none;
   filter: drop-shadow(0 0 2px black);
+`;
+
+// what a caret points at, shown at its base: a map site's icon, or a hologram window on an enemy coming in
+const CARET_INFO = {
+  iconHeight: 2.6, // a site icon, in caret sizes
+  windowWidth: 7.2, // a hologram window, in caret sizes
+  windowHeight: 8.4,
+  inset: 1.3, // how far in from the caret, past it, in caret sizes
+  nearTiles: 12, // an incoming enemy this close gets a window even with others on the board: about as far as the tiles show
+  maxWindows: 2,
+  green: "#6dffa0"
+};
+
+const CaretIcon = styled.img`
+  position: absolute;
+  z-index: 2147483001;
+  pointer-events: none;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0 3px black) drop-shadow(0 0 6px var(--glow));
+  translate: -50% -50%;
+`;
+
+const hologramFlicker = keyframes`
+  0%, 100% { opacity: 0.92; }
+  8% { opacity: 0.7; }
+  9% { opacity: 0.95; }
+  41% { opacity: 0.88; }
+  42% { opacity: 0.6; }
+  44% { opacity: 0.93; }
+`;
+
+const fray = keyframes`
+  from { background-position: 0 0, 0 0; }
+  to { background-position: 0 24px, 7px 0; }
+`;
+
+// an unstable hologram: full color in the middle, fading to green toward its frayed edges
+const CaretWindow = styled.div`
+  position: absolute;
+  z-index: 2147483001;
+  overflow: hidden;
+  pointer-events: none;
+  translate: -50% -50%;
+  background: radial-gradient(ellipse at 50% 45%, rgba(10, 30, 20, 0.35), rgba(4, 30, 16, 0.85) 75%);
+  border: 2px solid ${CARET_INFO.green};
+  box-shadow: 0 0 10px ${CARET_INFO.green}, inset 0 0 12px rgba(109, 255, 160, 0.6);
+  animation: ${hologramFlicker} 2.7s steps(1) infinite;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    /* green over the edges, clear in the middle; scan lines; and lines fraying off the sides */
+    background:
+      repeating-linear-gradient(to bottom, rgba(109, 255, 160, 0.16) 0 1px, transparent 1px 4px),
+      repeating-linear-gradient(to right, rgba(109, 255, 160, 0.5) 0 1px, transparent 1px 9px, transparent 9px 23px);
+    -webkit-mask-image: radial-gradient(ellipse at 50% 45%, transparent 40%, black 85%);
+    mask-image: radial-gradient(ellipse at 50% 45%, transparent 40%, black 85%);
+    mix-blend-mode: screen;
+    animation: ${fray} 0.9s linear infinite;
+  }
 `;
 
 // the play window's size, while it is being adjusted
@@ -480,25 +541,72 @@ export const GameBoard = ({ choiceFromRef = undefined, isWindowOpen = true, isPa
   }, [slowRate]);
 
   const focusPiece = pieces.length ? gameManager.getFocusPiece() : undefined;
-  const siteTargets = (level.sites || []).map(({ spot, color }) => ({ key: `${spot.x} ${spot.y}`, color, charLocation: spot }));
+  const siteTargets = (level.sites || []).map(({ spot, color, icon }) => ({ key: `${spot.x} ${spot.y}`, color, charLocation: spot, icon }));
   // in a walking scene that fills the monitor, a caret points the way out once it is open (Sewer 1's "Deeper")
   const isCoverScene = getIsCoverScene();
   const caretCamera = isCoverScene ? coverCamera : closeCamera;
   const exitTargets = level.exit && activePhases.includes(EXIT_OPEN_PHASE) ? [{ key: "exit", color: "white", charLocation: level.exit.spot }] : [];
-  const edgeCarets = isWideShot || !focusPiece ? [] : (isCoverScene ? exitTargets : [
+  const tilePx = grid.rowStep * grid.scale;
+  const caretTargets = (isWideShot || !focusPiece ? [] : (isCoverScene ? exitTargets : [
     ...pieces
       .filter(p => p.getTeamIndex() != focusPiece.getTeamIndex() && !p.isDead)
-      .map(p => ({ key: p.pieceIndex, color: p.color, charLocation: p.charLocation })),
+      .map(p => ({ key: p.pieceIndex, color: p.color, charLocation: p.charLocation, piece: p })),
     ...siteTargets
-  ])
-    .map(({ key, color, charLocation }) => ({
-      key,
-      color,
-      caret: caretCamera.getEdgeCaret(getWorldLocation(charLocation), getWorldLocation(focusPiece.charLocation), grid.rowStep * grid.scale)
-    }))
+  ]))
+    .map(target => ({
+      ...target,
+      caret: caretCamera.getEdgeCaret(getWorldLocation(target.charLocation), getWorldLocation(focusPiece.charLocation), tilePx),
+      tiles: Math.hypot(target.charLocation.x - focusPiece.charLocation.x, target.charLocation.y - focusPiece.charLocation.y) / tilePx
+    }));
+  // a hologram window for an enemy off the screen: when no other is on the board in view, or when it comes in close.
+  // at most two, the closest.
+  const enemiesInView = caretTargets.filter(({ piece, caret }) => piece && !caret && piece.isOnTiles);
+  const windowKeys = new Set(caretTargets
+    .filter(({ piece, caret, tiles }) => piece && caret && (!enemiesInView.length || tiles <= CARET_INFO.nearTiles))
+    .sort((a, b) => a.tiles - b.tiles)
+    .slice(0, CARET_INFO.maxWindows)
+    .map(({ key }) => key));
+  const getInward = ({ left, top, size, degrees }, distance) => ({
+    x: left - Math.cos(degrees * Math.PI / 180) * size * distance,
+    y: top - Math.sin(degrees * Math.PI / 180) * size * distance
+  });
+  const edgeCarets = caretTargets
     .filter(({ caret }) => !!caret)
-    .map(({ key, color, caret: { left, top, size, degrees } }) => (
-      <EdgeCaret key={key} viewBox="0 0 100 100" style={{
+    .map(({ key, color, icon, piece, caret }) => (
+      <React.Fragment key={key}>
+        {icon && (() => {
+          const spot = getInward(caret, CARET_INFO.inset);
+          return <CaretIcon src={`/levels/map/${icon}.png`} style={{ left: `${spot.x}px`, top: `${spot.y}px`, height: `${caret.size * CARET_INFO.iconHeight}px`, "--glow": color }} />;
+        })()}
+        {windowKeys.has(key) && (() => {
+          const width = caret.size * CARET_INFO.windowWidth;
+          const height = caret.size * CARET_INFO.windowHeight;
+          const spot = getInward(caret, CARET_INFO.inset + CARET_INFO.windowWidth / 2);
+          const scale = height / (CHARACTER_HEIGHT_PX * (piece.avatar == 'kaiju' ? 1.6 : 1.15));
+          return (
+            <CaretWindow style={{ left: `${spot.x}px`, top: `${spot.y}px`, width: `${width}px`, height: `${height}px` }}>
+              <GameBoardPieceComponent
+                zIndex={0}
+                charLocation={{ x: width / 2 - CHARACTER_FEET.x * scale - CHARACTER_FEET.leftShift, y: height * 0.82 - CHARACTER_FEET.y * scale }}
+                avatar={piece.avatar}
+                color="transparent"
+                isVisible
+                dir={piece.dir}
+                facingDir={piece.getFacingDir()}
+                pieceScale={scale}
+                spriteSheetSrc={piece.spriteSheetSrc}
+                lives={piece.lives}
+                isQuiet
+              />
+            </CaretWindow>
+          );
+        })()}
+        {renderCaret(color, caret)}
+      </React.Fragment>
+    ));
+  function renderCaret(color, { left, top, size, degrees }) {
+    return (
+      <EdgeCaret viewBox="0 0 100 100" style={{
         left: `${left - size / 2}px`,
         top: `${top - size / 2}px`,
         width: `${size}px`,
@@ -510,7 +618,8 @@ export const GameBoard = ({ choiceFromRef = undefined, isWindowOpen = true, isPa
         <path d="M100 50 L0 10 L24 50 L0 90 Z" fill="none" stroke={CARET_LOOK.rim} strokeWidth={CARET_LOOK.rimWidth} strokeLinejoin="round" />
         <path d="M100 50 L24 50" stroke={CARET_LOOK.rim} strokeWidth={CARET_LOOK.centerLineWidth} />
       </EdgeCaret>
-    ));
+    );
+  }
 
   // the keys move and use powers. the mouse only looks around, and clicks scene objects and buttons.
   const handleMouseMove = e => {
