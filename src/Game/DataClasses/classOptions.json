@@ -30,7 +30,12 @@
             "You erase the board, then the players."
           ]
         }
-      ]
+      ],
+      "confirmed": {
+        "name": "Grave Persuader",
+        "description": "Every argument ends in a funeral.",
+        "at": 1793913854632
+      }
     },
     "Bubble,Charm,Fire": {
       "original": {

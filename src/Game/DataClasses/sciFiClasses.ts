@@ -4,7 +4,7 @@
   Bubble (Dispel), Charm, Death (Haunt), Fire, Glass (Teleport), Ice, Lightning, Love (Heal), Metal (Shield), Water, Wood (Overgrowth).
 */
 export const SCI_FI_CLASSES: Record<string, [string, string]> = {
-  'Bubble,Charm,Death': ['Neural Saboteur', 'You cancel their plans, then their pulse.'],
+  'Bubble,Charm,Death': ["Grave Persuader", "Every argument ends in a funeral."],
   'Bubble,Charm,Fire': ['Flare Diplomat', 'Negotiations have a burn rate.'],
   'Bubble,Charm,Glass': ['Ghost Negotiator', 'You were never in the room.'],
   'Bubble,Charm,Ice': ['Cryo Diplomat', 'Cold calls only.'],
