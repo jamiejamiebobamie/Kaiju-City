@@ -124,7 +124,7 @@ const PIECE_Z_BASE = 20001;
 const CROWD_COST = { standing: 3, headedFor: 1.5 };
 
 // a train hit that doesn't kill: down this long as a ragdoll, then up again
-const TRAIN_KNOCKDOWN = { downMs: 3000 };
+const TRAIN_KNOCKDOWN = { downMs: 3000, drift: 0.06 }; // drift: how much of the way to the get-up tile the body moves each tick
 
 export class GameManager {
     // 'returnSpot': back on a map walk from a site, the team starts beside it.
@@ -251,7 +251,7 @@ export class GameManager {
     // the camera starts its move back in before the game resumes
     getIsWideShot = () => {
         // an Agent coming in doesn't pull the camera out (everything gets too small): its caret's badge shows it instead
-        return !!this.cutscene || !!this.recruitScene || this.isEditingTiles || this.wideShotMs > WIDE_SHOT.pullMs || this.liveWideShotMs > 0;
+        return !!this.cutscene || !!this.recruitScene || this.isEditingTiles || this.wideShotMs > WIDE_SHOT.pullMs || this.liveWideShotMs > 0 || this.getIsApartByTrain();
     }
 
     holdFor(ms) {
@@ -581,13 +581,30 @@ export class GameManager {
         return this.timeScale;
     }
 
+    // the Subway: a train is through, and the player and Punk Guy are on platforms it cuts apart. there is nothing to do but wait,
+    // so the camera shows them both, until the train goes or a Teleport puts them on the same platform
+    getIsApartByTrain = () => {
+        if (!this.trainSchedule || !this.activePhases.has('train') || !this.rivalPiece || this.rivalPiece.isDead || !this.rivalPiece.isOnTiles) return false;
+        const player = this.gameBoardPiecesManager.getPlayerPiece();
+        if (!player || player.isDead) return false;
+        const from = player.getTileIndex();
+        const to = this.rivalPiece.getTileIndex();
+        const key = `${from.i} ${from.j} ${to.i} ${to.j} ${this.gameBoardManager.walkableRevision}`;
+        if (this.apartKey != key) {
+            this.apartKey = key;
+            this.isApart = !this.gameBoardManager.getReachableTiles(from).some(({ i, j }) => i == to.i && j == to.j);
+        }
+        return this.isApart;
+    }
+
     // hit by the train and still standing: thrown as a ragdoll, down a moment, then up where they landed and on with the fight
     knockDown(piece, hitAt) {
         const side = piece.charLocation.x >= hitAt.x ? 1 : -1; // flung the way they were pushed off the tracks
         const knock = {
             key: `knock ${piece.pieceIndex} ${this.accTime}`, charLocation: hitAt, avatar: piece.avatar, zIndex: piece.getZIndex(), color: piece.color,
             pieceIndex: piece.pieceIndex, throwVec: { x: side, y: -0.35 }, spriteSheetSrc: piece.spriteSheetSrc, body: undefined,
-            isKnockdown: true, upAt: this.accTime + TRAIN_KNOCKDOWN.downMs
+            isKnockdown: true, upAt: this.accTime + TRAIN_KNOCKDOWN.downMs,
+            upTile: piece.getTileIndex() // off the tracks, where they get up: the body tumbles there as it falls
         };
         this.gameBoardPiecesManager.deathPieces.push(knock);
         piece.knockedUntil = knock.upAt;
@@ -599,13 +616,18 @@ export class GameManager {
         }
     }
 
-    // up again: where the body came to rest, on the nearest tile
+    // the body drifts toward where they will get up as it tumbles, and they get up there
     updateKnockdowns() {
         const deaths = this.gameBoardPiecesManager.deathPieces;
+        deaths.filter(({ isKnockdown, body }) => isKnockdown && body).forEach(({ body, upTile }) => {
+            const target = this.gameBoardManager.getCharXAndYFromTileIndex(upTile);
+            body.x += (target.x - body.x) * TRAIN_KNOCKDOWN.drift;
+            body.y += (target.y - body.y) * TRAIN_KNOCKDOWN.drift;
+        });
         deaths.filter(({ isKnockdown, upAt }) => isKnockdown && this.accTime >= upAt).forEach(knock => {
             const piece = this.gameBoardPiecesManager.getPiece(knock.pieceIndex);
             if (piece && !piece.isDead) {
-                piece.initCharLocation(true, this.gameBoardManager.getClosestWalkableTileToLocation(this.getDeathLocation(knock)));
+                piece.initCharLocation(true, knock.upTile);
                 piece.isVisible = true;
             }
             if (this.knockShotDeath == knock) {

@@ -1125,6 +1125,22 @@ describe('fourth playtest', () => {
     expect(gm.getPieceColorsLookup()[getKey(teammate.tileIndex)]).toBeDefined();
   });
 
+  it('with a train through, the camera pulls out while the player and Punk Guy are on platforms it cuts apart', () => {
+    const gm = makeGame(LEVELS.rapidTransit);
+    while (gm.cutscene) gm.stepPieces();
+    gm.stepPieces();
+    gm.trainSchedule.setStage('train', gm.accTime);
+    const board = gm.gameBoardManager;
+    const player = gm.gameBoardPiecesManager.getPlayerPiece();
+    const reachable = new Set(board.getReachableTiles(player.getTileIndex()).map(({ i, j }) => `${i} ${j}`));
+    const across = board.walkableTiles.find(({ i, j }) => !reachable.has(`${i} ${j}`) && !board.getIsClosedTile({ i, j }));
+    expect(across).toBeDefined();
+    gm.rivalPiece.initCharLocation(true, across);
+    expect(gm.getIsWideShot()).toBe(true);
+    gm.rivalPiece.initCharLocation(true, player.getTileIndex()); // a Teleport brings them together
+    expect(gm.getIsApartByTrain()).toBe(false);
+  });
+
   it('a train hit that does not kill knocks them down as a ragdoll, and they get up 3 s later', () => {
     const gm = makeGame(LEVELS.rapidTransit);
     while (gm.cutscene) gm.stepPieces();
