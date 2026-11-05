@@ -4041,7 +4041,25 @@
         {
           "name": "Burn Ecologist",
           "descriptions": [
-            "A controlled burn heals the land."
+            "A controlled burn heals the land.",
+            "Burn the sick, save the forest.",
+            "The ash feeds the seedlings."
+          ]
+        },
+        {
+          "name": "Kindling Shaman",
+          "descriptions": [
+            "Smoke rituals, green results.",
+            "The fire speaks; you listen.",
+            "Sacred flames, fertile soil."
+          ]
+        },
+        {
+          "name": "Sapling Guardian",
+          "descriptions": [
+            "Protecting the young growth.",
+            "Fire for foes, rain for roots.",
+            "Every sprout is yours."
           ]
         }
       ]
@@ -4055,7 +4073,25 @@
         {
           "name": "Foundry Master",
           "descriptions": [
-            "Quench and repeat."
+            "Quench and repeat.",
+            "Molten steel, cold bath.",
+            "Every sword starts here."
+          ]
+        },
+        {
+          "name": "Blacksmith",
+          "descriptions": [
+            "Hammer, heat, hiss.",
+            "You make the swords.",
+            "Sparks fly, steel sings."
+          ]
+        },
+        {
+          "name": "Steel Tempest",
+          "descriptions": [
+            "Hot metal, crashing waves.",
+            "Forged in the storm.",
+            "A blade, rain-quenched."
           ]
         }
       ]
@@ -4069,7 +4105,25 @@
         {
           "name": "Forge Tech",
           "descriptions": [
-            "The battlefield: your glorious fabrication!"
+            "The battlefield: your glorious fabrication!",
+            "Build it, burn it, rebuild it.",
+            "Lumber in, weapons out."
+          ]
+        },
+        {
+          "name": "Siege Carpenter",
+          "descriptions": [
+            "Catapults, freshly sawn.",
+            "Towers built overnight.",
+            "Wood, nails, and fire."
+          ]
+        },
+        {
+          "name": "Battle Smith",
+          "descriptions": [
+            "Repairs mid-fight.",
+            "Your toolbox is an arsenal.",
+            "Fixing what you'll break again."
           ]
         }
       ]
@@ -4083,7 +4137,25 @@
         {
           "name": "Bio-Diesel",
           "descriptions": [
-            "Sustainable violence."
+            "Sustainable violence.",
+            "Grown, pressed, ignited.",
+            "Green energy, red results."
+          ]
+        },
+        {
+          "name": "Swamp Burner",
+          "descriptions": [
+            "Methane is your friend.",
+            "The bog catches fire.",
+            "Wet, green, flammable."
+          ]
+        },
+        {
+          "name": "Cycle Keeper",
+          "descriptions": [
+            "Grow, burn, rain, repeat.",
+            "Nature's loop, in your hands.",
+            "Balance, with a lighter."
           ]
         }
       ]
@@ -4097,7 +4169,25 @@
         {
           "name": "Weather Satellite",
           "descriptions": [
-            "Dangerous at all altitudes."
+            "Dangerous at all altitudes.",
+            "Orbit, freeze, strike.",
+            "Forecast: incoming."
+          ]
+        },
+        {
+          "name": "Sky Watcher",
+          "descriptions": [
+            "Eyes in the clouds.",
+            "Nothing escapes your radar.",
+            "You see the storm coming."
+          ]
+        },
+        {
+          "name": "Frost Bolt",
+          "descriptions": [
+            "Ice from the sky, at speed.",
+            "Cold lightning, quick exit.",
+            "Strike, freeze, vanish."
           ]
         }
       ]
@@ -4111,7 +4201,25 @@
         {
           "name": "Interloper",
           "descriptions": [
-            "Never in one sector long."
+            "Never in one sector long.",
+            "A healer who won't stay put.",
+            "Here to help, then elsewhere."
+          ]
+        },
+        {
+          "name": "Frost Courier",
+          "descriptions": [
+            "Ice packs, delivered instantly.",
+            "Medicine that arrives chilled.",
+            "Cold supplies, warm hands."
+          ]
+        },
+        {
+          "name": "Wandering Healer",
+          "descriptions": [
+            "Healing, wherever you land.",
+            "No clinic, no address.",
+            "You turn up when it hurts."
           ]
         }
       ]
@@ -4125,7 +4233,25 @@
         {
           "name": "Arctic Scout",
           "descriptions": [
-            "Even monsters follow you."
+            "Even monsters follow you.",
+            "First into the frost.",
+            "You map the frozen frontier."
+          ]
+        },
+        {
+          "name": "Snow Commando",
+          "descriptions": [
+            "White camo, cold steel.",
+            "In and out of the blizzard.",
+            "Silent, frozen, armed."
+          ]
+        },
+        {
+          "name": "Icewall Guard",
+          "descriptions": [
+            "A frozen fortress, mobile.",
+            "Shields, ice, retreat.",
+            "You hold the pass."
           ]
         }
       ]
@@ -4139,7 +4265,25 @@
         {
           "name": "Glacier Calver",
           "descriptions": [
-            "A big piece of you just fell off."
+            "A big piece of you just fell off.",
+            "Pieces of you, everywhere.",
+            "You break, and the sea rises."
+          ]
+        },
+        {
+          "name": "Iceberg",
+          "descriptions": [
+            "Most of you is hidden.",
+            "Ships beware.",
+            "Cold, quiet, enormous."
+          ]
+        },
+        {
+          "name": "Floe Drifter",
+          "descriptions": [
+            "Riding ice across the sea.",
+            "Drift, freeze, blink.",
+            "Wherever the current goes."
           ]
         }
       ]
@@ -4153,7 +4297,25 @@
         {
           "name": "Tundra Trapper",
           "descriptions": [
-            "Master of setting traps and running away."
+            "Master of setting traps and running away.",
+            "Snares in the snow.",
+            "Set the trap. Skip town."
+          ]
+        },
+        {
+          "name": "Snow Stalker",
+          "descriptions": [
+            "Tracks that end suddenly.",
+            "Hunting in the white.",
+            "They never hear you coming."
+          ]
+        },
+        {
+          "name": "Pine Ghost",
+          "descriptions": [
+            "Between the frozen trees.",
+            "A shadow on the snow.",
+            "The forest hides you."
           ]
         }
       ]
@@ -4167,7 +4329,25 @@
         {
           "name": "Dropship Medic",
           "descriptions": [
-            "Shield-maiden of the orbitals! I salute you!"
+            "Shield-maiden of the orbitals! I salute you!",
+            "Medic from the sky.",
+            "Dropping in to save the day."
+          ]
+        },
+        {
+          "name": "Orbital Medic",
+          "descriptions": [
+            "Healing from above.",
+            "Beamed down, patched up.",
+            "Space-age first aid."
+          ]
+        },
+        {
+          "name": "Lightning Nurse",
+          "descriptions": [
+            "Fast hands, sparking kit.",
+            "Care at the speed of light.",
+            "A jolt of comfort."
           ]
         }
       ]
@@ -4181,7 +4361,25 @@
         {
           "name": "Phalanx Unit",
           "descriptions": [
-            "No one is getting through your defense."
+            "No one is getting through your defense.",
+            "A wall that moves.",
+            "Locked shields, live current."
+          ]
+        },
+        {
+          "name": "Shield Wall",
+          "descriptions": [
+            "Shoulder to shoulder, unbreakable.",
+            "Nobody gets past.",
+            "Steel ranks, sparking."
+          ]
+        },
+        {
+          "name": "Gate Keeper",
+          "descriptions": [
+            "Nothing gets through.",
+            "Every portal is yours.",
+            "You guard the doorways."
           ]
         }
       ]
@@ -4195,7 +4393,25 @@
         {
           "name": "Arc Jumper",
           "descriptions": [
-            "You travel by puddle."
+            "You travel by puddle.",
+            "Puddle to puddle, spark to spark.",
+            "Wet arrivals, shocking departures."
+          ]
+        },
+        {
+          "name": "Rain Jumper",
+          "descriptions": [
+            "Every raindrop is a door.",
+            "You fall with the storm.",
+            "Wet, fast, everywhere."
+          ]
+        },
+        {
+          "name": "Current Hopper",
+          "descriptions": [
+            "Riding the flow.",
+            "Electric, liquid, gone.",
+            "You surf the circuit."
           ]
         }
       ]
@@ -4209,7 +4425,25 @@
         {
           "name": "Wormhole Hiker",
           "descriptions": [
-            "You get around."
+            "You get around.",
+            "Trailheads in every dimension.",
+            "Pack light, travel far."
+          ]
+        },
+        {
+          "name": "Portal Ranger",
+          "descriptions": [
+            "Patrolling the in-between.",
+            "Every gate has a trail.",
+            "You know the shortcuts."
+          ]
+        },
+        {
+          "name": "Bolt Botanist",
+          "descriptions": [
+            "Samples from everywhere.",
+            "Collecting plants at light speed.",
+            "The greenhouse is the galaxy."
           ]
         }
       ]
@@ -4223,7 +4457,25 @@
         {
           "name": "Combat Medic",
           "descriptions": [
-            "Full defensive build."
+            "Full defensive build.",
+            "Saving lives under fire.",
+            "Heal, shield, extract."
+          ]
+        },
+        {
+          "name": "Medevac",
+          "descriptions": [
+            "You're getting out of here.",
+            "Pick-up, patch-up, gone.",
+            "Rescue, armored."
+          ]
+        },
+        {
+          "name": "Bulwark Medic",
+          "descriptions": [
+            "The wall that heals.",
+            "Behind your shield, they live.",
+            "Cover and care."
           ]
         }
       ]
@@ -4237,7 +4489,25 @@
         {
           "name": "Blood Courier",
           "descriptions": [
-            "Fresh plasma, wherever you are."
+            "Fresh plasma, wherever you are.",
+            "Donations, delivered by teleport.",
+            "Type O, on the way."
+          ]
+        },
+        {
+          "name": "Rescue Diver",
+          "descriptions": [
+            "You pull them from the water.",
+            "Breathe. I've got you.",
+            "Deep dives, safe returns."
+          ]
+        },
+        {
+          "name": "Tide Medic",
+          "descriptions": [
+            "Healing rides the waves.",
+            "Wash the wound, close the gap.",
+            "Saltwater and stitches."
           ]
         }
       ]
@@ -4251,7 +4521,25 @@
         {
           "name": "Intern",
           "descriptions": [
-            "You're an intern. I doubt you'll win."
+            "You're an intern. I doubt you'll win.",
+            "Fetch the coffee, save the day.",
+            "Unpaid, overworked, heroic."
+          ]
+        },
+        {
+          "name": "Errand Runner",
+          "descriptions": [
+            "Fetching, fixing, fleeing.",
+            "Every errand an adventure.",
+            "You get things done."
+          ]
+        },
+        {
+          "name": "Seedling",
+          "descriptions": [
+            "Small, green, growing.",
+            "Just sprouting.",
+            "Give it time."
           ]
         }
       ]
@@ -4265,7 +4553,25 @@
         {
           "name": "Deep Sea Salvager",
           "descriptions": [
-            "Finders keepers."
+            "Finders keepers.",
+            "Wrecks are your treasure maps.",
+            "What sinks, you keep."
+          ]
+        },
+        {
+          "name": "Salvage Jumper",
+          "descriptions": [
+            "Grab the loot, blink out.",
+            "Treasure, teleported.",
+            "Wrecks, raided fast."
+          ]
+        },
+        {
+          "name": "Bathysphere Pilot",
+          "descriptions": [
+            "Steel bubble, deep dark.",
+            "You pilot the pressure.",
+            "Down further than anyone."
           ]
         }
       ]
@@ -4279,7 +4585,25 @@
         {
           "name": "Space Ranger",
           "descriptions": [
-            "To the frontier, with snacks."
+            "To the frontier, with snacks.",
+            "Frontier justice, packed lunch.",
+            "Infinity, plus provisions."
+          ]
+        },
+        {
+          "name": "Frontier Marshal",
+          "descriptions": [
+            "Law at the edge of the map.",
+            "The badge travels with you.",
+            "Justice, by teleport."
+          ]
+        },
+        {
+          "name": "Outpost Builder",
+          "descriptions": [
+            "Shelters, raised anywhere.",
+            "Base camp, assembled.",
+            "Home is where you land."
           ]
         }
       ]
@@ -4293,7 +4617,25 @@
         {
           "name": "Rainforest Jumper",
           "descriptions": [
-            "You smell like petrichor."
+            "You smell like petrichor.",
+            "Rainfall follows you.",
+            "Damp jungle, quick exit."
+          ]
+        },
+        {
+          "name": "Canopy Phantom",
+          "descriptions": [
+            "High in the trees, then not.",
+            "Leaves rustle, you're gone.",
+            "The rainforest hides you."
+          ]
+        },
+        {
+          "name": "Monsoon Hopper",
+          "descriptions": [
+            "You arrive with the rain.",
+            "Wet season, every season.",
+            "Splash in, splash out."
           ]
         }
       ]
@@ -4307,7 +4649,25 @@
         {
           "name": "Cold Fusion Priest",
           "descriptions": [
-            "Austere, yet radiant."
+            "Austere, yet radiant.",
+            "Cold light, warm blessing.",
+            "Faith, at zero degrees."
+          ]
+        },
+        {
+          "name": "Aurora Saint",
+          "descriptions": [
+            "Holy lights in the cold sky.",
+            "Miracles, frosted.",
+            "A halo of northern light."
+          ]
+        },
+        {
+          "name": "Frost Spark",
+          "descriptions": [
+            "Cold current, kind touch.",
+            "A chill, then a jolt of hope.",
+            "Small spark, big chill."
           ]
         }
       ]
@@ -4321,7 +4681,25 @@
         {
           "name": "Stormcaller",
           "descriptions": [
-            "You call the storms, but do they pick up?"
+            "You call the storms, but do they pick up?",
+            "The thunder takes your calls.",
+            "Steel rods, angry skies."
+          ]
+        },
+        {
+          "name": "Thunder Knight",
+          "descriptions": [
+            "Armor crackling with frost.",
+            "Charge into the storm.",
+            "Steel, struck by lightning."
+          ]
+        },
+        {
+          "name": "Frost Turret",
+          "descriptions": [
+            "Planted, freezing, firing.",
+            "You hold the line, coldly.",
+            "Auto-aim, sub-zero."
           ]
         }
       ]
@@ -4335,7 +4713,25 @@
         {
           "name": "Hailstorm",
           "descriptions": [
-            "Everything, all at once, from above."
+            "Everything, all at once, from above.",
+            "Ice pellets, thunderclaps.",
+            "Duck and cover."
+          ]
+        },
+        {
+          "name": "Blizzard",
+          "descriptions": [
+            "Whiteout, with thunder.",
+            "Snowed in, shocked out.",
+            "Visibility: zero."
+          ]
+        },
+        {
+          "name": "Sleet Storm",
+          "descriptions": [
+            "Wet, cold, electric.",
+            "Miserable weather, deliberately.",
+            "Slush, with a spark."
           ]
         }
       ]
@@ -4349,7 +4745,25 @@
         {
           "name": "Vengeful Biologist",
           "descriptions": [
-            "You are nature's patch notes."
+            "You are nature's patch notes.",
+            "Revenge, peer-reviewed.",
+            "The forest wants a word."
+          ]
+        },
+        {
+          "name": "Frost Druid",
+          "descriptions": [
+            "Ice and roots answer you.",
+            "The winter grove's guardian.",
+            "Cold magic, green heart."
+          ]
+        },
+        {
+          "name": "Storm Gardener",
+          "descriptions": [
+            "Lightning feeds the vines.",
+            "Thunderstorms are watering.",
+            "You grow in bad weather."
           ]
         }
       ]
@@ -4363,7 +4777,25 @@
         {
           "name": "Polar Settler",
           "descriptions": [
-            "Icy endeavours across the outer colonies."
+            "Icy endeavours across the outer colonies.",
+            "Building homes on the ice.",
+            "Frozen frontier, warm hearth."
+          ]
+        },
+        {
+          "name": "Igloo Medic",
+          "descriptions": [
+            "Healing in a snow hut.",
+            "Warm care, cold walls.",
+            "Your clinic is made of ice."
+          ]
+        },
+        {
+          "name": "Polar Guardian",
+          "descriptions": [
+            "Protecting the frozen colonies.",
+            "Armor on, frostbite off.",
+            "The cold can't have them."
           ]
         }
       ]
@@ -4377,7 +4809,25 @@
         {
           "name": "Ice Pack",
           "descriptions": [
-            "Twenty minutes on, twenty minutes off."
+            "Twenty minutes on, twenty minutes off.",
+            "Swelling down, spirits up.",
+            "Cold comfort, literally."
+          ]
+        },
+        {
+          "name": "Cold Compress",
+          "descriptions": [
+            "Gentle cold, quick relief.",
+            "Soothing every sprain.",
+            "Rest, ice, compress, elevate."
+          ]
+        },
+        {
+          "name": "Glacier Nurse",
+          "descriptions": [
+            "Slow, steady, healing.",
+            "Cool water, cooler head.",
+            "Meltwater medicine."
           ]
         }
       ]
@@ -4391,7 +4841,25 @@
         {
           "name": "Cryo Botanist",
           "descriptions": [
-            "Everything keeps, if you keep it cold."
+            "Everything keeps, if you keep it cold.",
+            "Seeds on ice, saved for spring.",
+            "The freezer is a garden."
+          ]
+        },
+        {
+          "name": "Seed Keeper",
+          "descriptions": [
+            "Saving every species.",
+            "Frozen seeds, future forests.",
+            "The vault of spring."
+          ]
+        },
+        {
+          "name": "Winter Gardener",
+          "descriptions": [
+            "Blooms in the snow.",
+            "Your garden never wilts.",
+            "Frosted flowers, warm care."
           ]
         }
       ]
@@ -4405,7 +4873,25 @@
         {
           "name": "Icebreaker",
           "descriptions": [
-            "You have a very large front."
+            "You have a very large front.",
+            "Plowing through the frozen sea.",
+            "Nothing stops your bow."
+          ]
+        },
+        {
+          "name": "Frozen Fleet",
+          "descriptions": [
+            "Ships of ice, armored.",
+            "The cold navy.",
+            "Sailing through the freeze."
+          ]
+        },
+        {
+          "name": "Cryo Submariner",
+          "descriptions": [
+            "Under the ice shelf, silent.",
+            "Cold depths, steel hull.",
+            "Diving beneath the frozen sea."
           ]
         }
       ]
@@ -4419,7 +4905,25 @@
         {
           "name": "Tundra Ranger",
           "descriptions": [
-            "A ranger, only colder."
+            "A ranger, only colder.",
+            "Snowshoes and steel.",
+            "Patrolling the frozen pines."
+          ]
+        },
+        {
+          "name": "Timber Wolf",
+          "descriptions": [
+            "Hunting through frozen woods.",
+            "Cold, cunning, armored.",
+            "The pack follows you."
+          ]
+        },
+        {
+          "name": "Frost Lumberjack",
+          "descriptions": [
+            "Chopping ice and trees.",
+            "Steel axe, frozen forest.",
+            "Timber!"
           ]
         }
       ]
@@ -4433,7 +4937,25 @@
         {
           "name": "Glacial Moss",
           "descriptions": [
-            "Slow, patient, everywhere."
+            "Slow, patient, everywhere.",
+            "It creeps in the cold.",
+            "Growing under the frost."
+          ]
+        },
+        {
+          "name": "Frost Fern",
+          "descriptions": [
+            "Delicate, frozen, spreading.",
+            "Patterns of ice and leaf.",
+            "Beautiful, and cold."
+          ]
+        },
+        {
+          "name": "Thaw Spirit",
+          "descriptions": [
+            "Spring follows you.",
+            "Melting snow, budding trees.",
+            "The end of winter."
           ]
         }
       ]
@@ -4447,7 +4969,25 @@
         {
           "name": "Railgun Medic",
           "descriptions": [
-            "Not like the other medics."
+            "Not like the other medics.",
+            "Heals at range.",
+            "The bandage comes by rail."
+          ]
+        },
+        {
+          "name": "Combat Engineer",
+          "descriptions": [
+            "Fixing people and machines.",
+            "Repairs, under fire.",
+            "Your wrench heals."
+          ]
+        },
+        {
+          "name": "Shock Medic",
+          "descriptions": [
+            "Restart, patch, protect.",
+            "Electrified first aid.",
+            "One jolt, back in the fight."
           ]
         }
       ]
@@ -4461,7 +5001,25 @@
         {
           "name": "Electrolyte",
           "descriptions": [
-            "You restore what plants crave."
+            "You restore what plants crave.",
+            "Hydration, with a charge.",
+            "Salty, sparky, healing."
+          ]
+        },
+        {
+          "name": "Rain Healer",
+          "descriptions": [
+            "Healing falls like rain.",
+            "Storms that soothe.",
+            "A shower of care."
+          ]
+        },
+        {
+          "name": "Tidal Spark",
+          "descriptions": [
+            "The surf glows when you're near.",
+            "Charged waves, kind currents.",
+            "Sea and spark."
           ]
         }
       ]
@@ -4475,7 +5033,25 @@
         {
           "name": "Nurturing Bioengineer",
           "descriptions": [
-            "Yay!"
+            "Yay!",
+            "Growing joy in the lab.",
+            "Science, but adorable."
+          ]
+        },
+        {
+          "name": "Garden Scientist",
+          "descriptions": [
+            "Petri dishes and petunias.",
+            "Experiments that bloom.",
+            "Lab coat, green thumb."
+          ]
+        },
+        {
+          "name": "Bloom Charger",
+          "descriptions": [
+            "Flowers that light up.",
+            "Electric spring.",
+            "Grown on current."
           ]
         }
       ]
@@ -4489,7 +5065,25 @@
         {
           "name": "Tesla Diver",
           "descriptions": [
-            "Do not try this at home."
+            "Do not try this at home.",
+            "Electrified suit, deep water.",
+            "Shocking depths."
+          ]
+        },
+        {
+          "name": "Depth Charger",
+          "descriptions": [
+            "Explosions, underwater.",
+            "Down goes the boom.",
+            "Shock waves, wet."
+          ]
+        },
+        {
+          "name": "Coil Diver",
+          "descriptions": [
+            "Copper coils, cold sea.",
+            "You dive wired.",
+            "Sparks in the deep."
           ]
         }
       ]
@@ -4503,7 +5097,25 @@
         {
           "name": "Urban Ranger",
           "descriptions": [
-            "Urban camo."
+            "Urban camo.",
+            "Concrete jungle, real vines.",
+            "Patrolling the overgrown city."
+          ]
+        },
+        {
+          "name": "City Druid",
+          "descriptions": [
+            "Vines on every lamppost.",
+            "The streets grow wild.",
+            "Nature reclaims the block."
+          ]
+        },
+        {
+          "name": "Rail Ranger",
+          "descriptions": [
+            "Riding the power lines.",
+            "Tracks, trees, and trouble.",
+            "The grid is your trail."
           ]
         }
       ]
@@ -4517,7 +5129,25 @@
         {
           "name": "Monsoon Engineer",
           "descriptions": [
-            "The jungle has a power grid now."
+            "The jungle has a power grid now.",
+            "Rain in, power out.",
+            "Monsoon-powered."
+          ]
+        },
+        {
+          "name": "Rainforest Shaman",
+          "descriptions": [
+            "Thunder answers your drum.",
+            "The jungle's storm voice.",
+            "Rain, root and ritual."
+          ]
+        },
+        {
+          "name": "Hydro Gardener",
+          "descriptions": [
+            "Irrigation, electrified.",
+            "Your crops run on rain.",
+            "Water, power, growth."
           ]
         }
       ]
@@ -4531,7 +5161,25 @@
         {
           "name": "Hospital Ship",
           "descriptions": [
-            "All are welcome. Wipe your feet."
+            "All are welcome. Wipe your feet.",
+            "Floating, armored, caring.",
+            "Doctors on deck."
+          ]
+        },
+        {
+          "name": "Lighthouse Keeper",
+          "descriptions": [
+            "Guiding ships home.",
+            "A beacon and a bandage.",
+            "Safe harbor, steel walls."
+          ]
+        },
+        {
+          "name": "Harbor Medic",
+          "descriptions": [
+            "Healing at the docks.",
+            "Sailors trust you.",
+            "Saltwater, stitches, shields."
           ]
         }
       ]
@@ -4545,7 +5193,25 @@
         {
           "name": "Exo-Ranger",
           "descriptions": [
-            "Strider? The exo-ranger?"
+            "Strider? The exo-ranger?",
+            "Wanders far, protects all.",
+            "Long walks, armored heart."
+          ]
+        },
+        {
+          "name": "Grove Paladin",
+          "descriptions": [
+            "Sworn to the forest.",
+            "Steel and leaves, sworn to protect.",
+            "The woods' champion."
+          ]
+        },
+        {
+          "name": "Hearth Warden",
+          "descriptions": [
+            "Keeping home safe.",
+            "A shield for the village.",
+            "Warmth, defended."
           ]
         }
       ]
@@ -4559,7 +5225,25 @@
         {
           "name": "Ecosystem",
           "descriptions": [
-            "Things just get better around you."
+            "Things just get better around you.",
+            "Everything thrives near you.",
+            "You make the garden grow."
+          ]
+        },
+        {
+          "name": "Wetland Healer",
+          "descriptions": [
+            "Restoring the marsh.",
+            "Clean water, green growth.",
+            "The swamp gets better."
+          ]
+        },
+        {
+          "name": "Life Spring",
+          "descriptions": [
+            "Where you go, life follows.",
+            "A fountain of renewal.",
+            "Fresh water, fresh start."
           ]
         }
       ]
@@ -4573,7 +5257,25 @@
         {
           "name": "Mangrove Mech",
           "descriptions": [
-            "Rooted, rusted, unbothered."
+            "Rooted, rusted, unbothered.",
+            "Roots in the mud, steel in the sea.",
+            "Half tree, half tank."
+          ]
+        },
+        {
+          "name": "Swamp Walker",
+          "descriptions": [
+            "Heavy steps in the bog.",
+            "Mud can't slow you.",
+            "Wading through the marsh."
+          ]
+        },
+        {
+          "name": "Reef Builder",
+          "descriptions": [
+            "Coral, steel, and patience.",
+            "Building homes underwater.",
+            "The sea grows around you."
           ]
         }
       ]
