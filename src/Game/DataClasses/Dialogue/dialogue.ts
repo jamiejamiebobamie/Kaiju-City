@@ -9,10 +9,12 @@ import DIALOGUE from './dialogue.json';
     'choices': in place of a line, what the player can say: each { text, reply: [lines] }.
   In a line's text, {power} is one of the player's powers.
 */
-export type DialogueWhen = { recruit: string; choice: string };
+// 'recruit' and 'choice': said only if the player did this with that recruit. 'past': the recruit lines, by how the earlier choices went
+export type DialogueWhen = { recruit?: string; choice?: string; past?: string };
 
 export type DialogueLine = {
   id: string;
+  [field: string]: any; // what the scene does with it: 'phase', 'ifRecruits', 'isFlipped', 'isBalloon', 'key', or a step like 'ray'
   speaker?: string;
   text?: string;
   when?: DialogueWhen;
@@ -34,7 +36,7 @@ export const getDialogueScene = (sceneId: string): DialogueScene => {
   return scene;
 };
 
-const getIsSaid = ({ when }: DialogueLine, { choices = {} }: DialogueContext) => !when || choices[when.recruit] == when.choice;
+const getIsSaid = ({ when }: DialogueLine, { choices = {} }: DialogueContext) => !when || !when.recruit || choices[when.recruit] == when.choice;
 
 const fill = (text: string, { powerName = '' }: DialogueContext) => text.replace(/\{power\}/g, powerName);
 
@@ -45,3 +47,33 @@ export const getRadioLines = (sceneId: string, context: DialogueContext) => {
     : { speaker: line.speaker, text: fill(line.text || '', context), ...(line.isAlarm ? { isAlarm: true } : {}) });
   return toRadio(getDialogueScene(sceneId).lines);
 };
+
+// what belongs to the dialogue file itself, not to the scene that plays a line
+const getStageFields = ({ id, speaker, text, note, isBalloon, when, key, ...rest }: any) => rest;
+
+// a scene's lines as the plain words (a speech element's lines, the visit lines)
+export const getDialogueTexts = (sceneId: string) => getDialogueScene(sceneId).lines.map(({ text }) => text || '');
+
+// a scene's lines as a script: { who, text } and whatever the scene does with them ('phase', 'ifRecruits'), or a step with no words ({ ray })
+export const getDialogueScript = (sceneId: string) => getDialogueScene(sceneId).lines.map((line: any) =>
+  line.speaker ? { who: line.speaker, text: line.text, ...getStageFields(line) } : getStageFields(line));
+
+// a bystander's intro: their own lines by name, and the teammate's
+export const getIntroLines = (sceneId: string) => getDialogueScene(sceneId).lines.map((line: any) => line.speaker == 'teammate'
+  ? { isTeammate: true, text: line.text }
+  : { name: line.speaker, text: line.text, ...('isFlipped' in line ? { isFlipped: line.isFlipped } : {}) });
+
+// one line, by name and words
+export const getDialogueLine = (sceneId: string) => {
+  const [line] = getDialogueScene(sceneId).lines as Array<any>;
+  return { name: line.speaker, text: line.text };
+};
+
+// lines looked up by their 'key' (the Lab trap's chase: what the Agent and the teammate shout)
+export const getKeyedLines = (sceneId: string) => Object.fromEntries(getDialogueScene(sceneId).lines.map((line: any) => [line.key, line.text]));
+
+// the teammate over a downed bystander: the lines for how the earlier choices went ('allSame', 'mixed', 'recruit', 'terminate' or 'none'),
+// with {him}, {his} and {last} filled in
+export const getRecruitChoiceLines = (past: string, fills: Record<string, string>) => getDialogueScene('recruit.choice').lines
+  .filter(({ when }: any) => when && when.past == past)
+  .map(({ text = '' }) => text.replace(/\{(\w+)\}/g, (_, name) => fills[name] ?? `{${name}}`));

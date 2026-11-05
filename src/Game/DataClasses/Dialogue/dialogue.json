@@ -224,6 +224,604 @@
           "id": "radio.mapLab.0"
         }
       ]
+    },
+    "rapidTransit.intro": {
+      "label": "Subway: Punk Guy finds the eye",
+      "lines": [
+        {
+          "speaker": "Punk Guy",
+          "text": "Ooo... pretty...",
+          "isFlipped": true,
+          "id": "rapidTransit.intro.0"
+        },
+        {
+          "speaker": "teammate",
+          "text": "No, don't touch it!",
+          "id": "rapidTransit.intro.1"
+        }
+      ]
+    },
+    "rooftop.intro": {
+      "label": "Rooftop: Punk Girl at the graves",
+      "lines": [
+        {
+          "speaker": "Punk Girl",
+          "text": "Is someone there? I can hear them...",
+          "isFlipped": false,
+          "id": "rooftop.intro.0"
+        },
+        {
+          "speaker": "Punk Girl",
+          "text": "It's my ancestors... they're calling to me from the graves.",
+          "isFlipped": false,
+          "id": "rooftop.intro.1"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Step away from that!",
+          "id": "rooftop.intro.2"
+        },
+        {
+          "speaker": "Punk Girl",
+          "text": "They're so ANGRY. They want me to take it!",
+          "isFlipped": false,
+          "id": "rooftop.intro.3"
+        }
+      ]
+    },
+    "aquarium.intro": {
+      "label": "Aquarium: the worker and the tongue",
+      "lines": [
+        {
+          "speaker": "Aquarium Worker",
+          "text": "I'M A MERMAID!!",
+          "isFlipped": false,
+          "id": "aquarium.intro.0"
+        },
+        {
+          "speaker": "teammate",
+          "text": "She must've worked here... but the Kaiju radiation is scrambling her brains, like the others.",
+          "id": "aquarium.intro.1"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Ma'am, put that down!",
+          "id": "aquarium.intro.2"
+        }
+      ]
+    },
+    "rooftop.afterTouch": {
+      "label": "Rooftop: after the touch",
+      "lines": [
+        {
+          "speaker": "Punk Girl",
+          "text": "I can feel their power flowing through me!",
+          "id": "rooftop.afterTouch.0"
+        }
+      ]
+    },
+    "sewer1.walkIn": {
+      "label": "Sewer 1: hiding out",
+      "lines": [
+        {
+          "speaker": "recruit",
+          "text": "Jumping into the sewers was quick thinking.",
+          "id": "sewer1.walkIn.0"
+        },
+        {
+          "speaker": "recruit",
+          "text": "That swanky Agent will never look for us down here.",
+          "id": "sewer1.walkIn.1"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Our powers are gone.",
+          "id": "sewer1.walkIn.2"
+        },
+        {
+          "speaker": "teammate",
+          "text": "The Lab only ever lent them to us, using nano-tech.",
+          "id": "sewer1.walkIn.3"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Powers gained by touching Kaiju parts...",
+          "id": "sewer1.walkIn.4"
+        },
+        {
+          "speaker": "teammate",
+          "text": "That is how the bystanders we fought got theirs: by touching the fallen Kaiju parts.",
+          "id": "sewer1.walkIn.5"
+        },
+        {
+          "speaker": "teammate",
+          "text": "And that's why the Agent's ray didn't take yours.",
+          "ifRecruits": true,
+          "id": "sewer1.walkIn.6"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Those are different... Those powers last.",
+          "id": "sewer1.walkIn.7"
+        },
+        {
+          "speaker": "teammate",
+          "text": "If we can find some Kaiju parts and touch them...",
+          "id": "sewer1.walkIn.8"
+        },
+        {
+          "speaker": "teammate",
+          "text": "We could get our powers back, and fight back.",
+          "id": "sewer1.walkIn.9"
+        }
+      ]
+    },
+    "sewer1.reveal": {
+      "label": "Sewer 1: the glow",
+      "lines": [
+        {
+          "speaker": "recruit",
+          "text": "What's that glow?",
+          "id": "sewer1.reveal.0"
+        }
+      ]
+    },
+    "sewer2.walkIn": {
+      "label": "Sewer 2: the Kaiju parts",
+      "lines": [
+        {
+          "speaker": "player",
+          "text": "Are those... Kaiju parts?",
+          "id": "sewer2.walkIn.0"
+        },
+        {
+          "speaker": "teammate",
+          "text": "The one thing we need, and it was in the next room this whole time.",
+          "id": "sewer2.walkIn.1"
+        },
+        {
+          "speaker": "player",
+          "text": "That is crazy.",
+          "id": "sewer2.walkIn.2"
+        },
+        {
+          "speaker": "teammate",
+          "text": "They must be specimens from the Lab.",
+          "id": "sewer2.walkIn.3"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Flushed down the pipes when the brains finished their morbid experiments.",
+          "id": "sewer2.walkIn.4"
+        },
+        {
+          "speaker": "player",
+          "text": "And now they are all we have left.",
+          "id": "sewer2.walkIn.5"
+        },
+        {
+          "speaker": "teammate",
+          "text": "There's no taking this back. Whatever it does to us, it lasts.",
+          "id": "sewer2.walkIn.6"
+        },
+        {
+          "speaker": "player",
+          "text": "I know.",
+          "id": "sewer2.walkIn.7"
+        },
+        {
+          "speaker": "teammate",
+          "text": "I never said it, but... I'm glad it was you out there with me.",
+          "id": "sewer2.walkIn.8"
+        },
+        {
+          "speaker": "player",
+          "text": "Me too.",
+          "id": "sewer2.walkIn.9"
+        },
+        {
+          "speaker": "teammate",
+          "text": "OK... let's do this.",
+          "id": "sewer2.walkIn.10"
+        },
+        {
+          "speaker": "player",
+          "text": "Let's do this.",
+          "id": "sewer2.walkIn.11"
+        }
+      ]
+    },
+    "street.greeting": {
+      "label": "Street: the Agent calls the team over",
+      "lines": [
+        {
+          "speaker": "agent",
+          "text": "Hey, soldiers! Over here.",
+          "isBalloon": true,
+          "id": "street.greeting.0"
+        }
+      ]
+    },
+    "street.talk": {
+      "label": "Street: the Agent's briefing",
+      "lines": [
+        {
+          "speaker": "agent",
+          "text": "Good work out there. You beat them back.",
+          "id": "street.talk.0"
+        },
+        {
+          "speaker": "agent",
+          "text": "Careful around those Kaiju parts. They are hazardous.",
+          "id": "street.talk.1"
+        },
+        {
+          "speaker": "agent",
+          "text": "One touch, and a person is changed for good.",
+          "id": "street.talk.2"
+        },
+        {
+          "speaker": "agent",
+          "text": "Word from West Rapid Transit: Bystanders are gathering.",
+          "id": "street.talk.3"
+        },
+        {
+          "speaker": "agent",
+          "text": "Get there before someone touches one.",
+          "id": "street.talk.4"
+        },
+        {
+          "speaker": "agent",
+          "text": "Oh, and if you need to: stop by the Lab on your way.",
+          "id": "street.talk.5"
+        },
+        {
+          "speaker": "agent",
+          "text": "They can give you a boost of Kaiju Juice,",
+          "id": "street.talk.6"
+        },
+        {
+          "speaker": "agent",
+          "text": "or change out your teammate.",
+          "id": "street.talk.7"
+        },
+        {
+          "speaker": "agent",
+          "text": "Go.",
+          "id": "street.talk.8"
+        }
+      ]
+    },
+    "labIntro.welcome": {
+      "label": "Lab: welcome",
+      "lines": [
+        {
+          "speaker": "agent",
+          "text": "Welcome to the Lab.",
+          "id": "labIntro.welcome.0"
+        },
+        {
+          "speaker": "agent",
+          "text": "Have a look around.",
+          "id": "labIntro.welcome.1"
+        }
+      ]
+    },
+    "labIntro.nervous": {
+      "label": "Lab: the specimen tank",
+      "lines": [
+        {
+          "speaker": "agent",
+          "text": "*nervous* Oh, those?",
+          "id": "labIntro.nervous.0"
+        },
+        {
+          "speaker": "agent",
+          "text": "Nothing to worry about...",
+          "id": "labIntro.nervous.1"
+        },
+        {
+          "speaker": "agent",
+          "text": "Just some R&D. Cryo-chimeric epigenetics.",
+          "id": "labIntro.nervous.2"
+        }
+      ]
+    },
+    "lab.showdown": {
+      "label": "Lab fight: the Agent's reveal",
+      "lines": [
+        {
+          "speaker": "agent",
+          "text": "You came back here? With no powers?",
+          "id": "lab.showdown.0"
+        },
+        {
+          "speaker": "teammate",
+          "text": "We found the parts you flushed. We touched them. We got our powers back.",
+          "id": "lab.showdown.1"
+        },
+        {
+          "speaker": "agent",
+          "text": "Ha... ha ha...",
+          "id": "lab.showdown.2"
+        },
+        {
+          "speaker": "agent",
+          "text": "HA HA HA HA HA HA HA!",
+          "id": "lab.showdown.3"
+        },
+        {
+          "speaker": "player",
+          "text": "What's so funny?",
+          "id": "lab.showdown.4"
+        },
+        {
+          "speaker": "agent",
+          "text": "Powers from Kaiju parts are inherently unstable, soldier.",
+          "id": "lab.showdown.5"
+        },
+        {
+          "speaker": "agent",
+          "text": "All these Kaiju... Where did you think they were coming from?",
+          "id": "lab.showdown.6"
+        },
+        {
+          "speaker": "teammate",
+          "text": "No...",
+          "id": "lab.showdown.7"
+        },
+        {
+          "speaker": "agent",
+          "text": "Every one of them used to be an Agent.",
+          "id": "lab.showdown.8"
+        },
+        {
+          "speaker": "agent",
+          "text": "Failed experiments.",
+          "id": "lab.showdown.9"
+        }
+      ]
+    },
+    "labTrap.trap": {
+      "label": "Lab trap: the ray",
+      "lines": [
+        {
+          "speaker": "agent",
+          "text": "You did well, soldier.",
+          "note": "jamie",
+          "id": "labTrap.trap.0"
+        },
+        {
+          "speaker": "agent",
+          "text": "But those powers were only on loan.",
+          "note": "jamie",
+          "id": "labTrap.trap.1"
+        },
+        {
+          "speaker": "agent",
+          "text": "And we have no more need for you. Meet the new team.",
+          "phase": "clones",
+          "note": "jamie",
+          "id": "labTrap.trap.2"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Clones... That's what was in the tanks!",
+          "id": "labTrap.trap.3"
+        },
+        {
+          "speaker": "agent",
+          "text": "Lab property. We are taking them back.",
+          "note": "jamie",
+          "id": "labTrap.trap.4"
+        },
+        {
+          "ray": true,
+          "id": "labTrap.trap.5"
+        },
+        {
+          "speaker": "player",
+          "text": "Our powers... they are gone!",
+          "id": "labTrap.trap.6"
+        },
+        {
+          "speaker": "recruit",
+          "text": "Not mine. I still have mine. Kaiju powers are not theirs to take.",
+          "ifRecruits": true,
+          "id": "labTrap.trap.7"
+        },
+        {
+          "speaker": "agent",
+          "text": "Seize them!",
+          "id": "labTrap.trap.8"
+        }
+      ]
+    },
+    "labTrap.chase": {
+      "label": "Lab trap: the chase",
+      "lines": [
+        {
+          "speaker": "agent",
+          "text": "Get them! Don't let them escape!",
+          "key": "agent",
+          "id": "labTrap.chase.0"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Run! Get to the exit, now!",
+          "key": "teammate",
+          "id": "labTrap.chase.1"
+        },
+        {
+          "speaker": "teammate",
+          "text": "The others will hold them off! Run for the exit!",
+          "key": "teammateWithRecruits",
+          "ifRecruits": true,
+          "id": "labTrap.chase.2"
+        }
+      ]
+    },
+    "visit": {
+      "label": "A battleground revisited",
+      "lines": [
+        {
+          "speaker": "teammate",
+          "text": "Not much to do here...",
+          "id": "visit.0"
+        },
+        {
+          "speaker": "teammate",
+          "text": "...but it could be a good place to train.",
+          "id": "visit.1"
+        }
+      ]
+    },
+    "peninsula.arrival": {
+      "label": "Peninsula 1: the teammate runs in",
+      "lines": [
+        {
+          "speaker": "teammate",
+          "text": "Heads-up, teammate. They're coming!",
+          "isBalloon": true,
+          "id": "peninsula.arrival.0"
+        }
+      ]
+    },
+    "recruit.choice": {
+      "label": "Every recruit choice: the teammate over the bystander",
+      "lines": [
+        {
+          "speaker": "teammate",
+          "text": "I guess we're going to {last} {him}, like the others?",
+          "when": {
+            "past": "allSame"
+          },
+          "id": "recruit.choice.0"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Recruit {him}, and the crew grows by one...",
+          "when": {
+            "past": "allSame"
+          },
+          "id": "recruit.choice.1"
+        },
+        {
+          "speaker": "teammate",
+          "text": "...or study {his} DNA and take {his} power. That would be fatal for {him}.",
+          "when": {
+            "past": "allSame"
+          },
+          "id": "recruit.choice.2"
+        },
+        {
+          "speaker": "teammate",
+          "text": "We have recruited, and we have terminated...",
+          "when": {
+            "past": "mixed"
+          },
+          "id": "recruit.choice.3"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Recruit {him}, and we gain a crew member...",
+          "when": {
+            "past": "mixed"
+          },
+          "id": "recruit.choice.4"
+        },
+        {
+          "speaker": "teammate",
+          "text": "...or terminate {him}, and harvest {his} power.",
+          "when": {
+            "past": "mixed"
+          },
+          "id": "recruit.choice.5"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Another one... The last one joined the crew.",
+          "when": {
+            "past": "recruit"
+          },
+          "id": "recruit.choice.6"
+        },
+        {
+          "speaker": "teammate",
+          "text": "We could recruit {him} too, and grow the team...",
+          "when": {
+            "past": "recruit"
+          },
+          "id": "recruit.choice.7"
+        },
+        {
+          "speaker": "teammate",
+          "text": "...or study {his} DNA and take {his} power. That would be fatal for {him}.",
+          "when": {
+            "past": "recruit"
+          },
+          "id": "recruit.choice.8"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Last time, we took the power for ourselves.",
+          "when": {
+            "past": "terminate"
+          },
+          "id": "recruit.choice.9"
+        },
+        {
+          "speaker": "teammate",
+          "text": "We could study {his} DNA again, and take {his} power. It would be fatal for {him}...",
+          "when": {
+            "past": "terminate"
+          },
+          "id": "recruit.choice.10"
+        },
+        {
+          "speaker": "teammate",
+          "text": "...or we could recruit {him} onto the crew.",
+          "when": {
+            "past": "terminate"
+          },
+          "id": "recruit.choice.11"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Maybe we could recruit {him}...",
+          "when": {
+            "past": "none"
+          },
+          "id": "recruit.choice.12"
+        },
+        {
+          "speaker": "teammate",
+          "text": "...or we could study {his} DNA to get {his} power.",
+          "when": {
+            "past": "none"
+          },
+          "id": "recruit.choice.13"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Though that would be fatal for {him}.",
+          "when": {
+            "past": "none"
+          },
+          "id": "recruit.choice.14"
+        }
+      ]
+    },
+    "labIntro.vatPraise": {
+      "label": "Lab: the color vat",
+      "lines": [
+        {
+          "speaker": "Lab Tech",
+          "text": "Looking good!",
+          "isBalloon": true,
+          "id": "labIntro.vatPraise.0"
+        }
+      ]
     }
   }
 }

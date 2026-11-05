@@ -3,6 +3,10 @@ import { createPortal } from "react-dom";
 import styled, { keyframes } from "styled-components";
 import { PIECES_INFO } from "Utils/gameState";
 import { SpeechBalloon } from "Game/ReactComponents/GameBoard/SceneElements";
+import { getDialogueLine } from "Game/DataClasses/Dialogue/dialogue";
+
+// what the Lab Tech says as the color takes (Dialogue/dialogue.json)
+const VAT_PRAISE = getDialogueLine('labIntro.vatPraise');
 
 /*
   The Lab's color screen. The avatar hangs over a vat of light. Pick a color, and irradiate them:
@@ -334,7 +338,7 @@ export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose }) => 
       ))}
       </Scene>
       <Heading>Choose Color</Heading>
-      {isPraising && <PraiseSpot><SpeechBalloon name="Lab Tech" text="Looking good!" x={0} y={0} isFlipped scale={(document.querySelector("[data-play-screen]") || document.body).clientWidth / VAT_LOOK.praiseBaseWidth * VAT_LOOK.praiseScale} /></PraiseSpot>}
+      {isPraising && <PraiseSpot><SpeechBalloon name={VAT_PRAISE.name} text={VAT_PRAISE.text} x={0} y={0} isFlipped scale={(document.querySelector("[data-play-screen]") || document.body).clientWidth / VAT_LOOK.praiseBaseWidth * VAT_LOOK.praiseScale} /></PraiseSpot>}
       {createPortal(<Panel>
         <Picker>
           <ColorField

@@ -1,3 +1,4 @@
+import { getDialogueTexts, getRecruitChoiceLines } from './Dialogue/dialogue';
 import { GameMode, GAME_TICK, PIECES_INFO, ZoomLvl } from 'Utils/gameState';
 import { TimeoutHandler } from './TimeoutHandler';
 import { GameManagerProxy } from './GameManagerProxy';
@@ -74,45 +75,17 @@ export const TEAM_COLORS = {
 
 // the Lab fight's Agents: three of these each, at random
 
-const ARRIVAL_LINE = "Heads-up, teammate. They're coming!";
+const ARRIVAL_LINE = getDialogueTexts('peninsula.arrival')[0];
 
 // before each Recruit or Terminate: what each choice means, a page at a time.
 // the first time is as written. after that the teammate remembers the last choice, and then any pattern.
 const POSSESSIVES = { him: 'his', her: 'her' };
 const RECRUIT_ORDER = ['punk', 'black_female', 'mermaid']; // as they are met in the campaign
 export const getRecruitLines = (pronoun, pastChoices = []) => {
-    const his = POSSESSIVES[pronoun] || 'their';
-    const him = pronoun;
+    // the words are in Dialogue/dialogue.json ('recruit.choice'), one set for each way the earlier choices went
     const last = pastChoices[pastChoices.length - 1];
-    if (pastChoices.length >= 2 && pastChoices.every(choice => choice == last)) {
-        return [
-            `I guess we're going to ${last} ${him}, like the others?`,
-            `Recruit ${him}, and the crew grows by one...`,
-            `...or study ${his} DNA and take ${his} power. That would be fatal for ${him}.`
-        ];
-    }
-    if (pastChoices.length >= 2) {
-        return [
-            'We have recruited, and we have terminated...',
-            `Recruit ${him}, and we gain a crew member...`,
-            `...or terminate ${him}, and harvest ${his} power.`
-        ];
-    }
-    if (last == 'recruit') {
-        return [
-            'Another one... The last one joined the crew.',
-            `We could recruit ${him} too, and grow the team...`,
-            `...or study ${his} DNA and take ${his} power. That would be fatal for ${him}.`
-        ];
-    }
-    if (last == 'terminate') {
-        return [
-            'Last time, we took the power for ourselves.',
-            `We could study ${his} DNA again, and take ${his} power. It would be fatal for ${him}...`,
-            `...or we could recruit ${him} onto the crew.`
-        ];
-    }
-    return [`Maybe we could recruit ${him}...`, `...or we could study ${his} DNA to get ${his} power.`, `Though that would be fatal for ${him}.`];
+    const past = pastChoices.length >= 2 ? (pastChoices.every(choice => choice == last) ? 'allSame' : 'mixed') : (last || 'none');
+    return getRecruitChoiceLines(past, { him: pronoun, his: POSSESSIVES[pronoun] || 'their', last: last || '' });
 };
 
 // how much of a sprite frame's height the body fills (the hazmat sheet: about 137 of 200 pixels)

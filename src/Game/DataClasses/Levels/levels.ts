@@ -1,3 +1,4 @@
+import { getDialogueLine, getDialogueScript, getDialogueTexts, getIntroLines, getKeyedLines } from 'Game/DataClasses/Dialogue/dialogue';
 import { getSpeechMs } from '../speechTiming';
 import { getTileCenter } from 'Game/DataClasses/GameBoard/hexGrid';
 import type { HexGrid } from 'Game/DataClasses/GameBoard/hexGrid';
@@ -336,10 +337,7 @@ const RAPID_TRANSIT_SCENE = {
     intro: {
       focus: { x: 1090, y: 430 },
       zoomScale: 1.6,
-      lines: [
-        { name: 'Punk Guy', text: 'Ooo... pretty...', isFlipped: true },
-        { isTeammate: true, text: "No, don't touch it!" }
-      ]
+      lines: getIntroLines('rapidTransit.intro')
     }
   },
   shakePhases: ['train'],
@@ -387,15 +385,10 @@ const ROOFTOP_SCENE = {
     intro: {
       focus: { x: 733, y: 470 },
       zoomScale: 1.5,
-      lines: [
-        { name: 'Punk Girl', text: 'Is someone there? I can hear them...', isFlipped: false },
-        { name: 'Punk Girl', text: "It's my ancestors... they're calling to me from the graves.", isFlipped: false },
-        { isTeammate: true, text: 'Step away from that!' },
-        { name: 'Punk Girl', text: "They're so ANGRY. They want me to take it!", isFlipped: false }
-      ],
+      lines: getIntroLines('rooftop.intro'),
       // the touch plays out on the whole Kaiju part, then a beat on her, filled with its power. draft words.
       isTouchWide: true,
-      afterTouch: { name: 'Punk Girl', text: 'I can feel their power flowing through me!' }
+      afterTouch: getDialogueLine('rooftop.afterTouch')
     }
   },
   phases: [{ id: 'head', label: 'Kaiju head' }, { id: 'headTouched', label: 'Touch part' }],
@@ -458,11 +451,7 @@ const AQUARIUM_SCENE = {
     intro: {
       focus: { x: 780, y: 590 },
       zoomScale: 1.6,
-      lines: [
-        { name: 'Aquarium Worker', text: "I'M A MERMAID!!", isFlipped: false },
-        { isTeammate: true, text: "She must've worked here... but the Kaiju radiation is scrambling her brains, like the others." },
-        { isTeammate: true, text: "Ma'am, put that down!" }
-      ]
+      lines: getIntroLines('aquarium.intro')
     }
   },
   tileTone: 'dark' as const,
@@ -497,16 +486,6 @@ const sewerLight = (id, color, x, y, size, seconds, delaySeconds, highOpacity) =
   id, type: 'light' as const, phase: 'glow', color, x: x - size / 2, y: y - size / 2, width: size, height: size, zIndex: -3, seconds, delaySeconds, lowOpacity: 0, highOpacity
 });
 
-// draft words: what happened at the Lab, and why Kaiju parts are different
-const SEWER1_LINES = [
-  'Our powers are gone.',
-  'The Lab only ever lent them to us, using nano-tech.',
-  'Powers gained by touching Kaiju parts...',
-  'Those are different... Those powers last.',
-  'If we can find some Kaiju parts and touch them...',
-  'We could get our powers back, and fight back.'
-];
-
 const SEWER1_WALK_IN = {
   teammateSpot: { x: 640, y: 530 }, // out on the catwalk
   doorTile: { i: 37, j: 11 },
@@ -514,18 +493,10 @@ const SEWER1_WALK_IN = {
   standSpots: [{ x: 1180, y: 540 }, { x: 960, y: 610 }, { x: 820, y: 470 }],
   talkBeatMs: 2500,
   isWaitingToBePassed: true, // the recruits and the teammate wait where they rest until the player goes by, heading left
-  script: [
-    { who: 'recruit', text: 'Jumping into the sewers was quick thinking.' },
-    { who: 'recruit', text: 'That swanky Agent will never look for us down here.' },
-    ...SEWER1_LINES.slice(0, 3).map(text => ({ who: 'teammate', text })),
-    // draft words: where the recruits' powers came from, and why the ray left them alone
-    { who: 'teammate', text: 'That is how the bystanders we fought got theirs: by touching the fallen Kaiju parts.' },
-    { who: 'teammate', text: "And that's why the Agent's ray didn't take yours.", ifRecruits: true },
-    ...SEWER1_LINES.slice(3).map(text => ({ who: 'teammate', text }))
-  ],
+  script: getDialogueScript('sewer1.walkIn'),
   // then the doorway lights up, someone sees it, and after a beat the way on shows. draft words.
   // the line goes to the log; the camera then looks at the glow for 3 s, the way on shows, 2 s more, and back
-  reveal: { glowPhase: 'glow', line: { who: 'recruit', text: "What's that glow?" }, beatMs: 2500, shownPhase: 'deeperShown', lookSpot: { x: 315, y: 362 }, lookMs: 3000, labelMs: 2000 }
+  reveal: { glowPhase: 'glow', line: getDialogueScript('sewer1.reveal')[0], beatMs: 2500, shownPhase: 'deeperShown', lookSpot: { x: 315, y: 362 }, lookMs: 3000, labelMs: 2000 }
 };
 
 const SEWER1_TALK = [
@@ -558,20 +529,7 @@ const SEWER2_WALK_IN = {
   doorTile: { i: 18, j: 4 },
   standSpots: [{ x: 1100, y: 520 }, { x: 1040, y: 590 }, { x: 1170, y: 600 }],
   frontSpots: [{ x: 705, y: 560 }, { x: 772, y: 598 }], // the player and teammate step to the front of the group, on the far left, before they talk
-  script: [
-    { who: 'player', text: 'Are those... Kaiju parts?' },
-    { who: 'teammate', text: 'The one thing we need, and it was in the next room this whole time.' },
-    { who: 'player', text: 'That is crazy.' },
-    { who: 'teammate', text: 'They must be specimens from the Lab.' },
-    { who: 'teammate', text: 'Flushed down the pipes when the brains finished their morbid experiments.' },
-    { who: 'player', text: 'And now they are all we have left.' },
-    { who: 'teammate', text: "There's no taking this back. Whatever it does to us, it lasts." },
-    { who: 'player', text: 'I know.' },
-    { who: 'teammate', text: "I never said it, but... I'm glad it was you out there with me." },
-    { who: 'player', text: 'Me too.' },
-    { who: 'teammate', text: "OK... let's do this." },
-    { who: 'player', text: "Let's do this." }
-  ],
+  script: getDialogueScript('sewer2.walkIn'),
   ending: { spots: [{ x: 638, y: 523 }, { x: 705, y: 485 }], phase: 'blinding', climaxMs: 8500 } // the climb to the whiteout, in SceneElements
 };
 
@@ -596,17 +554,7 @@ const streetGlow = (id, x, y, width, height, seconds, delaySeconds) => ({
 });
 
 // short, so each bubble is one easy thought
-const STREET_LINES = [
-  'Good work out there. You beat them back.',
-  'Careful around those Kaiju parts. They are hazardous.',
-  'One touch, and a person is changed for good.',
-  'Word from West Rapid Transit: Bystanders are gathering.',
-  'Get there before someone touches one.',
-  'Oh, and if you need to: stop by the Lab on your way.',
-  'They can give you a boost of Kaiju Juice,',
-  'or change out your teammate.',
-  'Go.'
-];
+const STREET_LINES = getDialogueTexts('street.talk');
 
 const STREET_TALK_MS = STREET_LINES.reduce((total, line) => total + getSpeechMs(line), 0);
 
@@ -624,7 +572,7 @@ const STREET_SCENE = {
   getWalkerHeight: getWorkerHeight, // how tall a worker stands at a spot's y, in scene pixels
   // the whole street, then in on the Agent as he calls the team over, then back to them. his words follow in the log.
   // he calls again every so often, until the team walks over to him. then the rest of his words follow.
-  greeting: { text: 'Hey, soldiers! Over here.', speechSpot: { x: 335, y: 372 }, repeatMs: 7000, nearRows: 3 },
+  greeting: { text: getDialogueTexts('street.greeting')[0], speechSpot: { x: 335, y: 372 }, repeatMs: 7000, nearRows: 3 },
   extras: [standingAgent(335, 682)],
   sceneElements: [
     hazmatSweeper('hazmat1', 'hazmatBroomLeft', 740, 600),
@@ -656,11 +604,11 @@ const LAB_INTRO_SCENE = {
   sceneElements: [
     {
       id: 'agentWelcome', type: 'speech' as const, x: 720, y: 445, width: 0, height: 0, sortY: ABOVE_CHARACTERS, hidePhase: LAB_TALK_PHASE,
-      lines: ['Welcome to the Lab.', 'Have a look around.']
+      lines: getDialogueTexts('labIntro.welcome')
     },
     {
       id: 'agentNervous', type: 'speech' as const, phase: LAB_TALK_PHASE, x: 720, y: 445, width: 0, height: 0, sortY: ABOVE_CHARACTERS,
-      lines: ['*nervous* Oh, those?', 'Nothing to worry about...', 'Just some R&D. Cryo-chimeric epigenetics.']
+      lines: getDialogueTexts('labIntro.nervous')
     },
     { id: 'avatarTank', type: 'hotspot' as const, action: 'powers', label: 'Change powers', labelY: 345, outline: '/levels/lab-outline-avatars.png', x: 62, y: 235, width: 175, height: 440, rotate: -24, sortY: ABOVE_CHARACTERS },
     { id: 'specimenTank', type: 'hotspot' as const, action: 'agentTalk', label: 'What is this?', labelY: 300, outline: '/levels/lab-outline-specimen.png', x: 290, y: 310, width: 170, height: 300, rotate: -24, sortY: ABOVE_CHARACTERS, hidePhase: LAB_TALK_PHASE },
@@ -670,18 +618,7 @@ const LAB_INTRO_SCENE = {
 };
 
 // draft words: the Agent's reveal, before the fight
-const LAB_SHOWDOWN_SCRIPT = [
-  { who: 'agent', text: 'You came back here? With no powers?' },
-  { who: 'teammate', text: 'We found the parts you flushed. We touched them. We got our powers back.' },
-  { who: 'agent', text: 'Ha... ha ha...' },
-  { who: 'agent', text: 'HA HA HA HA HA HA HA!' },
-  { who: 'player', text: "What's so funny?" },
-  { who: 'agent', text: 'Powers from Kaiju parts are inherently unstable, soldier.' },
-  { who: 'agent', text: 'All these Kaiju... Where did you think they were coming from?' },
-  { who: 'teammate', text: 'No...' },
-  { who: 'agent', text: 'Every one of them used to be an Agent.' },
-  { who: 'agent', text: 'Failed experiments.' }
-];
+const LAB_SHOWDOWN_SCRIPT = getDialogueScript('lab.showdown');
 
 const LAB_SCENE = {
   showdown: { script: LAB_SHOWDOWN_SCRIPT, speechSpot: { x: 700, y: 365 } },
@@ -846,7 +783,7 @@ const MAP_WALKS = [
 
 // a battleground the player has won on can be visited again from the map: a walk around it, and back
 export const getVisitLevelId = (levelId: string) => `visit-${levelId}`;
-const VISIT_LINES = ['Not much to do here...', '...but it could be a good place to train.'];
+const VISIT_LINES = getDialogueTexts('visit');
 
 // the map walks show the battlegrounds already won on, as well as where to go next
 // only those that come before this walk in the campaign: a battleground not reached yet never shows, even if won in an earlier playthrough
@@ -873,25 +810,11 @@ LEVELS.labTrap = {
   hasRecruitFollowers: true, // the recruits are here too, and run with the teammate
   trap: {
     // the Agent's four lines are Jamie's. the clones, the teammate's line and the ray are a draft.
-    script: [
-      { who: 'agent', text: 'You did well, soldier.' },
-      { who: 'agent', text: 'But those powers were only on loan.' },
-      { who: 'agent', text: 'And we have no more need for you. Meet the new team.', phase: 'clones' },
-      { who: 'teammate', text: "Clones... That's what was in the tanks!" },
-      { who: 'agent', text: 'Lab property. We are taking them back.' },
-      { ray: true },
-      { who: 'player', text: 'Our powers... they are gone!' },
-      { who: 'recruit', text: 'Not mine. I still have mine. Kaiju powers are not theirs to take.', ifRecruits: true },
-      { who: 'agent', text: 'Seize them!' }
-    ],
+    script: getDialogueScript('labTrap.trap'),
     speechSpot: { x: 700, y: 365 },
     lineUp: { y: 610, spacing: 80 }, // the team stands in a row in front of the Agent
     // said as the chase starts, while everyone runs. draft words.
-    chaseLines: {
-      agent: "Get them! Don't let them escape!",
-      teammate: 'Run! Get to the exit, now!',
-      teammateWithRecruits: "The others will hold them off! Run for the exit!"
-    },
+    chaseLines: getKeyedLines('labTrap.chase') as { agent: string; teammate: string; teammateWithRecruits: string },
     ray: { from: { x: 700, y: 440 }, color: '#7dffef', ms: 2200 },
     chasers: { xs: [480, 700, 920], startY: 830, landingY: 640, moveSpeed: 5, abilities: [] }
   },
