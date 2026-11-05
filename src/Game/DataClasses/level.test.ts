@@ -1164,7 +1164,10 @@ describe('fourth playtest', () => {
     const { exit } = LEVELS.labIntro;
     gm.activePhases.add('exitOpen');
     const { rowStep } = LEVELS.labIntro.grid;
-    player.initCharLocation(true, gm.gameBoardManager.getClosestWalkableTileToLocation({ x: exit.spot.x - rowStep, y: exit.spot.y }));
+    // walking right along the floor, below the back wall, doesn't take it
+    player.initCharLocation(true, gm.gameBoardManager.getClosestWalkableTileToLocation({ x: exit.spot.x, y: exit.spot.y + rowStep * 2.2 }));
+    expect(gm.getGameResult()).toBe(null);
+    player.initCharLocation(true, gm.gameBoardManager.getClosestWalkableTileToLocation({ x: exit.spot.x, y: exit.spot.y + rowStep }));
     expect(gm.getGameResult()).toBe(GameResult.PlayerWon);
   });
 });

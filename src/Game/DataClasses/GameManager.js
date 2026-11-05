@@ -1279,19 +1279,19 @@ export class GameManager {
         if (isShownWhenOpen) this.startExitLook();
     }
 
-    // the way out has opened: the camera goes to it, then back to the player.
-    // far from the Agent (he is out of shot), it pulls out to show the whole scene instead.
+    // the way out has opened: the camera pans to it, then back to the player. never a pull out, however far away it is:
+    // the pan just takes longer
     startExitLook() {
         const player = this.gameBoardPiecesManager.getPlayerPiece();
-        const agent = this.extras.find(({ avatar }) => avatar == 'agent');
         const { rowStep, scale } = this.level.grid;
-        const isFar = !!agent && Math.hypot(agent.charLocation.x - player.charLocation.x, agent.charLocation.y - player.charLocation.y) > CUTSCENE.exitLookFarRows * rowStep * scale;
-        const exitShot = isFar ? { isWide: true } : { point: this.level.exit.spot, zoomScale: 1, isCover: true };
-        const backShot = { point: { ...player.charLocation }, zoomScale: 1, isCover: true };
+        const rows = Math.hypot(this.level.exit.spot.x - player.charLocation.x, this.level.exit.spot.y - player.charLocation.y) / (rowStep * scale);
+        const panMs = CUTSCENE.pullInMs * Math.min(Math.max(rows / CUTSCENE.exitLookFarRows, 1), 2.2);
+        const exitShot = { point: this.level.exit.spot, zoomScale: 1, isCover: true, panMs };
+        const backShot = { point: { ...player.charLocation }, zoomScale: 1, isCover: true, panMs };
         this.startCutscene([
-            { shot: exitShot, ms: CUTSCENE.pullInMs },
-            { shot: exitShot, ms: CUTSCENE.exitLookMs },
-            { shot: backShot, ms: CUTSCENE.pullInMs }
+            { shot: exitShot, ms: panMs },
+            { shot: exitShot, ms: CUTSCENE.exitLookMs, isSkippable: true },
+            { shot: backShot, ms: panMs }
         ]);
     }
 
@@ -1324,7 +1324,7 @@ export class GameManager {
             this.reachedSite = site;
             return true;
         }
-        if (exit && this.activePhases.has(EXIT_OPEN_PHASE) && this.getIsPlayerNear(exit.spot)) return true;
+        if (exit && this.activePhases.has(EXIT_OPEN_PHASE) && this.getIsPlayerNear(exit.spot, exit.nearRows)) return true;
         const piece = this.gameBoardPiecesManager.getPlayerPiece();
         const { i, j } = piece.getTileIndex();
         return piece.isThere && goalTiles.some(tile => tile.i == i && tile.j == j);

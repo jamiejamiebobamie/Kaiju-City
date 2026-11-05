@@ -183,6 +183,21 @@ const TrainTitle = styled.div`
   animation: ${trainTitleIn} 0.5s ease-out both, ${trainTitlePulse} 0.5s ease-in-out 0.5s infinite;
 `;
 
+// in a walking scene that fills the monitor, the camera leans toward what the player is nearing
+const COVER_LOOK = {
+  nearRows: 6, // it starts to lean this close
+  fullShare: 0.45, // and leans all the way once this much nearer
+  margin: 0.06, // of the view, kept clear around the player and the spot
+  labelHalfWidthPx: 90 // a hotspot's label is about this wide either side of its middle
+};
+
+// a scene's hotspots (where their labels are) and, once open, its way out
+const getCoverSights = (level, activePhases) => [
+  ...(level.sceneElements || []).filter(({ type, hidePhase }) => type == 'hotspot' && !(hidePhase && activePhases.includes(hidePhase)))
+    .map(({ x, y, width, labelY }) => ({ x: x + width / 2, y: labelY ?? y })),
+  ...(level.exit && activePhases.includes(EXIT_OPEN_PHASE) ? [level.exit.spot] : [])
+];
+
 const CaretIcon = styled.img`
   position: absolute;
   z-index: 2147483001;
@@ -745,7 +760,29 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
         const viewHeight = shotView.viewHeight / coverCamera.zoom;
         const { x, y } = getWorldLocation(player.charLocation);
         const across = (value, size, view) => view / 2 + Math.min(Math.max(value / size, 0), 1) * (size - view);
-        coverCamera.centerOn({ x: across(x, world.width, viewWidth), y: across(y, world.height, viewHeight) });
+        let center = { x: across(x, world.width, viewWidth), y: across(y, world.height, viewHeight) };
+        // nearing something to use (a hotspot and its label, or the open way out), the view leans toward it:
+        // it looks between the two, with both on screen where they fit
+        const tileRowPx = grid.rowStep * grid.scale;
+        const sights = getCoverSights(level, gameManager.getActivePhases()).map(getWorldLocation);
+        const nearest = sights.map(spot => ({ spot, distance: Math.hypot(spot.x - x, spot.y - y) })).sort((a, b) => a.distance - b.distance)[0];
+        const nearPx = COVER_LOOK.nearRows * tileRowPx;
+        if (nearest && nearest.distance < nearPx) {
+          const weight = Math.min((nearPx - nearest.distance) / (nearPx * (1 - COVER_LOOK.fullShare)), 1);
+          const { spot } = nearest;
+          const fit = (value, a, b, view, margin) => {
+            const low = Math.max(a, b) - view / 2 + margin;
+            const high = Math.min(a, b) + view / 2 - margin;
+            return low <= high ? Math.min(Math.max(value, low), high) : value;
+          };
+          const between = {
+            x: fit((x + spot.x) / 2, x, spot.x, viewWidth, viewWidth * COVER_LOOK.margin + COVER_LOOK.labelHalfWidthPx),
+            y: fit((y + spot.y) / 2, y - tileRowPx * 2, spot.y, viewHeight, viewHeight * COVER_LOOK.margin)
+          };
+          center = { x: center.x + (between.x - center.x) * weight, y: center.y + (between.y - center.y) * weight };
+        }
+        const keepIn = (value, size, view) => view >= size ? size / 2 : Math.min(Math.max(value, view / 2), size - view / 2);
+        coverCamera.centerOn({ x: keepIn(center.x, world.width, viewWidth), y: keepIn(center.y, world.height, viewHeight) });
         worldRef.current.style.transform = coverCamera.getTransform();
         return;
       }

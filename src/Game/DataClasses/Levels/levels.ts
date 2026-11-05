@@ -180,7 +180,7 @@ export type LevelConfig = {
   hasTrainSchedule: boolean;
   shakePhases: Array<string>; // phases that shake the whole scene
   rival?: Rival;
-  exit?: { spot: { x: number; y: number }; afterMs?: number; afterPhase?: string; isShownWhenOpen?: boolean }; // opens after a time or a phase. reaching it ends the level.
+  exit?: { spot: { x: number; y: number }; afterMs?: number; afterPhase?: string; isShownWhenOpen?: boolean; nearRows?: number }; // opens after a time or a phase. reaching it ends the level.
   walkIn?: { // the opening of a scene: who stands where, and who says what
     teammateSpot?: { x: number; y: number };
     doorTile: { i: number; j: number }; // where recruits walk in from
@@ -648,7 +648,8 @@ const agentClone = (id, x) => ({ ...npc(id, 'agent', x, 170, 95), phase: 'clones
 export const LAB_TALK_PHASE = 'labTalk';
 
 const LAB_INTRO_SCENE = {
-  exit: { spot: { x: 925, y: 700 }, afterMs: 0 }, // at the back, clear of the color tank and its label
+  // on the back wall at the right, beside the techs' desk: a short reach, so walking right along the floor never takes it
+  exit: { spot: { x: 1090, y: 565 }, afterMs: 0, nearRows: 1.2 },
   extras: [standingAgent(720, 660)],
   sceneElements: [
     {
@@ -662,7 +663,7 @@ const LAB_INTRO_SCENE = {
     { id: 'avatarTank', type: 'hotspot' as const, action: 'powers', label: 'Change powers', labelY: 345, outline: '/levels/lab-outline-avatars.png', x: 62, y: 235, width: 175, height: 440, rotate: -24, sortY: ABOVE_CHARACTERS },
     { id: 'specimenTank', type: 'hotspot' as const, action: 'agentTalk', label: 'What is this?', labelY: 300, outline: '/levels/lab-outline-specimen.png', x: 290, y: 310, width: 170, height: 300, rotate: -24, sortY: ABOVE_CHARACTERS, hidePhase: LAB_TALK_PHASE },
     { id: 'colorTank', type: 'hotspot' as const, action: 'colors', label: 'Choose color', labelY: 330, outline: '/levels/lab-outline-colors.png', x: 1225, y: 370, width: 170, height: 340, rotate: 34, sortY: ABOVE_CHARACTERS },
-    { id: 'exit', type: 'door' as const, phase: EXIT_OPEN_PHASE, x: 925, y: 660, width: 0, height: 0, sortY: ABOVE_CHARACTERS, label: 'Exit' }
+    { id: 'exit', type: 'door' as const, phase: EXIT_OPEN_PHASE, x: 1090, y: 530, width: 0, height: 0, sortY: ABOVE_CHARACTERS, label: 'Exit' }
   ]
 };
 
