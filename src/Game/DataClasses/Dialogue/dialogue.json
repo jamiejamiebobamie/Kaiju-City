@@ -1,0 +1,229 @@
+{
+  "scenes": {
+    "radio.peninsula1": {
+      "label": "Peninsula 1: radio call",
+      "lines": [
+        {
+          "speaker": "agent",
+          "text": "Reports of more Kaiju incoming to Kaiju City! Protect the Peninsula!!",
+          "isAlarm": true,
+          "note": "jamie",
+          "id": "radio.peninsula1.0"
+        },
+        {
+          "speaker": "agent",
+          "text": "It's your job to protect this city, so do it!",
+          "note": "jamie",
+          "id": "radio.peninsula1.1"
+        }
+      ]
+    },
+    "radio.peninsula2": {
+      "label": "Peninsula 2: radio call",
+      "lines": [
+        {
+          "speaker": "agent",
+          "text": "The punk from the station finished re-education. Mentally compliant. Physically, stronger than he should be. The mohawk stays, apparently.",
+          "when": {
+            "recruit": "punk",
+            "choice": "recruit"
+          },
+          "id": "radio.peninsula2.0"
+        },
+        {
+          "speaker": "agent",
+          "text": "The punk from the station won't be a problem anymore. Cold, but clean.",
+          "when": {
+            "recruit": "punk",
+            "choice": "terminate"
+          },
+          "id": "radio.peninsula2.1"
+        },
+        {
+          "speaker": "agent",
+          "text": "Sonar is showing a second wave off the coast. Bigger than the first.",
+          "isAlarm": true,
+          "id": "radio.peninsula2.2"
+        },
+        {
+          "speaker": "agent",
+          "text": "Get back to the Peninsula. Hold the line!",
+          "id": "radio.peninsula2.3"
+        }
+      ]
+    },
+    "radio.mapRooftop": {
+      "label": "Map to Rooftop: radio call",
+      "lines": [
+        {
+          "speaker": "agent",
+          "text": "Another wave down. You two are holding this city together.",
+          "id": "radio.mapRooftop.0"
+        },
+        {
+          "speaker": "teammate",
+          "text": "They are coming faster than they used to.",
+          "id": "radio.mapRooftop.1"
+        },
+        {
+          "speaker": "agent",
+          "text": "Keep it up. I'm seeing good numbers on your {power} power.",
+          "id": "radio.mapRooftop.2"
+        },
+        {
+          "choices": [
+            {
+              "text": "What's the mission?",
+              "reply": []
+            },
+            {
+              "text": "Where are they all coming from?",
+              "reply": [
+                {
+                  "speaker": "agent",
+                  "text": "That's above your pay grade. For now.",
+                  "id": "radio.mapRooftop.3.1.0"
+                }
+              ]
+            }
+          ],
+          "id": "radio.mapRooftop.3"
+        },
+        {
+          "speaker": "agent",
+          "text": "There have been reports of Kaiju body parts falling onto rooftops in the Cemetary district. Go investigate and try not to let another citizen touch them!",
+          "note": "jamie",
+          "id": "radio.mapRooftop.4"
+        }
+      ]
+    },
+    "radio.peninsula3": {
+      "label": "Peninsula 3: radio call",
+      "lines": [
+        {
+          "speaker": "agent",
+          "text": "The woman from the rooftop cemetery is through re-education. She still hears voices, so: stable, for her. Physically flawless. We could not get her out of the black.",
+          "when": {
+            "recruit": "black_female",
+            "choice": "recruit"
+          },
+          "id": "radio.peninsula3.0"
+        },
+        {
+          "speaker": "agent",
+          "text": "The woman from the rooftop cemetery is in the ground. Fitting, for that address.",
+          "when": {
+            "recruit": "black_female",
+            "choice": "terminate"
+          },
+          "id": "radio.peninsula3.1"
+        },
+        {
+          "speaker": "agent",
+          "text": "No time to rest. The shipping lanes just went dark.",
+          "isAlarm": true,
+          "id": "radio.peninsula3.2"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Oh no...",
+          "id": "radio.peninsula3.3"
+        },
+        {
+          "speaker": "agent",
+          "text": "It's the biggest group yet... But the Peninsula will not fall today!",
+          "id": "radio.peninsula3.4"
+        }
+      ]
+    },
+    "radio.mapAquarium": {
+      "label": "Map to Aquarium: radio call",
+      "lines": [
+        {
+          "speaker": "agent",
+          "text": "The harbor is quiet again. The Mayor sends his thanks.",
+          "id": "radio.mapAquarium.0"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Quiet never lasts around here.",
+          "id": "radio.mapAquarium.1"
+        },
+        {
+          "speaker": "agent",
+          "text": "No, it doesn't. Keep that {power} power charged.",
+          "id": "radio.mapAquarium.2"
+        },
+        {
+          "choices": [
+            {
+              "text": "What's the mission?",
+              "reply": []
+            },
+            {
+              "text": "Is anyone looking into all these Kaiju parts?",
+              "reply": [
+                {
+                  "speaker": "agent",
+                  "text": "Yeah, we got our best guys on it. You will meet them soon enough...",
+                  "id": "radio.mapAquarium.3.1.0"
+                }
+              ]
+            }
+          ],
+          "id": "radio.mapAquarium.3"
+        },
+        {
+          "speaker": "agent",
+          "text": "Something has happened at the Aquarium. Go.",
+          "id": "radio.mapAquarium.4"
+        }
+      ]
+    },
+    "radio.peninsula4": {
+      "label": "Peninsula 4: radio call",
+      "lines": [
+        {
+          "speaker": "agent",
+          "text": "The mermaid is in re-education. Mental state: she is a mermaid. Physically, she's scaling nicely. The tail is a lot.",
+          "when": {
+            "recruit": "mermaid",
+            "choice": "recruit"
+          },
+          "id": "radio.peninsula4.0"
+        },
+        {
+          "speaker": "agent",
+          "text": "The mermaid is off the board. The Aquarium wants to know who's paying for the repairs...",
+          "when": {
+            "recruit": "mermaid",
+            "choice": "terminate"
+          },
+          "id": "radio.peninsula4.1"
+        },
+        {
+          "speaker": "agent",
+          "text": "All units, all units: Kaiju on every approach.",
+          "isAlarm": true,
+          "id": "radio.peninsula4.2"
+        },
+        {
+          "speaker": "agent",
+          "text": "This is everything they have. Hold the Peninsula, whatever it takes!",
+          "id": "radio.peninsula4.3"
+        }
+      ]
+    },
+    "radio.mapLab": {
+      "label": "Map to Lab: radio call",
+      "lines": [
+        {
+          "speaker": "agent",
+          "text": "Soldier, report to the lab, on the double. The brains have been cooking-up something special for you.",
+          "note": "jamie",
+          "id": "radio.mapLab.0"
+        }
+      ]
+    }
+  }
+}

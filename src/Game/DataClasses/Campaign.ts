@@ -1,8 +1,9 @@
+import { getRadioLines } from './Dialogue/dialogue';
 /*
   The story, in order. Each section is a level, played after its radio call if it has one.
   A radio call is built when it starts, so it can mention what the player has done.
   A line is { speaker, text }, or { choices } where each choice has the 'text' the player says and a 'reply'.
-  A 'speaker' is 'agent', 'player' or 'teammate'. All of the words here are drafts to rewrite, except where marked.
+  A 'speaker' is 'agent', 'player' or 'teammate'. The words themselves are in Dialogue/dialogue.json.
 */
 type RadioContext = {
   powerName: string; // one of the powers the player chose
@@ -23,38 +24,8 @@ type CampaignSection = {
   radio?: (context: RadioContext) => Array<RadioLine>;
 };
 
-const agent = (text: string) => ({ speaker: 'agent', text });
-// the line that tells of Kaiju coming: from here the monitor's red siren glows
-const alarm = (text: string) => ({ ...agent(text), isAlarm: true });
-const teammate = (text: string) => ({ speaker: 'teammate', text });
-
-// the Agent's report on each recruit: how they are holding up in mind, body and looks
-const RECRUIT_REPORTS: Record<string, Record<string, (name: string) => string>> = {
-  punk: {
-    recruit: name => `${name} finished re-education. Mentally compliant. Physically, stronger than he should be. The mohawk stays, apparently.`,
-    terminate: name => `${name} won't be a problem anymore. Cold, but clean.`
-  },
-  black_female: {
-    recruit: name => `${name} is through re-education. She still hears voices, so: stable, for her. Physically flawless. We could not get her out of the black.`,
-    terminate: name => `${name} is in the ground. Fitting, for that address.`
-  },
-  mermaid: {
-    recruit: name => `${name} is in re-education. Mental state: she is a mermaid. Physically, she's scaling nicely. The tail is a lot.`,
-    terminate: name => `${name} is off the board. The Aquarium wants to know who's paying for the repairs...`
-  }
-};
-
-const getRecruitNews = (context: RadioContext, id: string, name: string) => {
-  const choice = context.choices[id];
-  return choice ? [agent(RECRUIT_REPORTS[id][choice](name))] : [];
-};
-
-const getOrders = (question: string, answer: string) => ({
-  choices: [
-    { text: "What's the mission?", reply: [] },
-    { text: question, reply: [agent(answer)] }
-  ]
-});
+// the radio calls' words are in Dialogue/dialogue.json, by section
+const radioCall = (sceneId: string) => (context: RadioContext) => getRadioLines(sceneId, context);
 
 export const CAMPAIGN_SECTIONS: Array<CampaignSection> = [
   {
@@ -62,10 +33,7 @@ export const CAMPAIGN_SECTIONS: Array<CampaignSection> = [
     levelId: 'peninsula',
     kills: 10,
     hasArrival: true,
-    radio: () => [
-      alarm('Reports of more Kaiju incoming to Kaiju City! Protect the Peninsula!!'), // Jamie's line
-      agent("It's your job to protect this city, so do it!") // Jamie's line
-    ]
+    radio: radioCall('radio.peninsula1')
   },
   { label: 'Street', levelId: 'street' },
   { label: 'Map to Subway', levelId: 'mapSubway' },
@@ -74,65 +42,36 @@ export const CAMPAIGN_SECTIONS: Array<CampaignSection> = [
     label: 'Peninsula 2',
     levelId: 'peninsula',
     kills: 15,
-    radio: context => [
-      ...getRecruitNews(context, 'punk', 'The punk from the station'),
-      alarm('Sonar is showing a second wave off the coast. Bigger than the first.'),
-      agent('Get back to the Peninsula. Hold the line!')
-    ]
+    radio: radioCall('radio.peninsula2')
   },
   {
     label: 'Map to Rooftop',
     levelId: 'mapRooftop',
-    radio: context => [
-      agent('Another wave down. You two are holding this city together.'),
-      teammate('They are coming faster than they used to.'),
-      agent(`Keep it up. I'm seeing good numbers on your ${context.powerName} power.`),
-      getOrders('Where are they all coming from?', "That's above your pay grade. For now."),
-      // Jamie's line
-      agent('There have been reports of Kaiju body parts falling onto rooftops in the Cemetary district. Go investigate and try not to let another citizen touch them!')
-    ]
+    radio: radioCall('radio.mapRooftop')
   },
   { label: 'Rooftop', levelId: 'rooftop' },
   {
     label: 'Peninsula 3',
     levelId: 'peninsula',
     kills: 20,
-    radio: context => [
-      ...getRecruitNews(context, 'black_female', 'The woman from the rooftop cemetery'),
-      alarm('No time to rest. The shipping lanes just went dark.'),
-      teammate("Oh no..."),
-      agent('It\'s the biggest group yet... But the Peninsula will not fall today!')
-    ]
+    radio: radioCall('radio.peninsula3')
   },
   {
     label: 'Map to Aquarium',
     levelId: 'mapAquarium',
-    radio: context => [
-      agent('The harbor is quiet again. The Mayor sends his thanks.'),
-      teammate('Quiet never lasts around here.'),
-      agent(`No, it doesn't. Keep that ${context.powerName} power charged.`),
-      getOrders('Is anyone looking into all these Kaiju parts?', 'Yeah, we got our best guys on it. You will meet them soon enough...'),
-      agent('Something has happened at the Aquarium. Go.')
-    ]
+    radio: radioCall('radio.mapAquarium')
   },
   { label: 'Aquarium', levelId: 'aquarium' },
   {
     label: 'Peninsula 4',
     levelId: 'peninsula',
     kills: 25,
-    radio: context => [
-      ...getRecruitNews(context, 'mermaid', 'The mermaid'),
-      alarm('All units, all units: Kaiju on every approach.'),
-      agent('This is everything they have. Hold the Peninsula, whatever it takes!')
-    ]
+    radio: radioCall('radio.peninsula4')
   },
   {
     label: 'Map to Lab',
     levelId: 'mapLab',
-    radio: () => [
-      // Jamie's line, with one spelling fix
-      agent('Soldier, report to the lab, on the double. The brains have been cooking-up something special for you.')
-    ]
+    radio: radioCall('radio.mapLab')
   },
   { label: 'Lab trap', levelId: 'labTrap' },
   { label: 'Sewer 1', levelId: 'sewer1' },
