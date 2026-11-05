@@ -1,12 +1,12 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
-import { levelEditorSave } from './src/Game/DataClasses/Levels/levelEditorSave';
+import { levelEditorSave, playWindowSave } from './src/Game/DataClasses/Levels/levelEditorSave';
 
 const src = fileURLToPath(new URL('./src', import.meta.url));
 
 export default defineConfig({
-  plugins: [react(), levelEditorSave(`${src}/Game/DataClasses/Levels/data`)],
+  plugins: [react(), levelEditorSave(`${src}/Game/DataClasses/Levels/data`), playWindowSave(`${src}/Game/DataClasses/playWindow.json`)],
   resolve: {
     // the project's absolute imports (eg. 'Game/utils'), also listed in tsconfig.json
     alias: [

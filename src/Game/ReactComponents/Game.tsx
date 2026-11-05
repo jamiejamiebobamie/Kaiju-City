@@ -319,6 +319,19 @@ const BlackWipe = styled.div`
   animation: ${blackWipe} ${WIPE_MS}ms ease-in-out both;
 `;
 
+const DevShowButton = styled.button`
+  position: fixed;
+  left: 6px;
+  bottom: 6px;
+  z-index: 2147483647;
+  padding: 2px 6px;
+  font-size: 10px;
+  opacity: 0.35;
+  &:hover {
+    opacity: 1;
+  }
+`;
+
 const LevelPicker = styled.select`
   position: fixed;
   top: 8px;
@@ -430,13 +443,14 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const [isMouseLook, setIsMouseLook] = useState(true);
   const [isEnemyZoom, setIsEnemyZoom] = useState(true);
   const [isTeamColors, setIsTeamColors] = useState(true); // a playtest: statuses in their side's color
-  const [isTrainedNpcs, setIsTrainedNpcs] = useState(false); // a playtest: NPCs play by the trained model in public/models
+  const [isTrainedNpcs, setIsTrainedNpcs] = useState(true); // NPCs play by the trained model in public/models in fights with no Kaiju; against a Kaiju they hand back to the rules
+  const [isDevHidden, setIsDevHidden] = useState(false); // the dev tools tucked away, to see the game as it will ship
   const [npcAggression, setNpcAggression] = useState(DEFAULT_AGGRESSION); // the trained NPCs', 0 careful to 1 reckless
   const npcAggressionRef = useRef(npcAggression);
   npcAggressionRef.current = npcAggression;
   const [isMonitorAlways, setIsMonitorAlways] = useState(true); // a playtest: the TV never opens up, and wide shots play inside it
   const [isAdjustingWindow, setIsAdjustingWindow] = useState(false);
-  const [playWindow, setPlayWindow] = useState(() => import.meta.env.DEV ? loadPlayWindow() : FULL_WINDOW);
+  const [playWindow, setPlayWindow] = useState(() => loadPlayWindow()); // the saved shape, in production too
   const updatePlayWindow = next => {
     setPlayWindow(next);
     savePlayWindow(next);
@@ -851,6 +865,13 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     isCharacterDead: false
   });
 
+  // F2 hides the dev tools, or brings them back
+  useKeyPress({
+    keyCodes: ["F2"],
+    keyDownCallback: () => setIsDevHidden(isHidden => !isHidden),
+    isCharacterDead: !import.meta.env.DEV
+  });
+
   useKeyPress({
     keyCodes: ["BracketLeft", "BracketRight"],
     keyDownCallback: code => cycleLevel(code == "BracketRight" ? 1 : -1),
@@ -908,6 +929,11 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     document.body
   );
 
+  // hidden dev tools leave one small button in the corner to bring them back
+  const devShowButton = import.meta.env.DEV && isDevHidden && (
+    <DevShowButton onClick={() => setIsDevHidden(false)} title="Show dev options (F2)">dev</DevShowButton>
+  );
+
   const screen = (
     !isPlayingGame && isChoosingAvatar ?
       <AvatarChoice onChoose={(player, teammate) => {
@@ -916,7 +942,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
       }} />
     : !isPlayingGame ?
       <>
-      {import.meta.env.DEV && (
+      {import.meta.env.DEV && !isDevHidden && (
         <LevelPicker value={level.id} onChange={e => { switchLevel(e.target.value); e.target.blur(); }}>
           {levelOptions}
         </LevelPicker>
@@ -960,8 +986,9 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
           image={fullScreenPageData.image}
         />
         : !gameManager.current ? null : (<GameArea>
-          {import.meta.env.DEV && (
+          {import.meta.env.DEV && !isDevHidden && (
             <PhaseToggles>
+              <button onClick={() => setIsDevHidden(true)}>Hide dev options (F2)</button>
               <select aria-label="Level" value={level.id} onChange={e => { switchLevel(e.target.value); e.target.blur(); }}>
                 {levelOptions}
               </select>
@@ -1132,5 +1159,5 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
         </GameArea>)
   );
 
-  return <>{screen}{sceneFades}</>;
+  return <>{screen}{sceneFades}{devShowButton}</>;
 };

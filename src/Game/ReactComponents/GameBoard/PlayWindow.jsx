@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import styled, { keyframes } from "styled-components";
 import { WIDE_SHOT } from "Game/DataClasses/Camera";
-import { storage } from "Utils/storage";
+import SAVED_WINDOW from "Game/DataClasses/playWindow.json";
 
 /*
   A dev tool for trying out smaller play areas: the part of the game frame the board fills.
@@ -13,7 +13,6 @@ const WINDOW_LOOK = {
   handleColor: "#ffd24a"
 };
 
-const STORAGE_KEY = "kaiju-play-window-2"; // a new key: the old saved windows sat in the middle, without room for the HUDs
 
 export const FULL_WINDOW = { left: 0, top: 0, right: 1, bottom: 1 };
 
@@ -22,20 +21,19 @@ export const FULL_WINDOW = { left: 0, top: 0, right: 1, bottom: 1 };
 export const PORTRAIT_WINDOW = { left: 0.157, top: 0.04, right: 0.623, bottom: 0.96 };
 
 // a convenience for testing sizes: the game runs the same without it
-export const loadPlayWindow = () => {
-  try {
-    return JSON.parse(storage.getItem(STORAGE_KEY)) || PORTRAIT_WINDOW;
-  } catch {
-    return PORTRAIT_WINDOW;
-  }
-};
+// the window as Adjust window last left it, from the repo's own file: hard-coded as soon as it is saved
+export const loadPlayWindow = () => ({ ...SAVED_WINDOW });
 
+// on the dev server, a moment after the last change, the new shape is written over that file
+let saveTimeout;
 export const savePlayWindow = playWindow => {
-  try {
-    storage.setItem(STORAGE_KEY, JSON.stringify(playWindow));
-  } catch {
-    // the window just won't be remembered
-  }
+  if (!import.meta.env.DEV) return;
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(() => {
+    fetch("/__play-window/save", { method: "POST", body: JSON.stringify(playWindow) }).catch(() => {
+      // the window just won't be saved
+    });
+  }, 500);
 };
 
 const Window = styled.div`

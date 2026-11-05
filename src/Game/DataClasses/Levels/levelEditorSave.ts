@@ -8,6 +8,33 @@ import type { Plugin } from 'vite';
 */
 const LEVEL_ID = /^[a-zA-Z0-9]+$/;
 
+// Adjust window's shape, saved over the repo's own file the same way: it is the game's window from then on
+export const playWindowSave = (filePath: string): Plugin => ({
+  name: 'play-window-save',
+  apply: 'serve',
+  handleHotUpdate({ file }) {
+    if (path.normalize(file) == path.normalize(filePath)) return [];
+  },
+  configureServer(server) {
+    server.middlewares.use('/__play-window/save', (request, response) => {
+      let body = '';
+      request.on('data', chunk => { body += chunk; });
+      request.on('end', () => {
+        try {
+          const { left, top, right, bottom } = JSON.parse(body);
+          if (![left, top, right, bottom].every(value => typeof value == 'number' && value >= 0 && value <= 1)) throw new Error('bad window');
+          fs.writeFileSync(filePath, `${JSON.stringify({ left, top, right, bottom }, null, 2)}\n`);
+          response.statusCode = 200;
+          response.end('saved');
+        } catch (error) {
+          response.statusCode = 400;
+          response.end(String(error));
+        }
+      });
+    });
+  }
+});
+
 export const levelEditorSave = (dataDirectory: string): Plugin => ({
   name: 'level-editor-save',
   apply: 'serve',
