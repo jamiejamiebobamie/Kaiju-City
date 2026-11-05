@@ -351,6 +351,7 @@ const RECRUIT_CARDS = {
 export const Game = ({ handleClickHome, triggerTransition }) => {
   const { selectedAvatar, setSelectedAvatar, selectedTeammate, setSelectedTeammate, selectedDifficulty, settingsManager } = useContext(GlobalSettingsContext);
   const { isPaused, winner, isPlayerDead, players, recruits, kaijuKillCount, kaijuToWin, activePhases, isWideShot, isCutscene, unlockMessage, unlockImage, speech, recruitScene, dialogueLog, isDialogueWaiting } = useSnapshot(gameUiStore);
+  const [isRadioAlarm, setIsRadioAlarm] = useState(false); // the radio call has told of Kaiju coming: the siren glows
   const recruitChoiceFrom = useRef(undefined); // where the pressed Recruit or Terminate button was, for its word to fly from
   const [isClickThrough, setClickThrough] = useState(getIsClickThrough); // a playtest: each line in the log waits for a key or a click
   const [spacing, setSpacing] = useState(() => ({ walking: getIsSpacing("walking"), battle: getIsSpacing("battle") })); // a playtest: NPCs don't bunch up
@@ -362,6 +363,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const startingLevelId = new URLSearchParams(window.location.search).get('level');
   const [levelId, setLevelId] = useState(startingLevelId || PENINSULA.id);
   const [campaignIndex, setCampaignIndex] = useState(startingLevelId ? null : 0); // null: playing one level on its own
+  useEffect(() => setIsRadioAlarm(false), [campaignIndex]);
   const level = LEVELS[levelId] || PENINSULA;
   const togglePhase = id => {
     gameManager.current.togglePhase(id);
@@ -859,7 +861,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
         <GameArea>
           <GameFrame data-game-frame>
             {/* the alarm only when the call sends the team into a Kaiju fight */}
-            <PlayWindow playWindow={playWindow} setPlayWindow={updatePlayWindow} isAdjusting={false} isOpen={false} isSiren={campaignIndex !== null && !!LEVELS[CAMPAIGN_SECTIONS[campaignIndex].levelId].kaijuEntry}>
+            <PlayWindow playWindow={playWindow} setPlayWindow={updatePlayWindow} isAdjusting={false} isOpen={false} isSiren={isRadioAlarm}>
               <RadioCall
                 key={campaignIndex}
                 lines={radioLines}
@@ -871,6 +873,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                   fadeOutThen(() => startMatch(LEVELS[sectionLevelId], hasArrival, kills));
                 }}
                 onChangePowers={handleChangePowers}
+                onAlarm={() => setIsRadioAlarm(true)}
               />
             </PlayWindow>
           </GameFrame>

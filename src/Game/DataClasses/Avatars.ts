@@ -1,4 +1,5 @@
 import { addUnlock, getUnlocks } from './Unlocks';
+import { storage } from 'Utils/storage';
 
 /*
   Everyone the player can be, or have as a teammate.
@@ -48,7 +49,7 @@ const COLORS_KEY = 'kaiju-avatar-colors';
 
 const load = (key: string) => {
   try {
-    return JSON.parse(localStorage.getItem(key) || '{}');
+    return JSON.parse(storage.getItem(key) || '{}');
   } catch {
     return {};
   }
@@ -56,7 +57,7 @@ const load = (key: string) => {
 
 const save = (key: string, value: unknown) => {
   try {
-    localStorage.setItem(key, JSON.stringify(value));
+    storage.setItem(key, JSON.stringify(value));
   } catch { /* (not remembered) */ }
 };
 

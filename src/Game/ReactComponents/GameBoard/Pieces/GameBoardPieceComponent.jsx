@@ -325,7 +325,7 @@ const ModiferText = styled.p`
   z-index: 20002;
   opacity: 0;
   font-family: gameboy;
-  font-size: ${props => (props.fontSize ? `${props.fontSize * 1.6}px` : "32px")};
+  font-size: ${props => (props.fontSize ? `${props.fontSize * 1.4}px` : "28px")};
   ${Math.random() > 0.5
     ? `margin-left: ${Math.random() * 10}px`
     : `margin-right: ${Math.random() * 10}px`};
@@ -337,29 +337,27 @@ const ModiferText = styled.p`
   -webkit-text-stroke: 1.4px #140409;
   filter: drop-shadow(1.5px 2px 0 rgba(0, 0, 0, 0.85)) drop-shadow(0 0 4px ${props => props.color});
   transform-origin: 50% 80%;
-  ${props => props.doNotAnimate ? 'opacity: 1;' : `animation: textPop 2s ease-out forwards;`}
+  ${props => props.doNotAnimate ? 'opacity: 1;' : `animation: textPop 1.3s ease-out forwards;`}
+  /* it starts small and grows as it floats up, swaying a little, and fades */
   @keyframes textPop {
     0% {
       opacity: 0;
-      transform: translateY(0px) scale(0.3);
+      transform: translate(0px, 0px) scale(0.35);
     }
-    8% {
+    10% {
       opacity: 1;
-      transform: translateY(-4px) scale(1.45);
+      transform: translate(-2px, -6px) scale(0.75);
     }
-    16% {
-      transform: translateY(-6px) scale(0.95);
+    35% {
+      transform: translate(3px, -18px) scale(1);
     }
-    24% {
-      transform: translateY(-7px) scale(1.08);
-    }
-    70% {
+    60% {
       opacity: 1;
-      transform: translateY(-18px) scale(1.08);
+      transform: translate(-2px, -30px) scale(1.12);
     }
     100% {
       opacity: 0;
-      transform: translateY(-34px) scale(1.18);
+      transform: translate(2px, -48px) scale(1.25);
     }
   }
 `;

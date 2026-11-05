@@ -30,13 +30,16 @@ const getHoldMs = text => {
   return Math.min(holdMs, RADIO_LOOK.maxHoldMs);
 };
 
-export const RadioCall = ({ lines, playerAvatar, teammateAvatar, isResuming, onGo, onChangePowers }) => {
+// 'onAlarm': called once the call reaches the line about Kaiju coming, for the siren
+export const RadioCall = ({ lines, playerAvatar, teammateAvatar, isResuming, onGo, onChangePowers, onAlarm = () => {} }) => {
   const [script, setScript] = useState(lines);
   const [lineIndex, setLineIndex] = useState(0);
 
   const line = script[lineIndex];
   const isChoice = !!line.choices;
   const isLastLine = lineIndex == script.length - 1;
+  const isAlarmed = script.slice(0, lineIndex + 1).some(({ isAlarm }) => isAlarm);
+  useEffect(() => { if (isAlarmed) onAlarm(); }, [isAlarmed]);
 
   const nextLine = () => {
     if (isLastLine || isChoice) return;

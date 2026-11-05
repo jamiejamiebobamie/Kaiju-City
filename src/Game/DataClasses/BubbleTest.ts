@@ -1,3 +1,4 @@
+import { storage } from 'Utils/storage';
 /*
   A playtest: Bubble's Dispel is too strong, so its passive is a drawback. These are the options, to try alone or together.
   Each is switched on in the dev panel and remembered in the browser. The numbers are here to tune.
@@ -15,7 +16,7 @@ export type BubbleDrawback = keyof typeof BUBBLE_DRAWBACKS;
 const KEY = 'kaiju-bubble-test';
 let enabled = new Set<BubbleDrawback>(['fizzOut']);
 try {
-  const saved = JSON.parse(localStorage.getItem(KEY) || 'null');
+  const saved = JSON.parse(storage.getItem(KEY) || 'null');
   if (Array.isArray(saved)) enabled = new Set(saved.filter(id => id in BUBBLE_DRAWBACKS));
 } catch { /* (not remembered) */ }
 
@@ -25,7 +26,7 @@ export const setIsDrawbackOn = (id: BubbleDrawback, isOn: boolean) => {
   if (isOn) enabled.add(id);
   else enabled.delete(id);
   try {
-    localStorage.setItem(KEY, JSON.stringify([...enabled]));
+    storage.setItem(KEY, JSON.stringify([...enabled]));
   } catch { /* (not remembered) */ }
 };
 

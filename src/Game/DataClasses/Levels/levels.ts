@@ -765,12 +765,13 @@ const LAB_SITE = { spot: LAB_SPOT, color: '#4a8fb0', icon: 'lab', isDetour: true
 // where to go next pulses: a bright ring of its color, in and out, under its icon
 const MISSION_PULSE = { size: 190, seconds: 1.3, lowOpacity: 0.1, highOpacity: 0.95 };
 
-const getSiteElements = ({ spot, color, icon, isDetour = false }) => [
+const getSiteElements = ({ spot, color, icon, isDetour = false, visitLevelId = undefined }) => [
   ...(isDetour ? [] : [{
     id: `${icon}Pulse`, type: 'light' as const, color, x: spot.x - MISSION_PULSE.size / 2, y: spot.y - MISSION_PULSE.size / 2,
     width: MISSION_PULSE.size, height: MISSION_PULSE.size, zIndex: -1, seconds: MISSION_PULSE.seconds, lowOpacity: MISSION_PULSE.lowOpacity, highOpacity: MISSION_PULSE.highOpacity
   }]),
-  ...MIST_PUFFS.map(([x, y, size, seconds], n) => ({
+  // a battleground already won keeps its icon, without the glow
+  ...(visitLevelId ? [] : MIST_PUFFS).map(([x, y, size, seconds], n) => ({
     id: `${icon}Mist${n}`, type: 'light' as const, color, x: spot.x + x - size / 2, y: spot.y + y - size / 2, width: size, height: size, zIndex: -2, seconds, delaySeconds: -n, lowOpacity: 0.2, highOpacity: 0.75
   })),
   {

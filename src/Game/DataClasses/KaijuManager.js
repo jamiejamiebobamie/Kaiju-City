@@ -13,29 +13,30 @@ export class KaijuManager {
     }) {
         this.kaijuPieces = [];
         this.kaijuTeamIndex = kaijuTeamIndex;
-        this.lastSpawnAccTime = 0;
+        this.lastSpawnAccTime = -KAIJU_SPAWN.spawnIntervalMs; // the first comes as soon as the fight starts
         this.lastRespawnAccTime = 0;
         this.gameManagerProxy = gameManagerProxy;
     }
 
     reset() {
         this.kaijuPieces = [];
-        this.lastSpawnAccTime = 0;
+        this.lastSpawnAccTime = -KAIJU_SPAWN.spawnIntervalMs;
         this.lastRespawnAccTime = 0;
     }
 
     update(accTime, killCount) {
         const { MAX_AT_ONCE, MAX_TO_WIN } = this.gameManagerProxy.determineKaijuDetails();
 
+        // never more Kaiju than are left to win: the fight doesn't end with some still standing
+        const getRemainingNeeded = () => MAX_TO_WIN - (killCount + this.kaijuPieces.filter(piece => !piece.getIsDead()).length);
         if (accTime >= this.lastSpawnAccTime + KAIJU_SPAWN.spawnIntervalMs) {
             this.lastSpawnAccTime = accTime;
-            if (this.kaijuPieces.length < MAX_AT_ONCE) this.addKaijuPiece(accTime);
+            if (this.kaijuPieces.length < MAX_AT_ONCE && getRemainingNeeded() > 0) this.addKaijuPiece(accTime);
         }
 
         if (accTime >= this.lastRespawnAccTime + KAIJU_SPAWN.respawnIntervalMs) {
             this.lastRespawnAccTime = accTime;
-            const numAlive = this.kaijuPieces.filter(piece => !piece.getIsDead()).length;
-            let remainingNeeded = MAX_TO_WIN - (killCount + numAlive);
+            let remainingNeeded = getRemainingNeeded();
             this.kaijuPieces.filter(piece => piece.getIsDead()).forEach(piece => {
                 if (remainingNeeded > 0) {
                     remainingNeeded -= 1;

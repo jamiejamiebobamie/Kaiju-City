@@ -17,6 +17,7 @@ import { MASTER_PENINSULA as PENINSULA, MASTER_PENINSULA_TILES as PENINSULA_TILE
 import { Camera, CAMERA, getCameraZoom, getCloseZoom, WIDE_SHOT } from './Camera';
 import { getCharXAndY, getPerimeterEdges, getTileCenter, getTileIndexAtLocation, getTileXAndY } from './GameBoard/hexGrid';
 import { CENTER_TILE, makeGame, placePiece } from './testHelpers';
+import { storage } from 'Utils/storage';
 
 const { grid } = PENINSULA;
 const hold = ({ gm, player }, keys, ticks) => {
@@ -763,7 +764,7 @@ describe('cutscenes', () => {
     expect(player.charLocation.y).toBeLessThan(gm.recruitScene.body.y);
     expect(teammate.charLocation.x).toBeLessThan(player.charLocation.x);
     expect(gm.speech.lines).toEqual(getRecruitLines('her', []));
-    expect(gm.getCameraShot().isFollowingMouse).toBe(true);
+    expect(gm.recruitScene.shot.isFollowingMouse).toBeFalsy(); // the camera holds still for the choice
   });
 
   it('the Street opens on the Agent calling the team over, then its door opens after a full loop of the words', () => {
@@ -961,10 +962,7 @@ describe('Charm', () => {
 });
 
 describe('roster and unlocks', () => {
-  const useStorage = () => {
-    const saved = {};
-    vi.stubGlobal('localStorage', { getItem: key => saved[key] ?? null, setItem: (key, value) => { saved[key] = value; } });
-  };
+  const useStorage = () => storage.clear();
   afterEach(() => vi.unstubAllGlobals());
 
   it('seven characters, each with a sprite sheet, a portrait and a death sprite', () => {
@@ -1236,8 +1234,7 @@ describe('playtest fixes', () => {
   });
 
   it("stepping on the sweeper's tile unlocks the hazmat worker, once the Agent has had his say", () => {
-    const saved = {};
-    vi.stubGlobal('localStorage', { getItem: key => saved[key] ?? null, setItem: (key, value) => { saved[key] = value; } });
+    storage.clear();
     const { gm, player } = makeGame(LEVELS.street);
     if (gm.cutscene) gm.skipCutscene();
     player.initCharLocation(true, gm.gameBoardManager.getClosestWalkableTileToLocation(LEVELS.street.unlock.spot));

@@ -1,7 +1,7 @@
 import { GAME_TICK } from 'Utils/gameState';
 import { MASTER_PENINSULA_TILES as PENINSULA_TILE_LOOKUP_VALS } from './masterPeninsula';
 import { GameLoop } from './GameLoop';
-import { GameManager, GameResult } from './GameManager';
+import { CUTSCENE, GameManager, GameResult } from './GameManager';
 import { SettingsManager } from './SettingsManager';
 import { LEVELS } from './Levels/levels';
 import { setIsClickThrough, setIsDialogueLog } from './DialogueLog';
@@ -486,7 +486,7 @@ describe('ragdolls', () => {
     // it eases after the body, so it stays close without shaking with each bounce
     const body = gm.getDeathLocation(gm.getDeathPieces()[0]);
     expect(Math.hypot(shot.point.x - body.x, shot.point.y - body.y)).toBeLessThan(gm.level.grid.rowStep * gm.level.grid.scale * 2);
-    expect(gm.getTimeScale()).toBeCloseTo(0.2);
+    expect(gm.getTimeScale()).toBeCloseTo(CUTSCENE.slowMotionSpeed);
   });
 });
 
@@ -768,5 +768,20 @@ describe("Teleport's wormhole", () => {
     placePiece(gm, teammate, from);
     teammate.movePiece({ accTime: gm.accTime + 110 });
     expect(teammate.getTileIndex()).toEqual(to);
+  });
+});
+
+describe('Kaiju waves', () => {
+  it('the first Kaiju comes at once, and never more stand than are left to win', () => {
+    const settingsManager = new SettingsManager();
+    settingsManager.setSortedPlayerChosenAbilityElementsString(['Fire', 'Ice', 'Water']);
+    const gm = new GameManager({ level: LEVELS.peninsula, settingsManager, killsToWin: 2 });
+    gm.initGame();
+    if (gm.cutscene) gm.skipCutscene();
+    gm.stepPieces();
+    expect(gm.kaijuManager.kaijuPieces.length).toBe(1);
+    gm.score = 1;
+    for (let k = 0; k < 400; k++) gm.kaijuManager.update(k * 110, gm.score);
+    expect(gm.kaijuManager.kaijuPieces.filter(piece => !piece.getIsDead()).length).toBe(1);
   });
 });

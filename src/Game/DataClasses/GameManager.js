@@ -37,7 +37,7 @@ export const CUTSCENE = {
   arrivalPlayerSpot: { x: 200, y: 300 },
   arrivalTeammateSpot: { x: 245, y: 325 },
   arrivalTeammateStart: { x: 195, y: 590 },
-  slowMotionSpeed: 0.2,
+  slowMotionSpeed: 0.45, // slow, but not so slow that a short sprite sheet (the Kaiju's explosion) looks frozen
   slowMotionDelayMs: 350, // full speed for a moment, so the last explosion or throw gets going
   slowMotionRampMs: 500, // then it eases down to slow motion
   outcomeZoomScale: 2.2, // the end-of-fight shot moves in close on the body, or the exploding Kaiju
@@ -47,7 +47,8 @@ export const CUTSCENE = {
   chaseSlowMs: 2800,
   mapWideMs: 2400,
   revealGlowMs: 1200, // a door lights up before anyone says a word about it
-  clonesLookMs: 2200, // the Lab trap: the camera holds on the clones, stepped out of their tanks
+  clonesLookMs: 2200,
+  choiceShotLiftRows: 1.5, // the Recruit or Terminate shot sits this much higher, so the team stands lower in it // the Lab trap: the camera holds on the clones, stepped out of their tanks
   recruitZoomScale: 1.3,
   recruitSpeechRows: 2.4, // how far above a character their words sit: just over their head
   speechTopY: 200, // words sit no higher than this, or they would go off the top of a wide shot or under the top buttons
@@ -454,7 +455,6 @@ export class GameManager {
         const player = this.gameBoardPiecesManager.getPlayerPiece();
         const [besidePlayer] = this.gameBoardManager.getAdjacentTileIndices(player.getTileIndex()).filter(this.gameBoardManager.getIsInBounds);
         piece.initCharLocation(true, besidePlayer || player.getTileIndex());
-        piece.isShowHealthBarOnComponent = true;
         return true;
     }
 
@@ -1107,7 +1107,9 @@ export class GameManager {
         };
         stand(player, getTileNear(0, -CUTSCENE.recruitStandRows));
         if (teammate) stand(teammate, getTileNear(-3, -CUTSCENE.recruitStandRows));
+        // a clean field for the choice: no powers left on the tiles, and no portals
         this.gameBoardManager.getTilesInFlatArray().forEach(tile => tile.clearTileStatus());
+        this.gameBoardManager.updateWormholes(Infinity);
 
         const zoomScale = this.level.cameraZoom * CUTSCENE.recruitZoomScale;
         const recruitLines = teammate ? getRecruitLines(pronoun, RECRUIT_ORDER.filter(id => id != avatar && getRecruitChoices()[id]).map(id => getRecruitChoices()[id])) : [];
@@ -1122,8 +1124,8 @@ export class GameManager {
         } : null;
         // with the log, the buttons are on it: the shot moves in close on the team over the bystander
         const shot = getIsDialogueLog()
-            ? { point: { x, y: y - CUTSCENE.recruitStandRows * rowStep * scale / 2 }, zoomScale: DIALOGUE.choiceZoomScale, isCover: true, isFollowingMouse: true, isCut: true }
-            : { point: { x, y: y - CUTSCENE.recruitShotRows * rowStep * scale }, zoomScale, isFollowingMouse: true, isCut: true };
+            ? { point: { x, y: y - (CUTSCENE.recruitStandRows / 2 + CUTSCENE.choiceShotLiftRows) * rowStep * scale }, zoomScale: DIALOGUE.choiceZoomScale, isCover: true, isCut: true }
+            : { point: { x, y: y - CUTSCENE.recruitShotRows * rowStep * scale }, zoomScale, isCut: true };
         this.recruitScene = {
             shot,
             body: { x, y, avatar },

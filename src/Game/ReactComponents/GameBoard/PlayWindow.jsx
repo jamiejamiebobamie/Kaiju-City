@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import styled, { keyframes } from "styled-components";
 import { WIDE_SHOT } from "Game/DataClasses/Camera";
+import { storage } from "Utils/storage";
 
 /*
   A dev tool for trying out smaller play areas: the part of the game frame the board fills.
@@ -23,7 +24,7 @@ export const PORTRAIT_WINDOW = { left: 0.157, top: 0.04, right: 0.623, bottom: 0
 // a convenience for testing sizes: the game runs the same without it
 export const loadPlayWindow = () => {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || PORTRAIT_WINDOW;
+    return JSON.parse(storage.getItem(STORAGE_KEY)) || PORTRAIT_WINDOW;
   } catch {
     return PORTRAIT_WINDOW;
   }
@@ -31,7 +32,7 @@ export const loadPlayWindow = () => {
 
 export const savePlayWindow = playWindow => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(playWindow));
+    storage.setItem(STORAGE_KEY, JSON.stringify(playWindow));
   } catch {
     // the window just won't be remembered
   }

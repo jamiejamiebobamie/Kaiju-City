@@ -1,3 +1,4 @@
+import { storage } from 'Utils/storage';
 /*
   A playtest: two ways a Kaiju's speed can follow its fire, to see which plays better.
   'rampage': faster for a moment after breathing fire. 'windUp': faster while it glows, just before it breathes.
@@ -14,7 +15,7 @@ export type KaijuSpeedMode = typeof KAIJU_SPEED_MODES[number];
 const KEY = 'kaiju-speed-test';
 let mode: KaijuSpeedMode = 'rampage';
 try {
-  const saved = localStorage.getItem(KEY) as KaijuSpeedMode;
+  const saved = storage.getItem(KEY) as KaijuSpeedMode;
   if (KAIJU_SPEED_MODES.includes(saved)) mode = saved;
 } catch { /* (not remembered) */ }
 
@@ -23,7 +24,7 @@ export const getKaijuSpeedMode = () => mode;
 export const setKaijuSpeedMode = (next: KaijuSpeedMode) => {
   mode = next;
   try {
-    localStorage.setItem(KEY, next);
+    storage.setItem(KEY, next);
   } catch { /* (not remembered) */ }
 };
 

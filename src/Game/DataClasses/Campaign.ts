@@ -24,6 +24,8 @@ type CampaignSection = {
 };
 
 const agent = (text: string) => ({ speaker: 'agent', text });
+// the line that tells of Kaiju coming: from here the monitor's red siren glows
+const alarm = (text: string) => ({ ...agent(text), isAlarm: true });
 const teammate = (text: string) => ({ speaker: 'teammate', text });
 
 // the Agent's report on each recruit: how they are holding up in mind, body and looks
@@ -61,7 +63,7 @@ export const CAMPAIGN_SECTIONS: Array<CampaignSection> = [
     kills: 10,
     hasArrival: true,
     radio: () => [
-      agent('Reports of more Kaiju incoming to Kaiju City! Protect the Peninsula!!'), // Jamie's line
+      alarm('Reports of more Kaiju incoming to Kaiju City! Protect the Peninsula!!'), // Jamie's line
       agent("It's your job to protect this city, so do it!") // Jamie's line
     ]
   },
@@ -74,7 +76,7 @@ export const CAMPAIGN_SECTIONS: Array<CampaignSection> = [
     kills: 15,
     radio: context => [
       ...getRecruitNews(context, 'punk', 'The punk from the station'),
-      agent('Sonar is showing a second wave off the coast. Bigger than the first.'),
+      alarm('Sonar is showing a second wave off the coast. Bigger than the first.'),
       agent('Get back to the Peninsula. Hold the line!')
     ]
   },
@@ -97,7 +99,7 @@ export const CAMPAIGN_SECTIONS: Array<CampaignSection> = [
     kills: 20,
     radio: context => [
       ...getRecruitNews(context, 'black_female', 'The woman from the rooftop cemetery'),
-      agent('No time to rest. The shipping lanes just went dark.'),
+      alarm('No time to rest. The shipping lanes just went dark.'),
       teammate("Oh no..."),
       agent('It\'s the biggest group yet... But the Peninsula will not fall today!')
     ]
@@ -120,7 +122,7 @@ export const CAMPAIGN_SECTIONS: Array<CampaignSection> = [
     kills: 25,
     radio: context => [
       ...getRecruitNews(context, 'mermaid', 'The mermaid'),
-      agent('All units, all units: Kaiju on every approach.'),
+      alarm('All units, all units: Kaiju on every approach.'),
       agent('This is everything they have. Hold the Peninsula, whatever it takes!')
     ]
   },

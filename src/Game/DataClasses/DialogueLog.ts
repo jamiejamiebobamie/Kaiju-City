@@ -1,3 +1,4 @@
+import { storage } from 'Utils/storage';
 /*
   The dialogue log: conversations go to a panel beside the monitor, line by line, each kept above the next,
   instead of speech balloons in the scene. Quick shouts in the action stay as balloons.
@@ -17,7 +18,7 @@ const CLICK_THROUGH_KEY = 'kaiju-click-through';
 let isLog = false;
 let isClickThrough = (() => {
   try {
-    return localStorage.getItem(CLICK_THROUGH_KEY) != 'false';
+    return storage.getItem(CLICK_THROUGH_KEY) != 'false';
   } catch {
     return true;
   }
@@ -30,7 +31,7 @@ export const getIsClickThrough = () => isClickThrough;
 export const setIsClickThrough = (value: boolean) => {
   isClickThrough = value;
   try {
-    localStorage.setItem(CLICK_THROUGH_KEY, String(value));
+    storage.setItem(CLICK_THROUGH_KEY, String(value));
   } catch {
     // it just won't be remembered
   }

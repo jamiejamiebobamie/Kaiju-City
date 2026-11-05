@@ -1,10 +1,11 @@
+import { storage } from 'Utils/storage';
 const UNLOCKS_KEY = 'kaiju-unlocks';
 const CHOICES_KEY = 'kaiju-recruit-choices';
 
-// saved in the browser. these are simply not remembered if storage isn't available.
+// remembered through Utils/storage: for now, for this visit only
 const load = (key: string, fallback: string) => {
   try {
-    return JSON.parse(localStorage.getItem(key) || fallback);
+    return JSON.parse(storage.getItem(key) || fallback);
   } catch {
     return JSON.parse(fallback);
   }
@@ -12,7 +13,7 @@ const load = (key: string, fallback: string) => {
 
 const save = (key: string, value: unknown) => {
   try {
-    localStorage.setItem(key, JSON.stringify(value));
+    storage.setItem(key, JSON.stringify(value));
   } catch { /* (not remembered) */ }
 };
 
