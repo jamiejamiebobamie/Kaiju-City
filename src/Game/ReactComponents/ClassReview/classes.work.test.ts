@@ -43,10 +43,12 @@ it.runIf(mode == 'save')('saves written options', () => {
   // every name and every description, once in all the combos
   const seen = new Map();
   const repeats = [];
+  // (two drafts that already repeat each other are Jamie's: they stay, and the tool lets only one be confirmed)
+  const drafts = new Set(Object.values(options.combos).flatMap((combo: any) => [combo.original.name, combo.original.description].map(text => text.toLowerCase().trim())));
   Object.entries(options.combos).forEach(([key, combo]: [string, any]) => combo.names.forEach(({ name, descriptions }) => [name, ...descriptions].forEach(text => {
     const folded = text.toLowerCase().trim();
-    if (seen.has(folded) && seen.get(folded) != key) repeats.push(`"${text}" (${seen.get(folded)} and ${key})`);
-    else seen.set(folded, key);
+    if (seen.has(folded) && seen.get(folded) != key && !(drafts.has(folded) && combo.original && [combo.original.name, combo.original.description].some(own => own.toLowerCase().trim() == folded))) repeats.push(`"${text}" (${seen.get(folded)} and ${key})`);
+    else if (!seen.has(folded)) seen.set(folded, key);
   })));
   if (repeats.length) throw new Error(`repeated:\n${repeats.join('\n')}`);
   fs.writeFileSync(optionsPath, `${JSON.stringify(options, null, 2)}\n`);
