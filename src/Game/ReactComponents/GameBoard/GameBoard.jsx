@@ -277,6 +277,110 @@ export const ChoiceButton = ({ choice, recruitChoice, onChooseRecruit }) => (
   </RecruitButton>
 );
 
+// the choice's last word needs energy: RECRUITED dances over green warp lines streaming upward;
+// TERMINATED lurches from corner to corner, bursting bigger or smaller each time it lands, over a blood bag's rising air bubbles
+const CHOICE_FX = {
+  warpLines: 26,
+  bubbles: 22,
+  hopEverySeconds: 1.4, // RECRUITED's letters hop as a wave through the word this often (SpellCraft's "You Won", sped up)
+  hopSeconds: 0.9,
+  hopStagger: 0.07,
+  lurchSeconds: 3.6 // TERMINATED's trip round its stops
+};
+
+const warpStreak = keyframes`
+  from { transform: translateY(110%); opacity: 0; }
+  15% { opacity: 1; }
+  to { transform: translateY(-130%); opacity: 0; }
+`;
+
+const WarpLine = styled.span`
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0.25%;
+  background: linear-gradient(to top, transparent, rgba(160, 255, 170, 0.9) 45%, rgba(220, 255, 220, 1) 50%, transparent 70%);
+  filter: drop-shadow(0 0 4px #6dff8a);
+  animation: ${warpStreak} var(--seconds) linear var(--delay) infinite;
+`;
+
+const bubbleRise = keyframes`
+  from { transform: translate(0, 0); opacity: 0; }
+  10% { opacity: 1; }
+  50% { transform: translate(var(--sway), -55cqh); }
+  to { transform: translate(calc(var(--sway) * -0.6), -115cqh); opacity: 0.8; }
+`;
+
+// an air bubble in the bag: clear, with a soft dark rim and a glint
+const Bubble = styled.span`
+  position: absolute;
+  bottom: -12%;
+  width: var(--size);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 2px solid rgba(20, 0, 4, 0.55);
+  background: radial-gradient(circle at 32% 30%, rgba(255, 210, 215, 0.45) 0 12%, rgba(255, 160, 170, 0.08) 13% 60%, rgba(60, 0, 8, 0.12));
+  animation: ${bubbleRise} var(--seconds) ease-in var(--delay) infinite;
+`;
+
+const EffectLayer = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 2147482420;
+  overflow: hidden;
+  pointer-events: none;
+  container-type: size;
+`;
+
+const letterHop = keyframes`
+  0%, ${(100 - CHOICE_FX.hopSeconds / CHOICE_FX.hopEverySeconds * 100).toFixed(1)}% { transform: translate(0, 0) scale(1, 1); }
+  ${(100 - CHOICE_FX.hopSeconds / CHOICE_FX.hopEverySeconds * 74).toFixed(1)}% { transform: translate(0.05em, -0.32em) scale(0.92, 1.1); }
+  ${(100 - CHOICE_FX.hopSeconds / CHOICE_FX.hopEverySeconds * 50).toFixed(1)}% { transform: translate(-0.02em, 0.08em) scale(1.1, 0.9); }
+  ${(100 - CHOICE_FX.hopSeconds / CHOICE_FX.hopEverySeconds * 30).toFixed(1)}% { transform: translate(0.01em, -0.08em) scale(0.97, 1.03); }
+  100% { transform: translate(0, 0) scale(1, 1); }
+`;
+
+const HopLetter = styled.span`
+  display: inline-block;
+  transform-origin: 50% 85%;
+  white-space: pre;
+  animation: ${letterHop} ${CHOICE_FX.hopEverySeconds}s ease-in-out var(--delay) infinite;
+`;
+
+// round its stops, uneven: in from the middle, to the top left, the top right, the bottom right, and round again
+const lurch = keyframes`
+  0% { transform: translate(0, 0); }
+  18%, 30% { transform: translate(-26cqw, -22cqh); }
+  48%, 60% { transform: translate(21cqw, -27cqh); }
+  78%, 90% { transform: translate(17cqw, 24cqh); }
+  100% { transform: translate(0, 0); }
+`;
+
+// its size bursts as it lands at each stop, and holds till the next
+const burst = keyframes`
+  0%, 17% { transform: scale(1); }
+  20% { transform: scale(1.55); }
+  23%, 47% { transform: scale(1.3); }
+  50% { transform: scale(0.55); }
+  53%, 77% { transform: scale(0.72); }
+  80% { transform: scale(1.45); }
+  83%, 100% { transform: scale(1.15); }
+`;
+
+const Lurch = styled.div`
+  animation: ${lurch} ${CHOICE_FX.lurchSeconds}s cubic-bezier(0.7, 0, 0.3, 1) ${RECRUIT_LOOK.flyMs}ms infinite;
+`;
+
+const Burst = styled.div`
+  animation: ${burst} ${CHOICE_FX.lurchSeconds}s linear ${RECRUIT_LOOK.flyMs}ms infinite;
+`;
+
+// fixed once, so the streaks and bubbles don't jump about between renders
+const WARP_LINES = Array.from({ length: CHOICE_FX.warpLines }, (_, k) => ({ left: `${(k * 37) % 100}%`, seconds: `${0.45 + ((k * 13) % 7) * 0.08}s`, delay: `${-((k * 29) % 11) * 0.1}s` }));
+const BUBBLES = Array.from({ length: CHOICE_FX.bubbles }, (_, k) => ({
+  left: `${(k * 41) % 96}%`, size: `${2 + ((k * 7) % 6)}cqw`, seconds: `${3 + ((k * 11) % 5) * 0.6}s`, delay: `${-((k * 17) % 9) * 0.45}s`, sway: `${((k % 5) - 2) * 1.5}cqw`
+}));
+
 // 'from': where the pressed button was on the page, so the word starts there
 const ChoiceConfirm = ({ choice, from, board }) => {
   const boardBox = board.getBoundingClientRect();
@@ -285,13 +389,29 @@ const ChoiceConfirm = ({ choice, from, board }) => {
   // as big as it was made, unless the word with its ending would not fit across the screen
   const word = CHOICE_WORDS[choice] + RECRUIT_LOOK[choice].suffix;
   const wordPx = Math.min(RECRUIT_LOOK.wordPx, (boardBox.width * 0.9) / (word.length * RECRUIT_LOOK.letterWidth));
-  const fromScale = from ? Math.min(from.height / (wordPx * 1.6), 1) : 0.3;
+  // TERMINATED grows past its fitted size at its stops: it starts smaller, so it stays on the screen
+  const sizePx = choice == "terminate" ? wordPx * 0.62 : wordPx;
+  const fromScale = from ? Math.min(from.height / (sizePx * 1.6), 1) : 0.3;
+  const letters = (CHOICE_WORDS[choice].toUpperCase() + RECRUIT_LOOK[choice].suffix).split("");
+  const base = CHOICE_WORDS[choice].length;
   return (
     <>
       <ChoiceWash style={{ background: RECRUIT_LOOK[choice].wash }} />
-      <ChoiceWord style={{ fontSize: `${wordPx}px`, "--from-x": `${fromX}px`, "--from-y": `${fromY}px`, "--from-scale": fromScale }}>
-        {CHOICE_WORDS[choice].toUpperCase()}<ChoiceSuffix>{RECRUIT_LOOK[choice].suffix}</ChoiceSuffix>
-      </ChoiceWord>
+      <EffectLayer>
+        {choice == "recruit"
+          ? WARP_LINES.map(({ left, seconds, delay }, k) => <WarpLine key={k} style={{ left, "--seconds": seconds, "--delay": delay }} />)
+          : BUBBLES.map(({ left, size, seconds, delay, sway }, k) => <Bubble key={k} style={{ left, "--size": size, "--seconds": seconds, "--delay": delay, "--sway": sway }} />)}
+      </EffectLayer>
+      <EffectLayer style={{ zIndex: 2147482450 }}>
+        <ChoiceWord style={{ fontSize: `${sizePx}px`, "--from-x": `${fromX}px`, "--from-y": `${fromY}px`, "--from-scale": fromScale }}>
+          {choice == "recruit" ? letters.map((letter, k) => {
+            const hop = <HopLetter key={k} style={{ "--delay": `${RECRUIT_LOOK.flyMs / 1000 + k * CHOICE_FX.hopStagger}s` }}>{letter}</HopLetter>;
+            return k < base ? hop : <ChoiceSuffix key={k}>{hop}</ChoiceSuffix>;
+          }) : (
+            <Lurch><Burst>{CHOICE_WORDS[choice].toUpperCase()}<ChoiceSuffix>{RECRUIT_LOOK[choice].suffix}</ChoiceSuffix></Burst></Lurch>
+          )}
+        </ChoiceWord>
+      </EffectLayer>
     </>
   );
 };

@@ -186,15 +186,37 @@ const fadeIn = keyframes`
 `;
 
 // several notices at once, one above the other
+// notices stack at the screen's right, one after another, like a project tracker's updates
 const CardStack = styled.div`
   position: absolute;
-  top: ${NOTICE_TOP};
-  left: 50%;
-  transform: translateX(-50%);
+  right: 1.4cqw;
+  bottom: 3cqw;
+  max-width: 88%;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-end;
   gap: 0.8cqw;
+`;
+
+const toastIn = keyframes`
+  from { opacity: 0; transform: translateX(30%); }
+  to { opacity: 1; transform: translateX(0); }
+`;
+
+const Toast = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1cqw;
+  max-width: 100%;
+  padding: 0.7cqw 1.2cqw;
+  font-family: gameboy;
+  font-size: 1.1cqw;
+  line-height: 1.4;
+  color: #101018;
+  background: #fbfbf0;
+  border: 0.25cqw solid #101018;
+  box-shadow: 0.35cqw 0.35cqw 0 rgba(0, 0, 0, 0.5);
+  animation: ${toastIn} 0.45s ease-out both;
 `;
 
 const FadeToBlack = styled.div`
@@ -699,8 +721,8 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     addUnlock(getBattlegroundUnlockId(level.id));
     updateMapWalkSites(getWonBattlegrounds());
     const portrait = `/levels/portraits/${avatar}.png`;
+    // no card for the character: only the place, and what the choice gave
     const cards = [
-      { label: `${label} Unlocked`, image: portrait },
       { label: `${level.name} Unlocked`, image: level.layers[0] && level.layers[0].src },
       { label: choiceLabel, image: portrait }
     ];
@@ -1010,9 +1032,9 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 </EndScreen>
               )}
               {isWiping && <ScreenClip><BlackWipe /></ScreenClip>}
-              {unlockMessage && <UnlockCard><UnlockPortrait src={unlockImage} />{unlockMessage}</UnlockCard>}
-              {fadeCards && <FadeToBlack><CardStack>{fadeCards.map(({ label, image }) => (
-                <UnlockCard key={label} style={{ position: "static", transform: "none" }}>{image && <UnlockPortrait src={image} />}{label}</UnlockCard>
+              {unlockMessage && <CardStack><UnlockCard style={{ position: "static", transform: "none" }}><UnlockPortrait src={unlockImage} />{unlockMessage}</UnlockCard></CardStack>}
+              {fadeCards && <FadeToBlack><CardStack>{fadeCards.map(({ label, image }, index) => (
+                <Toast key={label} style={{ animationDelay: `${0.4 + index * 0.45}s` }}>{image && <UnlockPortrait src={image} />}{label}</Toast>
               ))}</CardStack></FadeToBlack>}
               {campaignIndex !== null && level.isWalkingLevel && !level.sites && !level.exit && !level.walkIn && !isEditingTiles && (
                 <ContinueButton data-enter onClick={() => showSection(campaignIndex + 1)}>Continue</ContinueButton>
