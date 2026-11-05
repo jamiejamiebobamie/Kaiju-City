@@ -611,9 +611,12 @@ const STREET_TALK_MS = STREET_LINES.reduce((total, line) => total + getSpeechMs(
 const STREET_SCENE = {
   tileTone: 'dark' as const,
   walkers: [
-    hazmatRunner('hazmat2', [[700, 612], [745, 420, 'pass'], [950, 362], [1185, 385, 'pass'], [1195, 600, 'pass'], [1000, 635, 'pass']], 150, 6),
-    hazmatRunner('hazmat4', [[1250, 385], [1212, 470], [1245, 560]], 120, 7),
-    hazmatRunner('hazmat5', [[1225, 520], [1195, 615, 'pass'], [880, 640], [1195, 615, 'pass']], 140, 8)
+    // along the road just below the claw's goo, clear of the van's doors and wheels: about the size of the sweeper by the van
+    hazmatRunner('hazmat2', [[705, 622], [905, 600, 'pass'], [1075, 610], [905, 600, 'pass']], 150, 6),
+    // up and down the right sidewalk, beside the lamp post rather than over it
+    hazmatRunner('hazmat4', [[1262, 445], [1262, 545]], 120, 7),
+    // from the sidewalk out to the claw's edge
+    hazmatRunner('hazmat5', [[1230, 575], [1160, 612, 'pass'], [990, 628], [1160, 612, 'pass']], 140, 8)
   ],
   getWalkerHeight: getWorkerHeight, // how tall a worker stands at a spot's y, in scene pixels
   // the whole street, then in on the Agent as he calls the team over, then back to them. his words follow in the log.

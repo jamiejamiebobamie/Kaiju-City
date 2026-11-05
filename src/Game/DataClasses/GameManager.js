@@ -113,6 +113,11 @@ export const getRecruitLines = (pronoun, pastChoices = []) => {
     return [`Maybe we could recruit ${him}...`, `...or we could study ${his} DNA to get ${his} power.`, `Though that would be fatal for ${him}.`];
 };
 
+// how much of a sprite frame's height the body fills (the hazmat sheet: about 137 of 200 pixels)
+const WALKER_BODY_FRACTION = 0.69;
+// what the piece component adds to every piece's z-index, so pieces sort with the scene's own layers
+const PIECE_Z_BASE = 20001;
+
 export class GameManager {
     // 'returnSpot': back on a map walk from a site, the team starts beside it.
     // 'isRetry': the match is played again after a loss, so its opening scene is skipped.
@@ -488,9 +493,10 @@ export class GameManager {
         this.walkers.push(piece);
     }
 
-    // from where the feet are to the piece's own spot, its top left: it is drawn smaller further up the scene
+    // from where the feet are to the piece's own spot, its top left: it is drawn smaller further up the scene.
+    // the body fills only part of its sprite frame, so the frame is drawn bigger: the body stands as tall as a sweeper there.
     getWalkerScale(y) {
-        return this.level.getWalkerHeight(y) / (CHARACTER_HEIGHT_PX * this.level.pieceScale);
+        return this.level.getWalkerHeight(y) / (CHARACTER_HEIGHT_PX * WALKER_BODY_FRACTION * this.level.pieceScale);
     }
 
     getWalkerCharLocation({ x, y }) {
@@ -501,7 +507,7 @@ export class GameManager {
     // its size and its place in front of or behind the scene, from where its feet are
     placeWalker(piece, feetY) {
         piece.perspectiveScale = this.getWalkerScale(feetY);
-        piece.introZIndex = getSortZIndex(this.level, feetY);
+        piece.introZIndex = getSortZIndex(this.level, feetY) - PIECE_Z_BASE;
     }
 
     updateWalkers() {

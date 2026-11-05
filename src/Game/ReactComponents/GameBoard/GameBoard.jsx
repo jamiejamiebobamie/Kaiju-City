@@ -87,8 +87,10 @@ const EdgeCaret = styled.svg`
 // what a caret points at, shown at its base: a map site's icon, or a hologram window on an enemy coming in
 const CARET_INFO = {
   iconHeight: 2.6, // a site icon, in caret sizes
-  windowWidth: 7.2, // a hologram window, in caret sizes
-  windowHeight: 8.4,
+  windowWidth: 3.4, // a hologram, in caret sizes: about as wide as the sprite, so it sits right beside its caret
+  windowHeight: 5.6,
+  windowGap: -0.7, // the sprite is narrower than its window: this pulls it in to touch the caret, in caret sizes
+  windowFeet: 0.7, // where its feet stand down the window: high enough that the body is level with the caret
   inset: 1.3, // how far in from the caret, past it, in caret sizes
   nearTiles: 12, // an incoming enemy this close gets a window even with others on the board: about as far as the tiles show
   maxWindows: 2,
@@ -199,10 +201,6 @@ const hologramFlicker = keyframes`
 
 // a hologram of whoever the caret points at, like a holochess piece: their sprite alone, glowing green,
 // see-through, flickering, with a scan line rolling slowly down it. no box: it takes up no more of the screen than they do.
-const hologramRoll = keyframes`
-  from { top: -15%; }
-  to { top: 105%; }
-`;
 
 const CaretWindow = styled.div`
   position: absolute;
@@ -210,22 +208,46 @@ const CaretWindow = styled.div`
   pointer-events: none;
   translate: -50% -50%;
   animation: ${hologramFlicker} 2.7s steps(1) infinite;
-  /* the sprite in green light: tinted, brightened, glowing at its edges */
-  filter: grayscale(1) sepia(1) hue-rotate(85deg) saturate(3.2) brightness(1.35) drop-shadow(0 0 4px ${CARET_INFO.green}) drop-shadow(0 0 10px rgba(109, 255, 160, 0.6));
-  opacity: 0.82;
-  /* fine scan lines across it, only where it is */
-  -webkit-mask-image: repeating-linear-gradient(to bottom, black 0 2px, rgba(0, 0, 0, 0.55) 2px 3px);
-  mask-image: repeating-linear-gradient(to bottom, black 0 2px, rgba(0, 0, 0, 0.55) 2px 3px);
-  &::after {
-    content: "";
-    position: absolute;
-    left: 15%;
-    right: 15%;
-    height: 12%;
-    background: linear-gradient(to bottom, transparent, rgba(200, 255, 220, 0.55), transparent);
-    mix-blend-mode: screen;
-    animation: ${hologramRoll} 2.4s linear infinite;
-  }
+  /* a green glow round its outline */
+  filter: drop-shadow(0 0 2px ${CARET_INFO.green}) drop-shadow(0 0 7px rgba(109, 255, 160, 0.55));
+  /* fine scan lines across it: they only show where the sprite is */
+  -webkit-mask-image: repeating-linear-gradient(to bottom, black 0 2px, rgba(0, 0, 0, 0.6) 2px 3px);
+  mask-image: repeating-linear-gradient(to bottom, black 0 2px, rgba(0, 0, 0, 0.6) 2px 3px);
+`;
+
+// the hologram is the sprite three times over, each layer only where the sprite is:
+// its own colors, showing most in the middle; green light, strongest at its edges; and a bright band rolling down it
+const HologramLayer = styled.div`
+  position: absolute;
+  inset: 0;
+`;
+
+const HOLOGRAM_GREEN = "grayscale(1) sepia(1) hue-rotate(85deg) saturate(3.2) brightness(1.35)";
+
+const HologramColor = styled(HologramLayer)`
+  opacity: 0.85;
+`;
+
+const HologramEdge = styled(HologramLayer)`
+  filter: ${HOLOGRAM_GREEN};
+  -webkit-mask-image: radial-gradient(ellipse 46% 50% at 50% 55%, transparent 25%, black 85%);
+  mask-image: radial-gradient(ellipse 46% 50% at 50% 55%, transparent 25%, black 85%);
+`;
+
+const hologramBand = keyframes`
+  from { -webkit-mask-position: 0 -40%; mask-position: 0 -40%; }
+  to { -webkit-mask-position: 0 140%; mask-position: 0 140%; }
+`;
+
+const HologramScan = styled(HologramLayer)`
+  filter: ${HOLOGRAM_GREEN} brightness(1.6);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 45% 55%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, black 45% 55%, transparent);
+  -webkit-mask-size: 100% 22%;
+  mask-size: 100% 22%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  animation: ${hologramBand} 2.4s linear infinite;
 `;
 
 // the play window's size, while it is being adjusted
@@ -816,23 +838,29 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
         {windowKeys.has(key) && (() => {
           const width = caret.size * CARET_INFO.windowWidth;
           const height = caret.size * CARET_INFO.windowHeight;
-          const spot = getInward(caret, CARET_INFO.inset + CARET_INFO.windowWidth / 2);
+          // right beside the caret, like a site's icon on the map walks
+          const spot = getInward(caret, CARET_INFO.inset + CARET_INFO.windowGap + CARET_INFO.windowWidth / 2);
           const scale = height / (CHARACTER_HEIGHT_PX * (piece.avatar == 'kaiju' ? 1.6 : 1.15));
+          const sprite = (
+            <GameBoardPieceComponent
+              zIndex={0}
+              charLocation={{ x: width / 2 - CHARACTER_FEET.x * scale - CHARACTER_FEET.leftShift, y: height * CARET_INFO.windowFeet - CHARACTER_FEET.y * scale }}
+              avatar={piece.avatar}
+              color="transparent"
+              isVisible
+              dir={piece.dir}
+              facingDir={piece.getFacingDir()}
+              pieceScale={scale}
+              spriteSheetSrc={piece.spriteSheetSrc}
+              lives={piece.lives}
+              isQuiet
+            />
+          );
           return (
             <CaretWindow style={{ left: `${spot.x}px`, top: `${spot.y}px`, width: `${width}px`, height: `${height}px` }}>
-              <GameBoardPieceComponent
-                zIndex={0}
-                charLocation={{ x: width / 2 - CHARACTER_FEET.x * scale - CHARACTER_FEET.leftShift, y: height * 0.82 - CHARACTER_FEET.y * scale }}
-                avatar={piece.avatar}
-                color="transparent"
-                isVisible
-                dir={piece.dir}
-                facingDir={piece.getFacingDir()}
-                pieceScale={scale}
-                spriteSheetSrc={piece.spriteSheetSrc}
-                lives={piece.lives}
-                isQuiet
-              />
+              <HologramColor>{sprite}</HologramColor>
+              <HologramEdge>{sprite}</HologramEdge>
+              <HologramScan>{sprite}</HologramScan>
             </CaretWindow>
           );
         })()}
