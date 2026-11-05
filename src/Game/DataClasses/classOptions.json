@@ -2671,7 +2671,7 @@
           ]
         },
         {
-          "name": "Killswitch",
+          "name": "Shutdown Protocol",
           "descriptions": [
             "One flick, lights out.",
             "Off, permanently.",
@@ -2697,7 +2697,25 @@
         {
           "name": "Chaos Surgeon",
           "descriptions": [
-            "You kiss boo-boos as much as you cause them."
+            "You kiss boo-boos as much as you cause them.",
+            "Stitches with a side of arson.",
+            "First aid, last rites."
+          ]
+        },
+        {
+          "name": "Field Butcher",
+          "descriptions": [
+            "Cuts deep, heals quick.",
+            "Your scalpel has a grudge.",
+            "Triage by cleaver."
+          ]
+        },
+        {
+          "name": "Phoenix Medic",
+          "descriptions": [
+            "Burn it down, raise it up.",
+            "From the ashes, a patient.",
+            "You heal in flames."
           ]
         }
       ]
@@ -2711,7 +2729,25 @@
         {
           "name": "Cyborg Reaper",
           "descriptions": [
-            "Chivalry truly is obsolete."
+            "Chivalry truly is obsolete.",
+            "Cold steel, hot temper, no pulse.",
+            "Harvesting with a flamethrower."
+          ]
+        },
+        {
+          "name": "Furnace Knight",
+          "descriptions": [
+            "Armor glowing red.",
+            "Charge, burn, conquer.",
+            "Honor, at forge temperature."
+          ]
+        },
+        {
+          "name": "Scrap Revenant",
+          "descriptions": [
+            "Rebuilt from wrecks, and angry.",
+            "Rust and rage.",
+            "You came back in pieces."
           ]
         }
       ]
@@ -2725,7 +2761,25 @@
         {
           "name": "Boiling Point",
           "descriptions": [
-            "The tank was never safe."
+            "The tank was never safe.",
+            "The kettle screams for you.",
+            "Scald, sink, haunt."
+          ]
+        },
+        {
+          "name": "Cauldron Witch",
+          "descriptions": [
+            "Something wicked boils.",
+            "Stir, simmer, curse.",
+            "Soup of the day: doom."
+          ]
+        },
+        {
+          "name": "Scald Phantom",
+          "descriptions": [
+            "Steam with a face.",
+            "A burn that haunts.",
+            "Hot vapor, cold presence."
           ]
         }
       ]
@@ -2739,7 +2793,25 @@
         {
           "name": "Scorched Earther",
           "descriptions": [
-            "Nature's warranty is void."
+            "Nature's warranty is void.",
+            "Nothing grows back.",
+            "Salt the earth, then torch it."
+          ]
+        },
+        {
+          "name": "Ash Druid",
+          "descriptions": [
+            "Keeper of the burned grove.",
+            "Cinders are your seeds.",
+            "Nature's grim gardener."
+          ]
+        },
+        {
+          "name": "Wildfire Ghoul",
+          "descriptions": [
+            "Feeds where the forest fell.",
+            "The smoke carries you.",
+            "Haunting the burn line."
           ]
         }
       ]
@@ -2753,7 +2825,25 @@
         {
           "name": "Cryo Necromancer",
           "descriptions": [
-            "Standard bastard."
+            "Standard bastard.",
+            "Frozen, gone, raised.",
+            "Ice-cold corpses, far from home."
+          ]
+        },
+        {
+          "name": "Frost Lich",
+          "descriptions": [
+            "Undying, and freezing.",
+            "Your phylactery is in the freezer.",
+            "Cold crown, colder heart."
+          ]
+        },
+        {
+          "name": "Shatter Specter",
+          "descriptions": [
+            "Breaks like ice, returns like a ghost.",
+            "Glass bones, cold breath.",
+            "Crack, vanish, haunt."
           ]
         }
       ]
@@ -2767,7 +2857,25 @@
         {
           "name": "Blink Assassin",
           "descriptions": [
-            "You're ready for a fight, then you're not there."
+            "You're ready for a fight, then you're not there.",
+            "A flash, a thud, gone.",
+            "Strike first, exist later."
+          ]
+        },
+        {
+          "name": "Bolt Killer",
+          "descriptions": [
+            "Faster than thunder.",
+            "One flash, one less enemy.",
+            "Gone with the boom."
+          ]
+        },
+        {
+          "name": "Static Wraith",
+          "descriptions": [
+            "The hum before the end.",
+            "A crackle in the dark.",
+            "Electric, invisible, fatal."
           ]
         }
       ]
@@ -2781,7 +2889,25 @@
         {
           "name": "Psychopomp Unit",
           "descriptions": [
-            "You ferry data between life and death."
+            "You ferry data between life and death.",
+            "Guiding souls, and packets.",
+            "Escort to the other side."
+          ]
+        },
+        {
+          "name": "Soul Medic",
+          "descriptions": [
+            "Healing the living, guiding the rest.",
+            "You patch bodies and spirits.",
+            "Care for both sides."
+          ]
+        },
+        {
+          "name": "Crossing Guide",
+          "descriptions": [
+            "Hold my hand. Step through.",
+            "You walk them over gently.",
+            "The bridge between."
           ]
         }
       ]
@@ -2795,7 +2921,25 @@
         {
           "name": "Stasis Warden",
           "descriptions": [
-            "Nobody leaves the pod."
+            "Nobody leaves the pod.",
+            "Sealed in, frozen in time.",
+            "The pods stay closed on your watch."
+          ]
+        },
+        {
+          "name": "Vault Phantom",
+          "descriptions": [
+            "Haunting the locked rooms.",
+            "No key, no exit.",
+            "The safe has a ghost."
+          ]
+        },
+        {
+          "name": "Prison Ghost",
+          "descriptions": [
+            "You never left your cell.",
+            "Bars can't hold you.",
+            "Life sentence, extended."
           ]
         }
       ]
@@ -2809,7 +2953,25 @@
         {
           "name": "Deep Diver",
           "descriptions": [
-            "Some things should stay down there."
+            "Some things should stay down there.",
+            "The trench has a resident.",
+            "Bottom of the sea, top of the list."
+          ]
+        },
+        {
+          "name": "Abyss Walker",
+          "descriptions": [
+            "Where the light gives up.",
+            "You stroll the ocean floor.",
+            "Pressure means nothing."
+          ]
+        },
+        {
+          "name": "Trench Phantom",
+          "descriptions": [
+            "A shadow in the deep.",
+            "Bubbles, then nothing.",
+            "Haunting the dark water."
           ]
         }
       ]
@@ -2823,7 +2985,25 @@
         {
           "name": "Xeno Stalker",
           "descriptions": [
-            "It moved through the vents."
+            "It moved through the vents.",
+            "Hunting in the dark, hiding in walls.",
+            "Something in the ductwork."
+          ]
+        },
+        {
+          "name": "Vent Crawler",
+          "descriptions": [
+            "Above the ceiling, waiting.",
+            "Ducts are your highway.",
+            "Scratching in the walls."
+          ]
+        },
+        {
+          "name": "Hive Hunter",
+          "descriptions": [
+            "The colony sends you.",
+            "Chitin, claws, quiet.",
+            "Prey never sees the nest."
           ]
         }
       ]
@@ -2837,7 +3017,25 @@
         {
           "name": "Derelict Captain",
           "descriptions": [
-            "Yar! In space!"
+            "Yar! In space!",
+            "Ghost ship, live wires.",
+            "Frozen crew, active systems."
+          ]
+        },
+        {
+          "name": "Ghost Ship",
+          "descriptions": [
+            "Adrift, alive, electric.",
+            "The lights still flicker.",
+            "Nobody aboard. Something steering."
+          ]
+        },
+        {
+          "name": "Void Pirate",
+          "descriptions": [
+            "Plunder in the cold dark.",
+            "Your parrot is a drone.",
+            "Raiding stars."
           ]
         }
       ]
@@ -2851,7 +3049,25 @@
         {
           "name": "Cryo Mortician",
           "descriptions": [
-            "Skilled in healing and icy death."
+            "Skilled in healing and icy death.",
+            "Gentle hands, frozen guests.",
+            "You care for the cold ones."
+          ]
+        },
+        {
+          "name": "Frost Nurse",
+          "descriptions": [
+            "Ice for the living, ice for the dead.",
+            "Cold compress, final rest.",
+            "Your patients keep."
+          ]
+        },
+        {
+          "name": "Winter Caretaker",
+          "descriptions": [
+            "Watching over the frozen.",
+            "The cold is a kindness.",
+            "Keeper of the long sleep."
           ]
         }
       ]
@@ -2865,7 +3081,25 @@
         {
           "name": "Frozen Cyborg",
           "descriptions": [
-            "An icy, undead soldier."
+            "An icy, undead soldier.",
+            "Thawed for one more war.",
+            "Frozen orders, still marching."
+          ]
+        },
+        {
+          "name": "Cryo Trooper",
+          "descriptions": [
+            "Unfrozen, deployed.",
+            "Woke up armed.",
+            "Thawed and ready."
+          ]
+        },
+        {
+          "name": "Iron Wight",
+          "descriptions": [
+            "Cold steel, colder soul.",
+            "Armored, undead, unmoving.",
+            "The frost in the armor is you."
           ]
         }
       ]
@@ -2879,7 +3113,25 @@
         {
           "name": "Morgue Tech",
           "descriptions": [
-            "Keep it at four degrees."
+            "Keep it at four degrees.",
+            "The drawers are full.",
+            "Chilled, labeled, filed."
+          ]
+        },
+        {
+          "name": "Arctic Diver",
+          "descriptions": [
+            "Below the ice, something waits.",
+            "Freezing water, frozen stare.",
+            "Holes in the ice are doors."
+          ]
+        },
+        {
+          "name": "Sleet Ghost",
+          "descriptions": [
+            "Haunting the frozen rain.",
+            "Cold, wet, everywhere.",
+            "You arrive with bad weather."
           ]
         }
       ]
@@ -2893,7 +3145,25 @@
         {
           "name": "Permafrost Virus",
           "descriptions": [
-            "They call you the Thaw."
+            "They call you the Thaw.",
+            "Frozen roots, deadly spores.",
+            "Melting brings the plague."
+          ]
+        },
+        {
+          "name": "Tundra Blight",
+          "descriptions": [
+            "Nothing grows. Everything dies.",
+            "The frost carries disease.",
+            "Cold, quiet rot."
+          ]
+        },
+        {
+          "name": "Frostbite Fungus",
+          "descriptions": [
+            "Spores that survive the cold.",
+            "It grows on frozen things.",
+            "Winter mold, hungry."
           ]
         }
       ]
@@ -2907,7 +3177,25 @@
         {
           "name": "Reanimator",
           "descriptions": [
-            "It's alive! Mostly."
+            "It's alive! Mostly.",
+            "A jolt, and they rise.",
+            "Second chances, electrified."
+          ]
+        },
+        {
+          "name": "Lazarus Tech",
+          "descriptions": [
+            "Back from the dead, ready to work.",
+            "Death is a setback.",
+            "You restart souls."
+          ]
+        },
+        {
+          "name": "Shock Shepherd",
+          "descriptions": [
+            "You herd the revived.",
+            "A zap keeps them in line.",
+            "Your flock flickers."
           ]
         }
       ]
@@ -2921,7 +3209,25 @@
         {
           "name": "Necro-Railgunner",
           "descriptions": [
-            "The name says it all."
+            "The name says it all.",
+            "Undead aim, magnetic rounds.",
+            "Long range, longer afterlife."
+          ]
+        },
+        {
+          "name": "Dead Shot",
+          "descriptions": [
+            "You never miss. Ever.",
+            "The bullet has their name.",
+            "Aim true, die truer."
+          ]
+        },
+        {
+          "name": "Tesla Lich",
+          "descriptions": [
+            "Coils hum in your crypt.",
+            "Undying, and fully charged.",
+            "Your tomb has a power plant."
           ]
         }
       ]
@@ -2935,7 +3241,25 @@
         {
           "name": "Kill Switch",
           "descriptions": [
-            "Do not touch the puddle."
+            "Do not touch the puddle.",
+            "Stay out of the water.",
+            "One drop, one jolt, one less."
+          ]
+        },
+        {
+          "name": "Eel Wraith",
+          "descriptions": [
+            "Coiled, glowing, fatal.",
+            "The shock comes from below.",
+            "Slippery and deadly."
+          ]
+        },
+        {
+          "name": "Flood Shocker",
+          "descriptions": [
+            "Wet floors, live wires.",
+            "The puddle bites.",
+            "Flooded with current."
           ]
         }
       ]
@@ -2949,7 +3273,25 @@
         {
           "name": "Mutant Avenger",
           "descriptions": [
-            "You have an origin story."
+            "You have an origin story.",
+            "Radioactive and righteous.",
+            "Your scars glow."
+          ]
+        },
+        {
+          "name": "Toxic Hero",
+          "descriptions": [
+            "Saved by the sludge.",
+            "Glowing, grumpy, good.",
+            "Every power came from a spill."
+          ]
+        },
+        {
+          "name": "Swamp Lord",
+          "descriptions": [
+            "Ruler of the rotten marsh.",
+            "Lightning feeds your bog.",
+            "Kneel in the mud."
           ]
         }
       ]
@@ -2963,7 +3305,25 @@
         {
           "name": "Fallen Peacekeeper",
           "descriptions": [
-            "No longer good."
+            "No longer good.",
+            "The badge is rusted.",
+            "Once a protector, now a problem."
+          ]
+        },
+        {
+          "name": "Rusted Paladin",
+          "descriptions": [
+            "Faith fading, armor holding.",
+            "Still fighting, no longer sure why.",
+            "Holy, then hollow."
+          ]
+        },
+        {
+          "name": "Grave Knight",
+          "descriptions": [
+            "Guarding the dead with honor.",
+            "Sworn to the cemetery.",
+            "Armor that outlived its owner."
           ]
         }
       ]
@@ -2977,7 +3337,25 @@
         {
           "name": "Embalmer",
           "descriptions": [
-            "Fluids are your whole career."
+            "Fluids are your whole career.",
+            "Preserving, presenting, perfecting.",
+            "A pretty corpse is good business."
+          ]
+        },
+        {
+          "name": "Undertaker",
+          "descriptions": [
+            "Dignity, then a deep hole.",
+            "You dress the dead well.",
+            "Business is always booming."
+          ]
+        },
+        {
+          "name": "River Mourner",
+          "descriptions": [
+            "Tears, flowing downstream.",
+            "The current carries your grief.",
+            "Mourning, by the riverside."
           ]
         }
       ]
@@ -2991,7 +3369,25 @@
         {
           "name": "Zombie Herbalist",
           "descriptions": [
-            "Rotting flesh hangs off of you."
+            "Rotting flesh hangs off of you.",
+            "Healing herbs, rotting hands.",
+            "Medicine grown from graves."
+          ]
+        },
+        {
+          "name": "Grave Herbalist",
+          "descriptions": [
+            "Remedies picked from tombs.",
+            "The best roots grow on graves.",
+            "Tea brewed from bones."
+          ]
+        },
+        {
+          "name": "Moss Ghoul",
+          "descriptions": [
+            "Green, gentle, rotting.",
+            "You're mostly lichen now.",
+            "Soft moss, sharp teeth."
           ]
         }
       ]
@@ -3005,7 +3401,25 @@
         {
           "name": "Sunken Mech",
           "descriptions": [
-            "Still online down there."
+            "Still online down there.",
+            "Rusting, waiting, watching.",
+            "The wreck still fights."
+          ]
+        },
+        {
+          "name": "Wreck Diver",
+          "descriptions": [
+            "Salvaging the drowned.",
+            "You go where ships went to die.",
+            "Treasure, and teeth."
+          ]
+        },
+        {
+          "name": "Anchor Revenant",
+          "descriptions": [
+            "Chained to the sea floor.",
+            "Heavy, patient, rising.",
+            "Dropped, but not done."
           ]
         }
       ]
@@ -3019,7 +3433,25 @@
         {
           "name": "Exclusion Zone Warden",
           "descriptions": [
-            "You protect the land you were irradiated on."
+            "You protect the land you were irradiated on.",
+            "The fence keeps them out. Mostly.",
+            "Glowing fields, steel boots."
+          ]
+        },
+        {
+          "name": "Fallout Ranger",
+          "descriptions": [
+            "Patrolling the hot zone.",
+            "Your map glows.",
+            "Rad-proof, mostly."
+          ]
+        },
+        {
+          "name": "Briar Sentinel",
+          "descriptions": [
+            "Thorns, wrapped in iron.",
+            "The thicket stands guard.",
+            "Nobody gets through the hedge."
           ]
         }
       ]
@@ -3033,7 +3465,25 @@
         {
           "name": "Bog Body",
           "descriptions": [
-            "Preserved, and annoyed."
+            "Preserved, and annoyed.",
+            "Dug up, and complaining.",
+            "Centuries in the mud, still grumpy."
+          ]
+        },
+        {
+          "name": "Marsh Ghost",
+          "descriptions": [
+            "Lights over the swamp at night.",
+            "Follow the glow. Don't.",
+            "Wailing in the reeds."
+          ]
+        },
+        {
+          "name": "Peat Mummy",
+          "descriptions": [
+            "Pickled by the bog.",
+            "Leather skin, wet grave.",
+            "Very well preserved."
           ]
         }
       ]
@@ -3047,7 +3497,25 @@
         {
           "name": "Warp Physicist",
           "descriptions": [
-            "You're a standard physicist. Pew pew."
+            "You're a standard physicist. Pew pew.",
+            "Hot here, cold there, gone.",
+            "Thermodynamics is optional."
+          ]
+        },
+        {
+          "name": "Prism Mage",
+          "descriptions": [
+            "Light, bent into weapons.",
+            "Every color is a spell.",
+            "Refract, then react."
+          ]
+        },
+        {
+          "name": "Temperature Jumper",
+          "descriptions": [
+            "Hot, cold, elsewhere.",
+            "Climate changes when you blink.",
+            "You warp the weather."
           ]
         }
       ]
@@ -3061,7 +3529,25 @@
         {
           "name": "Plasma Gunner",
           "descriptions": [
-            "You're a standard gunner. Pew pew."
+            "You're a standard gunner. Pew pew.",
+            "Point, shoot, relocate.",
+            "Bright bolts, quick exits."
+          ]
+        },
+        {
+          "name": "Laser Ace",
+          "descriptions": [
+            "Beam first, ask later.",
+            "Red dot, then gone.",
+            "Precision, at light speed."
+          ]
+        },
+        {
+          "name": "Flash Trooper",
+          "descriptions": [
+            "Blinding fast, blinding bright.",
+            "Charge, strike, blink.",
+            "Lightning and lasers."
           ]
         }
       ]
@@ -3075,7 +3561,25 @@
         {
           "name": "Pyro Medic",
           "descriptions": [
-            "Heals and fireballs."
+            "Heals and fireballs.",
+            "Fireball, bandage, teleport.",
+            "You fix what you burned."
+          ]
+        },
+        {
+          "name": "Flare Medic",
+          "descriptions": [
+            "A signal flare and a first-aid kit.",
+            "Bright light, quick help.",
+            "Help arrives in a blaze."
+          ]
+        },
+        {
+          "name": "Blaze Angel",
+          "descriptions": [
+            "You descend in fire.",
+            "Wings of flame, healing hands.",
+            "Saving them, warmly."
           ]
         }
       ]
@@ -3089,7 +3593,25 @@
         {
           "name": "Orbital Striker",
           "descriptions": [
-            "You are a seraph with a targeting computer."
+            "You are a seraph with a targeting computer.",
+            "Fire from the sky, armored.",
+            "The strike comes from orbit."
+          ]
+        },
+        {
+          "name": "Sky Lance",
+          "descriptions": [
+            "A spear of fire from above.",
+            "Look up. Too late.",
+            "Strike from orbit."
+          ]
+        },
+        {
+          "name": "Rocket Knight",
+          "descriptions": [
+            "Jet boots and a shield.",
+            "You arrive with a boom.",
+            "Flying armor, flaming lance."
           ]
         }
       ]
@@ -3103,7 +3625,25 @@
         {
           "name": "Geyser",
           "descriptions": [
-            "Up from nowhere, and scalding."
+            "Up from nowhere, and scalding.",
+            "Boiling water, from out of nowhere.",
+            "You erupt, then vanish."
+          ]
+        },
+        {
+          "name": "Steam Jumper",
+          "descriptions": [
+            "You arrive in a cloud.",
+            "Hot mist, then gone.",
+            "Teleport, with condensation."
+          ]
+        },
+        {
+          "name": "Hot Spring Phantom",
+          "descriptions": [
+            "A ghost in the steam.",
+            "Warm water, sudden appearances.",
+            "Relax. Then flee."
           ]
         }
       ]
@@ -3117,7 +3657,25 @@
         {
           "name": "Rogue Terraformer",
           "descriptions": [
-            "A liminal fighter."
+            "A liminal fighter.",
+            "Neither here nor there.",
+            "Worlds change, you leave."
+          ]
+        },
+        {
+          "name": "Seedfire Wanderer",
+          "descriptions": [
+            "You burn, plant, move on.",
+            "Every stop starts a forest.",
+            "Fire and seeds, everywhere."
+          ]
+        },
+        {
+          "name": "Biome Hopper",
+          "descriptions": [
+            "A new climate every jump.",
+            "Jungle, desert, gone.",
+            "You collect ecosystems."
           ]
         }
       ]
@@ -3131,7 +3689,25 @@
         {
           "name": "Elementalist Prime",
           "descriptions": [
-            "They said no suit could handle them all."
+            "They said no suit could handle them all.",
+            "One suit, every element.",
+            "The elements filed a complaint."
+          ]
+        },
+        {
+          "name": "Tri-Elemental",
+          "descriptions": [
+            "Fire, ice, lightning. Pick one.",
+            "All the weather, none of the warning.",
+            "Three for the price of chaos."
+          ]
+        },
+        {
+          "name": "Storm Mage",
+          "descriptions": [
+            "The sky does your bidding.",
+            "Weather, weaponized.",
+            "You conjure tempests."
           ]
         }
       ]
@@ -3145,7 +3721,25 @@
         {
           "name": "Thermokinetic",
           "descriptions": [
-            "You're a standard thermokinetic."
+            "You're a standard thermokinetic.",
+            "Hot compress, cold compress.",
+            "Your temperature is a treatment."
+          ]
+        },
+        {
+          "name": "Fever Healer",
+          "descriptions": [
+            "Breaking fevers, both ways.",
+            "You run hot, then cool them.",
+            "Healing by heat and chill."
+          ]
+        },
+        {
+          "name": "Balance Keeper",
+          "descriptions": [
+            "Never too hot. Never too cold.",
+            "You keep things even.",
+            "Harmony, with frostbite."
           ]
         }
       ]
@@ -3159,7 +3753,25 @@
         {
           "name": "Weapons Enchanter",
           "descriptions": [
-            "Reinforced barricades and elemental rounds."
+            "Reinforced barricades and elemental rounds.",
+            "Flaming bullets, frozen walls.",
+            "Your armory has a weather report."
+          ]
+        },
+        {
+          "name": "Elemental Armorer",
+          "descriptions": [
+            "Steel, tempered in fire and ice.",
+            "Your weapons have moods.",
+            "Forged hot, quenched cold."
+          ]
+        },
+        {
+          "name": "Arsenal Smith",
+          "descriptions": [
+            "Every bullet, custom made.",
+            "The forge never sleeps.",
+            "Hammer, anvil, ammo."
           ]
         }
       ]
@@ -3173,7 +3785,25 @@
         {
           "name": "Climate Control",
           "descriptions": [
-            "Nobody is ever comfortable."
+            "Nobody is ever comfortable.",
+            "Too hot, too cold, too wet.",
+            "Your thermostat hates everyone."
+          ]
+        },
+        {
+          "name": "Weather Maker",
+          "descriptions": [
+            "Rain, sleet, sunshine, on request.",
+            "The forecast is your mood.",
+            "Seasons, on demand."
+          ]
+        },
+        {
+          "name": "Phase Shifter",
+          "descriptions": [
+            "Solid, liquid, gas.",
+            "Water obeys your temperature.",
+            "You change states."
           ]
         }
       ]
@@ -3187,7 +3817,25 @@
         {
           "name": "Wasteland Cook",
           "descriptions": [
-            "Scary lady. You make a mean stew."
+            "Scary lady. You make a mean stew.",
+            "Stew from whatever grows.",
+            "Campfire cooking, end-times menu."
+          ]
+        },
+        {
+          "name": "Scavenger Chef",
+          "descriptions": [
+            "Dinner is whatever you find.",
+            "Roasted roots, frozen leftovers.",
+            "Five stars, no kitchen."
+          ]
+        },
+        {
+          "name": "Frontier Ranger",
+          "descriptions": [
+            "Surviving the wild edge.",
+            "Fire, frost, forest: home.",
+            "You live off the land."
           ]
         }
       ]
@@ -3201,7 +3849,25 @@
         {
           "name": "Cadet Pyrokinetic",
           "descriptions": [
-            "You're new."
+            "You're new.",
+            "Eager, sparky, untrained.",
+            "First day, first fire."
+          ]
+        },
+        {
+          "name": "Rookie Firebrand",
+          "descriptions": [
+            "Big heart, bigger sparks.",
+            "Learning fast, burning faster.",
+            "Hotheaded, in a good way."
+          ]
+        },
+        {
+          "name": "Spark Scout",
+          "descriptions": [
+            "First in, lights the way.",
+            "Small sparks, big help.",
+            "Eager to light things up."
           ]
         }
       ]
@@ -3215,7 +3881,25 @@
         {
           "name": "Battle Mech",
           "descriptions": [
-            "You were made for battle."
+            "You were made for battle.",
+            "Built for war, wired for more.",
+            "Steel, sparks and smoke."
+          ]
+        },
+        {
+          "name": "War Machine",
+          "descriptions": [
+            "Heavy, loud, unstoppable.",
+            "Your engine never stops.",
+            "Assembled for the front."
+          ]
+        },
+        {
+          "name": "Siege Engine",
+          "descriptions": [
+            "Walls fall when you arrive.",
+            "Slow, steady, devastating.",
+            "Battering ram with lasers."
           ]
         }
       ]
@@ -3229,7 +3913,25 @@
         {
           "name": "Stormfront",
           "descriptions": [
-            "The forecast is everything."
+            "The forecast is everything.",
+            "Thunder, rain and heat.",
+            "The storm front walks on legs."
+          ]
+        },
+        {
+          "name": "Typhoon",
+          "descriptions": [
+            "The storm with a name.",
+            "Spinning, soaking, striking.",
+            "Category: you."
+          ]
+        },
+        {
+          "name": "Tempest",
+          "descriptions": [
+            "Wild weather, wild temper.",
+            "Rain and fire, at once.",
+            "You are the bad forecast."
           ]
         }
       ]
@@ -3243,7 +3945,25 @@
         {
           "name": "Saboteur",
           "descriptions": [
-            "Tricky."
+            "Tricky.",
+            "Sparks in the underbrush.",
+            "You light fuses in forests."
+          ]
+        },
+        {
+          "name": "Firework Ranger",
+          "descriptions": [
+            "Celebration, in the woods.",
+            "Every tree a launchpad.",
+            "Boom goes the forest."
+          ]
+        },
+        {
+          "name": "Trap Maker",
+          "descriptions": [
+            "Tripwires and kindling.",
+            "Step carefully.",
+            "You set the woods against them."
           ]
         }
       ]
@@ -3257,7 +3977,25 @@
         {
           "name": "Crusader Unit",
           "descriptions": [
-            "For the Directorate!"
+            "For the Directorate!",
+            "Faith, fire and plating.",
+            "Holy armor, burning zeal."
+          ]
+        },
+        {
+          "name": "Holy Paladin",
+          "descriptions": [
+            "Shield, sword, and a prayer.",
+            "Righteous fire, steel faith.",
+            "Healing those you protect."
+          ]
+        },
+        {
+          "name": "Forge Guardian",
+          "descriptions": [
+            "The furnace keeps you warm.",
+            "Protecting with steel and flame.",
+            "A heart of hot iron."
           ]
         }
       ]
@@ -3271,7 +4009,25 @@
         {
           "name": "Steam Therapist",
           "descriptions": [
-            "Breathe in. Now scream."
+            "Breathe in. Now scream.",
+            "The sauna is the session.",
+            "Hot water, deep feelings."
+          ]
+        },
+        {
+          "name": "Bathhouse Healer",
+          "descriptions": [
+            "Hot soaks, kind words.",
+            "Healing, with towels.",
+            "Leave your worries in the tub."
+          ]
+        },
+        {
+          "name": "Tea Master",
+          "descriptions": [
+            "Steep, sip, heal.",
+            "Calm comes in a cup.",
+            "The kettle sings for you."
           ]
         }
       ]
