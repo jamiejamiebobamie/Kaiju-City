@@ -226,8 +226,8 @@ export class GameManager {
 
     // the camera starts its move back in before the game resumes
     getIsWideShot = () => {
-        const isAgentEntering = this.getPieces().some(({ isEntering, isDead }) => isEntering && !isDead);
-        return !!this.cutscene || !!this.recruitScene || this.isEditingTiles || this.wideShotMs > WIDE_SHOT.pullMs || this.liveWideShotMs > 0 || isAgentEntering;
+        // an Agent coming in doesn't pull the camera out (everything gets too small): its caret's badge shows it instead
+        return !!this.cutscene || !!this.recruitScene || this.isEditingTiles || this.wideShotMs > WIDE_SHOT.pullMs || this.liveWideShotMs > 0;
     }
 
     holdFor(ms) {
@@ -643,6 +643,10 @@ export class GameManager {
             return true;
         }
         const step = this.cutscene && this.cutscene.steps[this.cutscene.index];
+        if (step && step.isSkippable) {
+            this.cutscene.msLeft = 0; // a hold the player can move on from
+            return true;
+        }
         if (!step || !step.speech) return false;
         this.cutscene.msLeft = 0;
         this.isCutsceneLineWaiting = false;
@@ -1027,7 +1031,8 @@ export class GameManager {
 
         const endingSteps = !ending ? [] : [
             { shot, arrivals: pair.map((piece, index) => ({ piece, toTile: getTile(ending.spots[index]), dir: 'downLeft' })) },
-            { shot, ms: ending.climaxMs, phase: ending.phase },
+            // the teammate, Guy or Girl, stands under the eye: they turn up and to the right, to touch it
+            { shot, ms: ending.climaxMs, phase: ending.phase, onStart: () => { if (pair[1]) pair[1].facingDir = 'upRight'; } },
             { shot, ms: 0, onStart: () => { this.isSceneOver = true; } }
         ];
 
@@ -1039,8 +1044,9 @@ export class GameManager {
             { shot, ms: CUTSCENE.revealGlowMs, phase: reveal.glowPhase },
             { shot, ms: getSpeechMs(reveal.line.text), speech: () => getSpeech(reveal.line) },
             { shot: glowShot, ms: CUTSCENE.pullInMs },
-            { shot: glowShot, ms: reveal.lookMs },
-            { shot: glowShot, ms: reveal.labelMs, phase: reveal.shownPhase, onStart: () => this.setPhase(EXIT_OPEN_PHASE, true) }, // the door's label, over the glow
+            // both holds can be skipped with 1 or Enter
+            { shot: glowShot, ms: reveal.lookMs, isSkippable: true },
+            { shot: glowShot, ms: reveal.labelMs, isSkippable: true, phase: reveal.shownPhase, onStart: () => this.setPhase(EXIT_OPEN_PHASE, true) }, // the door's label, over the glow
             { shot: { ...backShot, point: { ...player.charLocation } }, ms: CUTSCENE.pullInMs }
         ] : [
             { shot, ms: CUTSCENE.revealGlowMs, phase: reveal.glowPhase },
@@ -1151,7 +1157,7 @@ export class GameManager {
         const lastDeath = deaths[deaths.length - 1];
         if (!lastDeath) return;
         this.outcomeDeath = lastDeath;
-        this.outcomeShot = { point: { ...this.getDeathLocation(lastDeath) }, zoomScale: this.level.cameraZoom * CUTSCENE.outcomeZoomScale, panMs: CUTSCENE.outcomePullMs };
+        this.outcomeShot = { point: { ...this.getDeathLocation(lastDeath) }, zoomScale: PENINSULA.cameraZoom * CUTSCENE.outcomeZoomScale, panMs: CUTSCENE.outcomePullMs, isPeninsulaSized: true }; // every fight's last death: people as big on screen as at the Peninsula's
     }
 
     // the same shot, moved: a new shot would start the camera's pull again.

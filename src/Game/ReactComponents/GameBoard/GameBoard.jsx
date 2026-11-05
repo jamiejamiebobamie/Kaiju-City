@@ -8,12 +8,13 @@ import { GameBoardPieceComponent } from 'Game/ReactComponents/GameBoard/Pieces/G
 import { getSpeechScreenBox, PagedSpeechBalloon, SpeechBalloon } from 'Game/ReactComponents/GameBoard/SceneElements';
 import { TileCanvas } from 'Game/ReactComponents/GameBoard/Tile/TileCanvas';
 import { SceneElements } from 'Game/ReactComponents/GameBoard/SceneElements';
-import { CHARACTER_FEET, CHARACTER_HEIGHT_PX, EXIT_OPEN_PHASE, getSortZIndex, getTileTone } from 'Game/DataClasses/Levels/levels';
+import { CHARACTER_FEET, CHARACTER_HEIGHT_PX, EXIT_OPEN_PHASE, getSortZIndex, getTileTone, PENINSULA } from 'Game/DataClasses/Levels/levels';
 import { WakeCanvas } from 'Game/ReactComponents/GameBoard/WakeCanvas';
 import { Camera, CAMERA, getCloseZoom, getFitZoom, WIDE_SHOT } from 'Game/DataClasses/Camera';
 import { CUTSCENE } from 'Game/DataClasses/GameManager';
 import { SpeechBubbleScale } from 'Game/ReactComponents/GameBoard/recruitLook';
 import { getHexRadius } from 'Game/DataClasses/GameBoard/hexGrid';
+import { BADGE_HEADS } from './badgeHeads';
 import { startRagdoll } from 'Game/DataClasses/Ragdoll';
 
 // a body lying at rest where its feet were: on its side, still
@@ -90,10 +91,8 @@ const CARET_INFO = {
   badgeSize: 2.4, // an off-screen enemy's badge, across, in caret sizes
   caretBase: 0.5, // from the caret's middle to its base, in caret sizes
   badgeGap: 0.15, // between the caret's base and the badge
-  badgeZoom: 3.9, // how tall the whole body is, in badge sizes: only the head and shoulders show
-  badgeFeet: 2.26, // where the feet are, down from the badge's top, in badge sizes
-  badgeFeetKaiju: 1.0, // a Kaiju's sheet draws lower in its frame: its feet go higher to bring its head in
-  badgeKaijuShift: 0.22, // and its body sits left of its frame's middle
+  badgeBodyShare: 0.55, // how much of the body shows down the badge: the head and shoulders
+  badgeHeadY: 0.36, // the middle of the head, down the badge
   inset: 1.3, // how far in from the caret, past it, in caret sizes
   nearTiles: 12, // an incoming enemy this close gets a window even with others on the board: about as far as the tiles show
   maxWindows: 2,
@@ -205,6 +204,13 @@ const badgeFlicker = keyframes`
 const badgeScan = keyframes`
   from { background-position: 0 -40%, 0 0, 0 0; }
   to { background-position: 0 140%, 0 0, 0 0; }
+`;
+
+const BadgeSprite = styled.div`
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
 `;
 
 const CaretBadge = styled.div`
@@ -388,8 +394,9 @@ const CHOICE_FX = {
   hopStagger: 0.07,
   lurchSeconds: 4.8, // TERMINATED's trip round its stops: long enough at each to read it
   // TERMINATED's stops: which way from the middle, and how big it bursts there. each stop goes only as far as the word still fits.
-  lurchStops: [{ x: -1, y: -0.8, scale: 1.55 }, { x: 0.8, y: -1, scale: 0.72 }, { x: 0.7, y: 0.9, scale: 1.45 }], // scale: its biggest there
-  burstPeak: 1.55, // the moment it lands, before it settles
+  // its size changes along the way with where it goes, so no part of it leaves the screen; it pops as it lands ('pop': grow or shrink)
+  lurchStops: [{ x: -1, y: -0.8, scale: 1.3, pop: 1.18 }, { x: 0.8, y: -1, scale: 0.72, pop: 0.82 }, { x: 0.7, y: 0.9, scale: 1.15, pop: 1.18 }],
+  burstPeak: 1.55, // the biggest it gets anywhere: 1.3 with its pop
   edgeMargin: 0.04 // kept clear at the screen's edge, of its width
 };
 
@@ -456,32 +463,24 @@ const HopLetter = styled.span`
   animation: ${letterHop} ${CHOICE_FX.hopEverySeconds}s ease-in-out var(--delay) infinite;
 `;
 
-// round its stops, uneven: in from the middle, to the top left, the top right, the bottom right, and round again
+// round its stops, uneven: in from the middle, to the top left, the top right, the bottom right, and round again.
+// position and size move together, so the word is the size of where it's going as it gets there, then pops on landing.
 const lurch = keyframes`
-  0% { transform: translate(0, 0); }
-  18%, 30% { transform: translate(var(--x1), var(--y1)); }
-  48%, 60% { transform: translate(var(--x2), var(--y2)); }
-  78%, 90% { transform: translate(var(--x3), var(--y3)); }
-  100% { transform: translate(0, 0); }
-`;
-
-// its size bursts as it lands at each stop, and holds till the next
-const burst = keyframes`
-  0%, 17% { transform: scale(1); }
-  20% { transform: scale(1.55); }
-  23%, 47% { transform: scale(1.3); }
-  50% { transform: scale(0.55); }
-  53%, 77% { transform: scale(0.72); }
-  80% { transform: scale(1.45); }
-  83%, 100% { transform: scale(1.15); }
+  0% { transform: translate(0, 0) scale(1); }
+  18% { transform: translate(var(--x1), var(--y1)) scale(var(--s1)); }
+  20% { transform: translate(var(--x1), var(--y1)) scale(var(--p1)); }
+  23%, 30% { transform: translate(var(--x1), var(--y1)) scale(var(--s1)); }
+  48% { transform: translate(var(--x2), var(--y2)) scale(var(--s2)); }
+  50% { transform: translate(var(--x2), var(--y2)) scale(var(--p2)); }
+  53%, 60% { transform: translate(var(--x2), var(--y2)) scale(var(--s2)); }
+  78% { transform: translate(var(--x3), var(--y3)) scale(var(--s3)); }
+  80% { transform: translate(var(--x3), var(--y3)) scale(var(--p3)); }
+  83%, 90% { transform: translate(var(--x3), var(--y3)) scale(var(--s3)); }
+  100% { transform: translate(0, 0) scale(1); }
 `;
 
 const Lurch = styled.div`
   animation: ${lurch} ${CHOICE_FX.lurchSeconds}s cubic-bezier(0.7, 0, 0.3, 1) ${RECRUIT_LOOK.flyMs}ms infinite;
-`;
-
-const Burst = styled.div`
-  animation: ${burst} ${CHOICE_FX.lurchSeconds}s linear ${RECRUIT_LOOK.flyMs}ms infinite;
 `;
 
 // fixed once, so the streaks and bubbles don't jump about between renders
@@ -501,12 +500,13 @@ const ChoiceConfirm = ({ choice, from, board }) => {
   // TERMINATED grows past its fitted size at its stops: it is sized so even its biggest burst fits across
   const sizePx = choice == "terminate" ? Math.min(wordPx, (boardBox.width * (1 - CHOICE_FX.edgeMargin * 2)) / (word.length * RECRUIT_LOOK.letterWidth * CHOICE_FX.burstPeak)) : wordPx;
   // how far each stop goes: to the edge of the screen, less the word's own size there, so all of it stays readable
-  const lurchSpots = Object.fromEntries(CHOICE_FX.lurchStops.flatMap(({ x, y, scale }, k) => {
-    // (it moves while still bursting, so the biggest it gets there counts)
+  // (the biggest it gets at a stop is with its pop; on the way it is between the two stops' sizes, so it fits there too)
+  const lurchSpots = Object.fromEntries(CHOICE_FX.lurchStops.flatMap(({ x, y, scale, pop }, k) => {
+    const biggest = scale * Math.max(pop, 1);
     const margin = boardBox.width * CHOICE_FX.edgeMargin;
-    const freeX = Math.max((boardBox.width - word.length * RECRUIT_LOOK.letterWidth * sizePx * scale) / 2 - margin, 0);
-    const freeY = Math.max((boardBox.height - sizePx * 1.3 * scale) / 2 - margin, 0);
-    return [[`--x${k + 1}`, `${x * freeX}px`], [`--y${k + 1}`, `${y * freeY}px`]];
+    const freeX = Math.max((boardBox.width - word.length * RECRUIT_LOOK.letterWidth * sizePx * biggest) / 2 - margin, 0);
+    const freeY = Math.max((boardBox.height - sizePx * 1.3 * biggest) / 2 - margin, 0);
+    return [[`--x${k + 1}`, `${x * freeX}px`], [`--y${k + 1}`, `${y * freeY}px`], [`--s${k + 1}`, scale], [`--p${k + 1}`, scale * pop]];
   }));
   const fromScale = from ? Math.min(from.height / (sizePx * 1.6), 1) : 0.3;
   const letters = (CHOICE_WORDS[choice].toUpperCase() + RECRUIT_LOOK[choice].suffix).split("");
@@ -525,7 +525,7 @@ const ChoiceConfirm = ({ choice, from, board }) => {
             const hop = <HopLetter key={k} style={{ "--delay": `${RECRUIT_LOOK.flyMs / 1000 + k * CHOICE_FX.hopStagger}s` }}>{letter}</HopLetter>;
             return k < base ? hop : <ChoiceSuffix key={k}>{hop}</ChoiceSuffix>;
           }) : (
-            <Lurch style={lurchSpots}><Burst>{CHOICE_WORDS[choice].toUpperCase()}<ChoiceSuffix>{RECRUIT_LOOK[choice].suffix}</ChoiceSuffix></Burst></Lurch>
+            <Lurch style={lurchSpots}>{CHOICE_WORDS[choice].toUpperCase()}<ChoiceSuffix>{RECRUIT_LOOK[choice].suffix}</ChoiceSuffix></Lurch>
           )}
         </ChoiceWord>
       </EffectLayer>
@@ -674,8 +674,11 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
   // with words on screen, the shot looks between the spot and the balloon, and pulls out until both fit
   const speechRef = useRef(speech);
   speechRef.current = speech; // the camera's loop is set up once, and reads the words from here
-  const getShotFraming = ({ point, zoomScale, isCover }) => {
-    const fitZoom = getFitZoom(fullFrameSizes);
+  const getShotFraming = ({ point, zoomScale, isCover, isPeninsulaSized = false }) => {
+    // 'isPeninsulaSized': the zoom that makes people as big on screen as this shot would at the Peninsula
+    const fitZoom = isPeninsulaSized
+      ? getFitZoom({ ...shotView, worldWidth: PENINSULA.world.width, worldHeight: PENINSULA.world.height }) * PENINSULA.pieceScale / level.pieceScale
+      : getFitZoom(fullFrameSizes);
     const coverZoom = Math.max(shotView.viewWidth / world.width, shotView.viewHeight / world.height);
     let zoom = (isCover ? coverZoom : fitZoom) * zoomScale;
     const speech = speechRef.current;
@@ -845,23 +848,20 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
           // docked to the caret: a hair's gap after the caret's base, then the badge
           const size = caret.size * CARET_INFO.badgeSize;
           const spot = getInward(caret, CARET_INFO.caretBase + CARET_INFO.badgeGap + CARET_INFO.badgeSize / 2);
-          // zoomed in on the head and shoulders: the body runs on below the badge, out of sight
-          const scale = (size * CARET_INFO.badgeZoom) / (CHARACTER_HEIGHT_PX * (piece.avatar == 'kaiju' ? 1.6 : 1.15));
+          // the sheet itself, cropped to the head and shoulders: the head in the middle, whichever way they face (BADGE_HEADS)
+          const heads = BADGE_HEADS[piece.spriteSheetSrc];
+          const facing = piece.dir && piece.dir != 'idle' ? piece.dir : piece.getFacingDir();
+          const head = heads && (heads.dirs[facing] || heads.dirs.down);
           return (
             <CaretBadge style={{ left: `${spot.x}px`, top: `${spot.y}px`, width: `${size}px`, height: `${size}px` }}>
-              <GameBoardPieceComponent
-                zIndex={0}
-                charLocation={{ x: size * (0.5 + (piece.avatar == 'kaiju' ? CARET_INFO.badgeKaijuShift : 0)) - CHARACTER_FEET.x * scale - CHARACTER_FEET.leftShift, y: size * (piece.avatar == 'kaiju' ? CARET_INFO.badgeFeetKaiju : CARET_INFO.badgeFeet) - CHARACTER_FEET.y * scale }}
-                avatar={piece.avatar}
-                color="transparent"
-                isVisible
-                dir={piece.dir}
-                facingDir={piece.getFacingDir()}
-                pieceScale={scale}
-                spriteSheetSrc={piece.spriteSheetSrc}
-                lives={piece.lives}
-                isQuiet
-              />
+              {head && (() => {
+                const zoom = size / (heads.bodyH * CARET_INFO.badgeBodyShare);
+                return <BadgeSprite style={{
+                  backgroundImage: `url(${piece.spriteSheetSrc})`,
+                  backgroundSize: `${heads.sheetW * zoom}px ${heads.sheetH * zoom}px`,
+                  backgroundPosition: `${size / 2 - head.x * zoom}px ${size * CARET_INFO.badgeHeadY - (head.y + heads.bodyH * 0.1) * zoom}px`
+                }} />;
+              })()}
             </CaretBadge>
           );
         })()}

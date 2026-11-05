@@ -21,7 +21,7 @@ import { getKaijuSpeedMode, KaijuSpeedMode, setKaijuSpeedMode } from "../DataCla
 import { getAvatarColor, saveAvatarColor, saveTeamAvatars, unlockRecruitSkill, unlockTool } from "../DataClasses/Avatars";
 import { AbilityPicker } from "./AbilityPicker";
 import { useKeyPress } from "Utils/utils";
-import { ABILITY_KEY_CODES, GAME_TICK } from "Utils/gameState";
+import { ABILITY_KEY_CODES, GAME_TICK, TILE_STATUSES_AND_ABILITY_DATA } from "Utils/gameState";
 import { FullscreenPage } from "Components/FullscreenPage.jsx";
 import { GameManager, GameResult } from '../DataClasses/GameManager';
 import { addUnlock, getBattlegroundUnlockId, getRecruitChoices, getWonBattlegrounds, resetUnlocks, saveRecruitChoice } from '../DataClasses/Unlocks';
@@ -122,6 +122,22 @@ const UnlockCard = styled.div`
   animation: ${cardFade} 5s linear forwards;
 `;
 
+// a power's unlock card shows its tile, as it looks on the board: a hex in the power's color with its icon
+const PowerTile = styled.div`
+  flex-shrink: 0;
+  width: 3.4cqw;
+  height: 3cqw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
+  font-size: 1.5cqw;
+  color: #fbfbf0;
+  text-shadow: 0 0 0.3cqw rgba(0, 0, 0, 0.8);
+`;
+
+const getPowerLook = element => TILE_STATUSES_AND_ABILITY_DATA.find(data => data.element == element);
+
 const UnlockPortrait = styled.img`
   width: 3cqw;
   height: 4cqw;
@@ -188,9 +204,9 @@ const fadeIn = keyframes`
 // notices stack at the screen's right, one after another, like a project tracker's updates
 const CardStack = styled.div`
   position: absolute;
-  right: 1.4cqw;
-  bottom: 3cqw;
-  max-width: 88%;
+  right: 4cqw;
+  bottom: 5cqw;
+  max-width: 72%;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -746,7 +762,8 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     // no card for the character: only the place, and what the choice gave
     const cards = [
       { label: `${level.name} Unlocked`, image: level.layers[0] && level.layers[0].src },
-      { label: choiceLabel, image: portrait }
+      // a power: its tile, in its color. a recruit: their face.
+      skill ? { label: choiceLabel, power: skill.element } : { label: choiceLabel, image: portrait }
     ];
     setTimeout(() => setFadeCards(cards), RECRUIT_TIMING.confirmMs);
     setTimeout(leaveLevel, RECRUIT_TIMING.confirmMs + RECRUIT_TIMING.cardMs);
@@ -829,6 +846,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     keyUpCallback: code => {
       const button = document.querySelector<HTMLElement>(`[data-choice-key="${code.slice(-1)}"]`);
       if (button) button.click();
+      else if (code.endsWith("1") && gameManager.current && gameManager.current.cutscene) gameManager.current.advanceDialogue(); // 1 moves a scene on, as Enter does
     },
     isCharacterDead: false
   });
@@ -1062,8 +1080,14 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               )}
               {isWiping && <ScreenClip><BlackWipe /></ScreenClip>}
               {unlockMessage && <CardStack><UnlockCard style={{ position: "static", transform: "none" }}><UnlockPortrait src={unlockImage} />{unlockMessage}</UnlockCard></CardStack>}
-              {fadeCards && <FadeToBlack><CardStack>{fadeCards.map(({ label, image }, index) => (
-                <Toast key={label} style={{ animationDelay: `${0.4 + index * 0.45}s` }}>{image && <UnlockPortrait src={image} />}{label}</Toast>
+              {fadeCards && <FadeToBlack><CardStack>{fadeCards.map(({ label, image, power }, index) => (
+                <Toast key={label} style={{ animationDelay: `${0.4 + index * 0.45}s` }}>
+                  {power ? (() => {
+                    const look = getPowerLook(power);
+                    return look ? <PowerTile style={{ background: look.color }}><i className={`fa ${look.activeIcon}`} /></PowerTile> : null;
+                  })() : image && <UnlockPortrait src={image} />}
+                  {label}
+                </Toast>
               ))}</CardStack></FadeToBlack>}
               {campaignIndex !== null && level.isWalkingLevel && !level.sites && !level.exit && !level.walkIn && !isEditingTiles && (
                 <ContinueButton data-enter onClick={() => showSection(campaignIndex + 1)}>Continue</ContinueButton>

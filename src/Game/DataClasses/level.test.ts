@@ -1215,12 +1215,12 @@ describe('playtest fixes', () => {
     expect(gm.accTime).toBeGreaterThan(accTime);
   });
 
-  it('the camera stays pulled out while an Agent enters, and the game keeps going', () => {
+  it('the camera stays close while an Agent enters (its caret shows it), and the game keeps going', () => {
     const { gm } = makeGame(LEVELS.lab);
     while (gm.cutscene) gm.stepPieces();
     const getDropping = () => gm.getPieces().filter(piece => piece.isEntering && !piece.isDead);
-    for (let k = 0; k < 20 && !getDropping().length; k++) gm.stepPieces();
-    expect(gm.getIsWideShot()).toBe(true);
+    for (let k = 0; k < 200 && !getDropping().length; k++) gm.stepPieces();
+    expect(gm.getIsWideShot()).toBe(false);
     const [agent] = getDropping();
     const { accTime } = gm;
     for (let k = 0; k < 200 && !agent.isOnTiles; k++) gm.stepPieces();
