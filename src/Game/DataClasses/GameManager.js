@@ -1,4 +1,4 @@
-import { getDialogueTexts, getRecruitChoiceLines } from './Dialogue/dialogue';
+import { fillPronouns, getDialogueTexts, getRecruitChoiceLines } from './Dialogue/dialogue';
 import { GameMode, GAME_TICK, PIECES_INFO, ZoomLvl } from 'Utils/gameState';
 import { TimeoutHandler } from './TimeoutHandler';
 import { GameManagerProxy } from './GameManagerProxy';
@@ -98,6 +98,11 @@ const CROWD_COST = { standing: 3, headedFor: 1.5 };
 
 // a train hit that doesn't kill: down this long as a ragdoll, then up again
 const TRAIN_KNOCKDOWN = { downMs: 3000, drift: 0.06 }; // drift: how much of the way to the get-up tile the body moves each tick
+
+// a line's camera, as the dialogue viewer sets it: 'wide' keeps the whole scene in shot, even when the line goes to the log;
+// anything else is the scene's own shot for it (usually on the speaker)
+const WHOLE_SCENE_SHOT = { isWide: true, isKeptWide: true };
+const getLineShot = (line, shot) => line && line.shot == 'wide' ? WHOLE_SCENE_SHOT : shot;
 
 export class GameManager {
     // 'returnSpot': back on a map walk from a site, the team starts beside it.
@@ -668,13 +673,13 @@ export class GameManager {
         cutscene.msLeft = step.ms;
         this.isCutsceneLineWaiting = false;
         // words can be placed when they are said, over wherever the speaker has walked to
-        this.speech = (typeof step.speech == 'function' ? step.speech() : step.speech) || null;
+        this.speech = this.fillSpeech((typeof step.speech == 'function' ? step.speech() : step.speech) || null);
         if (this.speech && getIsDialogueLog() && !this.speech.isShout) {
             // the line goes to the log, not a balloon. the shot goes to the speaker, if it was the whole scene.
             this.speech = { ...this.speech, isLogged: true };
             this.addToLog(this.speech);
             // 'isCover': the zoom is from the screen filled, not from the whole scene fitted in it
-            if (step.shot && step.shot.isWide && this.speech.focus) step.shot = { point: this.speech.focus, zoomScale: DIALOGUE.speakerZoomScale, isCover: true };
+            if (step.shot && step.shot.isWide && !step.shot.isKeptWide && this.speech.focus) step.shot = { point: this.speech.focus, zoomScale: DIALOGUE.speakerZoomScale, isCover: true };
             if (getIsClickThrough()) {
                 cutscene.msLeft = Infinity;
                 this.isCutsceneLineWaiting = true;
@@ -758,11 +763,19 @@ export class GameManager {
         this.dialogueLog = [];
     }
 
+    // a line's pronoun words ({you:he}, {teammate:his}) fit whoever is playing
+    fillSpeech(speech) {
+        if (!speech) return speech;
+        const player = this.gameBoardPiecesManager.getPlayerPiece();
+        const avatar = player && player.avatar;
+        return { ...speech, ...(speech.text ? { text: fillPronouns(speech.text, avatar) } : {}), ...(speech.lines ? { lines: speech.lines.map(line => fillPronouns(line, avatar)) } : {}) };
+    }
+
     // who said it, for the log's color and portrait
     addToLog({ name, text, avatar }) {
         const player = this.gameBoardPiecesManager.getPlayerPiece();
         const who = avatar == 'agent' ? 'agent' : name == this.getTeammateName() ? 'teammate' : player && avatar == player.avatar ? 'player' : 'other';
-        this.dialogueLog = [...this.dialogueLog, { key: this.dialogueLog.length, who, name, text, avatar, chain: this.logChain }];
+        this.dialogueLog = [...this.dialogueLog, { key: this.dialogueLog.length, who, name, text: fillPronouns(text, player && player.avatar), avatar, chain: this.logChain }];
     }
 
     // a scene's speech elements go to the log, while their phase is on (and before their 'hidePhase')
@@ -861,9 +874,11 @@ export class GameManager {
         this.startCutscene([
             { shot: { isWide: true }, ms: CUTSCENE.wideMs },
             { shot, ms: CUTSCENE.pullInMs },
-            ...lines.flatMap(({ isTeammate, name, text, isFlipped }) => isTeammate ? getTeammateSteps(text) : [
-                { shot, ms: getSpeechMs(text), speech: { ...this.getSpeechOver(rival, name, text), isFlipped } }
-            ]),
+            ...lines.flatMap(({ isTeammate, name, text, isFlipped, shot: lineShot }) => lineShot == 'wide'
+                ? [{ shot: WHOLE_SCENE_SHOT, ms: getSpeechMs(text), speech: isTeammate ? this.getSpeechOver(teammate, this.getTeammateName(), text) : { ...this.getSpeechOver(rival, name, text), isFlipped } }]
+                : isTeammate ? getTeammateSteps(text) : [
+                    { shot, ms: getSpeechMs(text), speech: { ...this.getSpeechOver(rival, name, text), isFlipped } }
+                ]),
             { shot: isTouchWide ? { isWide: true } : shot, ms: CUTSCENE.touchMs, phase: touchPhase, onStart: () => { rival.isPlain = false; } },
             ...(afterTouch ? [
                 { shot: closeShot({ x: rival.charLocation.x, y: rival.charLocation.y }), ms: CUTSCENE.pullInMs },
@@ -931,7 +946,7 @@ export class GameManager {
         this.startCutscene([
             ...script
                 .filter(({ who }) => who != 'teammate' || !!teammate)
-                .map(line => ({ shot, ms: getSpeechMs(line.text), speech: getSpeech(line) })),
+                .map(line => ({ shot: getLineShot(line, shot), ms: getSpeechMs(line.text), speech: getSpeech(line) })),
             { shot, ms: 0, onStart: this.startShowdownFight }
         ]);
     }
@@ -1029,7 +1044,8 @@ export class GameManager {
         // with the log, the shots are on each speaker: the ray keeps the last one, rather than pull out
         let lastShot = shot;
         const clonesShot = { isWide: true }; // the clones stand by their tanks, along both sides: the whole lab shows them all
-        const getStep = ({ who, text, phase, ray: isRay }) => {
+        const getStep = line => {
+            const { who, text, phase, ray: isRay } = line;
             if (isRay) {
                 const rayStep = { shot, ms: ray.ms, onStart: () => { if (getIsDialogueLog()) rayStep.shot = lastShot; this.fireRay(); } };
                 return [rayStep];
@@ -1038,7 +1054,7 @@ export class GameManager {
             const name = who == 'teammate' ? this.getTeammateName() : speaker && getName(speaker);
             const speech = speaker ? this.getSpeechOver(speaker, name, text) : this.getAgentSpeech(text, speechSpot);
             // once the beam has done its work, the glow is gone
-            const step = { shot: { ...shot }, ms: getSpeechMs(text), phase, speech, onStart: () => { if (this.rayBeam) this.endRay(); lastShot = step.shot; } };
+            const step = { shot: getLineShot(line, { ...shot }), ms: getSpeechMs(text), phase, speech, onStart: () => { if (this.rayBeam) this.endRay(); lastShot = step.shot; } };
             // the clones step out: the camera goes up to them before anyone remarks on it
             return phase == 'clones' && getIsDialogueLog() ? [step, { shot: clonesShot, ms: CUTSCENE.clonesLookMs }] : [step];
         };
@@ -1140,7 +1156,7 @@ export class GameManager {
             ...(talkBeatMs ? [{ shot, ms: talkBeatMs }] : []), // a quiet moment, all in, before anyone speaks
             ...script
                 .filter(({ who, ifRecruits }) => (who != 'teammate' || hasTeammate) && (!ifRecruits || this.followers.length > 0))
-                .map(line => ({ shot, ms: getSpeechMs(line.text), speech: () => getSpeech(line) })),
+                .map(line => ({ shot: getLineShot(line, shot), ms: getSpeechMs(line.text), speech: () => getSpeech(line) })),
             ...revealSteps,
             ...endingSteps
         ]);
@@ -1188,7 +1204,7 @@ export class GameManager {
         let atMs = 1; // after the cutscene has cleared its own words
         lines.forEach(({ name, text, getSpot, piece }) => {
             this.timeoutHandler.registerTimeout(() => {
-                this.speech = { ...(piece ? this.getSpeechOver(piece, name, text) : { name, text, ...getSpot() }), isShout: true };
+                this.speech = this.fillSpeech({ ...(piece ? this.getSpeechOver(piece, name, text) : { name, text, ...getSpot() }), isShout: true });
             }, atMs);
             atMs += getSpeechMs(text);
         });
@@ -1289,7 +1305,7 @@ export class GameManager {
         if (teammate && getIsDialogueLog()) this.addTalk(recruitLines.map(text => ({ name: this.getTeammateName(), text, avatar: teammate.avatar, speakerIndex: teammate.pieceIndex })), () => !!this.recruitScene);
         this.speech = teammate && !getIsDialogueLog() ? {
             name: this.getTeammateName(),
-            lines: recruitLines,
+            lines: recruitLines.map(line => fillPronouns(line, player.avatar)),
             x: teammate.charLocation.x,
             y: teammate.charLocation.y - CUTSCENE.recruitSpeechRows * rowStep * scale,
             isFlipped: true

@@ -1,4 +1,4 @@
-import { getDialogueScene, DialogueLine } from 'Game/DataClasses/Dialogue/dialogue';
+import { DialogueLine, DialogueScene, fillPronouns } from 'Game/DataClasses/Dialogue/dialogue';
 import { ROSTER } from 'Game/DataClasses/Avatars';
 
 /*
@@ -77,16 +77,18 @@ const getIsAnyRecruited = (path: StoryPath, sectionIndex: number) => RIVALS.some
 });
 
 // one section's lines and branch points, on this path
-export const getSectionItems = (sectionIndex: number, path: StoryPath): Array<StoryItem> => {
+// 'scenes': the dialogue being read: the viewer's own copy, which it edits
+export const getSectionItems = (sectionIndex: number, path: StoryPath, scenes: Record<string, DialogueScene>): Array<StoryItem> => {
   const section = STORY[sectionIndex];
   const items: Array<StoryItem> = [];
   section.scenes.forEach(sceneId => {
-    const scene = getDialogueScene(sceneId);
+    const scene = scenes[sceneId];
+    if (!scene) return;
     const rival = RIVALS.find(({ id }) => id == section.rival);
     const values = { power: path.powerName, him: rival ? rival.pronoun : 'them', his: rival ? POSSESSIVES[rival.pronoun] : 'their', last: '' };
     const toLine = (line: DialogueLine, extraTags: Array<string> = []): StoryLine => ({
       kind: 'line', key: line.id, sceneId, line, speakerName: line.ray ? '' : getSpeakerName(line.speaker, path),
-      text: line.ray ? '[ The Agent fires the ray: the team\'s powers drain away ]' : fill(line.text || '', values),
+      text: line.ray ? '[ The Agent fires the ray: the team\'s powers drain away ]' : fillPronouns(fill(line.text || '', values), path.avatar),
       tags: [...(line.isBalloon ? ['balloon'] : []), ...(line.isAlarm ? ['siren'] : []), ...(line.note == 'jamie' ? ['Jamie'] : []), ...extraTags]
     });
 
@@ -98,7 +100,7 @@ export const getSectionItems = (sectionIndex: number, path: StoryPath): Array<St
         const last = past == 'allSame' ? path.choices[RIVALS[0].id] : '';
         return {
           label: PAST_LABELS[past],
-          items: scene.lines.filter(line => line.when && line.when.past == past).map(line => ({ ...toLine(line), text: fill(line.text || '', { ...values, last }) }))
+          items: scene.lines.filter(line => line.when && line.when.past == past).map(line => ({ ...toLine(line), text: fillPronouns(fill(line.text || '', { ...values, last }), path.avatar) }))
         };
       });
       items.push({ kind: 'branch', key: `${sceneId}@${sectionIndex}`, sceneId, label: 'The teammate, over the downed bystander', versions, taken: pasts.indexOf(taken) });
@@ -148,4 +150,4 @@ export const getSectionItems = (sectionIndex: number, path: StoryPath): Array<St
   return items;
 };
 
-export const getIsBranchingSection = (sectionIndex: number) => getSectionItems(sectionIndex, DEFAULT_PATH).some(({ kind }) => kind == 'branch');
+export const getIsBranchingSection = (sectionIndex: number, scenes: Record<string, DialogueScene>) => getSectionItems(sectionIndex, DEFAULT_PATH, scenes).some(({ kind }) => kind == 'branch');

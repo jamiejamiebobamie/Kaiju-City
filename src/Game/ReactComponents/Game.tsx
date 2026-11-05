@@ -604,7 +604,8 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     const [ability] = settingsManager.getPlayerChosenAbilities();
     return {
       powerName: ability ? ability.gameBoardPieceAbilityData.activeName : "powers",
-      choices: getRecruitChoices()
+      choices: getRecruitChoices(),
+      avatar: selectedAvatar
     };
   };
 

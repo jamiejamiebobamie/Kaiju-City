@@ -26,7 +26,7 @@ export type DialogueLine = {
 export type DialogueScene = { label: string; lines: Array<DialogueLine> };
 
 // what a scene's lines can depend on: the player's power, and what they did with each recruit
-export type DialogueContext = { powerName?: string; choices?: Record<string, string> };
+export type DialogueContext = { powerName?: string; choices?: Record<string, string>; avatar?: string };
 
 const SCENES = DIALOGUE.scenes as Record<string, DialogueScene>;
 
@@ -38,7 +38,7 @@ export const getDialogueScene = (sceneId: string): DialogueScene => {
 
 const getIsSaid = ({ when }: DialogueLine, { choices = {} }: DialogueContext) => !when || !when.recruit || choices[when.recruit] == when.choice;
 
-const fill = (text: string, { powerName = '' }: DialogueContext) => text.replace(/\{power\}/g, powerName);
+const fill = (text: string, { powerName = '', avatar }: DialogueContext) => fillPronouns(text.replace(/\{power\}/g, powerName), avatar);
 
 // a radio call's lines, for this player: only those their choices call for, with the blanks filled
 export const getRadioLines = (sceneId: string, context: DialogueContext) => {
@@ -58,10 +58,13 @@ export const getDialogueTexts = (sceneId: string) => getDialogueScene(sceneId).l
 export const getDialogueScript = (sceneId: string) => getDialogueScene(sceneId).lines.map((line: any) =>
   line.speaker ? { who: line.speaker, text: line.text, ...getStageFields(line) } : getStageFields(line));
 
-// a bystander's intro: their own lines by name, and the teammate's
-export const getIntroLines = (sceneId: string) => getDialogueScene(sceneId).lines.map((line: any) => line.speaker == 'teammate'
-  ? { isTeammate: true, text: line.text }
-  : { name: line.speaker, text: line.text, ...('isFlipped' in line ? { isFlipped: line.isFlipped } : {}) });
+// a bystander's intro: their own lines by name, and the teammate's. 'shot': the viewer's camera choice for the line, if any
+export const getIntroLines = (sceneId: string) => getDialogueScene(sceneId).lines.map((line: any) => {
+  const intro = line.speaker == 'teammate'
+    ? { isTeammate: true, text: line.text }
+    : { name: line.speaker, text: line.text, ...('isFlipped' in line ? { isFlipped: line.isFlipped } : {}) };
+  return line.shot ? { ...intro, shot: line.shot } : intro;
+});
 
 // one line, by name and words
 export const getDialogueLine = (sceneId: string) => {
@@ -77,3 +80,26 @@ export const getKeyedLines = (sceneId: string) => Object.fromEntries(getDialogue
 export const getRecruitChoiceLines = (past: string, fills: Record<string, string>) => getDialogueScene('recruit.choice').lines
   .filter(({ when }: any) => when && when.past == past)
   .map(({ text = '' }) => text.replace(/\{(\w+)\}/g, (_, name) => fills[name] ?? `{${name}}`));
+
+/*
+  Pronoun words: {you:he} or {teammate:his} in a line becomes he/she, him/her, his/her or himself/herself
+  for whoever is playing (you) and the other of Guy and Girl (the teammate). Write either gender's form; it fits itself.
+*/
+const PRONOUNS = {
+  he: ['he', 'she'], she: ['he', 'she'],
+  him: ['him', 'her'], her: ['him', 'her'],
+  his: ['his', 'her'],
+  himself: ['himself', 'herself'], herself: ['himself', 'herself']
+};
+const TOKEN = /\{(you|teammate):(\w+)\}/g;
+
+export const fillPronouns = (text: string, playerAvatar = 'guy') => {
+  if (!text || !text.includes('{')) return text;
+  return text.replace(TOKEN, (all, who, word) => {
+    const forms = PRONOUNS[word.toLowerCase()];
+    if (!forms) return all;
+    const avatar = who == 'you' ? playerAvatar : playerAvatar == 'guy' ? 'girl' : 'guy';
+    const filled = forms[avatar == 'girl' ? 1 : 0];
+    return word[0] == word[0].toUpperCase() ? filled[0].toUpperCase() + filled.slice(1) : filled;
+  });
+};

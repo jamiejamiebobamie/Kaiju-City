@@ -8,6 +8,35 @@ import type { Plugin } from 'vite';
 */
 const LEVEL_ID = /^[a-zA-Z0-9]+$/;
 
+// the dialogue viewer saves the story's words over Dialogue/dialogue.json. the viewer keeps its own copy,
+// so the file changing doesn't reload it; the game picks the new words up on its next load
+export const dialogueSave = (filePath: string): Plugin => ({
+  name: 'dialogue-save',
+  apply: 'serve',
+  handleHotUpdate({ file }) {
+    if (path.normalize(file) == path.normalize(filePath)) return [];
+  },
+  configureServer(server) {
+    server.middlewares.use('/__dialogue/save', (request, response) => {
+      let body = '';
+      request.on('data', chunk => { body += chunk; });
+      request.on('end', () => {
+        try {
+          const dialogue = JSON.parse(body);
+          if (!dialogue || typeof dialogue.scenes != 'object') throw new Error('not a dialogue file');
+          fs.writeFileSync(filePath, `${JSON.stringify(dialogue, null, 2)}
+`);
+          response.statusCode = 200;
+          response.end('saved');
+        } catch (error) {
+          response.statusCode = 400;
+          response.end(String(error));
+        }
+      });
+    });
+  }
+});
+
 // Adjust window's shape, saved over the repo's own file the same way: it is the game's window from then on
 export const playWindowSave = (filePath: string): Plugin => ({
   name: 'play-window-save',
