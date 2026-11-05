@@ -141,7 +141,8 @@ const RECRUIT_LOOK = {
   flyMs: 900,
   washMs: 1200,
   suffixDelayMs: 1000,
-  wordPx: 96 // the word's size in the middle of the screen
+  wordPx: 96, // the word's size in the middle of the screen, at most
+  letterWidth: 1 // a letter's width in the pixel font, as a share of its size
 };
 
 const RecruitButton = styled.button`
@@ -190,7 +191,6 @@ const ChoiceWord = styled.div`
   top: 50%;
   margin: 0;
   font-family: gameboy;
-  font-size: ${RECRUIT_LOOK.wordPx}px;
   white-space: nowrap;
   pointer-events: none;
   text-shadow: 0 6px 0 #101018;
@@ -210,7 +210,7 @@ const ChoiceSuffix = styled.span`
 
 const CHOICE_WORDS = { recruit: "Recruit", terminate: "Terminate" };
 
-const ChoiceButton = ({ choice, recruitChoice, onChooseRecruit }) => (
+export const ChoiceButton = ({ choice, recruitChoice, onChooseRecruit }) => (
   <RecruitButton $choice={choice} $isGone={!!recruitChoice} onClick={event => onChooseRecruit(choice, event.currentTarget.getBoundingClientRect())}>
     {CHOICE_WORDS[choice]}
   </RecruitButton>
@@ -221,11 +221,14 @@ const ChoiceConfirm = ({ choice, from, board }) => {
   const boardBox = board.getBoundingClientRect();
   const fromX = from ? from.left + from.width / 2 - (boardBox.left + boardBox.width / 2) : 0;
   const fromY = from ? from.top + from.height / 2 - (boardBox.top + boardBox.height / 2) : 0;
-  const fromScale = from ? Math.min(from.height / (RECRUIT_LOOK.wordPx * 1.6), 1) : 0.3;
+  // as big as it was made, unless the word with its ending would not fit across the screen
+  const word = CHOICE_WORDS[choice] + RECRUIT_LOOK[choice].suffix;
+  const wordPx = Math.min(RECRUIT_LOOK.wordPx, (boardBox.width * 0.9) / (word.length * RECRUIT_LOOK.letterWidth));
+  const fromScale = from ? Math.min(from.height / (wordPx * 1.6), 1) : 0.3;
   return (
     <>
       <ChoiceWash style={{ background: RECRUIT_LOOK[choice].wash }} />
-      <ChoiceWord style={{ "--from-x": `${fromX}px`, "--from-y": `${fromY}px`, "--from-scale": fromScale }}>
+      <ChoiceWord style={{ fontSize: `${wordPx}px`, "--from-x": `${fromX}px`, "--from-y": `${fromY}px`, "--from-scale": fromScale }}>
         {CHOICE_WORDS[choice].toUpperCase()}<ChoiceSuffix>{RECRUIT_LOOK[choice].suffix}</ChoiceSuffix>
       </ChoiceWord>
     </>
@@ -295,13 +298,14 @@ const MOVEMENT_KEYS = ["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowLeft", "
 
 const getIsTouchScreen = () => window.matchMedia("(pointer: coarse)").matches;
 
-export const GameBoard = ({ isWindowOpen = true, isPaused, gameManager, level, activePhases, isWholeScene, playWindow, isShowingWindowSize, isEditingTiles, isMouseLook, isEnemyZoom, isSlowMotion, isTeamColors, speech, recruitScene, recruitChoice, onChooseRecruit, onHotspot }) => {
+export const GameBoard = ({ choiceFromRef = undefined, isWindowOpen = true, isPaused, gameManager, level, activePhases, isWholeScene, playWindow, isShowingWindowSize, isEditingTiles, isMouseLook, isEnemyZoom, isSlowMotion, isTeamColors, speech, recruitScene, recruitChoice, onChooseRecruit, onHotspot }) => {
   // redraws the pieces when the game updates. the tiles draw themselves.
   useSyncExternalStore(gameManager.subscribeToBoard, gameManager.getBoardRevision);
   const pieces = gameManager.getPieces();
 
   const boardRef = useRef(null);
-  const choiceFrom = useRef(undefined); // where the pressed Recruit or Terminate button was
+  const ownChoiceFrom = useRef(undefined); // where the pressed Recruit or Terminate button was
+  const choiceFrom = choiceFromRef || ownChoiceFrom; // with the log, the buttons are on it, and the game says where
   const chooseRecruit = (choice, buttonBox) => {
     if (recruitChoice) return;
     choiceFrom.current = buttonBox;
@@ -574,7 +578,10 @@ export const GameBoard = ({ isWindowOpen = true, isPaused, gameManager, level, a
   );
 
   const currentShot = gameManager.getCameraShot();
-  const shotZoom = currentShot && !currentShot.isWide ? getShotFraming(currentShot).zoom : getFitZoom(fullFrameSizes) * ((recruitScene && recruitScene.shot.zoomScale) || 1);
+  // the zoom the balloons are drawn for: the shot's, the follow camera's in a scene that fills the monitor, or the whole scene's
+  const shotZoom = currentShot && !currentShot.isWide ? getShotFraming(currentShot).zoom
+    : getIsCoverScene() ? coverCamera.zoom
+    : getFitZoom(fullFrameSizes) * ((recruitScene && recruitScene.shot.zoomScale) || 1);
   const overlayScale = SpeechBubbleScale / shotZoom;
 
   // a balloon is kept inside the scene: near an edge, it slides in (the tail still starts from the same spot on it)
@@ -626,7 +633,7 @@ export const GameBoard = ({ isWindowOpen = true, isPaused, gameManager, level, a
           top: `${recruitScene.body.y}px`,
           height: `${pieceScale * RECRUIT_BODY_SIZE}px`
         }} />}
-        {recruitScene && (
+        {recruitScene && !getIsDialogueLog() && (
           <RecruitPrompt style={{ left: `${recruitScene.prompt.x}px`, top: `${recruitScene.prompt.y}px`, transform: `translate(-50%, -100%) scale(${overlayScale}) translateX(${RECRUIT_PROMPT_SHIFT}px)` }}>
             <ChoiceButton choice="recruit" recruitChoice={recruitChoice} onChooseRecruit={chooseRecruit} />
             <ChoiceButton choice="terminate" recruitChoice={recruitChoice} onChooseRecruit={chooseRecruit} />

@@ -32,10 +32,10 @@ export const RAGDOLL = {
 // 'lengthRows' sets how slowly it swings: longer swings slower.
 export const LIMBS = [
   { id: 'head', reach: 50, lengthRows: 0.25 },
-  { id: 'armLeft', reach: 170, lengthRows: 0.5 },
-  { id: 'armRight', reach: 170, lengthRows: 0.5 },
-  { id: 'legLeft', reach: 95, lengthRows: 0.6 },
-  { id: 'legRight', reach: 95, lengthRows: 0.6 }
+  { id: 'armLeft', reach: 90, lengthRows: 0.5 }, // no more than a quarter turn, so a body never looks broken
+  { id: 'armRight', reach: 90, lengthRows: 0.5 },
+  { id: 'legLeft', reach: 90, lengthRows: 0.6 },
+  { id: 'legRight', reach: 90, lengthRows: 0.6 }
 ] as const;
 
 export type Vec = { x: number; y: number };

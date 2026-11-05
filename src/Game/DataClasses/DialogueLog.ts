@@ -7,6 +7,8 @@
 export const DIALOGUE = {
   establishMs: 1800, // a conversation in a wide shot first holds on the whole scene this long
   speakerZoomScale: 1.3, // then the camera goes to each speaker, this much closer than play
+  choiceZoomScale: 1.7, // the Recruit or Terminate choice, close on the team over the bystander
+  introZoomScale: 1.9, // a recruit battle's opening words, close on the speaker
   letterMs: 22 // the newest line types out this fast
 };
 

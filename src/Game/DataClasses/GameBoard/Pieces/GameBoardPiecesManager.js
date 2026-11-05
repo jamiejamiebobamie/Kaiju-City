@@ -33,7 +33,8 @@ export class GameBoardPiecesManager {
     }
 
     getIsPlayerTeamDead() {
-        return this.getTeamPieces(this.getPlayerTeamIndex()).filter(piece => !piece.isRecruit).every(piece => piece.getIsDead());
+        // recruits called in count too: while one still fights, the fight goes on
+        return this.getTeamPieces(this.getPlayerTeamIndex()).every(piece => piece.getIsDead());
     }
 
     getRecruitsUiState() {
@@ -171,6 +172,7 @@ export class GameBoardPiecesManager {
     addRecruit(avatar, abilities) {
         const piece = this.addPiece({ pieceInfo: { ...getPieceInfo(avatar), abilities } });
         piece.isRecruit = true;
+        piece.isShowHealthBarOnComponent = false; // their health is on their HUD, not over their heads
         return piece;
     }
 

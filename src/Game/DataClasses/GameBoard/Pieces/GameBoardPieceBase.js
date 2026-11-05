@@ -223,6 +223,12 @@ export class GameBoardPieceBase {
         this.move();
 
         if (this.isThere) {
+            // anyone, on either side, who steps into a Teleport's wormhole comes out of the other end
+            if (this.isNpc && this.isOnTiles && this.gameManagerProxy.getIsWormholeTile(this.tileIndex)) {
+                const wasLinked = this.linkArrivalTile;
+                this.followTileLink();
+                if (this.linkArrivalTile != wasLinked) this.moveToTiles = []; // it is somewhere else now: a new path next time
+            }
             if (this.getIsMoveToTiles()) {
                 this.getNextDestination();
             } else if (!this.getIsMoveToTiles()) {

@@ -149,6 +149,11 @@ export class GameManagerProxy {
         return this.props.getTileOffsetFromDir(dir, tileIndex);
     }
 
+    // one end of a Teleport's wormhole (not a level's own link, like the Aquarium's stairs)
+    getIsWormholeTile(tileIndex) {
+        return !!this.props.getIsWormholeTile && this.props.getIsWormholeTile(tileIndex);
+    }
+
     getLinkedTile(tileIndex) {
         return this.props.getLinkedTile(tileIndex);
     }

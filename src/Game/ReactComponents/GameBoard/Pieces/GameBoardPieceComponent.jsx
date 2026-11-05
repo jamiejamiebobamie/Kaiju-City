@@ -321,11 +321,11 @@ const Character = styled.div`
 // the same colors as ever: a light-to-color gradient in the pixel font, with a dark border and a drop shadow.
 const ModiferText = styled.p`
   position: absolute;
-  margin-top: -34px;
+  margin-top: -50px;
   z-index: 20002;
   opacity: 0;
   font-family: gameboy;
-  font-size: ${props => (props.fontSize ? `${props.fontSize}px` : "19px")};
+  font-size: ${props => (props.fontSize ? `${props.fontSize * 1.6}px` : "32px")};
   ${Math.random() > 0.5
     ? `margin-left: ${Math.random() * 10}px`
     : `margin-right: ${Math.random() * 10}px`};
@@ -394,11 +394,15 @@ export const GameBoardPieceComponent = ({
     return dir == 'idle' ? `idle${facingDir}` : dir;
   };
   const anim = getAnim();
+  // a number only for a life lost while still standing: not for the last one, and not when a Kaiju from the pool comes back
+  const lastLives = React.useRef(lives);
   useEffect(() => {
+    const isLostWhileStanding = lives < lastLives.current && lives > 0;
+    lastLives.current = lives;
     if (isFirstLoad) {
       setIsFirstLoad(false);
     } else {
-      if (isHealed === isHealedCached && !isDamaged && !isQuiet) {
+      if (isLostWhileStanding && isHealed === isHealedCached && !isDamaged && !isQuiet) {
         setIsDamaged(true);
         setModifierText(prevText => [
           ...prevText,

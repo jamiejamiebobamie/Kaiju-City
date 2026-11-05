@@ -15,6 +15,7 @@ import { NpcModelDriver } from "Game/DataClasses/npcBrain/npcModel";
 import { getIsClickThrough, setIsClickThrough, setIsDialogueLog } from "Game/DataClasses/DialogueLog";
 import { getIsSpacing, setIsSpacing } from "Game/DataClasses/SpacingTest";
 import { DialogueLogPanel } from "./DialogueLogPanel";
+import { ChoiceButton } from "./GameBoard/GameBoard";
 import { DEFAULT_AGGRESSION } from "Game/DataClasses/npcBrain/brain";
 import { getKaijuSpeedMode, KaijuSpeedMode, setKaijuSpeedMode } from "../DataClasses/KaijuSpeedTest";
 import { BUBBLE_DRAWBACKS, BubbleDrawback, getIsDrawbackOn, setIsDrawbackOn } from "../DataClasses/BubbleTest";
@@ -350,6 +351,7 @@ const RECRUIT_CARDS = {
 export const Game = ({ handleClickHome, triggerTransition }) => {
   const { selectedAvatar, setSelectedAvatar, selectedTeammate, setSelectedTeammate, selectedDifficulty, settingsManager } = useContext(GlobalSettingsContext);
   const { isPaused, winner, isPlayerDead, players, recruits, kaijuKillCount, kaijuToWin, activePhases, isWideShot, isCutscene, unlockMessage, unlockImage, speech, recruitScene, dialogueLog, isDialogueWaiting } = useSnapshot(gameUiStore);
+  const recruitChoiceFrom = useRef(undefined); // where the pressed Recruit or Terminate button was, for its word to fly from
   const [isClickThrough, setClickThrough] = useState(getIsClickThrough); // a playtest: each line in the log waits for a key or a click
   const [spacing, setSpacing] = useState(() => ({ walking: getIsSpacing("walking"), battle: getIsSpacing("battle") })); // a playtest: NPCs don't bunch up
   const toggleSpacing = kind => {
@@ -856,7 +858,8 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
       : radioLines ?
         <GameArea>
           <GameFrame data-game-frame>
-            <PlayWindow playWindow={playWindow} setPlayWindow={updatePlayWindow} isAdjusting={false} isOpen={false} isSiren>
+            {/* the alarm only when the call sends the team into a Kaiju fight */}
+            <PlayWindow playWindow={playWindow} setPlayWindow={updatePlayWindow} isAdjusting={false} isOpen={false} isSiren={campaignIndex !== null && !!LEVELS[CAMPAIGN_SECTIONS[campaignIndex].levelId].kaijuEntry}>
               <RadioCall
                 key={campaignIndex}
                 lines={radioLines}
@@ -975,6 +978,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               <SlideAway style={leavingFor ? { transform: `translateX(${leavingFor == "colors" ? -45 : 45}%)`, opacity: 0 } : undefined}>
               <GameBoard
                 key={`${level.id} ${matchCount}`}
+                choiceFromRef={recruitChoiceFrom}
                 isWindowOpen={isWindowOpen}
                 isPaused={isPaused}
                 gameManager={gameManager.current}
@@ -1016,6 +1020,13 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
             {labScreen == "colors" && <IrradiationVat avatar={selectedAvatar} startColor={getAvatarColor(selectedAvatar)} onIrradiate={irradiate} onClose={closeLabScreen} />}
             {isShowingControls && <ControlsOverlay onClose={closeControls} />}
             <DialogueLogPanel
+              footer={recruitScene && isMonitorAlways && (
+                <>
+                  {["recruit", "terminate"].map(choice => (
+                    <ChoiceButton key={choice} choice={choice} recruitChoice={recruitChoice} onChooseRecruit={(chosen, box) => { recruitChoiceFrom.current = box; handleChooseRecruit(chosen); }} />
+                  ))}
+                </>
+              )}
               entries={dialogueLog}
               isWaiting={isDialogueWaiting}
               isVisible={!isPaused && (level.isWalkingLevel || isCutscene || !!recruitScene)}

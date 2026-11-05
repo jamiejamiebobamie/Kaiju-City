@@ -1673,10 +1673,12 @@ describe('recruit calls', () => {
     expect(gm.getUiState().players.length).toBe(huds);
   });
 
-  it('the fight is lost when the player and teammate are down, even with a recruit standing', () => {
+  it('a recruit still standing keeps the fight going once the player and teammate are down', () => {
     const { gm } = makeGame();
     gm.callRecruit('mermaid');
     gm.gameBoardPiecesManager.getPlayerPiece().isDead = true;
+    expect(gm.getGameResult()).toBe(null);
+    gm.getPieces().filter(piece => piece.isRecruit).forEach(piece => { piece.isDead = true; });
     expect(gm.getGameResult()).toBe(GameResult.PlayerLost);
   });
 
@@ -1820,5 +1822,16 @@ describe('playing again after a loss', () => {
     expect(gm.speech).toBeNull();
     expect(gm.getActivePhases()).toContain(LEVELS.rapidTransit.rival.touchPhase);
     expect((gm.rivalPiece as any).isPlain).toBe(false);
+  });
+});
+
+describe('map walks', () => {
+  it('only show battlegrounds won before this point in the campaign', () => {
+    const getIcons = id => LEVELS[id].sceneElements.filter(({ id: elementId }) => elementId.endsWith('Icon')).map(({ id: elementId }) => elementId);
+    updateMapWalkSites(['rooftop', 'rapidTransit']);
+    expect(getIcons('mapSubway')).not.toContain('rooftopIcon');
+    expect(getIcons('mapAquarium')).toContain('rooftopIcon');
+    expect(getIcons('mapAquarium')).toContain('subwayIcon');
+    updateMapWalkSites([]);
   });
 });

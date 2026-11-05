@@ -47,6 +47,7 @@ export const CUTSCENE = {
   chaseSlowMs: 2800,
   mapWideMs: 2400,
   revealGlowMs: 1200, // a door lights up before anyone says a word about it
+  clonesLookMs: 2200, // the Lab trap: the camera holds on the clones, stepped out of their tanks
   recruitZoomScale: 1.3,
   recruitSpeechRows: 2.4, // how far above a character their words sit: just over their head
   speechTopY: 200, // words sit no higher than this, or they would go off the top of a wide shot or under the top buttons
@@ -134,7 +135,8 @@ export class GameManager {
         this.outcomeShot = undefined;
         this.enemyPowersAtMs = 0; // before this, the other side can't use powers
         // the dialogue log (DialogueLog.ts): every line said so far, and talk that runs outside of cutscenes
-        this.dialogueLog = []; // { key, who, name, text, avatar }
+        this.dialogueLog = []; // { key, who, name, text, avatar, chain }
+        this.logChain = 0; // a fight in between starts a new chain: the first speaker after it shows their portrait again
         this.isCutsceneLineWaiting = false; // a cutscene's line waits for a key or a click
         this.talks = []; // { lines, index, msLeft, isWaiting, isActive, isPhased }
         this.walkers = []; // people at work in a walking scene (addWalker) // once the fight is decided, the camera stays on the death that decided it
@@ -585,6 +587,7 @@ export class GameManager {
         if (!step) {
             this.cutscene = undefined;
             this.speech = null;
+            if (!this.level.isWalkingLevel) this.logChain += 1; // the fight is on
             this.getPieces().forEach(piece => { piece.isTileHidden = false; });
             return;
         }
@@ -642,13 +645,14 @@ export class GameManager {
     addToLog({ name, text, avatar }) {
         const player = this.gameBoardPiecesManager.getPlayerPiece();
         const who = avatar == 'agent' ? 'agent' : name == 'Teammate' ? 'teammate' : player && avatar == player.avatar ? 'player' : 'other';
-        this.dialogueLog = [...this.dialogueLog, { key: this.dialogueLog.length, who, name, text, avatar }];
+        this.dialogueLog = [...this.dialogueLog, { key: this.dialogueLog.length, who, name, text, avatar, chain: this.logChain }];
     }
 
     // a scene's speech elements go to the log, while their phase is on (and before their 'hidePhase')
     addSceneTalks() {
         this.level.sceneElements.filter(({ type }) => type == 'speech').forEach(({ name = 'Agent', lines, phase, hidePhase }) => {
-            const isActive = () => !this.cutscene && (!phase || this.activePhases.has(phase)) && !(hidePhase && this.activePhases.has(hidePhase));
+            // a scene that opens with a call waits for the team to come over
+            const isActive = () => !this.cutscene && (!this.level.greeting || this.isGreetingAnswered) && (!phase || this.activePhases.has(phase)) && !(hidePhase && this.activePhases.has(hidePhase));
             this.addTalk(lines.map(text => ({ name, text, avatar: name == 'Agent' ? 'agent' : undefined })), isActive, !!phase || !!hidePhase);
         });
     }
@@ -718,13 +722,15 @@ export class GameManager {
         const rival = this.rivalPiece;
         const [, teammate] = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
         const { rowStep, scale } = this.level.grid;
-        const shot = { point: focus, zoomScale };
+        // with the log, no balloon needs room: the shots move in close
+        const closeShot = point => getIsDialogueLog() ? { point, zoomScale: DIALOGUE.introZoomScale, isCover: true } : { point, zoomScale };
+        const shot = closeShot(focus);
 
         // the camera goes to the teammate for their line, then back to the part
         const getTeammateSteps = text => {
             if (!teammate) return [];
             const { x, y } = teammate.charLocation;
-            const teammateShot = { point: { x, y: y - CUTSCENE.shotHeadRows * rowStep * scale }, zoomScale };
+            const teammateShot = closeShot({ x, y: y - CUTSCENE.shotHeadRows * rowStep * scale });
             const speech = { name: 'Teammate', text, x, y: y - CUTSCENE.recruitSpeechRows * rowStep * scale, avatar: teammate.avatar };
             return [
                 { shot: teammateShot, ms: CUTSCENE.pullInMs },
@@ -743,20 +749,33 @@ export class GameManager {
         ]);
     }
 
-    // the whole scene, in on the Agent for his call, then back to the team, as at the train
-    startGreeting() {
-        const { text, speechSpot } = this.level.greeting;
+    // the whole scene, in on the Agent for his call, then back to the team, as at the train.
+    // he calls again ('repeatMs' later) until the team is near him: each call takes the camera and the controls for a moment.
+    startGreeting(isRepeat = false) {
+        const { text, speechSpot, repeatMs } = this.level.greeting;
         const speech = { ...this.getAgentSpeech(text, speechSpot), isShout: true }; // a call across the street: a balloon, not the log
         const player = this.gameBoardPiecesManager.getPlayerPiece();
         const { rowStep, scale } = this.level.grid;
         const agentShot = { point: speech.focus || speechSpot, zoomScale: DIALOGUE.speakerZoomScale, isCover: true };
         const teamShot = { point: { x: player.charLocation.x, y: player.charLocation.y - CUTSCENE.shotHeadRows * rowStep * scale }, zoomScale: 1, isCover: true };
         this.startCutscene([
-            { shot: { isWide: true }, ms: CUTSCENE.mapWideMs },
+            ...(isRepeat ? [] : [{ shot: { isWide: true }, ms: CUTSCENE.mapWideMs }]),
             { shot: agentShot, ms: CUTSCENE.pullInMs },
             { shot: agentShot, ms: getSpeechMs(text), speech },
             { shot: teamShot, ms: CUTSCENE.pullInMs }
         ]);
+        this.nextGreetingAtMs = this.accTime + repeatMs; // game time stands still in a cutscene: this counts from its end
+    }
+
+    // the team has come over to the Agent: his talk can start
+    updateGreeting() {
+        if (this.isGreetingAnswered) return;
+        const agent = (this.level.extras || []).find(({ avatar }) => avatar == 'agent');
+        if (agent && this.getIsPlayerNear(agent.spot, this.level.greeting.nearRows)) {
+            this.isGreetingAnswered = true;
+            return;
+        }
+        if (this.accTime >= this.nextGreetingAtMs) this.startGreeting(true);
     }
 
     // a battleground won on before, visited from the map: the teammate has a word, then it's a walk
@@ -857,16 +876,24 @@ export class GameManager {
         const shot = { isWide: true };
         const getName = ({ avatar }) => ROSTER.find(({ id }) => id == avatar).name;
         const getSpeaker = who => ({ player, teammate, recruit })[who];
+        // with the log, the shots are on each speaker: the ray keeps the last one, rather than pull out
+        let lastShot = shot;
+        const clonesShot = { isWide: true }; // the clones stand by their tanks, along both sides: the whole lab shows them all
         const getStep = ({ who, text, phase, ray: isRay }) => {
-            if (isRay) return { shot, ms: ray.ms, onStart: () => this.fireRay() };
+            if (isRay) {
+                const rayStep = { shot, ms: ray.ms, onStart: () => { if (getIsDialogueLog()) rayStep.shot = lastShot; this.fireRay(); } };
+                return [rayStep];
+            }
             const speaker = getSpeaker(who);
             const name = who == 'teammate' ? 'Teammate' : speaker && getName(speaker);
             const speech = speaker ? this.getSpeechOver(speaker, name, text) : this.getAgentSpeech(text, speechSpot);
             // once the beam has done its work, the glow is gone
-            return { shot, ms: getSpeechMs(text), phase, speech, onStart: () => this.rayBeam && this.endRay() };
+            const step = { shot: { ...shot }, ms: getSpeechMs(text), phase, speech, onStart: () => { if (this.rayBeam) this.endRay(); lastShot = step.shot; } };
+            // the clones step out: the camera goes up to them before anyone remarks on it
+            return phase == 'clones' && getIsDialogueLog() ? [step, { shot: clonesShot, ms: CUTSCENE.clonesLookMs }] : [step];
         };
         this.startCutscene([
-            ...script.filter(({ who, ifRecruits }) => (who != 'teammate' || !!teammate) && (!ifRecruits || !!recruit)).map(getStep),
+            ...script.filter(({ who, ifRecruits }) => (who != 'teammate' || !!teammate) && (!ifRecruits || !!recruit)).flatMap(getStep),
             { shot, ms: 0, onStart: this.startChase }
         ]);
     }
@@ -1066,6 +1093,7 @@ export class GameManager {
 
     // the player and teammate stand over the beaten bystander: the player's choice, with the teammate back and to the left
     startRecruitScene() {
+        this.logChain += 1;
         const { avatar, pronoun, recruitSpot } = this.level.rival;
         const { x, y } = recruitSpot;
         const { rowStep, colStep, scale } = this.level.grid;
@@ -1092,8 +1120,12 @@ export class GameManager {
             y: teammate.charLocation.y - CUTSCENE.recruitSpeechRows * rowStep * scale,
             isFlipped: true
         } : null;
+        // with the log, the buttons are on it: the shot moves in close on the team over the bystander
+        const shot = getIsDialogueLog()
+            ? { point: { x, y: y - CUTSCENE.recruitStandRows * rowStep * scale / 2 }, zoomScale: DIALOGUE.choiceZoomScale, isCover: true, isFollowingMouse: true, isCut: true }
+            : { point: { x, y: y - CUTSCENE.recruitShotRows * rowStep * scale }, zoomScale, isFollowingMouse: true, isCut: true };
         this.recruitScene = {
-            shot: { point: { x, y: y - CUTSCENE.recruitShotRows * rowStep * scale }, zoomScale, isFollowingMouse: true, isCut: true },
+            shot,
             body: { x, y, avatar },
             prompt: { x: player.charLocation.x, y: player.charLocation.y - CUTSCENE.recruitButtonRows * rowStep * scale }
         };
@@ -1228,6 +1260,7 @@ export class GameManager {
         if (this.level.kaijuEntry) this.kaijuManager.update(this.accTime, this.score);
         if (this.level.rival) this.updateRival();
         if (this.level.agentDrops) this.updateAgentDrops();
+        if (this.level.greeting) this.updateGreeting();
         if (this.level.unlock) this.updateUnlock();
         if (this.level.exit) this.updateExit();
         this.gameBoardPiecesManager.movePieces({ accTime: this.accTime, playerInputHandler: this.playerInputHandler });
@@ -1317,6 +1350,7 @@ export class GameManager {
             getIsInBounds: this.gameBoardManager.getIsInBounds,
             getIsClosedTile: this.gameBoardManager.getIsClosedTile,
             getLinkedTile: this.gameBoardManager.getLinkedTile,
+            getIsWormholeTile: ({ i, j }) => this.gameBoardManager.getWormholes().some(({ from, to }) => [from, to].some(end => end.i == i && end.j == j)),
             getSafeTileIndex: this.gameBoardManager.getSafeTileIndex,
             getHighlightedTiles: this.gameBoardManager.getHighlightedTiles,
             resetHightlightedTiles: this.gameBoardManager.resetHightlightedTiles,

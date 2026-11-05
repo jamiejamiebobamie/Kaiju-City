@@ -469,17 +469,13 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
       drawPerimeter(playerCenter);
       level.tileLinks.flat().forEach(tileIndex => {
         drawSprite(ctx, getSoftSprite(TILE_LOOK.linkColor, TILE_LOOK.linkTintOpacity), getTileCenter(grid, tileIndex), pixelRatio);
-        drawPortal(ctx, getTileCenter(grid, tileIndex), getHexRadius(grid));
       });
       const accTime = gameManager.getAccTime();
       const wormholePulse = (Math.sin((performance.now() / 1000 / TILE_LOOK.wormholePulseSeconds) * Math.PI * 2) + 1) / 2;
       gameManager.getWormholes().forEach(({ from, to, endsAt }) => {
         const closing = Math.min((endsAt - accTime) / TILE_LOOK.wormholeFadeMs, 1);
         ctx.globalAlpha = Math.max(closing, 0) * (0.55 + 0.45 * wormholePulse);
-        [from, to].forEach(tileIndex => {
-          drawSprite(ctx, getStatusSprite(TILE_LOOK.wormholeColor), getTileCenter(grid, tileIndex), pixelRatio);
-          drawPortal(ctx, getTileCenter(grid, tileIndex), getHexRadius(grid), Math.max(closing, 0));
-        });
+        [from, to].forEach(tileIndex => drawSprite(ctx, getStatusSprite(TILE_LOOK.wormholeColor), getTileCenter(grid, tileIndex), pixelRatio));
       });
       ctx.globalAlpha = 1;
       gameManager.getSoapyTiles().forEach(tileIndex => {
@@ -531,6 +527,12 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
       smokeTiles = nextSmokeTiles;
       iconTiles = nextIconTiles;
       drawFades();
+      // a Teleport's portals go over everything else on the tiles
+      gameManager.getWormholes().forEach(({ from, to, endsAt }) => {
+        const closing = Math.max(Math.min((endsAt - accTime) / TILE_LOOK.wormholeFadeMs, 1), 0);
+        [from, to].forEach(tileIndex => drawPortal(ctx, getTileCenter(grid, tileIndex), getHexRadius(grid), closing));
+      });
+      ctx.globalAlpha = 1;
     };
 
     draw();

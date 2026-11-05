@@ -699,11 +699,19 @@ describe('the dialogue log', () => {
     expect(gm.dialogueLog.length).toBe(2);
   });
 
-  it("the Street Agent's words go to the log once each, and the unlock waits for the last", () => {
+  it("the Street Agent calls until the team comes over, then his words go to the log once each", () => {
     const gm = makeLevel(LEVELS.street);
     if (gm.cutscene) gm.skipCutscene();
     const player = gm.gameBoardPiecesManager.getPlayerPiece();
+    // away from him, he calls again, and nothing goes to the log
     player.initCharLocation(true, gm.gameBoardManager.getClosestWalkableTileToLocation(LEVELS.street.unlock.spot));
+    run(gm, Math.ceil(LEVELS.street.greeting.repeatMs / GAME_TICK.pieceMs) + 1);
+    expect(gm.cutscene.steps.some(({ speech }) => speech && speech.text == LEVELS.street.greeting.text)).toBe(true);
+    gm.skipCutscene();
+    expect(gm.dialogueLog).toEqual([]);
+    // over by him, his talk starts
+    const agent = LEVELS.street.extras.find(({ avatar }) => avatar == 'agent');
+    player.initCharLocation(true, gm.gameBoardManager.getClosestWalkableTileToLocation(agent.spot));
     for (let k = 0; k < 30; k++) { run(gm, 3); gm.advanceDialogue(); }
     expect(gm.dialogueLog.map(({ text }) => text).length).toBe(LEVELS.street.sceneElements.find(({ type }) => type == 'speech').lines.length);
     expect(gm.getIsSceneTalkDone()).toBe(true);
@@ -748,5 +756,17 @@ describe('spacing', () => {
     setIsSpacing('battle', false);
     expect(teammate.getSpacedPath(path)).toEqual(path);
     setIsSpacing('battle', true);
+  });
+});
+
+describe("Teleport's wormhole", () => {
+  it('an NPC who steps into it comes out of the other end', () => {
+    const { gm, player } = makeGame({ isTeammate: true });
+    const [, teammate] = gm.gameBoardPiecesManager.getTeamPieces(player.getTeamIndex());
+    const [from, to] = PENINSULA_TILE_LOOKUP_VALS.filter(tile => Math.abs(tile.i - CENTER_TILE.i) + Math.abs(tile.j - CENTER_TILE.j) > 6).slice(0, 40).filter((_, k) => k == 0 || k == 39);
+    gm.gameBoardManager.addWormhole(from, to, gm.accTime, 10000);
+    placePiece(gm, teammate, from);
+    teammate.movePiece({ accTime: gm.accTime + 110 });
+    expect(teammate.getTileIndex()).toEqual(to);
   });
 });

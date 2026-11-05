@@ -161,7 +161,7 @@ export type LevelConfig = {
   isWalkingLevel: boolean; // a scene to walk through: no powers, and no HUDs
   isDepowered?: boolean; // after the Lab trap: the player's side has no glow
   visitLines?: Array<string>; // a battleground visited again: what the teammate says on arrival
-  greeting?: { text: string; speechSpot: { x: number; y: number } }; // a scene that opens with the Agent calling the team over
+  greeting?: { text: string; speechSpot: { x: number; y: number }; repeatMs: number; nearRows: number }; // a scene that opens with the Agent calling the team over
   walkers?: Array<{ id: string; avatar: string; route: Array<{ x: number; y: number; isPass: boolean }>; runSpeed: number; idleSeconds: number }>; // people at work in a walking scene
   getWalkerHeight?: (y: number) => number; // a walker's height at a y, in scene pixels: they shrink up the scene
   tileLinks: Array<[TileIndex, TileIndex]>; // pairs of tiles a piece jumps between instantly
@@ -607,7 +607,8 @@ const STREET_SCENE = {
   ],
   getWalkerHeight: getWorkerHeight, // how tall a worker stands at a spot's y, in scene pixels
   // the whole street, then in on the Agent as he calls the team over, then back to them. his words follow in the log.
-  greeting: { text: 'Hey, soldiers! Over here.', speechSpot: { x: 335, y: 372 } },
+  // he calls again every so often, until the team walks over to him. then the rest of his words follow.
+  greeting: { text: 'Hey, soldiers! Over here.', speechSpot: { x: 335, y: 372 }, repeatMs: 7000, nearRows: 3 },
   extras: [standingAgent(335, 682)],
   sceneElements: [
     hazmatSweeper('hazmat1', 'hazmatBroomLeft', 740, 600),
@@ -822,10 +823,12 @@ export const getVisitLevelId = (levelId: string) => `visit-${levelId}`;
 const VISIT_LINES = ['Not much to do here...', '...but it would be a good place to train.'];
 
 // the map walks show the battlegrounds already won on, as well as where to go next
+// only those that come before this walk in the campaign: a battleground not reached yet never shows, even if won in an earlier playthrough
 export const updateMapWalkSites = (visitedIds: Array<string>) => {
-  MAP_WALKS.forEach(([id, name, start, sites]) => {
+  const getWalkIndex = levelId => MAP_WALKS.findIndex(([, , , sites]) => sites.includes(BATTLEGROUND_SITES[levelId]));
+  MAP_WALKS.forEach(([id, name, start, sites], walkIndex) => {
     const visited = visitedIds
-      .filter(levelId => BATTLEGROUND_SITES[levelId] && !sites.includes(BATTLEGROUND_SITES[levelId]))
+      .filter(levelId => BATTLEGROUND_SITES[levelId] && !sites.includes(BATTLEGROUND_SITES[levelId]) && getWalkIndex(levelId) < walkIndex)
       .map(levelId => ({ ...BATTLEGROUND_SITES[levelId], isDetour: true, visitLevelId: getVisitLevelId(levelId) }));
     LEVELS[id] = buildMapWalk(id, name, start, [...sites, ...visited]);
   });
@@ -852,7 +855,7 @@ LEVELS.labTrap = {
       { who: 'agent', text: 'Lab property. We are taking them back.' },
       { ray: true },
       { who: 'player', text: 'Our powers... they are gone!' },
-      { who: 'recruit', text: 'Not ours. We still have ours. Kaiju powers are not theirs to take.', ifRecruits: true },
+      { who: 'recruit', text: 'Not mine. I still have mine. Kaiju powers are not theirs to take.', ifRecruits: true },
       { who: 'agent', text: 'Seize them!' }
     ],
     speechSpot: { x: 700, y: 365 },
