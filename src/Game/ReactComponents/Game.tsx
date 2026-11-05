@@ -996,6 +996,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
           {import.meta.env.DEV && !isDevHidden && (
             <PhaseToggles>
               <button onClick={() => setIsDevHidden(true)}>Hide dev options (F2)</button>
+              <a href="/dialogue" target="_blank" rel="noreferrer" style={{ color: "#6dffa0" }}>Dialogue viewer</a>
               <select aria-label="Level" value={level.id} onChange={e => { switchLevel(e.target.value); e.target.blur(); }}>
                 {levelOptions}
               </select>

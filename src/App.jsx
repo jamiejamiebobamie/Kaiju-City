@@ -9,6 +9,9 @@ import "./font-awesome-7.3.1/fa7.css";
 // a tool for making levels. it is not part of the built game.
 const isLevelEditor = import.meta.env.DEV && window.location.pathname == "/level-editor";
 const LevelEditor = import.meta.env.DEV ? lazy(() => import("./Game/ReactComponents/Levels/LevelEditor").then(({ LevelEditor }) => ({ default: LevelEditor }))) : null;
+// every line of the story, to read and edit. it is not part of the built game either.
+const isDialogueViewer = import.meta.env.DEV && window.location.pathname == "/dialogue";
+const DialogueViewer = import.meta.env.DEV ? lazy(() => import("./Game/ReactComponents/Dialogue/DialogueViewer").then(({ DialogueViewer }) => ({ default: DialogueViewer }))) : null;
 
 const App = () => {
   const [shouldPlayAnim, setShouldPlayAnim] = useState(false);
@@ -40,6 +43,7 @@ const App = () => {
   const appContent = isFirstLoad ? <SplashScreen /> : <Home triggerTransition={triggerTransition} />;
 
   if (isLevelEditor) return <Suspense fallback={null}><LevelEditor /></Suspense>;
+  if (isDialogueViewer) return <Suspense fallback={null}><DialogueViewer /></Suspense>;
 
   return (
     <div className="App">
