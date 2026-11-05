@@ -1,0 +1,2314 @@
+{
+  "combos": {
+    "Bubble,Charm,Death": {
+      "original": {
+        "name": "Neural Saboteur",
+        "description": "You cancel their plans, then their pulse."
+      },
+      "names": [
+        {
+          "name": "Neural Saboteur",
+          "descriptions": [
+            "You cancel their plans, then their pulse."
+          ]
+        }
+      ]
+    },
+    "Bubble,Charm,Fire": {
+      "original": {
+        "name": "Flare Diplomat",
+        "description": "Negotiations have a burn rate."
+      },
+      "names": [
+        {
+          "name": "Flare Diplomat",
+          "descriptions": [
+            "Negotiations have a burn rate."
+          ]
+        }
+      ]
+    },
+    "Bubble,Charm,Glass": {
+      "original": {
+        "name": "Ghost Negotiator",
+        "description": "You were never in the room."
+      },
+      "names": [
+        {
+          "name": "Ghost Negotiator",
+          "descriptions": [
+            "You were never in the room."
+          ]
+        }
+      ]
+    },
+    "Bubble,Charm,Ice": {
+      "original": {
+        "name": "Cryo Diplomat",
+        "description": "Cold calls only."
+      },
+      "names": [
+        {
+          "name": "Cryo Diplomat",
+          "descriptions": [
+            "Cold calls only."
+          ]
+        }
+      ]
+    },
+    "Bubble,Charm,Lightning": {
+      "original": {
+        "name": "Static Influencer",
+        "description": "Everyone's hair stands on end for you."
+      },
+      "names": [
+        {
+          "name": "Static Influencer",
+          "descriptions": [
+            "Everyone's hair stands on end for you."
+          ]
+        }
+      ]
+    },
+    "Bubble,Charm,Love": {
+      "original": {
+        "name": "Morale Officer",
+        "description": "Mandatory fun, administered intravenously."
+      },
+      "names": [
+        {
+          "name": "Morale Officer",
+          "descriptions": [
+            "Mandatory fun, administered intravenously."
+          ]
+        }
+      ]
+    },
+    "Bubble,Charm,Metal": {
+      "original": {
+        "name": "Riot Suppressor",
+        "description": "Please disperse. Nicely."
+      },
+      "names": [
+        {
+          "name": "Riot Suppressor",
+          "descriptions": [
+            "Please disperse. Nicely."
+          ]
+        }
+      ]
+    },
+    "Bubble,Charm,Water": {
+      "original": {
+        "name": "Tidal Hypnotist",
+        "description": "Your eyes are getting very damp."
+      },
+      "names": [
+        {
+          "name": "Tidal Hypnotist",
+          "descriptions": [
+            "Your eyes are getting very damp."
+          ]
+        }
+      ]
+    },
+    "Bubble,Charm,Wood": {
+      "original": {
+        "name": "Spore Whisperer",
+        "description": "The mushrooms agree with you."
+      },
+      "names": [
+        {
+          "name": "Spore Whisperer",
+          "descriptions": [
+            "The mushrooms agree with you."
+          ]
+        }
+      ]
+    },
+    "Bubble,Death,Fire": {
+      "original": {
+        "name": "Dark Matter Theorist",
+        "description": "You're a physicist, but evil."
+      },
+      "names": [
+        {
+          "name": "Dark Matter Theorist",
+          "descriptions": [
+            "You're a physicist, but evil."
+          ]
+        }
+      ]
+    },
+    "Bubble,Death,Glass": {
+      "original": {
+        "name": "Phase Wraith",
+        "description": "Now you see it. Then it sees you."
+      },
+      "names": [
+        {
+          "name": "Phase Wraith",
+          "descriptions": [
+            "Now you see it. Then it sees you."
+          ]
+        }
+      ]
+    },
+    "Bubble,Death,Ice": {
+      "original": {
+        "name": "Void Technician",
+        "description": "Spooky, with benefits."
+      },
+      "names": [
+        {
+          "name": "Void Technician",
+          "descriptions": [
+            "Spooky, with benefits."
+          ]
+        }
+      ]
+    },
+    "Bubble,Death,Lightning": {
+      "original": {
+        "name": "Mad Scientist",
+        "description": "Muhahaha!"
+      },
+      "names": [
+        {
+          "name": "Mad Scientist",
+          "descriptions": [
+            "Muhahaha!"
+          ]
+        }
+      ]
+    },
+    "Bubble,Death,Love": {
+      "original": {
+        "name": "Plague Doctor 2.0",
+        "description": "First, do some harm."
+      },
+      "names": [
+        {
+          "name": "Plague Doctor 2.0",
+          "descriptions": [
+            "First, do some harm."
+          ]
+        }
+      ]
+    },
+    "Bubble,Death,Metal": {
+      "original": {
+        "name": "Black Box Warden",
+        "description": "Nothing gets out. Nothing gets in."
+      },
+      "names": [
+        {
+          "name": "Black Box Warden",
+          "descriptions": [
+            "Nothing gets out. Nothing gets in."
+          ]
+        }
+      ]
+    },
+    "Bubble,Death,Water": {
+      "original": {
+        "name": "Bilge Revenant",
+        "description": "Something died in the coolant."
+      },
+      "names": [
+        {
+          "name": "Bilge Revenant",
+          "descriptions": [
+            "Something died in the coolant."
+          ]
+        }
+      ]
+    },
+    "Bubble,Death,Wood": {
+      "original": {
+        "name": "Bio-Hazard",
+        "description": "Don't get wet."
+      },
+      "names": [
+        {
+          "name": "Bio-Hazard",
+          "descriptions": [
+            "Don't get wet."
+          ]
+        }
+      ]
+    },
+    "Bubble,Fire,Glass": {
+      "original": {
+        "name": "Plasma Courier",
+        "description": "Hot deliveries, no forwarding address."
+      },
+      "names": [
+        {
+          "name": "Plasma Courier",
+          "descriptions": [
+            "Hot deliveries, no forwarding address."
+          ]
+        }
+      ]
+    },
+    "Bubble,Fire,Ice": {
+      "original": {
+        "name": "Thermal Engineer",
+        "description": "Don't touch that thermostat!"
+      },
+      "names": [
+        {
+          "name": "Thermal Engineer",
+          "descriptions": [
+            "Don't touch that thermostat!"
+          ]
+        }
+      ]
+    },
+    "Bubble,Fire,Lightning": {
+      "original": {
+        "name": "Reactor Tech",
+        "description": "Science!"
+      },
+      "names": [
+        {
+          "name": "Reactor Tech",
+          "descriptions": [
+            "Science!"
+          ]
+        }
+      ]
+    },
+    "Bubble,Fire,Love": {
+      "original": {
+        "name": "Pyrokinetic",
+        "description": "Therapy recommended."
+      },
+      "names": [
+        {
+          "name": "Pyrokinetic",
+          "descriptions": [
+            "Therapy recommended."
+          ]
+        }
+      ]
+    },
+    "Bubble,Fire,Metal": {
+      "original": {
+        "name": "Ordnance Tech",
+        "description": "Free samples!"
+      },
+      "names": [
+        {
+          "name": "Ordnance Tech",
+          "descriptions": [
+            "Free samples!"
+          ]
+        }
+      ]
+    },
+    "Bubble,Fire,Water": {
+      "original": {
+        "name": "Steam Engineer",
+        "description": "Full pressure, no gauge."
+      },
+      "names": [
+        {
+          "name": "Steam Engineer",
+          "descriptions": [
+            "Full pressure, no gauge."
+          ]
+        }
+      ]
+    },
+    "Bubble,Fire,Wood": {
+      "original": {
+        "name": "Terraform Firefighter",
+        "description": "You put out fires?"
+      },
+      "names": [
+        {
+          "name": "Terraform Firefighter",
+          "descriptions": [
+            "You put out fires?"
+          ]
+        }
+      ]
+    },
+    "Bubble,Glass,Ice": {
+      "original": {
+        "name": "Cold Sleep Escapist",
+        "description": "Master of setting traps and leaving the system."
+      },
+      "names": [
+        {
+          "name": "Cold Sleep Escapist",
+          "descriptions": [
+            "Master of setting traps and leaving the system."
+          ]
+        }
+      ]
+    },
+    "Bubble,Glass,Lightning": {
+      "original": {
+        "name": "Quantum Tech",
+        "description": "It works, unless you look at it."
+      },
+      "names": [
+        {
+          "name": "Quantum Tech",
+          "descriptions": [
+            "It works, unless you look at it."
+          ]
+        }
+      ]
+    },
+    "Bubble,Glass,Love": {
+      "original": {
+        "name": "Field Medic",
+        "description": "Patch and run! Patch and run!"
+      },
+      "names": [
+        {
+          "name": "Field Medic",
+          "descriptions": [
+            "Patch and run! Patch and run!"
+          ]
+        }
+      ]
+    },
+    "Bubble,Glass,Metal": {
+      "original": {
+        "name": "Bunker Architect",
+        "description": "Who hurt you?"
+      },
+      "names": [
+        {
+          "name": "Bunker Architect",
+          "descriptions": [
+            "Who hurt you?"
+          ]
+        }
+      ]
+    },
+    "Bubble,Glass,Water": {
+      "original": {
+        "name": "Hydro Jumper",
+        "description": "You arrive slightly moist."
+      },
+      "names": [
+        {
+          "name": "Hydro Jumper",
+          "descriptions": [
+            "You arrive slightly moist."
+          ]
+        }
+      ]
+    },
+    "Bubble,Glass,Wood": {
+      "original": {
+        "name": "Prism Botanist",
+        "description": "Rainbow-rider!"
+      },
+      "names": [
+        {
+          "name": "Prism Botanist",
+          "descriptions": [
+            "Rainbow-rider!"
+          ]
+        }
+      ]
+    },
+    "Bubble,Ice,Lightning": {
+      "original": {
+        "name": "Storm Cell",
+        "description": "Ahhh!"
+      },
+      "names": [
+        {
+          "name": "Storm Cell",
+          "descriptions": [
+            "Ahhh!"
+          ]
+        }
+      ]
+    },
+    "Bubble,Ice,Love": {
+      "original": {
+        "name": "Cryo Medic",
+        "description": "Please remain frozen during your treatment."
+      },
+      "names": [
+        {
+          "name": "Cryo Medic",
+          "descriptions": [
+            "Please remain frozen during your treatment."
+          ]
+        }
+      ]
+    },
+    "Bubble,Ice,Metal": {
+      "original": {
+        "name": "Polar Commander",
+        "description": "You rule a frozen outpost."
+      },
+      "names": [
+        {
+          "name": "Polar Commander",
+          "descriptions": [
+            "You rule a frozen outpost."
+          ]
+        }
+      ]
+    },
+    "Bubble,Ice,Water": {
+      "original": {
+        "name": "Coolant Specialist",
+        "description": "Everything is under control, and damp."
+      },
+      "names": [
+        {
+          "name": "Coolant Specialist",
+          "descriptions": [
+            "Everything is under control, and damp."
+          ]
+        }
+      ]
+    },
+    "Bubble,Ice,Wood": {
+      "original": {
+        "name": "Containment Trapper",
+        "description": "Master of setting traps and walking away."
+      },
+      "names": [
+        {
+          "name": "Containment Trapper",
+          "descriptions": [
+            "Master of setting traps and walking away."
+          ]
+        }
+      ]
+    },
+    "Bubble,Lightning,Love": {
+      "original": {
+        "name": "Defibrillator",
+        "description": "Clear!"
+      },
+      "names": [
+        {
+          "name": "Defibrillator",
+          "descriptions": [
+            "Clear!"
+          ]
+        }
+      ]
+    },
+    "Bubble,Lightning,Metal": {
+      "original": {
+        "name": "Faraday Knight",
+        "description": "Your suit has a warranty."
+      },
+      "names": [
+        {
+          "name": "Faraday Knight",
+          "descriptions": [
+            "Your suit has a warranty."
+          ]
+        }
+      ]
+    },
+    "Bubble,Lightning,Water": {
+      "original": {
+        "name": "Bad Idea",
+        "description": "You mixed water and electronics."
+      },
+      "names": [
+        {
+          "name": "Bad Idea",
+          "descriptions": [
+            "You mixed water and electronics."
+          ]
+        }
+      ]
+    },
+    "Bubble,Lightning,Wood": {
+      "original": {
+        "name": "Gene Hacker",
+        "description": "You make this look good."
+      },
+      "names": [
+        {
+          "name": "Gene Hacker",
+          "descriptions": [
+            "You make this look good."
+          ]
+        }
+      ]
+    },
+    "Bubble,Love,Metal": {
+      "original": {
+        "name": "Life Support",
+        "description": "Full defensive build."
+      },
+      "names": [
+        {
+          "name": "Life Support",
+          "descriptions": [
+            "Full defensive build."
+          ]
+        }
+      ]
+    },
+    "Bubble,Love,Water": {
+      "original": {
+        "name": "Hydrotherapist",
+        "description": "Drink plenty of fluids."
+      },
+      "names": [
+        {
+          "name": "Hydrotherapist",
+          "descriptions": [
+            "Drink plenty of fluids."
+          ]
+        }
+      ]
+    },
+    "Bubble,Love,Wood": {
+      "original": {
+        "name": "Biosphere Keeper",
+        "description": "Nature calls!"
+      },
+      "names": [
+        {
+          "name": "Biosphere Keeper",
+          "descriptions": [
+            "Nature calls!"
+          ]
+        }
+      ]
+    },
+    "Bubble,Metal,Water": {
+      "original": {
+        "name": "Hazmat Lifeguard",
+        "description": "No running near the reactor."
+      },
+      "names": [
+        {
+          "name": "Hazmat Lifeguard",
+          "descriptions": [
+            "No running near the reactor."
+          ]
+        }
+      ]
+    },
+    "Bubble,Metal,Wood": {
+      "original": {
+        "name": "Greenhouse Warden",
+        "description": "Please do not feed the specimens."
+      },
+      "names": [
+        {
+          "name": "Greenhouse Warden",
+          "descriptions": [
+            "Please do not feed the specimens."
+          ]
+        }
+      ]
+    },
+    "Bubble,Water,Wood": {
+      "original": {
+        "name": "Hydroponicist",
+        "description": "Your plants are doing better than you are."
+      },
+      "names": [
+        {
+          "name": "Hydroponicist",
+          "descriptions": [
+            "Your plants are doing better than you are."
+          ]
+        }
+      ]
+    },
+    "Charm,Death,Fire": {
+      "original": {
+        "name": "Cult Technologist",
+        "description": "The flame update is mandatory."
+      },
+      "names": [
+        {
+          "name": "Cult Technologist",
+          "descriptions": [
+            "The flame update is mandatory."
+          ]
+        }
+      ]
+    },
+    "Charm,Death,Glass": {
+      "original": {
+        "name": "Body Snatcher",
+        "description": "That one fits nicely."
+      },
+      "names": [
+        {
+          "name": "Body Snatcher",
+          "descriptions": [
+            "That one fits nicely."
+          ]
+        }
+      ]
+    },
+    "Charm,Death,Ice": {
+      "original": {
+        "name": "Cold Case",
+        "description": "They warmed to you. Then they stopped."
+      },
+      "names": [
+        {
+          "name": "Cold Case",
+          "descriptions": [
+            "They warmed to you. Then they stopped."
+          ]
+        }
+      ]
+    },
+    "Charm,Death,Lightning": {
+      "original": {
+        "name": "Puppeteer",
+        "description": "A little current goes a long way."
+      },
+      "names": [
+        {
+          "name": "Puppeteer",
+          "descriptions": [
+            "A little current goes a long way."
+          ]
+        }
+      ]
+    },
+    "Charm,Death,Love": {
+      "original": {
+        "name": "Hospice AI",
+        "description": "I am here to help."
+      },
+      "names": [
+        {
+          "name": "Hospice AI",
+          "descriptions": [
+            "I am here to help."
+          ]
+        }
+      ]
+    },
+    "Charm,Death,Metal": {
+      "original": {
+        "name": "Android Handler",
+        "description": "They only look like they love you."
+      },
+      "names": [
+        {
+          "name": "Android Handler",
+          "descriptions": [
+            "They only look like they love you."
+          ]
+        }
+      ]
+    },
+    "Charm,Death,Water": {
+      "original": {
+        "name": "Siren Protocol",
+        "description": "Follow the signal into the sea."
+      },
+      "names": [
+        {
+          "name": "Siren Protocol",
+          "descriptions": [
+            "Follow the signal into the sea."
+          ]
+        }
+      ]
+    },
+    "Charm,Death,Wood": {
+      "original": {
+        "name": "Fungal Host",
+        "description": "Everyone joins eventually."
+      },
+      "names": [
+        {
+          "name": "Fungal Host",
+          "descriptions": [
+            "Everyone joins eventually."
+          ]
+        }
+      ]
+    },
+    "Charm,Fire,Glass": {
+      "original": {
+        "name": "Heartburn",
+        "description": "You come on strong, then vanish."
+      },
+      "names": [
+        {
+          "name": "Heartburn",
+          "descriptions": [
+            "You come on strong, then vanish."
+          ]
+        }
+      ]
+    },
+    "Charm,Fire,Ice": {
+      "original": {
+        "name": "Mixed Signals",
+        "description": "Hot, then cold, then hot."
+      },
+      "names": [
+        {
+          "name": "Mixed Signals",
+          "descriptions": [
+            "Hot, then cold, then hot."
+          ]
+        }
+      ]
+    },
+    "Charm,Fire,Lightning": {
+      "original": {
+        "name": "Rockstar Android",
+        "description": "Your fans are fireproof."
+      },
+      "names": [
+        {
+          "name": "Rockstar Android",
+          "descriptions": [
+            "Your fans are fireproof."
+          ]
+        }
+      ]
+    },
+    "Charm,Fire,Love": {
+      "original": {
+        "name": "Flame Whisperer",
+        "description": "An old flame, medically speaking."
+      },
+      "names": [
+        {
+          "name": "Flame Whisperer",
+          "descriptions": [
+            "An old flame, medically speaking."
+          ]
+        }
+      ]
+    },
+    "Charm,Fire,Metal": {
+      "original": {
+        "name": "Warlord CEO",
+        "description": "Employees are on fire about this."
+      },
+      "names": [
+        {
+          "name": "Warlord CEO",
+          "descriptions": [
+            "Employees are on fire about this."
+          ]
+        }
+      ]
+    },
+    "Charm,Fire,Water": {
+      "original": {
+        "name": "Sauna Mogul",
+        "description": "Everyone relaxes eventually."
+      },
+      "names": [
+        {
+          "name": "Sauna Mogul",
+          "descriptions": [
+            "Everyone relaxes eventually."
+          ]
+        }
+      ]
+    },
+    "Charm,Fire,Wood": {
+      "original": {
+        "name": "Burn Permit Officer",
+        "description": "You convinced the forest it was fine."
+      },
+      "names": [
+        {
+          "name": "Burn Permit Officer",
+          "descriptions": [
+            "You convinced the forest it was fine."
+          ]
+        }
+      ]
+    },
+    "Charm,Glass,Ice": {
+      "original": {
+        "name": "Ghoster",
+        "description": "Cold, and gone by morning."
+      },
+      "names": [
+        {
+          "name": "Ghoster",
+          "descriptions": [
+            "Cold, and gone by morning."
+          ]
+        }
+      ]
+    },
+    "Charm,Glass,Lightning": {
+      "original": {
+        "name": "Signal Spoofer",
+        "description": "That was not your commander."
+      },
+      "names": [
+        {
+          "name": "Signal Spoofer",
+          "descriptions": [
+            "That was not your commander."
+          ]
+        }
+      ]
+    },
+    "Charm,Glass,Love": {
+      "original": {
+        "name": "Bedside Manner",
+        "description": "You're in and out in five minutes."
+      },
+      "names": [
+        {
+          "name": "Bedside Manner",
+          "descriptions": [
+            "You're in and out in five minutes."
+          ]
+        }
+      ]
+    },
+    "Charm,Glass,Metal": {
+      "original": {
+        "name": "Con Artist Prime",
+        "description": "The vault opened itself, officer."
+      },
+      "names": [
+        {
+          "name": "Con Artist Prime",
+          "descriptions": [
+            "The vault opened itself, officer."
+          ]
+        }
+      ]
+    },
+    "Charm,Glass,Water": {
+      "original": {
+        "name": "Mirage",
+        "description": "You are not a real oasis."
+      },
+      "names": [
+        {
+          "name": "Mirage",
+          "descriptions": [
+            "You are not a real oasis."
+          ]
+        }
+      ]
+    },
+    "Charm,Glass,Wood": {
+      "original": {
+        "name": "Pollinator Drone",
+        "description": "You get around, and things grow."
+      },
+      "names": [
+        {
+          "name": "Pollinator Drone",
+          "descriptions": [
+            "You get around, and things grow."
+          ]
+        }
+      ]
+    },
+    "Charm,Ice,Lightning": {
+      "original": {
+        "name": "Ice Queen OS",
+        "description": "A beautiful, cold operating system."
+      },
+      "names": [
+        {
+          "name": "Ice Queen OS",
+          "descriptions": [
+            "A beautiful, cold operating system."
+          ]
+        }
+      ]
+    },
+    "Charm,Ice,Love": {
+      "original": {
+        "name": "Cold Comfort",
+        "description": "Austere, yet loving."
+      },
+      "names": [
+        {
+          "name": "Cold Comfort",
+          "descriptions": [
+            "Austere, yet loving."
+          ]
+        }
+      ]
+    },
+    "Charm,Ice,Metal": {
+      "original": {
+        "name": "Frost Ambassador",
+        "description": "Peace talks at absolute zero."
+      },
+      "names": [
+        {
+          "name": "Frost Ambassador",
+          "descriptions": [
+            "Peace talks at absolute zero."
+          ]
+        }
+      ]
+    },
+    "Charm,Ice,Water": {
+      "original": {
+        "name": "Snow Globe",
+        "description": "Shake well. They will thank you."
+      },
+      "names": [
+        {
+          "name": "Snow Globe",
+          "descriptions": [
+            "Shake well. They will thank you."
+          ]
+        }
+      ]
+    },
+    "Charm,Ice,Wood": {
+      "original": {
+        "name": "Seed Vault Keeper",
+        "description": "You talk to the frozen ones."
+      },
+      "names": [
+        {
+          "name": "Seed Vault Keeper",
+          "descriptions": [
+            "You talk to the frozen ones."
+          ]
+        }
+      ]
+    },
+    "Charm,Lightning,Love": {
+      "original": {
+        "name": "Spark Therapist",
+        "description": "Tell me about your circuits."
+      },
+      "names": [
+        {
+          "name": "Spark Therapist",
+          "descriptions": [
+            "Tell me about your circuits."
+          ]
+        }
+      ]
+    },
+    "Charm,Lightning,Metal": {
+      "original": {
+        "name": "Drone Wrangler",
+        "description": "They come when you whistle."
+      },
+      "names": [
+        {
+          "name": "Drone Wrangler",
+          "descriptions": [
+            "They come when you whistle."
+          ]
+        }
+      ]
+    },
+    "Charm,Lightning,Water": {
+      "original": {
+        "name": "Electric Eel",
+        "description": "Shockingly likable."
+      },
+      "names": [
+        {
+          "name": "Electric Eel",
+          "descriptions": [
+            "Shockingly likable."
+          ]
+        }
+      ]
+    },
+    "Charm,Lightning,Wood": {
+      "original": {
+        "name": "Bio-Synth Bard",
+        "description": "The vines are dancing."
+      },
+      "names": [
+        {
+          "name": "Bio-Synth Bard",
+          "descriptions": [
+            "The vines are dancing."
+          ]
+        }
+      ]
+    },
+    "Charm,Love,Metal": {
+      "original": {
+        "name": "Companion Unit",
+        "description": "Programmed to care. Mostly."
+      },
+      "names": [
+        {
+          "name": "Companion Unit",
+          "descriptions": [
+            "Programmed to care. Mostly."
+          ]
+        }
+      ]
+    },
+    "Charm,Love,Water": {
+      "original": {
+        "name": "Mermaid",
+        "description": "YOU'RE A MERMAID!!"
+      },
+      "names": [
+        {
+          "name": "Mermaid",
+          "descriptions": [
+            "YOU'RE A MERMAID!!"
+          ]
+        }
+      ]
+    },
+    "Charm,Love,Wood": {
+      "original": {
+        "name": "Gaia Protocol",
+        "description": "All living things are your friends."
+      },
+      "names": [
+        {
+          "name": "Gaia Protocol",
+          "descriptions": [
+            "All living things are your friends."
+          ]
+        }
+      ]
+    },
+    "Charm,Metal,Water": {
+      "original": {
+        "name": "Submarine Captain",
+        "description": "The crew would follow you down."
+      },
+      "names": [
+        {
+          "name": "Submarine Captain",
+          "descriptions": [
+            "The crew would follow you down."
+          ]
+        }
+      ]
+    },
+    "Charm,Metal,Wood": {
+      "original": {
+        "name": "Mech Gardener",
+        "description": "You have a green thumb. It is steel."
+      },
+      "names": [
+        {
+          "name": "Mech Gardener",
+          "descriptions": [
+            "You have a green thumb. It is steel."
+          ]
+        }
+      ]
+    },
+    "Charm,Water,Wood": {
+      "original": {
+        "name": "Swamp Thing",
+        "description": "Strangely attractive."
+      },
+      "names": [
+        {
+          "name": "Swamp Thing",
+          "descriptions": [
+            "Strangely attractive."
+          ]
+        }
+      ]
+    },
+    "Death,Fire,Glass": {
+      "original": {
+        "name": "Dimensional Arsonist",
+        "description": "Hell has a jump gate."
+      },
+      "names": [
+        {
+          "name": "Dimensional Arsonist",
+          "descriptions": [
+            "Hell has a jump gate."
+          ]
+        }
+      ]
+    },
+    "Death,Fire,Ice": {
+      "original": {
+        "name": "Thermal Shock",
+        "description": "As lethal as a buzzsaw."
+      },
+      "names": [
+        {
+          "name": "Thermal Shock",
+          "descriptions": [
+            "As lethal as a buzzsaw."
+          ]
+        }
+      ]
+    },
+    "Death,Fire,Lightning": {
+      "original": {
+        "name": "Rogue AI",
+        "description": "You are morally ambiguous."
+      },
+      "names": [
+        {
+          "name": "Rogue AI",
+          "descriptions": [
+            "You are morally ambiguous."
+          ]
+        }
+      ]
+    },
+    "Death,Fire,Love": {
+      "original": {
+        "name": "Chaos Surgeon",
+        "description": "You kiss boo-boos as much as you cause them."
+      },
+      "names": [
+        {
+          "name": "Chaos Surgeon",
+          "descriptions": [
+            "You kiss boo-boos as much as you cause them."
+          ]
+        }
+      ]
+    },
+    "Death,Fire,Metal": {
+      "original": {
+        "name": "Cyborg Reaper",
+        "description": "Chivalry truly is obsolete."
+      },
+      "names": [
+        {
+          "name": "Cyborg Reaper",
+          "descriptions": [
+            "Chivalry truly is obsolete."
+          ]
+        }
+      ]
+    },
+    "Death,Fire,Water": {
+      "original": {
+        "name": "Boiling Point",
+        "description": "The tank was never safe."
+      },
+      "names": [
+        {
+          "name": "Boiling Point",
+          "descriptions": [
+            "The tank was never safe."
+          ]
+        }
+      ]
+    },
+    "Death,Fire,Wood": {
+      "original": {
+        "name": "Scorched Earther",
+        "description": "Nature's warranty is void."
+      },
+      "names": [
+        {
+          "name": "Scorched Earther",
+          "descriptions": [
+            "Nature's warranty is void."
+          ]
+        }
+      ]
+    },
+    "Death,Glass,Ice": {
+      "original": {
+        "name": "Cryo Necromancer",
+        "description": "Standard bastard."
+      },
+      "names": [
+        {
+          "name": "Cryo Necromancer",
+          "descriptions": [
+            "Standard bastard."
+          ]
+        }
+      ]
+    },
+    "Death,Glass,Lightning": {
+      "original": {
+        "name": "Blink Assassin",
+        "description": "You're ready for a fight, then you're not there."
+      },
+      "names": [
+        {
+          "name": "Blink Assassin",
+          "descriptions": [
+            "You're ready for a fight, then you're not there."
+          ]
+        }
+      ]
+    },
+    "Death,Glass,Love": {
+      "original": {
+        "name": "Psychopomp Unit",
+        "description": "You ferry data between life and death."
+      },
+      "names": [
+        {
+          "name": "Psychopomp Unit",
+          "descriptions": [
+            "You ferry data between life and death."
+          ]
+        }
+      ]
+    },
+    "Death,Glass,Metal": {
+      "original": {
+        "name": "Stasis Warden",
+        "description": "Nobody leaves the pod."
+      },
+      "names": [
+        {
+          "name": "Stasis Warden",
+          "descriptions": [
+            "Nobody leaves the pod."
+          ]
+        }
+      ]
+    },
+    "Death,Glass,Water": {
+      "original": {
+        "name": "Deep Diver",
+        "description": "Some things should stay down there."
+      },
+      "names": [
+        {
+          "name": "Deep Diver",
+          "descriptions": [
+            "Some things should stay down there."
+          ]
+        }
+      ]
+    },
+    "Death,Glass,Wood": {
+      "original": {
+        "name": "Xeno Stalker",
+        "description": "It moved through the vents."
+      },
+      "names": [
+        {
+          "name": "Xeno Stalker",
+          "descriptions": [
+            "It moved through the vents."
+          ]
+        }
+      ]
+    },
+    "Death,Ice,Lightning": {
+      "original": {
+        "name": "Derelict Captain",
+        "description": "Yar! In space!"
+      },
+      "names": [
+        {
+          "name": "Derelict Captain",
+          "descriptions": [
+            "Yar! In space!"
+          ]
+        }
+      ]
+    },
+    "Death,Ice,Love": {
+      "original": {
+        "name": "Cryo Mortician",
+        "description": "Skilled in healing and icy death."
+      },
+      "names": [
+        {
+          "name": "Cryo Mortician",
+          "descriptions": [
+            "Skilled in healing and icy death."
+          ]
+        }
+      ]
+    },
+    "Death,Ice,Metal": {
+      "original": {
+        "name": "Frozen Cyborg",
+        "description": "An icy, undead soldier."
+      },
+      "names": [
+        {
+          "name": "Frozen Cyborg",
+          "descriptions": [
+            "An icy, undead soldier."
+          ]
+        }
+      ]
+    },
+    "Death,Ice,Water": {
+      "original": {
+        "name": "Morgue Tech",
+        "description": "Keep it at four degrees."
+      },
+      "names": [
+        {
+          "name": "Morgue Tech",
+          "descriptions": [
+            "Keep it at four degrees."
+          ]
+        }
+      ]
+    },
+    "Death,Ice,Wood": {
+      "original": {
+        "name": "Permafrost Virus",
+        "description": "They call you the Thaw."
+      },
+      "names": [
+        {
+          "name": "Permafrost Virus",
+          "descriptions": [
+            "They call you the Thaw."
+          ]
+        }
+      ]
+    },
+    "Death,Lightning,Love": {
+      "original": {
+        "name": "Reanimator",
+        "description": "It's alive! Mostly."
+      },
+      "names": [
+        {
+          "name": "Reanimator",
+          "descriptions": [
+            "It's alive! Mostly."
+          ]
+        }
+      ]
+    },
+    "Death,Lightning,Metal": {
+      "original": {
+        "name": "Necro-Railgunner",
+        "description": "The name says it all."
+      },
+      "names": [
+        {
+          "name": "Necro-Railgunner",
+          "descriptions": [
+            "The name says it all."
+          ]
+        }
+      ]
+    },
+    "Death,Lightning,Water": {
+      "original": {
+        "name": "Kill Switch",
+        "description": "Do not touch the puddle."
+      },
+      "names": [
+        {
+          "name": "Kill Switch",
+          "descriptions": [
+            "Do not touch the puddle."
+          ]
+        }
+      ]
+    },
+    "Death,Lightning,Wood": {
+      "original": {
+        "name": "Mutant Avenger",
+        "description": "You have an origin story."
+      },
+      "names": [
+        {
+          "name": "Mutant Avenger",
+          "descriptions": [
+            "You have an origin story."
+          ]
+        }
+      ]
+    },
+    "Death,Love,Metal": {
+      "original": {
+        "name": "Fallen Peacekeeper",
+        "description": "No longer good."
+      },
+      "names": [
+        {
+          "name": "Fallen Peacekeeper",
+          "descriptions": [
+            "No longer good."
+          ]
+        }
+      ]
+    },
+    "Death,Love,Water": {
+      "original": {
+        "name": "Embalmer",
+        "description": "Fluids are your whole career."
+      },
+      "names": [
+        {
+          "name": "Embalmer",
+          "descriptions": [
+            "Fluids are your whole career."
+          ]
+        }
+      ]
+    },
+    "Death,Love,Wood": {
+      "original": {
+        "name": "Zombie Herbalist",
+        "description": "Rotting flesh hangs off of you."
+      },
+      "names": [
+        {
+          "name": "Zombie Herbalist",
+          "descriptions": [
+            "Rotting flesh hangs off of you."
+          ]
+        }
+      ]
+    },
+    "Death,Metal,Water": {
+      "original": {
+        "name": "Sunken Mech",
+        "description": "Still online down there."
+      },
+      "names": [
+        {
+          "name": "Sunken Mech",
+          "descriptions": [
+            "Still online down there."
+          ]
+        }
+      ]
+    },
+    "Death,Metal,Wood": {
+      "original": {
+        "name": "Exclusion Zone Warden",
+        "description": "You protect the land you were irradiated on."
+      },
+      "names": [
+        {
+          "name": "Exclusion Zone Warden",
+          "descriptions": [
+            "You protect the land you were irradiated on."
+          ]
+        }
+      ]
+    },
+    "Death,Water,Wood": {
+      "original": {
+        "name": "Bog Body",
+        "description": "Preserved, and annoyed."
+      },
+      "names": [
+        {
+          "name": "Bog Body",
+          "descriptions": [
+            "Preserved, and annoyed."
+          ]
+        }
+      ]
+    },
+    "Fire,Glass,Ice": {
+      "original": {
+        "name": "Warp Physicist",
+        "description": "You're a standard physicist. Pew pew."
+      },
+      "names": [
+        {
+          "name": "Warp Physicist",
+          "descriptions": [
+            "You're a standard physicist. Pew pew."
+          ]
+        }
+      ]
+    },
+    "Fire,Glass,Lightning": {
+      "original": {
+        "name": "Plasma Gunner",
+        "description": "You're a standard gunner. Pew pew."
+      },
+      "names": [
+        {
+          "name": "Plasma Gunner",
+          "descriptions": [
+            "You're a standard gunner. Pew pew."
+          ]
+        }
+      ]
+    },
+    "Fire,Glass,Love": {
+      "original": {
+        "name": "Pyro Medic",
+        "description": "Heals and fireballs."
+      },
+      "names": [
+        {
+          "name": "Pyro Medic",
+          "descriptions": [
+            "Heals and fireballs."
+          ]
+        }
+      ]
+    },
+    "Fire,Glass,Metal": {
+      "original": {
+        "name": "Orbital Striker",
+        "description": "You are a seraph with a targeting computer."
+      },
+      "names": [
+        {
+          "name": "Orbital Striker",
+          "descriptions": [
+            "You are a seraph with a targeting computer."
+          ]
+        }
+      ]
+    },
+    "Fire,Glass,Water": {
+      "original": {
+        "name": "Geyser",
+        "description": "Up from nowhere, and scalding."
+      },
+      "names": [
+        {
+          "name": "Geyser",
+          "descriptions": [
+            "Up from nowhere, and scalding."
+          ]
+        }
+      ]
+    },
+    "Fire,Glass,Wood": {
+      "original": {
+        "name": "Rogue Terraformer",
+        "description": "A liminal fighter."
+      },
+      "names": [
+        {
+          "name": "Rogue Terraformer",
+          "descriptions": [
+            "A liminal fighter."
+          ]
+        }
+      ]
+    },
+    "Fire,Ice,Lightning": {
+      "original": {
+        "name": "Elementalist Prime",
+        "description": "They said no suit could handle them all."
+      },
+      "names": [
+        {
+          "name": "Elementalist Prime",
+          "descriptions": [
+            "They said no suit could handle them all."
+          ]
+        }
+      ]
+    },
+    "Fire,Ice,Love": {
+      "original": {
+        "name": "Thermokinetic",
+        "description": "You're a standard thermokinetic."
+      },
+      "names": [
+        {
+          "name": "Thermokinetic",
+          "descriptions": [
+            "You're a standard thermokinetic."
+          ]
+        }
+      ]
+    },
+    "Fire,Ice,Metal": {
+      "original": {
+        "name": "Weapons Enchanter",
+        "description": "Reinforced barricades and elemental rounds."
+      },
+      "names": [
+        {
+          "name": "Weapons Enchanter",
+          "descriptions": [
+            "Reinforced barricades and elemental rounds."
+          ]
+        }
+      ]
+    },
+    "Fire,Ice,Water": {
+      "original": {
+        "name": "Climate Control",
+        "description": "Nobody is ever comfortable."
+      },
+      "names": [
+        {
+          "name": "Climate Control",
+          "descriptions": [
+            "Nobody is ever comfortable."
+          ]
+        }
+      ]
+    },
+    "Fire,Ice,Wood": {
+      "original": {
+        "name": "Wasteland Cook",
+        "description": "Scary lady. You make a mean stew."
+      },
+      "names": [
+        {
+          "name": "Wasteland Cook",
+          "descriptions": [
+            "Scary lady. You make a mean stew."
+          ]
+        }
+      ]
+    },
+    "Fire,Lightning,Love": {
+      "original": {
+        "name": "Cadet Pyrokinetic",
+        "description": "You're new."
+      },
+      "names": [
+        {
+          "name": "Cadet Pyrokinetic",
+          "descriptions": [
+            "You're new."
+          ]
+        }
+      ]
+    },
+    "Fire,Lightning,Metal": {
+      "original": {
+        "name": "Battle Mech",
+        "description": "You were made for battle."
+      },
+      "names": [
+        {
+          "name": "Battle Mech",
+          "descriptions": [
+            "You were made for battle."
+          ]
+        }
+      ]
+    },
+    "Fire,Lightning,Water": {
+      "original": {
+        "name": "Stormfront",
+        "description": "The forecast is everything."
+      },
+      "names": [
+        {
+          "name": "Stormfront",
+          "descriptions": [
+            "The forecast is everything."
+          ]
+        }
+      ]
+    },
+    "Fire,Lightning,Wood": {
+      "original": {
+        "name": "Saboteur",
+        "description": "Tricky."
+      },
+      "names": [
+        {
+          "name": "Saboteur",
+          "descriptions": [
+            "Tricky."
+          ]
+        }
+      ]
+    },
+    "Fire,Love,Metal": {
+      "original": {
+        "name": "Crusader Unit",
+        "description": "For the Directorate!"
+      },
+      "names": [
+        {
+          "name": "Crusader Unit",
+          "descriptions": [
+            "For the Directorate!"
+          ]
+        }
+      ]
+    },
+    "Fire,Love,Water": {
+      "original": {
+        "name": "Steam Therapist",
+        "description": "Breathe in. Now scream."
+      },
+      "names": [
+        {
+          "name": "Steam Therapist",
+          "descriptions": [
+            "Breathe in. Now scream."
+          ]
+        }
+      ]
+    },
+    "Fire,Love,Wood": {
+      "original": {
+        "name": "Burn Ecologist",
+        "description": "A controlled burn heals the land."
+      },
+      "names": [
+        {
+          "name": "Burn Ecologist",
+          "descriptions": [
+            "A controlled burn heals the land."
+          ]
+        }
+      ]
+    },
+    "Fire,Metal,Water": {
+      "original": {
+        "name": "Foundry Master",
+        "description": "Quench and repeat."
+      },
+      "names": [
+        {
+          "name": "Foundry Master",
+          "descriptions": [
+            "Quench and repeat."
+          ]
+        }
+      ]
+    },
+    "Fire,Metal,Wood": {
+      "original": {
+        "name": "Forge Tech",
+        "description": "The battlefield: your glorious fabrication!"
+      },
+      "names": [
+        {
+          "name": "Forge Tech",
+          "descriptions": [
+            "The battlefield: your glorious fabrication!"
+          ]
+        }
+      ]
+    },
+    "Fire,Water,Wood": {
+      "original": {
+        "name": "Bio-Diesel",
+        "description": "Sustainable violence."
+      },
+      "names": [
+        {
+          "name": "Bio-Diesel",
+          "descriptions": [
+            "Sustainable violence."
+          ]
+        }
+      ]
+    },
+    "Glass,Ice,Lightning": {
+      "original": {
+        "name": "Weather Satellite",
+        "description": "Dangerous at all altitudes."
+      },
+      "names": [
+        {
+          "name": "Weather Satellite",
+          "descriptions": [
+            "Dangerous at all altitudes."
+          ]
+        }
+      ]
+    },
+    "Glass,Ice,Love": {
+      "original": {
+        "name": "Interloper",
+        "description": "Never in one sector long."
+      },
+      "names": [
+        {
+          "name": "Interloper",
+          "descriptions": [
+            "Never in one sector long."
+          ]
+        }
+      ]
+    },
+    "Glass,Ice,Metal": {
+      "original": {
+        "name": "Arctic Scout",
+        "description": "Even monsters follow you."
+      },
+      "names": [
+        {
+          "name": "Arctic Scout",
+          "descriptions": [
+            "Even monsters follow you."
+          ]
+        }
+      ]
+    },
+    "Glass,Ice,Water": {
+      "original": {
+        "name": "Glacier Calver",
+        "description": "A big piece of you just fell off."
+      },
+      "names": [
+        {
+          "name": "Glacier Calver",
+          "descriptions": [
+            "A big piece of you just fell off."
+          ]
+        }
+      ]
+    },
+    "Glass,Ice,Wood": {
+      "original": {
+        "name": "Tundra Trapper",
+        "description": "Master of setting traps and running away."
+      },
+      "names": [
+        {
+          "name": "Tundra Trapper",
+          "descriptions": [
+            "Master of setting traps and running away."
+          ]
+        }
+      ]
+    },
+    "Glass,Lightning,Love": {
+      "original": {
+        "name": "Dropship Medic",
+        "description": "Shield-maiden of the orbitals! I salute you!"
+      },
+      "names": [
+        {
+          "name": "Dropship Medic",
+          "descriptions": [
+            "Shield-maiden of the orbitals! I salute you!"
+          ]
+        }
+      ]
+    },
+    "Glass,Lightning,Metal": {
+      "original": {
+        "name": "Phalanx Unit",
+        "description": "No one is getting through your defense."
+      },
+      "names": [
+        {
+          "name": "Phalanx Unit",
+          "descriptions": [
+            "No one is getting through your defense."
+          ]
+        }
+      ]
+    },
+    "Glass,Lightning,Water": {
+      "original": {
+        "name": "Arc Jumper",
+        "description": "You travel by puddle."
+      },
+      "names": [
+        {
+          "name": "Arc Jumper",
+          "descriptions": [
+            "You travel by puddle."
+          ]
+        }
+      ]
+    },
+    "Glass,Lightning,Wood": {
+      "original": {
+        "name": "Wormhole Hiker",
+        "description": "You get around."
+      },
+      "names": [
+        {
+          "name": "Wormhole Hiker",
+          "descriptions": [
+            "You get around."
+          ]
+        }
+      ]
+    },
+    "Glass,Love,Metal": {
+      "original": {
+        "name": "Combat Medic",
+        "description": "Full defensive build."
+      },
+      "names": [
+        {
+          "name": "Combat Medic",
+          "descriptions": [
+            "Full defensive build."
+          ]
+        }
+      ]
+    },
+    "Glass,Love,Water": {
+      "original": {
+        "name": "Blood Courier",
+        "description": "Fresh plasma, wherever you are."
+      },
+      "names": [
+        {
+          "name": "Blood Courier",
+          "descriptions": [
+            "Fresh plasma, wherever you are."
+          ]
+        }
+      ]
+    },
+    "Glass,Love,Wood": {
+      "original": {
+        "name": "Intern",
+        "description": "You're an intern. I doubt you'll win."
+      },
+      "names": [
+        {
+          "name": "Intern",
+          "descriptions": [
+            "You're an intern. I doubt you'll win."
+          ]
+        }
+      ]
+    },
+    "Glass,Metal,Water": {
+      "original": {
+        "name": "Deep Sea Salvager",
+        "description": "Finders keepers."
+      },
+      "names": [
+        {
+          "name": "Deep Sea Salvager",
+          "descriptions": [
+            "Finders keepers."
+          ]
+        }
+      ]
+    },
+    "Glass,Metal,Wood": {
+      "original": {
+        "name": "Space Ranger",
+        "description": "To the frontier, with snacks."
+      },
+      "names": [
+        {
+          "name": "Space Ranger",
+          "descriptions": [
+            "To the frontier, with snacks."
+          ]
+        }
+      ]
+    },
+    "Glass,Water,Wood": {
+      "original": {
+        "name": "Rainforest Jumper",
+        "description": "You smell like petrichor."
+      },
+      "names": [
+        {
+          "name": "Rainforest Jumper",
+          "descriptions": [
+            "You smell like petrichor."
+          ]
+        }
+      ]
+    },
+    "Ice,Lightning,Love": {
+      "original": {
+        "name": "Cold Fusion Priest",
+        "description": "Austere, yet radiant."
+      },
+      "names": [
+        {
+          "name": "Cold Fusion Priest",
+          "descriptions": [
+            "Austere, yet radiant."
+          ]
+        }
+      ]
+    },
+    "Ice,Lightning,Metal": {
+      "original": {
+        "name": "Stormcaller",
+        "description": "You call the storms, but do they pick up?"
+      },
+      "names": [
+        {
+          "name": "Stormcaller",
+          "descriptions": [
+            "You call the storms, but do they pick up?"
+          ]
+        }
+      ]
+    },
+    "Ice,Lightning,Water": {
+      "original": {
+        "name": "Hailstorm",
+        "description": "Everything, all at once, from above."
+      },
+      "names": [
+        {
+          "name": "Hailstorm",
+          "descriptions": [
+            "Everything, all at once, from above."
+          ]
+        }
+      ]
+    },
+    "Ice,Lightning,Wood": {
+      "original": {
+        "name": "Vengeful Biologist",
+        "description": "You are nature's patch notes."
+      },
+      "names": [
+        {
+          "name": "Vengeful Biologist",
+          "descriptions": [
+            "You are nature's patch notes."
+          ]
+        }
+      ]
+    },
+    "Ice,Love,Metal": {
+      "original": {
+        "name": "Polar Settler",
+        "description": "Icy endeavours across the outer colonies."
+      },
+      "names": [
+        {
+          "name": "Polar Settler",
+          "descriptions": [
+            "Icy endeavours across the outer colonies."
+          ]
+        }
+      ]
+    },
+    "Ice,Love,Water": {
+      "original": {
+        "name": "Ice Pack",
+        "description": "Twenty minutes on, twenty minutes off."
+      },
+      "names": [
+        {
+          "name": "Ice Pack",
+          "descriptions": [
+            "Twenty minutes on, twenty minutes off."
+          ]
+        }
+      ]
+    },
+    "Ice,Love,Wood": {
+      "original": {
+        "name": "Cryo Botanist",
+        "description": "Everything keeps, if you keep it cold."
+      },
+      "names": [
+        {
+          "name": "Cryo Botanist",
+          "descriptions": [
+            "Everything keeps, if you keep it cold."
+          ]
+        }
+      ]
+    },
+    "Ice,Metal,Water": {
+      "original": {
+        "name": "Icebreaker",
+        "description": "You have a very large front."
+      },
+      "names": [
+        {
+          "name": "Icebreaker",
+          "descriptions": [
+            "You have a very large front."
+          ]
+        }
+      ]
+    },
+    "Ice,Metal,Wood": {
+      "original": {
+        "name": "Tundra Ranger",
+        "description": "A ranger, only colder."
+      },
+      "names": [
+        {
+          "name": "Tundra Ranger",
+          "descriptions": [
+            "A ranger, only colder."
+          ]
+        }
+      ]
+    },
+    "Ice,Water,Wood": {
+      "original": {
+        "name": "Glacial Moss",
+        "description": "Slow, patient, everywhere."
+      },
+      "names": [
+        {
+          "name": "Glacial Moss",
+          "descriptions": [
+            "Slow, patient, everywhere."
+          ]
+        }
+      ]
+    },
+    "Lightning,Love,Metal": {
+      "original": {
+        "name": "Railgun Medic",
+        "description": "Not like the other medics."
+      },
+      "names": [
+        {
+          "name": "Railgun Medic",
+          "descriptions": [
+            "Not like the other medics."
+          ]
+        }
+      ]
+    },
+    "Lightning,Love,Water": {
+      "original": {
+        "name": "Electrolyte",
+        "description": "You restore what plants crave."
+      },
+      "names": [
+        {
+          "name": "Electrolyte",
+          "descriptions": [
+            "You restore what plants crave."
+          ]
+        }
+      ]
+    },
+    "Lightning,Love,Wood": {
+      "original": {
+        "name": "Nurturing Bioengineer",
+        "description": "Yay!"
+      },
+      "names": [
+        {
+          "name": "Nurturing Bioengineer",
+          "descriptions": [
+            "Yay!"
+          ]
+        }
+      ]
+    },
+    "Lightning,Metal,Water": {
+      "original": {
+        "name": "Tesla Diver",
+        "description": "Do not try this at home."
+      },
+      "names": [
+        {
+          "name": "Tesla Diver",
+          "descriptions": [
+            "Do not try this at home."
+          ]
+        }
+      ]
+    },
+    "Lightning,Metal,Wood": {
+      "original": {
+        "name": "Urban Ranger",
+        "description": "Urban camo."
+      },
+      "names": [
+        {
+          "name": "Urban Ranger",
+          "descriptions": [
+            "Urban camo."
+          ]
+        }
+      ]
+    },
+    "Lightning,Water,Wood": {
+      "original": {
+        "name": "Monsoon Engineer",
+        "description": "The jungle has a power grid now."
+      },
+      "names": [
+        {
+          "name": "Monsoon Engineer",
+          "descriptions": [
+            "The jungle has a power grid now."
+          ]
+        }
+      ]
+    },
+    "Love,Metal,Water": {
+      "original": {
+        "name": "Hospital Ship",
+        "description": "All are welcome. Wipe your feet."
+      },
+      "names": [
+        {
+          "name": "Hospital Ship",
+          "descriptions": [
+            "All are welcome. Wipe your feet."
+          ]
+        }
+      ]
+    },
+    "Love,Metal,Wood": {
+      "original": {
+        "name": "Exo-Ranger",
+        "description": "Strider? The exo-ranger?"
+      },
+      "names": [
+        {
+          "name": "Exo-Ranger",
+          "descriptions": [
+            "Strider? The exo-ranger?"
+          ]
+        }
+      ]
+    },
+    "Love,Water,Wood": {
+      "original": {
+        "name": "Ecosystem",
+        "description": "Things just get better around you."
+      },
+      "names": [
+        {
+          "name": "Ecosystem",
+          "descriptions": [
+            "Things just get better around you."
+          ]
+        }
+      ]
+    },
+    "Metal,Water,Wood": {
+      "original": {
+        "name": "Mangrove Mech",
+        "description": "Rooted, rusted, unbothered."
+      },
+      "names": [
+        {
+          "name": "Mangrove Mech",
+          "descriptions": [
+            "Rooted, rusted, unbothered."
+          ]
+        }
+      ]
+    }
+  }
+}
