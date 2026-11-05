@@ -114,18 +114,78 @@ const RollingBar = styled.div`
   animation: ${roll} ${TV_LOOK.rollSeconds}s linear infinite;
 `;
 
-const PowerLight = styled.div`
-  position: absolute;
-  right: 1.6cqw;
-  bottom: -1.7cqw;
-  z-index: 2147483002;
-  width: 0.5cqw;
-  height: 0.5cqw;
-  border-radius: 50%;
-  background: #ff3b30;
-  box-shadow: 0 0 0.5cqw #ff3b30;
-  pointer-events: none;
+// the bottom right of the casing: a little pixel-art emergency light. a red see-through dome on a base, with a lamp inside
+// whose light turns: a bright stripe sweeps across the dome, and its beam flashes out with each pulse of the red border.
+// off (no siren), it sits dark.
+const SIREN_LIGHT = { seconds: 1.1 }; // the same beat as the border's pulse
+
+const sirenSweep = keyframes`
+  from { transform: translateX(0); }
+  to { transform: translateX(6px); }
 `;
+
+const sirenBeam = keyframes`
+  0%, 100% { opacity: 0.15; transform: translate(-50%, -50%) scale(0.6); }
+  50% { opacity: 0.9; transform: translate(-50%, -50%) scale(1.15); }
+`;
+
+const SirenBox = styled.div`
+  position: absolute;
+  right: 1.2cqw;
+  bottom: -2.25cqw;
+  z-index: 2147483002;
+  width: 1.6cqw;
+  height: 2cqw;
+  pointer-events: none;
+  & svg {
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+    shape-rendering: crispEdges;
+    overflow: visible;
+  }
+  & .sweep {
+    animation: ${sirenSweep} ${SIREN_LIGHT.seconds}s steps(6) infinite;
+  }
+`;
+
+// the beam: a soft red flash round the dome, as the turning light faces out
+const SirenBeam = styled.div`
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  width: 4.5cqw;
+  height: 4.5cqw;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 60, 60, 0.75), rgba(255, 30, 30, 0.25) 40%, transparent 70%);
+  animation: ${sirenBeam} ${SIREN_LIGHT.seconds}s ease-in-out infinite;
+`;
+
+const SirenLight = ({ isOn }) => (
+  <SirenBox>
+    {isOn && <SirenBeam />}
+    <svg viewBox="0 0 8 10">
+      <defs>
+        <clipPath id="sirenDome"><rect x="1" y="2" width="6" height="6" /><rect x="2" y="1" width="4" height="1" /></clipPath>
+      </defs>
+      {/* the dome: see-through red, darker when off */}
+      <rect x="2" y="1" width="4" height="1" fill={isOn ? "rgba(255, 70, 60, 0.75)" : "rgba(120, 20, 24, 0.7)"} />
+      <rect x="1" y="2" width="6" height="6" fill={isOn ? "rgba(255, 40, 40, 0.55)" : "rgba(90, 14, 18, 0.75)"} />
+      <rect x="1" y="2" width="1" height="6" fill="rgba(0, 0, 0, 0.25)" />
+      {/* the lamp, and its light turning: a bright stripe stepping across the dome */}
+      <rect x="3" y="4" width="2" height="3" fill={isOn ? "#ffe2d6" : "#5a1a1c"} />
+      {isOn && (
+        <g clipPath="url(#sirenDome)">
+          <rect className="sweep" x="-1" y="1" width="2" height="7" fill="rgba(255, 235, 220, 0.85)" />
+        </g>
+      )}
+      {/* a glint on the dome, and the base it stands on */}
+      <rect x="5" y="2" width="1" height="2" fill="rgba(255, 255, 255, 0.45)" />
+      <rect x="0" y="8" width="8" height="2" fill="#2b2b31" />
+      <rect x="0" y="8" width="8" height="1" fill="#55555d" />
+    </svg>
+  </SirenBox>
+);
 
 // "Battle!": where the screen meets the casing, a red glow pulses like a siren
 const sirenPulse = keyframes`
@@ -314,7 +374,7 @@ export const PlayWindow = ({ playWindow, setPlayWindow, isAdjusting, isOpen, isC
           <ScreenCorners />
           <TvCasing />
           <BrandName>KAIJU-VISION</BrandName>
-          <PowerLight />
+          <SirenLight isOn={isSiren} />
         </>
       )}
       {buttons && <BezelButtons style={isOpen ? { top: "1cqw", left: "1cqw" } : undefined}>{buttons}</BezelButtons>}
