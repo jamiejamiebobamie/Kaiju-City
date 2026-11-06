@@ -301,6 +301,17 @@
         }
       ]
     },
+    "aquarium.toCreatures": {
+      "label": "Aquarium: up on the walkway, to the sea creatures",
+      "lines": [
+        {
+          "speaker": "Aquarium Worker",
+          "text": "Attack the invaders, my beauties!",
+          "id": "aquarium.toCreatures.0",
+          "note": "jamie"
+        }
+      ]
+    },
     "rooftop.afterTouch": {
       "label": "Rooftop: after the touch",
       "lines": [

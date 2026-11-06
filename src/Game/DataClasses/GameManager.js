@@ -48,7 +48,11 @@ const GIANT_SHAKE_MS = 450; // a stomp shakes the scene this long
 // the Aquarium's scream (startShatter), in milliseconds
 export const SHATTER_SCREAM = {
   screamMs: 700, // after her word, the scream
-  wideMs: 3200 // the whole hall as the glass bursts
+  panMs: 700, // the camera's move to each panel, and back to her
+  panelMs: 1600, // on each panel as it breaks and its water pours out
+  panelZoomShare: 0.7, // a panel's shot, as a share of the extreme zoom
+  creatureEvery: 2, // every second panel lets a sea creature out as it breaks
+  portalMs: 700 // the portal opening, her going through, and it closing
 };
 
 // the ghost boss's scream (startGhostScream), in milliseconds
@@ -781,40 +785,89 @@ export class GameManager {
     // the floor the water covers
     getIsFloodTile = tile => this.gameBoardManager.getCharXAndYFromTileIndex(tile).y >= this.level.flood.top;
 
-    // "Stop!!!": the battle holds, the scream breaks the glass, and she is up on the top floor
+    /*
+        "Stop!!!": the battle holds. Still holding, the camera goes to each panel of glass in turn: it breaks, its water
+        pours out, and now and then a sea creature with it. Back on her: a portal, she is up on the walkway, it closes,
+        and she calls to her creatures. In the steps marked 'isLive', the water and the creatures move (no one is hurt).
+    */
     startShatter() {
         this.isShatterPending = false;
         const rival = this.rivalPiece;
         const rowPx = this.getGhostRowPx();
-        const { name, text } = getDialogueLine(this.level.aquariumFlood.screamScene);
-        const onHer = { point: { x: rival.charLocation.x, y: rival.charLocation.y - CUTSCENE.shotHeadRows * rowPx * 0.5 }, zoomScale: PENINSULA.cameraZoom * CUTSCENE.outcomeZoomScale, isPeninsulaSized: true, panMs: CUTSCENE.outcomePullMs };
+        const { panels, topSpot, screamScene, creaturesScene } = this.level.aquariumFlood;
+        const scream = getDialogueLine(screamScene);
+        const toCreatures = getDialogueLine(creaturesScene);
+        const extreme = { zoomScale: PENINSULA.cameraZoom * CUTSCENE.outcomeZoomScale, isPeninsulaSized: true };
+        const onHer = () => ({ point: { x: rival.charLocation.x, y: rival.charLocation.y - CUTSCENE.shotHeadRows * rowPx * 0.5 }, ...extreme, panMs: SHATTER_SCREAM.panMs });
+        const herShot = onHer();
+        const backOnHer = onHer();
+        const topShot = {}; // on her up on the walkway: filled in once she is there
+        const topTile = this.gameBoardManager.getClosestWalkableTileToLocation(topSpot);
+        this.startAquariumFlood();
+        const panelSteps = panels.flatMap((panel, k) => {
+            const shot = { point: panel.focus, zoomScale: extreme.zoomScale * SHATTER_SCREAM.panelZoomShare, isPeninsulaSized: true, panMs: SHATTER_SCREAM.panMs };
+            return [
+                { shot, ms: SHATTER_SCREAM.panMs, isLive: true },
+                { shot, ms: SHATTER_SCREAM.panelMs, isLive: true, phase: panel.phase, onStart: () => this.breakPanel(panel, k % SHATTER_SCREAM.creatureEvery == 0) }
+            ];
+        });
         this.startCutscene([
-            { shot: onHer, ms: CUTSCENE.outcomePullMs },
-            { shot: onHer, ms: getSpeechMs(text) + SHATTER_SCREAM.screamMs, speech: { ...this.getSpeechOver(rival, name, text), isShout: true } },
-            { shot: { isWide: true }, ms: SHATTER_SCREAM.wideMs, phase: this.level.flood.phase, onStart: () => this.startAquariumFlood() }
+            { shot: herShot, ms: CUTSCENE.outcomePullMs },
+            { shot: herShot, ms: getSpeechMs(scream.text) + SHATTER_SCREAM.screamMs, speech: { ...this.getSpeechOver(rival, scream.name, scream.text), isShout: true } },
+            ...panelSteps,
+            // the whole hall darkens, and the camera is back on her
+            { shot: backOnHer, ms: SHATTER_SCREAM.panMs, isLive: true, phase: this.level.flood.phase },
+            { shot: backOnHer, ms: SHATTER_SCREAM.portalMs, isLive: true, onStart: () => this.gameBoardManager.addWormhole(rival.getTileIndex(), topTile, this.accTime, Infinity) },
+            { shot: topShot, ms: SHATTER_SCREAM.portalMs, isLive: true, onStart: () => {
+                rival.stopMoving();
+                rival.initCharLocation(true, topTile);
+                rival.isTeleported = !rival.isTeleported;
+                rival.allowedTile = this.getIsTopFloor;
+                Object.assign(topShot, onHer());
+            } },
+            { shot: topShot, ms: SHATTER_SCREAM.portalMs, isLive: true, onStart: () => this.gameBoardManager.closeWormholes() },
+            { shot: topShot, ms: getSpeechMs(toCreatures.text), isLive: true, speech: () => ({ ...this.getSpeechOver(rival, toCreatures.name, toCreatures.text), isShout: true }) },
+            { shot: topShot, ms: 0, onStart: () => { this.nextMermaidHealAt = this.accTime + AQUARIUM_FLOOD.healEveryMs; } }
         ]);
+    }
+
+    // a panel breaks: its water pours from here on, and maybe a sea creature comes out with it
+    breakPanel(panel, isCreature) {
+        const flood = this.aquariumFlood;
+        if (!flood) return;
+        const source = this.getClosestFloodTile(panel.pour);
+        if (!source) return;
+        flood.sources.push(source);
+        if (isCreature) {
+            const icons = Object.keys(AQUARIUM_FLOOD.ghostIcons);
+            const icon = icons[Math.floor(Math.random() * icons.length)];
+            this.spawnSeaGhost({ source, icon, color: AQUARIUM_FLOOD.ghostIcons[icon] });
+        }
+    }
+
+    getClosestFloodTile(spot) {
+        const board = this.gameBoardManager;
+        return board.walkableTiles.filter(this.getIsFloodTile).reduce((closest, tile) => {
+            const a = board.getCharXAndYFromTileIndex(tile);
+            const b = closest && board.getCharXAndYFromTileIndex(closest);
+            return !closest || Math.hypot(a.x - spot.x, a.y - spot.y) < Math.hypot(b.x - spot.x, b.y - spot.y) ? tile : closest;
+        }, undefined);
+    }
+
+    // in a cutscene that lets the board move ('isLive'): the water pours and the creatures swim, and no one is hurt
+    getIsLiveCutscene() {
+        const step = this.cutscene && this.cutscene.steps[this.cutscene.index];
+        return !!step && !!step.isLive;
     }
 
     startAquariumFlood() {
         const rival = this.rivalPiece;
         const board = this.gameBoardManager;
-        const { tankSpots, topSpot } = this.level.aquariumFlood;
-        // she is up on the top floor, out of the water's reach, and heals there
-        rival.stopMoving();
-        rival.initCharLocation(true, board.getClosestWalkableTileToLocation(topSpot));
-        rival.allowedTile = this.getIsTopFloor;
         rival.walkToTile = undefined;
-        this.nextMermaidHealAt = this.accTime + AQUARIUM_FLOOD.healEveryMs;
+        this.nextMermaidHealAt = Infinity; // she heals once she is up on the walkway
         const { grid } = this.level;
-        const floodTiles = board.walkableTiles.filter(this.getIsFloodTile);
-        const getClosestFloodTile = spot => floodTiles.reduce((closest, tile) => {
-            const a = board.getCharXAndYFromTileIndex(tile);
-            const b = closest && board.getCharXAndYFromTileIndex(closest);
-            return !closest || Math.hypot(a.x - spot.x, a.y - spot.y) < Math.hypot(b.x - spot.x, b.y - spot.y) ? tile : closest;
-        }, undefined);
-        const sources = tankSpots.map(getClosestFloodTile).filter(Boolean);
         this.aquariumFlood = new AquariumFlood({
-            sources,
+            sources: [], // each panel pours once it breaks (breakPanel)
             rowPx: grid.rowStep * grid.scale,
             board: {
                 getSpot: board.getCharXAndYFromTileIndex,
@@ -835,22 +888,7 @@ export class GameManager {
         const flood = this.aquariumFlood;
         const rival = this.rivalPiece;
         const team = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex()).filter(piece => !piece.isDead && piece.isOnTiles);
-        const spawns = flood.step(GAME_TICK.pieceMs);
-        this.syncFloodStatuses();
-        // a sea creature out of a broken tank: Haunt's ghost on the tiles, after the closest of the team
-        const { isSeaGhost } = this.settingsManager.getAbilityAndTileStatusData();
-        spawns.forEach(({ source, icon, color }) => {
-            const target = team.reduce((closest, piece) => !closest || this.gameBoardManager.getPathFromTileToTile({ fromTile: source, toTile: piece.getTileIndex() }).length < this.gameBoardManager.getPathFromTileToTile({ fromTile: source, toTile: closest.getTileIndex() }).length ? piece : closest, undefined);
-            if (!target) return;
-            const [, dirs] = this.gameBoardManager.getNumAdjacentTilesInDirectionFromTileToTile({ fromTileIndex: source, toTileIndex: target.getTileIndex() });
-            const tile = this.gameBoardManager.tiles[source.i][source.j];
-            if (!tile.getCanApplyStatus(isSeaGhost)) return;
-            tile.updateTileStatus({
-                updateKey: this.accTime, tileStatus: isSeaGhost, currCount: isSeaGhost.range, dirs: dirs.length ? [dirs[0]] : ['up'],
-                teamIndex: rival.teamIndex, targetIndex: target.pieceIndex,
-                cast: { ...NO_CAST, casterIndex: rival.pieceIndex, seaIcon: icon, seaColor: color }
-            });
-        });
+        this.stepFloodWater();
         // wading: a step slower for each touch of the water, up to three, each wearing off after a second
         const { stackMs, everyMs, maxStacks } = AQUARIUM_FLOOD.slow;
         team.forEach(piece => {
@@ -874,6 +912,32 @@ export class GameManager {
             rival.isUnhurtable = false;
             if (!rival.isDead) rival.walkToTile = this.gameBoardManager.getClosestWalkableTileToLocation(this.level.aquariumFlood.groundSpot);
         }
+    }
+
+    // the water pours and flows, and the creatures come out of the tanks
+    stepFloodWater() {
+        const spawns = this.aquariumFlood.step(GAME_TICK.pieceMs);
+        this.syncFloodStatuses();
+        spawns.forEach(spawn => this.spawnSeaGhost(spawn));
+    }
+
+    // a sea creature out of a broken tank: Haunt's ghost on the tiles, after the closest of the team
+    spawnSeaGhost({ source, icon, color }) {
+        const rival = this.rivalPiece;
+        const board = this.gameBoardManager;
+        const team = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex()).filter(piece => !piece.isDead && piece.isOnTiles);
+        const getSteps = piece => board.getPathFromTileToTile({ fromTile: source, toTile: piece.getTileIndex() }).length;
+        const target = team.reduce((closest, piece) => !closest || getSteps(piece) < getSteps(closest) ? piece : closest, undefined);
+        if (!target) return;
+        const { isSeaGhost } = this.settingsManager.getAbilityAndTileStatusData();
+        const [, dirs] = board.getNumAdjacentTilesInDirectionFromTileToTile({ fromTileIndex: source, toTileIndex: target.getTileIndex() });
+        const tile = board.tiles[source.i][source.j];
+        if (!tile.getCanApplyStatus(isSeaGhost)) return;
+        tile.updateTileStatus({
+            updateKey: this.accTime, tileStatus: isSeaGhost, currCount: isSeaGhost.range, dirs: dirs.length ? [dirs[0]] : ['up'],
+            teamIndex: rival.teamIndex, targetIndex: target.pieceIndex,
+            cast: { ...NO_CAST, casterIndex: rival.pieceIndex, seaIcon: icon, seaColor: color }
+        });
     }
 
     // the flood's water, onto the board as the lowest status of all: where a tile has anything else, the water isn't put there
@@ -975,7 +1039,7 @@ export class GameManager {
         const board = this.gameBoardManager;
         // the powers in play are gone with the flash
         board.getTilesInFlatArray().forEach(tile => tile.clearTileStatus());
-        board.wormholes = [];
+        board.closeWormholes();
         const besideCols = team.length > 1 ? GHOST_SCREAM.besideCols : 0;
         const taken = new Set();
         const place = (piece, spot) => {
@@ -1481,6 +1545,7 @@ export class GameManager {
             this.ghostRing.stepForming(GAME_TICK.pieceMs);
             this.syncPhaseGhostTiles();
         }
+        if (this.aquariumFlood && this.getIsLiveCutscene()) this.stepFloodWater();
         const step = cutscene.steps[cutscene.index];
         if (step.arrivals) {
             step.arrivals = step.arrivals.filter(({ piece }) => !piece.stepArrival());
@@ -2168,8 +2233,9 @@ export class GameManager {
     }
 
     stepTiles() {
-        if (this.isPaused || this.isEditingTiles || this.cutscene || this.wideShotMs > 0 || this.getGameResult() !== null) return;
+        if (this.isPaused || this.isEditingTiles || (this.cutscene && !this.getIsLiveCutscene()) || this.wideShotMs > 0 || this.getGameResult() !== null) return;
         this.gameBoardManager.updateTileState(this.accTime);
+        if (this.cutscene) return; // the board moves in a live cutscene, but no one is hurt
         this.gameBoardPiecesManager.applyDmgFromTouchedTiles(this.accTime);
     }
 

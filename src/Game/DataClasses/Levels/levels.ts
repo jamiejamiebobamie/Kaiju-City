@@ -188,11 +188,12 @@ export type LevelConfig = {
     route: Array<{ x: number; y: number }>; // from the foot of the Peninsula to the city, in the big map's pixels
   };
   aquariumFlood?: { // the Aquarium fight in phases (AquariumFlood.ts)
-    tankSpots: Array<{ x: number; y: number }>; // where each broken tank pours out onto the floor
+    panels: Array<{ phase: string; focus: { x: number; y: number }; pour: { x: number; y: number } }>; // the glass, in the order it breaks
     topSpot: { x: number; y: number }; // where she goes up to, to heal
     groundSpot: { x: number; y: number }; // where she comes back down to
     topFloor: { maxY: number; stairs: { minX: number; maxX: number; minY: number } }; // her ground while the tanks pour: above maxY, less the middle stairs
     screamScene: string;
+    creaturesScene: string;
   };
   ghostBoss?: { // the Rooftop fight in phases (GhostBoss.ts)
     ringSpot: { x: number; y: number }; // where the team is pulled to
@@ -442,11 +443,14 @@ const GLASS_PANEL_PLACES = [
   { id: 'right1', x: 1266, y: 440, width: 142, height: 306, startDelayMs: 400 }
 ];
 
-const GLASS_PANELS = GLASS_PANEL_PLACES.map(({ id, x, y, width, height, startDelayMs }) => ({
+// each panel breaks on its own phase: the Mermaid's scream breaks them one at a time (startShatter)
+const getGlassPhase = id => `glass-${id}`;
+
+const GLASS_PANELS = GLASS_PANEL_PLACES.map(({ id, x, y, width, height }) => ({
   id: `glass-${id}`,
   type: 'sequence' as const,
-  phase: 'shattered',
-  x, y, width, height, startDelayMs,
+  phase: getGlassPhase(id),
+  x, y, width, height, startDelayMs: 0,
   zIndex: -2,
   fps: 7,
   enter: [1, 2, 3, 4, 5].map(n => `/levels/aquarium/glass/${id}-${n}.png`),
@@ -460,9 +464,9 @@ const FISH_BURST_DELAY_SECONDS = 0.3;
 const fish = (id, x, y, width, height, flip, fps, panelId) => {
   const panel = GLASS_PANEL_PLACES.find(({ id }) => id == panelId);
   return {
-    id, type: 'sprite' as const, phase: 'shattered', src: '/levels/aquarium/fish-spritesheet.png', x, y, width, height, sheetFrames: 4, frames: 4, zIndex: -1, flip, fps,
+    id, type: 'sprite' as const, phase: getGlassPhase(panelId), src: '/levels/aquarium/fish-spritesheet.png', x, y, width, height, sheetFrames: 4, frames: 4, zIndex: -1, flip, fps,
     comesFrom: { x: panel.x + panel.width / 2, y: panel.y + panel.height / 2 },
-    appearSeconds: panel.startDelayMs / 1000 + FISH_BURST_DELAY_SECONDS
+    appearSeconds: FISH_BURST_DELAY_SECONDS
   };
 };
 
@@ -472,11 +476,13 @@ const AQUARIUM_SCENE = {
   wideShots: { tongueTouched: PART_TOUCH_HOLD_MS, shattered: SHATTER_HOLD_MS },
   // at zero she screams, the glass shatters, and the tanks pour out across the ground floor (below 'flood.top')
   aquariumFlood: {
-    tankSpots: GLASS_PANEL_PLACES.map(({ x, y, width, height }) => ({ x: x + width / 2, y: Math.max(y + height, 560) })),
+    // the panels, left to right, as the scream breaks them: where the camera looks, and where each pours out onto the floor
+    panels: GLASS_PANEL_PLACES.map(({ id, x, y, width, height }) => ({ phase: getGlassPhase(id), focus: { x: x + width / 2, y: y + height / 2 }, pour: { x: x + width / 2, y: Math.max(y + height, 560) } })),
     topSpot: { x: 704, y: 228 }, // the walkway over the hall, under the sign
     groundSpot: { x: 872, y: 655 },
     topFloor: { maxY: 400, stairs: { minX: 555, maxX: 845, minY: 290 } }, // the middle stairs only go up to the teleport links
-    screamScene: 'aquarium.stopScream'
+    screamScene: 'aquarium.stopScream',
+    creaturesScene: 'aquarium.toCreatures' // up on the walkway, to the sea creatures
   },
   rival: {
     ...RIVAL_LOOK,
@@ -497,7 +503,8 @@ const AQUARIUM_SCENE = {
     { id: 'tongue', label: 'Kaiju tongue' },
     { id: 'tongueTouched', label: 'Touch part' },
     { id: 'shards', label: 'Skylight shards' },
-    { id: 'shattered', label: 'Shattered glass' }
+    { id: 'shattered', label: 'Shattered glass' },
+    ...GLASS_PANEL_PLACES.map(({ id }) => ({ id: getGlassPhase(id), label: `Glass ${id}` })) // each panel, as the scream breaks it
   ],
   defaultPhases: ['tongue', 'shards'],
   sceneElements: [

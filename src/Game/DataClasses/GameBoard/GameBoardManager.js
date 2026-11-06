@@ -61,6 +61,11 @@ export class GameBoardManager {
         return this.wormholes;
     }
 
+    // every portal shut at once, links and all (a boss's own teleport: the Rooftop scream, the Mermaid's portal)
+    closeWormholes() {
+        this.updateWormholes(Infinity);
+    }
+
     initTiles() {
         const tiles = [];
         for (let i = 0; i < this.numTileColumns; i++) {
