@@ -20,6 +20,7 @@ import { PIECES_INFO } from 'Utils/gameState';
 import { startRagdoll } from 'Game/DataClasses/Ragdoll';
 import { GhostRingLayer } from './GhostRingLayer';
 import { SeaGhostLayer } from './SeaGhostLayer';
+import { GiantKaijuLayer, GiantMeters } from './GiantKaijuLayer';
 import { AQUARIUM_FLOOD } from 'Game/DataClasses/AquariumFlood';
 
 // a body lying at rest where its feet were: on its side, still
@@ -1182,6 +1183,7 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
           {deathPiecesComponents}
           <GhostRingLayer gameManager={gameManager} grid={grid} />
           <SeaGhostLayer gameManager={gameManager} grid={grid} lifeMs={AQUARIUM_FLOOD.ghostLifeMs} />
+          <GiantKaijuLayer gameManager={gameManager} level={level} />
         </WorldContent>
       </World>
   );
@@ -1202,6 +1204,7 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
       {gameManager.ghostFlashCount > 0 && createPortal(<ScreamFlash key={gameManager.ghostFlashCount} />, document.querySelector("[data-play-screen]") || document.body)}
       {recruitScene && recruitChoice && <ChoiceConfirm choice={recruitChoice} from={choiceFrom.current} board={boardRef.current} />}
       {!isPaused && edgeCarets}
+      {!isPaused && <GiantMeters gameManager={gameManager} />}
       {!isPaused && trainWarning}
       {isShowingWindowSize && (
         <WindowSize>

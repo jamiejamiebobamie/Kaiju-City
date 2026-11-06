@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
 import { GHOST_BOSS } from 'Game/DataClasses/GhostBoss';
 import { AQUARIUM_FLOOD } from 'Game/DataClasses/AquariumFlood';
+import { GIANT_KAIJU } from 'Game/DataClasses/GiantKaiju';
+import { Credits, CREDITS_TIMING } from './Credits';
 import { createPortal } from "react-dom";
 import styled, { keyframes } from "styled-components";
 import { useSnapshot } from "valtio";
@@ -410,6 +412,16 @@ const RECRUIT_CARDS = {
   mermaid: { avatar: 'mermaid', label: 'Aquarium Worker' }
 };
 
+// after the last win's title holds a while, the credits roll over it
+const FinaleCredits = ({ title, onDone }) => {
+  const [isRolling, setIsRolling] = useState(false);
+  useEffect(() => {
+    const roll = setTimeout(() => setIsRolling(true), CREDITS_TIMING.titleMs);
+    return () => clearTimeout(roll);
+  }, []);
+  return isRolling ? createPortal(<Credits onDone={onDone} />, document.querySelector("[data-play-screen]") || document.body) : <EndTitle>{title}</EndTitle>;
+};
+
 export const Game = ({ handleClickHome, triggerTransition }) => {
   const { selectedAvatar, setSelectedAvatar, selectedTeammate, setSelectedTeammate, selectedDifficulty, settingsManager } = useContext(GlobalSettingsContext);
   const { isPaused, winner, isPlayerDead, players, recruits, kaijuKillCount, kaijuToWin, activePhases, isWideShot, isCutscene, unlockMessage, unlockImage, speech, recruitScene, dialogueLog, isDialogueWaiting, isTalking, isRecruitTalkDone, speakingPieceIndex } = useSnapshot(gameUiStore);
@@ -457,6 +469,8 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   // the Aquarium's flood, tuned in the dev panel (the next flood uses them)
   const [floodSeconds, setFloodSeconds] = useState(AQUARIUM_FLOOD.floodMs / 1000);
   const [floodStyle, setFloodStyle] = useState(AQUARIUM_FLOOD.flowStyle);
+  // the final battle's giant: how fast it marches (the map's size is GIANT_KAIJU.mapScale, set when the game loads)
+  const [giantMarch, setGiantMarch] = useState(GIANT_KAIJU.marchRowsPerSecond);
   const npcAggressionRef = useRef(npcAggression);
   npcAggressionRef.current = npcAggression;
   const [isMonitorAlways, setIsMonitorAlways] = useState(true); // a playtest: the TV never opens up, and wide shots play inside it
@@ -689,6 +703,8 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
 
   const getMatchEnd = isWon => {
     const title = isWon ? getWinTitle() : "You Lost";
+    // the end of the game: the title, then the credits, then the landing screen
+    if (isWon && level.giantKaiju) return { title: "You saved the city!", buttons: [], isFinale: true };
     if (campaignIndex === null) {
       return { title, buttons: [{ text: "Play again", onClick: () => triggerTransition(resetMatch) }, { text: "Leave", onClick: handleClickHome }] };
     }
@@ -1020,6 +1036,19 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                   <input type="checkbox" checked={activePhases.includes(id)} onChange={() => togglePhase(id)} /> {label}
                 </label>
               ))}
+              {level.giantKaiju && (
+                <>
+                  <button onClick={() => gameManager.current.devDrainGiant()}>Drain the giant</button>
+                  <label>
+                    <input type="range" min={0.1} max={2} step={0.05} value={giantMarch} onChange={event => {
+                      const speed = Number(event.target.value);
+                      setGiantMarch(speed);
+                      GIANT_KAIJU.marchRowsPerSecond = speed;
+                    }} />
+                    {' '}March {giantMarch.toFixed(2)} rows/s
+                  </label>
+                </>
+              )}
               {level.aquariumFlood && (
                 <>
                   <button onClick={() => gameManager.current.devDownRival()}>Mermaid to zero</button>
@@ -1163,7 +1192,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               </SlideAway></SlideClip>
               {matchEnd && (
                 <EndScreen>
-                  <EndTitle>{matchEnd.title}</EndTitle>
+                  {matchEnd.isFinale ? <FinaleCredits title={matchEnd.title} onDone={handleClickHome} /> : <EndTitle>{matchEnd.title}</EndTitle>}
                   {(!level.rival || winner !== GameResult.PlayerWon) && <EndButtons>{matchEnd.buttons.map(({ text, onClick }, index) => <EndButton key={text} data-enter={index == 0 ? "" : undefined} onClick={onClick}>{text}</EndButton>)}</EndButtons>}
                 </EndScreen>
               )}

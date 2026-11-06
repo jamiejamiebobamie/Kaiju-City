@@ -674,11 +674,12 @@ export class GameManager {
         this.restoredTeammate = teammate;
     }
 
-    // dev: drain it almost all the way, to try the end
+    // dev: drain it, to see the end
     devDrainGiant = () => {
-        if (!this.giantPiece || this.cutscene) return;
+        if (!this.giantPiece || this.cutscene || this.isGiantDraining) return;
         this.giantPiece.lives = 1;
         this.giantPiece.lastDmgAccTime = 0;
+        this.giantPiece.decrementHealth(this.accTime, 1);
     };
 
     // - - - the Aquarium (AquariumFlood.ts) - - -
