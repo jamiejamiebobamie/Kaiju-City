@@ -69,7 +69,7 @@ export const SCI_FI_CLASSES: Record<string, [string, string]> = {
   'Death,Ice,Metal': ["Cryo Trooper", "Thawed and ready."],
   'Death,Ice,Water': ["Arctic Diver", "Freezing water, frozen stare."],
   'Death,Ice,Wink': ["Frost Siren", "They follow the song into the cold."],
-  'Death,Ice,Wood': ['Permafrost Virus', 'They call you the Thaw.'],
+  'Death,Ice,Wood': ["Frost Undertaker", "You keep the dead fresh."],
   'Death,Lightning,Love': ["Reanimator", "It's alive! Mostly."],
   'Death,Lightning,Metal': ["Tesla Lich", "Your tomb has a power plant."],
   'Death,Lightning,Water': ["Eel Wraith", "Slippery and deadly."],

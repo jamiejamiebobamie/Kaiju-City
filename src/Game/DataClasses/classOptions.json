@@ -2451,7 +2451,12 @@
             "Timber, rot and ice."
           ]
         }
-      ]
+      ],
+      "confirmed": {
+        "name": "Frost Undertaker",
+        "description": "You keep the dead fresh.",
+        "at": 1793937716420
+      }
     },
     "Death,Lightning,Love": {
       "original": {
