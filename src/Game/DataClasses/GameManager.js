@@ -35,6 +35,12 @@ export const GameResult = Object.freeze({
 const TRIGGER_ROWS = 2; // how close a door or a walk-here spot has to be
 const SITE_ROWS = 3; // how close a site on the map has to be
 
+// what else the enemy zoom looks toward (getCameraThreats)
+export const CAMERA_THREATS = {
+  statuses: ['isGhosted', 'isWooded', 'isCold', 'isCharming', 'isSeaGhost'], // powers that chase their target. not Heal.
+  kaijuNearRows: 16 // a Kaiju still walking in counts once it is this close to the player, in tile rows
+};
+
 // the final battle's end (onGiantDrained), in milliseconds
 export const FINALE = {
   pullMs: 1200,
@@ -531,6 +537,47 @@ export class GameManager {
         if (this.level.ghostBoss) piece.onBeforeDeath = () => this.onGhostBossDown();
         if (this.level.aquariumFlood) piece.onBeforeDeath = () => this.onMermaidDown();
     }
+
+    /*
+        The enemy zoom (GameBoard) looks toward the closest enemy on the board, and also toward these, each { key, charLocation }:
+        a power chasing the player (Haunt, Overgrowth's leading tiles, Ice Slice, Charm, the Aquarium's sea creatures; not Heal),
+        the ghost boss's launched ghosts coming for the player, and Kaiju walking in that are near the player.
+    */
+    getCameraThreats = player => {
+        if (!player || player.isDead) return [];
+        const board = this.gameBoardManager;
+        const threats = [];
+        // one per cast: its tile closest to the player
+        const byCast = new Map();
+        board.getActiveTiles().forEach(tile => {
+            const status = tile.getTileStatus();
+            if (!status || !CAMERA_THREATS.statuses.includes(status.getAppliedStatus())) return;
+            if (tile.targetIndex != player.pieceIndex || tile.teamIndex == player.getTeamIndex() || tile.getCurrCount() <= 0) return;
+            const key = `status ${status.getAppliedStatus()} ${tile.cast.casterIndex} ${tile.cast.seaIcon || ''}`;
+            const charLocation = board.getCharXAndYFromTileIndex(tile.tileIndex);
+            const distance = Math.hypot(charLocation.x - player.charLocation.x, charLocation.y - player.charLocation.y);
+            if (!byCast.has(key) || distance < byCast.get(key).distance) byCast.set(key, { key, charLocation, distance });
+        });
+        threats.push(...[...byCast.values()].map(({ key, charLocation }) => ({ key, charLocation })));
+        // the ring's launched ghosts, heading for the player (the closest of the team to them)
+        if (this.ghostRing) {
+            const team = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex()).filter(piece => !piece.isDead && piece.isOnTiles);
+            this.ghostRing.ghosts.filter(({ state }) => state == 'launched').forEach(ghost => {
+                const getDistance = piece => Math.hypot(piece.charLocation.x - ghost.x, piece.charLocation.y - ghost.y);
+                const chased = team.reduce((closest, piece) => !closest || getDistance(piece) < getDistance(closest) ? piece : closest, undefined);
+                if (chased == player) threats.push({ key: `phaseGhost ${ghost.id}`, charLocation: { x: ghost.x, y: ghost.y } });
+            });
+        }
+        // Kaiju not on the board yet, but near
+        const nearPx = CAMERA_THREATS.kaijuNearRows * this.getGhostRowPx();
+        this.getPieces().forEach(piece => {
+            if (piece.avatar != 'kaiju' || piece.isGiant || piece.isDead || piece.isOnTiles || !piece.charLocation) return;
+            if (Math.hypot(piece.charLocation.x - player.charLocation.x, piece.charLocation.y - player.charLocation.y) <= nearPx) {
+                threats.push({ key: `piece ${piece.pieceIndex}`, charLocation: piece.charLocation });
+            }
+        });
+        return threats;
+    };
 
     // - - - the final battle (GiantKaiju.ts) - - -
 

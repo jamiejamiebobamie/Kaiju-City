@@ -602,11 +602,18 @@ const ChoiceConfirm = ({ choice, from, board }) => {
 
 const getIsEnemyInPlay = (player, piece) => piece.getTeamIndex() != player.getTeamIndex() && !piece.isDead && piece.isOnTiles;
 
-const getClosestEnemy = (player, pieces) => {
+/*
+  What the enemy zoom can look toward, each as { key, charLocation }: enemies on the board, and (GameManager.getCameraThreats)
+  the powers chasing the player, the ghost boss's launched ghosts coming for them, and Kaiju not yet on the board but near.
+*/
+const getEnemyTargets = (player, gameManager) => [
+  ...gameManager.getPieces().filter(piece => getIsEnemyInPlay(player, piece)).map(piece => ({ key: `piece ${piece.pieceIndex}`, charLocation: piece.charLocation })),
+  ...(gameManager.getCameraThreats ? gameManager.getCameraThreats(player) : [])
+];
+
+const getClosestTarget = (player, targets) => {
   const getDistance = ({ charLocation: { x, y } }) => Math.hypot(x - player.charLocation.x, y - player.charLocation.y);
-  return pieces
-    .filter(piece => getIsEnemyInPlay(player, piece))
-    .reduce((closest, piece) => !closest || getDistance(piece) < getDistance(closest) ? piece : closest, undefined);
+  return targets.reduce((closest, target) => !closest || getDistance(target) < getDistance(closest) ? target : closest, undefined);
 };
 
 // the enemy zoom keeps to one enemy: another must be clearly closer, for a while, before the camera turns to them
@@ -615,27 +622,30 @@ const ENEMY_FOCUS = {
   holdMs: 800 // and stays that way this long
 };
 
+// the targets are made fresh each update: one is followed by its key
 const makeEnemyFocus = () => {
-  let current;
-  let challenger;
+  let currentKey;
+  let challengerKey;
   let challengerSinceMs = 0;
-  return (player, pieces, nowMs) => {
-    const closest = getClosestEnemy(player, pieces);
-    if (!current || !getIsEnemyInPlay(player, current) || !closest) {
-      current = closest;
-      challenger = undefined;
-      return current;
+  return (player, targets, nowMs) => {
+    const closest = getClosestTarget(player, targets);
+    const current = targets.find(({ key }) => key == currentKey);
+    if (!current || !closest) {
+      currentKey = closest && closest.key;
+      challengerKey = undefined;
+      return closest;
     }
     const getDistance = ({ charLocation: { x, y } }) => Math.hypot(x - player.charLocation.x, y - player.charLocation.y);
-    const isClearlyCloser = closest != current && getDistance(closest) < getDistance(current) * (1 - ENEMY_FOCUS.closerBy);
+    const isClearlyCloser = closest.key != current.key && getDistance(closest) < getDistance(current) * (1 - ENEMY_FOCUS.closerBy);
     if (!isClearlyCloser) {
-      challenger = undefined;
-    } else if (closest != challenger) {
-      challenger = closest;
+      challengerKey = undefined;
+    } else if (closest.key != challengerKey) {
+      challengerKey = closest.key;
       challengerSinceMs = nowMs;
     } else if (nowMs - challengerSinceMs >= ENEMY_FOCUS.holdMs) {
-      current = closest;
-      challenger = undefined;
+      currentKey = closest.key;
+      challengerKey = undefined;
+      return closest;
     }
     return current;
   };
@@ -877,7 +887,7 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
       if (!isWide) {
         // the keys are in charge when the mouse's hover is hidden
         const isLooking = isMouseLook && !!gameManager.getHoveredTileIndex();
-        const closestEnemy = isEnemyZoom ? pickEnemy(player, gameManager.getPieces(), nowMs) : undefined;
+        const closestEnemy = isEnemyZoom ? pickEnemy(player, getEnemyTargets(player, gameManager), nowMs) : undefined;
         closeCamera.lookToward(
           getWorldLocation(player.charLocation),
           isLooking ? mouseAim.current : { x: 0, y: 0 },
