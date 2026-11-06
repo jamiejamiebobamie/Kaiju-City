@@ -20,6 +20,7 @@ import { GHOST_BOSS, GhostRing } from './GhostBoss';
 import { AQUARIUM_FLOOD, AquariumFlood } from './AquariumFlood';
 import { GIANT_KAIJU, GiantKaiju } from './GiantKaiju';
 import { GameBoardPieceGiant } from './GameBoard/Pieces/GameBoardPieceGiant';
+import { NO_CAST } from './GameBoard/Tile/TileContender';
 import { getAvatarColor } from './Avatars';
 import { getTorsoSpot, startRagdoll, stepRagdoll } from './Ragdoll';
 import { DIALOGUE, getIsClickThrough, getIsDialogueLog } from './DialogueLog';
@@ -166,6 +167,7 @@ export class GameManager {
         this.ghostBossDowns = 0; // how many times she has been brought to zero
         this.ghostRing = undefined;
         this.ghostRingTeammate = undefined;
+        this.phaseGhostTiles = []; // where the ring's ghosts are on the board: { tileIndex, isShaking, fade }
         this.isGhostScreaming = false; // from the blow that brings her to zero until the new ring has formed
         this.isGhostScreamPending = false;
         this.ghostFlashCount = 0; // each scream's red flash
@@ -818,7 +820,12 @@ export class GameManager {
                 getSpot: board.getCharXAndYFromTileIndex,
                 getNeighbors: tile => board.getAdjacentTileIndices(tile),
                 getIsWaterTile: this.getIsFloodTile,
-                getIsPowerOnTile: ({ i, j }) => { const tile = board.tiles[i] && board.tiles[i][j]; return !!tile && !!tile.getTileStatus(); },
+                // any power but the flood's own water, and the sea creatures that swim in it
+                getIsPowerOnTile: ({ i, j }) => {
+                    const tile = board.tiles[i] && board.tiles[i][j];
+                    const status = tile && tile.getTileStatus();
+                    return !!status && !['isFlood', 'isSeaGhost'].includes(status.getAppliedStatus());
+                },
                 getTileAt: spot => getTileIndexAtLocation(grid, { x: spot.x - grid.charOffsetX * grid.scale, y: spot.y - grid.charOffsetY * grid.scale })
             }
         });
@@ -828,11 +835,21 @@ export class GameManager {
         const flood = this.aquariumFlood;
         const rival = this.rivalPiece;
         const team = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex()).filter(piece => !piece.isDead && piece.isOnTiles);
-        const hits = flood.step(GAME_TICK.pieceMs, team.map(piece => ({ key: piece.pieceIndex, spot: piece.charLocation })));
-        hits.forEach(({ key }) => {
-            const piece = this.gameBoardPiecesManager.getPiece(key);
-            piece.lastHitBy = rival.pieceIndex;
-            piece.decrementHealth(this.accTime, 1);
+        const spawns = flood.step(GAME_TICK.pieceMs);
+        this.syncFloodStatuses();
+        // a sea creature out of a broken tank: Haunt's ghost on the tiles, after the closest of the team
+        const { isSeaGhost } = this.settingsManager.getAbilityAndTileStatusData();
+        spawns.forEach(({ source, icon, color }) => {
+            const target = team.reduce((closest, piece) => !closest || this.gameBoardManager.getPathFromTileToTile({ fromTile: source, toTile: piece.getTileIndex() }).length < this.gameBoardManager.getPathFromTileToTile({ fromTile: source, toTile: closest.getTileIndex() }).length ? piece : closest, undefined);
+            if (!target) return;
+            const [, dirs] = this.gameBoardManager.getNumAdjacentTilesInDirectionFromTileToTile({ fromTileIndex: source, toTileIndex: target.getTileIndex() });
+            const tile = this.gameBoardManager.tiles[source.i][source.j];
+            if (!tile.getCanApplyStatus(isSeaGhost)) return;
+            tile.updateTileStatus({
+                updateKey: this.accTime, tileStatus: isSeaGhost, currCount: isSeaGhost.range, dirs: dirs.length ? [dirs[0]] : ['up'],
+                teamIndex: rival.teamIndex, targetIndex: target.pieceIndex,
+                cast: { ...NO_CAST, casterIndex: rival.pieceIndex, seaIcon: icon, seaColor: color }
+            });
         });
         // wading: a step slower for each touch of the water, up to three, each wearing off after a second
         const { stackMs, everyMs, maxStacks } = AQUARIUM_FLOOD.slow;
@@ -852,14 +869,32 @@ export class GameManager {
         // the water is gone: she comes back down to the hall
         if (flood.getIsOver()) {
             this.aquariumFlood = undefined;
+            this.syncFloodStatuses();
             rival.allowedTile = undefined;
             rival.isUnhurtable = false;
             if (!rival.isDead) rival.walkToTile = this.gameBoardManager.getClosestWalkableTileToLocation(this.level.aquariumFlood.groundSpot);
         }
     }
 
-    // the water on the tiles, for the tiles' canvas
-    getFloodTiles = () => this.aquariumFlood ? this.aquariumFlood.getWaterTiles() : [];
+    // the flood's water, onto the board as the lowest status of all: where a tile has anything else, the water isn't put there
+    syncFloodStatuses() {
+        const board = this.gameBoardManager;
+        const { isFlood } = this.settingsManager.getAbilityAndTileStatusData();
+        const wet = new Set(this.aquariumFlood ? this.aquariumFlood.getWaterTiles().map(({ i, j }) => `${i} ${j}`) : []);
+        (this.floodTileKeys || []).forEach(key => {
+            if (wet.has(key)) return;
+            const [i, j] = key.split(' ').map(Number);
+            const tile = board.tiles[i][j];
+            const status = tile.getTileStatus();
+            if (status && status.getAppliedStatus() == 'isFlood') tile.clearTileStatus();
+        });
+        wet.forEach(key => {
+            const [i, j] = key.split(' ').map(Number);
+            const tile = board.tiles[i][j];
+            if (!tile.getTileStatus()) tile.updateTileStatus({ updateKey: this.accTime, tileStatus: isFlood, currCount: 1, dirs: [], teamIndex: -1, targetIndex: -1 });
+        });
+        this.floodTileKeys = [...wet];
+    }
 
     // - - - the ghost boss (GhostBoss.ts) - - -
 
@@ -911,8 +946,8 @@ export class GameManager {
         const teamShot = team.length > 1 ? { pair: team.map(headOf), ...extreme, panMs: GHOST_SCREAM.toTeamMs } : { point: headOf(player), ...extreme, panMs: GHOST_SCREAM.toTeamMs };
         const together = { shot: { ...teamShot, isCut: true }, ms: GHOST_SCREAM.togetherMs };
         const merged = { shot: { point: headOf(player), ...extreme, isCut: true }, ms: GHOST_SCREAM.mergedMs };
-        const ringSpot = this.level.ghostBoss.ringSpot;
-        const ringShot = { point: ringSpot, zoomScale: PENINSULA.cameraZoom * GHOST_SCREAM.ringZoomShare, isPeninsulaSized: true, panMs: GHOST_SCREAM.toRingMs };
+        // the ring goes round the whole roof: the camera pulls out to all of it
+        const ringShot = { isWide: true, panMs: GHOST_SCREAM.toRingMs };
         this.startCutscene([
             { shot: onHer, ms: CUTSCENE.outcomePullMs },
             { shot: onHer, ms: getSpeechMs(text) + GHOST_SCREAM.screamMs, speech: { ...this.getSpeechOver(rival, name, text), isShout: true } },
@@ -964,7 +999,7 @@ export class GameManager {
     }
 
     startGhostRing(count, teammate) {
-        const ring = new GhostRing({ center: this.level.ghostBoss.ringSpot, count, rowPx: this.getGhostRowPx(), radiusRows: GHOST_BOSS.ringRadiusRows });
+        const ring = new GhostRing({ center: this.level.ghostBoss.ringCenter, count, rowPx: this.getGhostRowPx(), radiusRows: GHOST_BOSS.ringRadiusRows });
         this.ghostRing = ring;
         // the teammate stays in the ring until it is spent, whatever the player does
         if (teammate) teammate.allowedTile = tile => ring.getIsWellInside(this.gameBoardManager.getCharXAndYFromTileIndex(tile));
@@ -982,9 +1017,50 @@ export class GameManager {
             piece.decrementHealth(this.accTime, 1);
         });
         if (ring.getIsSpent()) this.endGhostRing();
+        else this.syncPhaseGhostTiles();
     }
 
+    /*
+        The ring's ghosts are tile statuses: each is on the tile under it, even where there is no tile to walk on
+        (over the sea, down the building's face). Such a tile shows only while a ghost is on it, and nothing else can use it.
+        On a tile of the board, a ghost has Haunt's rank: a stronger power there keeps it off.
+    */
+    syncPhaseGhostTiles() {
+        const ring = this.ghostRing;
+        const board = this.gameBoardManager;
+        const { grid } = this.level;
+        const phaseGhost = this.settingsManager.getAbilityAndTileStatusData().isPhaseGhost;
+        this.clearPhaseGhostStatuses();
+        if (!ring) return;
+        const shaking = ring.getShakingGhost();
+        const fade = ring.getFade();
+        this.phaseGhostTiles = ring.getLiveGhosts().map(ghost => {
+            const tileIndex = getTileIndexAtLocation(grid, { x: ghost.x - grid.charOffsetX * grid.scale, y: ghost.y - grid.charOffsetY * grid.scale });
+            if (!tileIndex) return undefined;
+            const tile = board.tiles[tileIndex.i] && board.tiles[tileIndex.i][tileIndex.j];
+            if (!tile) return undefined;
+            if (tile.getIsVisible()) {
+                if (!tile.getCanApplyStatus(phaseGhost)) return undefined; // a stronger power holds the tile
+                tile.updateTileStatus({ updateKey: this.accTime, tileStatus: phaseGhost, currCount: 1, dirs: [], teamIndex: this.rivalPiece.teamIndex, targetIndex: -1 });
+            }
+            return { tileIndex, isOffBoard: !tile.getIsVisible(), isShaking: !!shaking && shaking.id == ghost.id, fade };
+        }).filter(Boolean);
+    }
+
+    clearPhaseGhostStatuses() {
+        const board = this.gameBoardManager;
+        this.phaseGhostTiles.forEach(({ tileIndex: { i, j } }) => {
+            const tile = board.tiles[i] && board.tiles[i][j];
+            const status = tile && tile.getTileStatus();
+            if (status && status.getAppliedStatus() == 'isPhaseGhost') tile.clearTileStatus();
+        });
+        this.phaseGhostTiles = [];
+    }
+
+    getPhaseGhostTiles = () => this.phaseGhostTiles;
+
     endGhostRing() {
+        this.clearPhaseGhostStatuses();
         this.ghostRing = undefined;
         if (this.ghostRingTeammate) this.ghostRingTeammate.allowedTile = undefined;
         this.ghostRingTeammate = undefined;
@@ -1401,7 +1477,10 @@ export class GameManager {
 
     updateCutscene() {
         const { cutscene } = this;
-        if (this.ghostRing && !this.ghostRing.getIsFormed()) this.ghostRing.stepForming(GAME_TICK.pieceMs);
+        if (this.ghostRing && !this.ghostRing.getIsFormed()) {
+            this.ghostRing.stepForming(GAME_TICK.pieceMs);
+            this.syncPhaseGhostTiles();
+        }
         const step = cutscene.steps[cutscene.index];
         if (step.arrivals) {
             step.arrivals = step.arrivals.filter(({ piece }) => !piece.stepArrival());
@@ -2193,6 +2272,8 @@ export class GameManager {
                 return !!piece && piece.teamIndex == this.catwalkAgent.teamIndex && piece != this.catwalkAgent;
             },
             getGhostRingMove: this.getGhostRingMove,
+            // the Aquarium's sea creatures keep to the flooded floor
+            getIsStatusAllowedOn: (appliedStatus, tileIndex) => appliedStatus != 'isSeaGhost' || !this.level.flood || this.getIsFloodTile(tileIndex),
             getIsWormholeTile: ({ i, j }) => this.gameBoardManager.getWormholes().some(({ from, to }) => [from, to].some(end => end.i == i && end.j == j)),
             getSafeTileIndex: this.gameBoardManager.getSafeTileIndex,
             getHighlightedTiles: this.gameBoardManager.getHighlightedTiles,

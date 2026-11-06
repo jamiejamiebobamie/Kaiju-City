@@ -547,13 +547,13 @@ describe('rivals', () => {
     };
     const getTeam = gm => gm.gameBoardPiecesManager.getTeamPieces(gm.gameBoardPiecesManager.getPlayerTeamIndex());
 
-    it('at zero she does not die: she screams, and the team is pulled into a ring of five ghosts', () => {
+    it('at zero she does not die: she screams, and the team is pulled into a ring of six ghosts', () => {
       const { gm, rival } = makeGhostFight();
       downHer(gm);
       expect(gm.getGameResult()).toBe(null);
       expect(rival.isDead).toBe(false);
       expect(rival.lives).toBe(rival.maxLives);
-      expect(gm.ghostRing.ghosts.length).toBe(5);
+      expect(gm.ghostRing.ghosts.length).toBe(6);
       expect(gm.cutscene).toBeUndefined();
       // the two of them stand side by side in the ring's middle, and she is back on the left building
       const { ringSpot } = LEVELS.rooftop.ghostBoss;
@@ -562,14 +562,14 @@ describe('rivals', () => {
       expect(rival.charLocation.x).toBeLessThan(330);
     });
 
-    it('the rings grow from five to seven to nine, and then she is a ghost: one more blow and she is gone', () => {
+    it('the rings are six, then twelve, then twelve, and then she is a ghost: one more blow and she is gone', () => {
       const { gm, rival } = makeGhostFight();
       downHer(gm);
       downHer(gm);
-      expect(gm.ghostRing.ghosts.length).toBe(7);
+      expect(gm.ghostRing.ghosts.length).toBe(12);
       expect(rival.isGhostForm).toBe(false);
       downHer(gm);
-      expect(gm.ghostRing.ghosts.length).toBe(9);
+      expect(gm.ghostRing.ghosts.length).toBe(12);
       expect(rival.isGhostForm).toBe(true);
       expect(rival.lives).toBe(1);
       expect(gm.getGameResult()).toBe(null);
@@ -577,6 +577,21 @@ describe('rivals', () => {
       rival.decrementHealth(gm.accTime, 1);
       expect(rival.isDead).toBe(true);
       expect(gm.getGameResult()).toBe(GameResult.PlayerWon);
+    });
+
+    it('the ring\u2019s ghosts are on tiles, some where there are none to walk on; nothing else goes there', () => {
+      const { gm } = makeGhostFight();
+      downHer(gm);
+      const ghostTiles = gm.getPhaseGhostTiles();
+      expect(ghostTiles.length).toBe(6);
+      // round the whole roof: some are out over the sea or down the building's face
+      expect(ghostTiles.some(({ isOffBoard }) => isOffBoard)).toBe(true);
+      // where a ghost is on the board, its tile has the ghost status
+      ghostTiles.filter(({ isOffBoard }) => !isOffBoard).forEach(({ tileIndex: { i, j } }) => {
+        expect(gm.gameBoardManager.tiles[i][j].getTileStatus().getAppliedStatus()).toBe('isPhaseGhost');
+      });
+      // a tile only there for a ghost can't be walked on
+      ghostTiles.filter(({ isOffBoard }) => isOffBoard).forEach(({ tileIndex }) => expect(gm.gameBoardManager.getIsInBounds(tileIndex)).toBe(false));
     });
 
     it('her own roof is the left building, without the crane beam', () => {
@@ -697,6 +712,30 @@ describe('rivals', () => {
       }
     });
 
+    it('the water and the sea creatures are tile statuses; the sea creatures keep to the flooded floor', () => {
+      const { gm, rival } = makeAquariumFight();
+      downHer(gm);
+      gm.getPieces().filter(piece => piece != rival).forEach(piece => { piece.isUnhurtable = true; });
+      let isSeaGhostSeen = false;
+      let isFloodSeen = false;
+      for (let k = 0; k < 400; k += 1) {
+        gm.stepPieces();
+        gm.stepTiles();
+        gm.gameBoardManager.getTilesInFlatArray().forEach(tile => {
+          const status = tile.getTileStatus();
+          if (!status) return;
+          if (status.getAppliedStatus() == 'isSeaGhost') {
+            isSeaGhostSeen = true;
+            expect(gm.getIsFloodTile(tile.tileIndex)).toBe(true);
+            expect(tile.cast.seaIcon).toBeDefined();
+          }
+          if (status.getAppliedStatus() == 'isFlood') isFloodSeen = true;
+        });
+      }
+      expect(isSeaGhostSeen).toBe(true);
+      expect(isFloodSeen).toBe(true);
+    });
+
     it('the water slows the team, one step a touch, up to three', () => {
       const { gm } = makeAquariumFight();
       downHer(gm);
@@ -715,7 +754,6 @@ describe('rivals', () => {
     it('once the water is gone she comes back down to the hall, and the next zero is her last', () => {
       AQUARIUM_FLOOD.floodMs = 2000;
       AQUARIUM_FLOOD.drainMs = 500;
-      AQUARIUM_FLOOD.ghostLifeMs = 1000;
       const { gm, rival } = makeAquariumFight(false); // no teammate to finish her off while she is away
       // no one steers the player here: they are kept standing, so the fight runs on until she is back
       gm.getPieces().filter(piece => piece != rival).forEach(piece => { piece.isUnhurtable = true; });

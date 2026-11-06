@@ -63,7 +63,10 @@ const TILE_LOOK = {
   iconGhostOpacity: 0.22, // faint, so a ghost is never taken for the power itself
   iconGhostMs: 350,
   floodColor: "#3c7fde", // the Aquarium's flood: Water's own color and icon
-  floodOpacity: 0.85
+  floodOpacity: 0.85,
+  phaseGhostColor: "#f8f8ff", // the ghost boss's ring
+  phaseGhostEdge: "rgba(248, 248, 255, 0.75)", // a tile that is only there while a ghost is on it
+  phaseGhostShake: 3 // how far the next ghost to launch jitters, in pixels
 };
 
 // any css color as [r, g, b]: the canvas turns names like 'tomato' into hex
@@ -283,6 +286,42 @@ const drawIcon = (ctx, { iconClass, rotation }, center, radius, color, lineScale
 
 const getLineScale = grid => getHexRadius(grid) / TILE_LOOK.baseHexRadius;
 
+// the Aquarium's sea creatures: Game Icons' sea shapes (public/icons/sea, CC BY 3.0), each in its own color
+const seaImages = {};
+const seaTinted = {};
+const getSeaIcon = (name, color, onLoad) => {
+  const key = `${name} ${color}`;
+  if (seaTinted[key]) return seaTinted[key];
+  if (!seaImages[name]) {
+    seaImages[name] = new Image();
+    seaImages[name].onload = onLoad;
+    seaImages[name].src = `/icons/sea/${name}.svg`;
+  }
+  const image = seaImages[name];
+  if (!image.complete || !image.naturalWidth) return undefined;
+  const size = 128;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const tintCtx = canvas.getContext("2d");
+  tintCtx.drawImage(image, 0, 0, size, size);
+  tintCtx.globalCompositeOperation = "source-in";
+  tintCtx.fillStyle = color;
+  tintCtx.fillRect(0, 0, size, size);
+  seaTinted[key] = canvas;
+  return canvas;
+};
+const drawSeaIcon = (ctx, name, color, center, radius, lineScale, redraw) => {
+  const icon = getSeaIcon(name, color, redraw);
+  if (!icon) return;
+  const size = radius * 2 * TILE_LOOK.iconSizeRatio * 1.25;
+  ctx.save();
+  ctx.shadowColor = "black";
+  ctx.shadowBlur = 3 * lineScale;
+  ctx.drawImage(icon, center.x - size / 2, center.y - size / 2, size, size);
+  ctx.restore();
+};
+
 export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamColors = false }) => {
   const canvasRef = useRef(null);
   const { grid, world, contentOffset } = level;
@@ -488,15 +527,6 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
       });
       ctx.globalAlpha = 1;
 
-      // the Aquarium's flood: water on the tiles, under any power (a power on a tile has washed it away)
-      ctx.globalAlpha = TILE_LOOK.floodOpacity;
-      (gameManager.getFloodTiles ? gameManager.getFloodTiles() : []).forEach(tileIndex => {
-        const center = getTileCenter(grid, tileIndex);
-        drawSprite(ctx, getStatusSprite(TILE_LOOK.floodColor), center, pixelRatio);
-        drawIcon(ctx, { iconClass: "fa-tint", rotation: 0 }, center, radius, TILE_LOOK.floodColor, lineScale);
-      });
-      ctx.globalAlpha = 1;
-
       // a downed player has no path or hovered tile to show
       const isPlayerUp = !gameManager.getPieces()[0]?.isDead && !gameManager.recruitScene;
       const nextSmokeTiles = new Map();
@@ -523,7 +553,8 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
         if (color) {
           if (!isHighlighted) drawSprite(ctx, getStatusSprite(pieceColor || color), center, pixelRatio);
           const icon = { iconClass: tile.getActiveIcon(), rotation: tile.getRotation() };
-          drawIcon(ctx, icon, center, radius, iconColor, lineScale);
+          if (tile.cast.seaIcon) drawSeaIcon(ctx, tile.cast.seaIcon, tile.cast.seaColor, center, radius, lineScale, draw);
+          else drawIcon(ctx, icon, center, radius, iconColor, lineScale);
           if (icon.iconClass && !tile.teleportTileStatus) nextIconTiles.set(key, { center, icon, color: iconColor });
         }
       });
@@ -532,6 +563,24 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
       smokeTiles = nextSmokeTiles;
       iconTiles = nextIconTiles;
       drawFades();
+      // the ghost boss's ring: its ghosts are on tiles, some where there are none to walk on (those show only while a ghost is there)
+      (gameManager.getPhaseGhostTiles ? gameManager.getPhaseGhostTiles() : []).forEach(({ tileIndex, isOffBoard, isShaking, fade }) => {
+        const center = getTileCenter(grid, tileIndex);
+        ctx.globalAlpha = fade;
+        if (isOffBoard) {
+          ctx.beginPath();
+          traceTile(ctx, center, shape);
+          ctx.strokeStyle = TILE_LOOK.phaseGhostEdge;
+          ctx.lineWidth = TILE_LOOK.lineWidth / zoom;
+          ctx.stroke();
+        }
+        drawSprite(ctx, getStatusSprite(TILE_LOOK.phaseGhostColor), center, pixelRatio);
+        // the next to launch shakes
+        const shake = isShaking ? (Math.random() - 0.5) * TILE_LOOK.phaseGhostShake : 0;
+        drawIcon(ctx, { iconClass: "fa-snapchat-ghost", rotation: shake * 12 }, { x: center.x + shake, y: center.y }, radius, TILE_LOOK.phaseGhostColor, lineScale);
+      });
+      ctx.globalAlpha = 1;
+
       // a Teleport's portals go over everything else on the tiles
       gameManager.getWormholes().forEach(({ from, to, endsAt }) => {
         const closing = Math.max(Math.min((endsAt - accTime) / TILE_LOOK.wormholeFadeMs, 1), 0);

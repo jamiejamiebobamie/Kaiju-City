@@ -11,6 +11,7 @@ export class GameBoardTileStatusAndAbilityData {
         isRotating = [/* example: { tickFrom: 3, tickTo: 6 } */],
         isConserveDirections = [/* example: { tickFrom: 3, tickTo: 6 } */],
         isTracking = [/* example: { tickFrom: 3, tickTo: 6 } */],
+        turnSteps = undefined, // tracking: how far its way can turn in one step, in sixths of a turn. undefined: straight at the target
         isSpread = [/* example: { tick: 3, dirs: [1-6] } */],
         isReverseDirection = [/* example, tick(s): 3, 4, 5 */],
         isWall = false, // spreads as a straight front that widens, not as separate lines
@@ -67,6 +68,7 @@ export class GameBoardTileStatusAndAbilityData {
         this.isRotating = isRotating;
         this.isConserveDirections = isConserveDirections;
         this.isTracking = isTracking;
+        this.turnSteps = turnSteps;
         // - - - -
 
         // TICK EVENTS
@@ -306,6 +308,10 @@ export class GameBoardTileStatusAndAbilityData {
     }
 
     // isTracking: [{ tickFrom: 8, tickTo: 25 }],
+    getTurnSteps() {
+        return this.turnSteps;
+    }
+
     getIsTracking(currCount) {
         return this.isTracking.some(range => this.isInRange(range, currCount))
     }

@@ -18,10 +18,7 @@ import { getHexRadius } from 'Game/DataClasses/GameBoard/hexGrid';
 import { BADGE_HEADS } from './badgeHeads';
 import { PIECES_INFO } from 'Utils/gameState';
 import { startRagdoll } from 'Game/DataClasses/Ragdoll';
-import { GhostRingLayer } from './GhostRingLayer';
-import { SeaGhostLayer } from './SeaGhostLayer';
 import { GiantKaijuLayer, GiantMeters } from './GiantKaijuLayer';
-import { AQUARIUM_FLOOD } from 'Game/DataClasses/AquariumFlood';
 
 // a body lying at rest where its feet were: on its side, still
 const getRestingBody = ({ x, y }, pieceScale, rowPx) => ({
@@ -1181,8 +1178,6 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
           {isFrameMeasured && <WakeCanvas gameManager={gameManager} level={level} zoom={closeCamera.zoom} isActive={!!level.flood && activePhases.includes(level.flood.phase)} />}
           {piecesComponents}
           {deathPiecesComponents}
-          <GhostRingLayer gameManager={gameManager} grid={grid} />
-          <SeaGhostLayer gameManager={gameManager} grid={grid} lifeMs={AQUARIUM_FLOOD.ghostLifeMs} />
           <GiantKaijuLayer gameManager={gameManager} level={level} />
         </WorldContent>
       </World>

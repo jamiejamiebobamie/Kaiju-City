@@ -2354,7 +2354,10 @@ export const TILE_STATUS_RANKS = {
   isOnFire: 7,
   isOnKaijuFire: 7,
   isWet: 8,
-  isWooded: 9
+  isWooded: 9,
+  isPhaseGhost: 3, // the ghost boss's ring: the same as Haunt's ghosts
+  isSeaGhost: 9.5, // the Aquarium's sea creatures: below every power, above the water
+  isFlood: 10 // the Aquarium's water: the lowest of all
 };
 
 /*
@@ -2367,7 +2370,7 @@ export const GAME_TICK = {
   maxCatchUpMs: 500
 };
 
-export const TILE_STATUSES = ['isTeleportTile', 'isHealing', 'isBubble', 'isCharming', 'isGhosted', 'isElectrified', 'isCold', 'isShielded', 'isOnFire', 'isOnKaijuFire', 'isWet', 'isWooded'];
+export const TILE_STATUSES = ['isTeleportTile', 'isHealing', 'isBubble', 'isCharming', 'isGhosted', 'isElectrified', 'isCold', 'isShielded', 'isOnFire', 'isOnKaijuFire', 'isWet', 'isWooded', 'isPhaseGhost', 'isSeaGhost', 'isFlood'];
 
 const ABILITY_ON_COOLDOWN_ICON = "fa-spinner";
 
@@ -3218,6 +3221,86 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     activeEffect2: '',
     passiveEffect2: '',
     // - - - - - - - - - - - - - -
+  },
+
+  // - - - the bosses' own statuses: not powers anyone picks (see OUT_OF_PLAY_POWERS) - - -
+  {
+    // the Rooftop ghost boss's ring (GhostBoss.ts): it puts its ghosts on tiles, even where there are none to walk on
+    appliedStatus: 'isPhaseGhost',
+    range: 1,
+    area: 1,
+    dmgAmt: 0, // the ring itself costs the health point it hits (GhostBoss.ts), once per ghost
+    isPersistent: true, // it stays until the ring moves it
+    isBouncy: false,
+    isLeaveTrail: false,
+    isRotating: [],
+    isConserveDirections: [],
+    isTracking: [],
+    isSpread: [],
+    isReverseDirection: [],
+    type: ["offensive"],
+    color: "GhostWhite",
+    displayLookup: "abilityDeath",
+    element: "phaseGhost",
+    activeIcon: "", // the ring draws its own ghost on the tile
+    passiveIcon: "",
+    activeName: "Phase Ghost",
+    activeDesc: "",
+    passiveName: "",
+    passiveDesc: ""
+  },
+  {
+    // the Aquarium's sea creatures (AquariumFlood.ts): Haunt's ghost on the tiles, kept to the flooded floor.
+    // they chase softly: a step can turn only so far ('turnSteps'), so they overshoot and come about.
+    appliedStatus: 'isSeaGhost',
+    range: 70, // count / startCount / totalCount
+    area: 1,
+    dmgAmt: 1,
+    bounceCountResetVal: 20,
+    isPersistent: false,
+    isBouncy: true,
+    isLeaveTrail: false,
+    isRotating: [],
+    isConserveDirections: [],
+    isTracking: [{ tickFrom: 0, tickTo: 70 }],
+    turnSteps: 1, // a sixth of a turn at most, each step
+    isSpread: [],
+    isReverseDirection: [],
+    type: ["offensive"],
+    color: "#5fd0ff",
+    displayLookup: "abilityWater",
+    element: "seaGhost",
+    activeIcon: "", // each one is a sea creature of its own (its cast's 'seaIcon')
+    passiveIcon: "",
+    activeName: "Sea Creature",
+    activeDesc: "",
+    passiveName: "",
+    passiveDesc: ""
+  },
+  {
+    // the Aquarium's flood (AquariumFlood.ts): water on the tiles. it only slows. any power washes it away.
+    appliedStatus: 'isFlood',
+    range: 1,
+    area: 1,
+    dmgAmt: 0,
+    isPersistent: true, // it stays until the flood moves or drains it
+    isBouncy: false,
+    isLeaveTrail: false,
+    isRotating: [],
+    isConserveDirections: [],
+    isTracking: [],
+    isSpread: [],
+    isReverseDirection: [],
+    type: ["utility"],
+    color: "#3c7fde",
+    displayLookup: "abilityWater",
+    element: "flood",
+    activeIcon: "fa-tint",
+    passiveIcon: "",
+    activeName: "Flood",
+    activeDesc: "",
+    passiveName: "",
+    passiveDesc: ""
   }
 ]
 

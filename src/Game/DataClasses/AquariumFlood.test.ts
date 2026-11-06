@@ -17,7 +17,7 @@ const seeded = (seed = 1) => () => {
 };
 const run = (flood, ms, targets = []) => {
   const hits = [];
-  for (let t = 0; t < ms; t += 160) hits.push(...flood.step(160, targets));
+  for (let t = 0; t < ms; t += 160) hits.push(...flood.step(160));
   return hits;
 };
 const saved = { ...AQUARIUM_FLOOD };
@@ -39,7 +39,7 @@ describe('the Aquarium flood', () => {
     expect(flood.getPourShare()).toBe(1);
     run(flood, AQUARIUM_FLOOD.floodMs * 0.3);
     expect(flood.getPourShare()).toBeLessThan(1);
-    run(flood, AQUARIUM_FLOOD.floodMs * 0.2 + AQUARIUM_FLOOD.drainMs + AQUARIUM_FLOOD.ghostLifeMs);
+    run(flood, AQUARIUM_FLOOD.floodMs * 0.2 + AQUARIUM_FLOOD.drainMs);
     expect(flood.getIsOver()).toBe(true);
     expect(flood.water.size).toBe(0);
   });
@@ -49,7 +49,7 @@ describe('the Aquarium flood', () => {
     const flood = new AquariumFlood({ sources: [{ i: 6, j: 6 }], board: makeBoard(), rowPx: ROW, random: seeded(3) });
     run(flood, 3000);
     expect(flood.water.size).toBeGreaterThan(3);
-    run(flood, AQUARIUM_FLOOD.floodMs + AQUARIUM_FLOOD.bounceLifeMs + AQUARIUM_FLOOD.ghostLifeMs);
+    run(flood, AQUARIUM_FLOOD.floodMs + AQUARIUM_FLOOD.bounceLifeMs);
     expect(flood.getIsOver()).toBe(true);
   });
 
@@ -60,30 +60,14 @@ describe('the Aquarium flood', () => {
     powered.forEach(tile => expect(flood.water.has(tile)).toBe(false));
   });
 
-  it('sends out sea ghosts that chase the team, and hurt on a hit', () => {
-    const flood = new AquariumFlood({ sources: [{ i: 6, j: 0 }], board: makeBoard(), rowPx: ROW, random: seeded() });
-    const player = { key: 4, spot: { x: 6 * ROW, y: 6 * ROW } };
-    const hits = run(flood, 12000, [player]);
-    expect(flood.ghosts.length).toBeGreaterThan(1);
-    expect(hits.some(({ key }) => key == 4)).toBe(true);
-    expect(AQUARIUM_FLOOD.ghostIcons).toContain(flood.ghosts[0].icon);
-  });
-
-  it('a ghost that misses overshoots, then comes about', () => {
-    const flood = new AquariumFlood({ sources: [{ i: 6, j: 0 }], board: makeBoard(), rowPx: ROW, random: seeded() });
-    const ghost = { id: 0, icon: 'crab', x: 0, y: 100, vx: (AQUARIUM_FLOOD.ghostSpeedRows * ROW) / 1000, vy: 0, bornMs: 0, isGone: false };
-    flood.ghosts.push(ghost);
-    flood.nextGhostMs = Infinity;
-    const target = [{ key: 1, spot: { x: 20, y: 150 } }]; // inside its turning circle: it can't turn in time
-    let passed = false;
-    let cameBack = false;
-    for (let t = 0; t < 6000 && !ghost.isGone; t += 50) {
-      flood.step(50, target);
-      if (ghost.x > 20) passed = true;
-      if (passed && ghost.vx < 0) cameBack = true;
-    }
-    expect(passed).toBe(true);
-    expect(cameBack).toBe(true);
+  it('now and then, a sea creature is due out of a broken tank, each in a color of its own', () => {
+    const flood = new AquariumFlood({ sources: [{ i: 6, j: 0 }, { i: 2, j: 0 }], board: makeBoard(), rowPx: ROW, random: seeded() });
+    const spawns = run(flood, 12000);
+    expect(spawns.length).toBeGreaterThan(1);
+    spawns.forEach(({ source, icon, color }) => {
+      expect([6, 2]).toContain(source.i);
+      expect(AQUARIUM_FLOOD.ghostIcons[icon]).toBe(color);
+    });
   });
 
   it('wading slows by one a touch, up to three, each for a second', () => {

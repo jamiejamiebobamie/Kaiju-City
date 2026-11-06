@@ -147,6 +147,11 @@ export class GameManagerProxy {
     }
 
     // one end of a Teleport's wormhole (not a level's own link, like the Aquarium's stairs)
+    // a status kept to its own ground (the Aquarium's sea creatures, to the flooded floor)
+    getIsStatusAllowedOn(appliedStatus, tileIndex) {
+        return !this.props.getIsStatusAllowedOn || this.props.getIsStatusAllowedOn(appliedStatus, tileIndex);
+    }
+
     // the ghost boss: where the teammate steps inside the ghost ring, or undefined when it isn't in one
     getGhostRingMove(piece) {
         return this.props.getGhostRingMove ? this.props.getGhostRingMove(piece) : undefined;

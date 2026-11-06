@@ -195,7 +195,8 @@ export type LevelConfig = {
     screamScene: string;
   };
   ghostBoss?: { // the Rooftop fight in phases (GhostBoss.ts)
-    ringSpot: { x: number; y: number }; // the ring's middle, where the team is pulled to
+    ringSpot: { x: number; y: number }; // where the team is pulled to
+    ringCenter: { x: number; y: number }; // the ring's middle
     rivalSpot: { x: number; y: number }; // where she goes after each scream
     rivalGround: { maxI: number; beamFromI: number; beamFromJ: number }; // her roof: tiles up to column maxI, less the beam
     screamScene: string; // her words before the scream, in dialogue.json
@@ -397,7 +398,8 @@ const ROOFTOP_SCENE = {
   // brought to zero, she screams, the team is pulled to the middle of the graveyard roof (where the Kaiju head was),
   // halfway between the graves and the roof's edge, and she goes back to the left building's roof to fight from there
   ghostBoss: {
-    ringSpot: { x: 735, y: 466 },
+    ringSpot: { x: 735, y: 466 }, // where the team lands
+    ringCenter: { x: 708, y: 390 }, // the ring's middle: the middle of the graveyard roof (Jamie's mockup)
     rivalSpot: { x: 130, y: 300 },
     rivalGround: { maxI: 18, beamFromI: 8, beamFromJ: 20 }, // the crane beam starts at column 8, row 20
     screamScene: 'rooftop.ghostScream'

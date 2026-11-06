@@ -1,5 +1,6 @@
 import baseline from './__fixtures__/masterTileBaseline.json';
 import { TILE_DIRS, TILE_STATUS_RANKS } from 'Utils/gameState';
+import { turnToward } from './GameBoardManager';
 import { MASTER_PENINSULA_TILES as PENINSULA_TILE_LOOKUP_VALS } from '../masterPeninsula';
 import { CENTER_TILE, getLitTiles, makeGame, placePiece, putStatusOnTile } from '../testHelpers';
 
@@ -77,6 +78,17 @@ describe('walls of fire', () => {
     const { i, j } = CENTER_TILE;
     const wall = getLitTiles(gm).filter(t => t.getCurrCount() > 0).map(t => t.tileIndex);
     expect(wall).toContainEqual({ i, j: j + 1 }); // no gap in the middle: the wall has no prongs
+  });
+});
+
+describe('a soft chase (turnSteps)', () => {
+  it('turns toward the target by at most so many sixths of a turn a step', () => {
+    expect(turnToward('up', 'down', 1)).not.toBe('down');
+    expect(['up right', 'up left']).toContain(turnToward('up', 'down', 1));
+    expect(turnToward('up', 'up right', 1)).toBe('up right');
+    expect(turnToward('up', 'down right', 1)).toBe('up right');
+    expect(turnToward('up', 'down left', 2)).toBe('down left');
+    expect(turnToward('up', 'up', 1)).toBe('up');
   });
 });
 

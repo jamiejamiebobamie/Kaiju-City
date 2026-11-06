@@ -9,10 +9,10 @@
 */
 
 export const GHOST_BOSS = {
-  rings: [5, 7, 9], // ghosts in each phase's ring. the third phase leaves her a ghost: one more hit and she is gone.
-  ringRadiusRows: 3.4, // the ring's size (tune it against the roof)
-  ringSquash: 0.82, // the ring is a little flatter than tall, as the roof is seen from above at an angle
-  spinSeconds: 1.15, // one turn of the ring: fast enough that walking out through it costs a health point
+  rings: [6, 12, 12], // ghosts in each phase's ring: six, then one more between each (Jamie). the third phase leaves her a ghost.
+  ringRadiusRows: 17, // the ring's size: round the whole graveyard roof, out over the sea and down the building's face (Jamie's mockup)
+  ringSquash: 1, // a circle, as in the mockup
+  spinSeconds: 6, // one turn of the ring: it sweeps the walkway to the other roof, so crossing it means dodging
   fadeInMs: 1500, // the ghosts fade in as the ring forms
   firstLaunchMs: 1400, // after the ring has formed, the first launch
   launchEveryMs: 1000, // then one launch about every second
@@ -20,7 +20,7 @@ export const GHOST_BOSS = {
   launchSpeedRows: 8, // a launched ghost's speed, in rows a second
   turnPerSecond: 2.2, // how hard a launched ghost turns after its target, in radians a second
   launchedMaxMs: 3200, // a launched ghost that misses fades away after this long
-  hitRows: 0.75, // how close a ghost gets to someone to hit them
+  hitRows: 0.6, // how close a ghost's path comes to someone to hit them (it can move several tiles a tick)
   ghostLives: 1, // her health as a ghost, in the last phase
   teammateMarginRows: 1.1 // the teammate keeps this far inside the ring
 };
@@ -36,6 +36,8 @@ export type Ghost = {
   vx: number; // when launched, in pixels a millisecond
   vy: number;
   launchedAtMs: number;
+  lastX: number; // where it was a step ago: a hit is anywhere along the way
+  lastY: number;
 };
 
 export type GhostTarget = { key: number; spot: Spot };
@@ -43,6 +45,15 @@ export type GhostTarget = { key: number; spot: Spot };
 export type GhostHit = { key: number; dirs: Array<string> };
 
 const TURN = Math.PI * 2;
+
+// how close a spot comes to the line from one spot to another
+const getDistanceToPath = (spot: Spot, from: Spot, to: Spot) => {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const length = dx * dx + dy * dy;
+  const share = length ? Math.max(0, Math.min(1, ((spot.x - from.x) * dx + (spot.y - from.y) * dy) / length)) : 0;
+  return Math.hypot(spot.x - (from.x + dx * share), spot.y - (from.y + dy * share));
+};
 
 // the way a ghost is travelling, as a board direction, for how a body is thrown when the hit kills
 const getDirs = (vx: number, vy: number) => {
@@ -64,8 +75,9 @@ export class GhostRing {
     this.center = { ...center };
     this.rowPx = rowPx;
     this.radiusPx = radiusRows * rowPx;
-    this.ghosts = Array.from({ length: count }, (_, id) => ({ id, slot: (id / count) * TURN, state: 'circling', x: 0, y: 0, vx: 0, vy: 0, launchedAtMs: 0 }));
+    this.ghosts = Array.from({ length: count }, (_, id) => ({ id, slot: (id / count) * TURN, state: 'circling', x: 0, y: 0, vx: 0, vy: 0, launchedAtMs: 0, lastX: 0, lastY: 0 }));
     this.placeCircling();
+    this.ghosts.forEach(ghost => { ghost.lastX = ghost.x; ghost.lastY = ghost.y; });
   }
 
   getAngle(ms = this.ms) {
@@ -116,6 +128,7 @@ export class GhostRing {
   // a launched ghost is over the team's Dispel. returns who was hit.
   step(ms: number, targets: Array<GhostTarget>, isDispelled: (spot: Spot) => boolean = () => false): Array<GhostHit> {
     this.ms += ms;
+    this.ghosts.forEach(ghost => { ghost.lastX = ghost.x; ghost.lastY = ghost.y; });
     if (!this.getIsFormed()) {
       if (this.getFade() < 1) {
         this.placeCircling();
@@ -155,7 +168,7 @@ export class GhostRing {
     const hits: Array<GhostHit> = [];
     const hitPx = GHOST_BOSS.hitRows * this.rowPx;
     this.getLiveGhosts().forEach(ghost => {
-      const hit = targets.find(({ spot }) => Math.hypot(spot.x - ghost.x, spot.y - ghost.y) <= hitPx);
+      const hit = targets.find(({ spot }) => getDistanceToPath(spot, { x: ghost.lastX, y: ghost.lastY }, ghost) <= hitPx);
       if (!hit) return;
       ghost.state = 'gone';
       const vx = ghost.vx || ghost.x - this.center.x;

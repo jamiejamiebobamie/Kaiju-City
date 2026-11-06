@@ -1,4 +1,14 @@
 import { TILE_DIRS, TILE_DIR_NORM_VECS, TILE_STATUS_RANKS } from 'Utils/gameState';
+
+// a way turned toward another, by at most 'steps' sixths of a turn (the tile ways run clockwise in TILE_DIRS)
+export const turnToward = (from, to, steps) => {
+    const a = TILE_DIRS.indexOf(from);
+    const b = TILE_DIRS.indexOf(to);
+    if (a < 0 || b < 0) return to;
+    const clockwise = (b - a + 6) % 6;
+    const turn = clockwise <= 3 ? Math.min(clockwise, steps) : -Math.min(6 - clockwise, steps);
+    return TILE_DIRS[(a + turn + 6) % 6];
+};
 import { getRandomIntInRange, getDistanceToFrom, getNormVecFromDestAndOrigin } from 'Game/utils'
 import { GameBoardTile } from 'Game/DataClasses/GameBoard/Tile/GameBoardTile'
 import { findPath } from 'Game/DataClasses/GameBoard/findPath'
@@ -282,7 +292,7 @@ export class GameBoardManager {
             const nextTileIndex = { i: tileIndex.i + tileIndexOffset.i, j: tileIndex.j + tileIndexOffset.j };
 
             let newDirs = [d];
-            if (this.getIsInBounds(nextTileIndex)) {
+            if (this.getIsInBounds(nextTileIndex) && this.gameManagerProxy.getIsStatusAllowedOn(tileStatus.getAppliedStatus(), nextTileIndex)) {
                 if (tileStatus.getIsSpread(tickCount)) {
                     const area = tileStatus.getSpreadArea(tickCount);
                     const [_, dirs] = this.getNumAdjacentTilesInDirectionFromTileToTile({ fromTileIndex: tileIndex, toTileIndex: nextTileIndex, numTiles: area });
@@ -296,7 +306,8 @@ export class GameBoardManager {
                     const target = this.gameManagerProxy.getPiece(tile.targetIndex);
                     if (!target.getIsDead() && (target.getTeamIndex() != tile.teamIndex || tileStatus.getDmgAmt() < 0)) {
                         const [_, dirs] = this.getNumAdjacentTilesInDirectionFromTileToTile({ fromTileIndex: tileIndex, toTileIndex: target.getTileIndex() });
-                        newDirs = dirs;
+                        // a soft chase: it turns toward the target only so far each step, so it overshoots and comes about
+                        newDirs = tileStatus.getTurnSteps() !== undefined && dirs.length ? [turnToward(d, dirs[0], tileStatus.getTurnSteps())] : dirs;
                     }
                 } else if (isReversing) {
                     newDirs = tileStatus.reverseDir(d);

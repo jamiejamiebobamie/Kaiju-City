@@ -44,7 +44,7 @@ describe('the ghost ring', () => {
   it('a launched ghost goes for the players and costs a health point when it hits; then it is gone', () => {
     const ring = makeRing(5);
     const player = { key: 7, spot: { x: CENTER.x + 10, y: CENTER.y } };
-    const hits = stepFor(ring, GHOST_BOSS.fadeInMs + GHOST_BOSS.firstLaunchMs + 1500, [player]);
+    const hits = stepFor(ring, GHOST_BOSS.fadeInMs + GHOST_BOSS.firstLaunchMs + 4000, [player]);
     expect(hits.length).toBeGreaterThan(0);
     expect(hits[0].key).toBe(7);
     expect(ring.ghosts.filter(({ state }) => state == 'gone').length).toBe(hits.length);
