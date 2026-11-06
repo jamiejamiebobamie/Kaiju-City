@@ -665,7 +665,10 @@ describe('rivals', () => {
     expect(path[path.length - 1]).toEqual(other);
     player.updateMovmement(path);
     for (let k = 0; k < 60; k += 1) gm.stepPieces();
-    expect(player.getTileIndex()).toEqual(link);
+    // out past the edge at the far end: on it, or a step or two on, all of them in view
+    const at = gm.gameBoardManager.getCharXAndYFromTileIndex(player.getTileIndex());
+    const far = gm.gameBoardManager.getCharXAndYFromTileIndex(link);
+    expect(Math.hypot(at.x - far.x, at.y - far.y) / (gm.level.grid.rowStep * gm.level.grid.scale)).toBeLessThan(3);
   });
 
   describe('the Aquarium: one shatter, then the flood', () => {
@@ -2000,7 +2003,7 @@ describe('recruit calls', () => {
 
   it('no one can be called during a cutscene', () => {
     const { gm } = makeGame();
-    gm.cutscene = { steps: [], index: 0, msLeft: 0 };
+    gm.cutscene = { steps: [], index: 0, msLeft: 0, isMidFight: false };
     expect(gm.callRecruit('punk')).toBe(false);
   });
 });

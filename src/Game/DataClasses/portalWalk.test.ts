@@ -4,6 +4,13 @@ import { SettingsManager } from './SettingsManager';
 import { LEVELS } from './Levels/levels';
 import { GAME_TICK } from 'Utils/gameState';
 
+const getRowsApart = (gm, a, b) => {
+  const board = gm.gameBoardManager;
+  const from = board.getCharXAndYFromTileIndex(a);
+  const to = board.getCharXAndYFromTileIndex(b);
+  return Math.hypot(from.x - to.x, from.y - to.y) / (gm.level.grid.rowStep * gm.level.grid.scale);
+};
+
 const makeAquarium = () => {
   const settingsManager = new SettingsManager();
   settingsManager.setSortedPlayerChosenAbilityElementsString(['Fire', 'Ice', 'Metal']);
@@ -45,9 +52,31 @@ describe('walking through a portal', () => {
     expect(gm.portalWalk).toBeUndefined();
     gm.stepPieces(); // the scene's last step ends
     expect(gm.cutscene).toBeUndefined();
-    expect(player.getTileIndex()).toEqual(upstairs);
+    // out past the door's edge: at the far end, or a step or two on, all of them in view
+    expect(getRowsApart(gm, player.getTileIndex(), upstairs)).toBeLessThan(3);
+    expect(gm.gameBoardManager.getIsInBounds(player.getTileIndex())).toBe(true);
     expect(player.isVisible).toBe(true);
     expect(player.portalMask).toBeUndefined();
+  });
+
+  it('an NPC whose path starts through a link takes the link, rather than walking across the gap off the tiles', () => {
+    const { gm } = makeAquarium();
+    const rival = gm.rivalPiece;
+    const [stairs, upstairs] = LEVELS.aquarium.tileLinks[0];
+    rival.initCharLocation(true, upstairs);
+    const onward = gm.gameBoardManager.getAdjacentTileIndices(stairs).filter(gm.gameBoardManager.getIsInBounds)[0];
+    rival.updateMovmement([stairs, onward]);
+    expect(rival.getTileIndex()).toEqual(stairs);
+    expect(rival.moveToTiles).toEqual([onward]);
+  });
+
+  it('the HUDs stay up while the player walks through: the scene holds the fight, but is a mid-fight one', () => {
+    const { gm, player } = makeAquarium();
+    const [stairs, upstairs] = LEVELS.aquarium.tileLinks[0];
+    player.initCharLocation(true, stairs);
+    player.jumpToLinkedTile(upstairs);
+    expect(gm.cutscene.isMidFight).toBe(true);
+    expect(gm.getUiState().isCutscene).toBe(false);
   });
 
   it('only the player: NPCs go straight through', () => {

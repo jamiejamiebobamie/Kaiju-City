@@ -603,8 +603,9 @@ const ChoiceConfirm = ({ choice, from, board }) => {
 const getIsEnemyInPlay = (player, piece) => piece.getTeamIndex() != player.getTeamIndex() && !piece.isDead && piece.isOnTiles;
 
 /*
-  What the enemy zoom can look toward, each as { key, charLocation }: enemies on the board, and (GameManager.getCameraThreats)
-  the powers chasing the player, the ghost boss's launched ghosts coming for them, and Kaiju not yet on the board but near.
+  What the enemy zoom can look toward, each as { key, charLocation, isChasing }: enemies on the board, and
+  (GameManager.getCameraThreats) the powers chasing the player and the ghost boss's launched ghosts coming for them
+  ('isChasing': these come first), and Kaiju not yet on the board but near.
 */
 const getEnemyTargets = (player, gameManager) => [
   ...gameManager.getPieces().filter(piece => getIsEnemyInPlay(player, piece)).map(piece => ({ key: `piece ${piece.pieceIndex}`, charLocation: piece.charLocation })),
@@ -622,12 +623,15 @@ const ENEMY_FOCUS = {
   holdMs: 800 // and stays that way this long
 };
 
-// the targets are made fresh each update: one is followed by its key
+// the targets are made fresh each update: one is followed by its key.
+// anything chasing the player comes first (Jamie): the camera goes to it at once, and the enemies wait until it is gone.
 const makeEnemyFocus = () => {
   let currentKey;
   let challengerKey;
   let challengerSinceMs = 0;
-  return (player, targets, nowMs) => {
+  return (player, allTargets, nowMs) => {
+    const chasing = allTargets.filter(({ isChasing }) => isChasing);
+    const targets = chasing.length ? chasing : allTargets;
     const closest = getClosestTarget(player, targets);
     const current = targets.find(({ key }) => key == currentKey);
     if (!current || !closest) {

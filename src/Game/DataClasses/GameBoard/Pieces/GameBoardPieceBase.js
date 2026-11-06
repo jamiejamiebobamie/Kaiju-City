@@ -508,6 +508,13 @@ export class GameBoardPieceBase {
 
     updateMovmement(moveToTiles) {
         if (!moveToTiles || !moveToTiles.length) return;
+        // the path's first step is through a tile link (the Aquarium's floors): through it, not across the gap to it
+        const linkedTile = this.gameManagerProxy.getLinkedTile(this.tileIndex);
+        if (!!linkedTile && linkedTile.i == moveToTiles[0].i && linkedTile.j == moveToTiles[0].j) {
+            this.jumpToLinkedTile(linkedTile);
+            this.moveToTiles = moveToTiles.slice(1);
+            return;
+        }
         this.moveToLocation = this.gameManagerProxy.getCharXAndYFromTileIndex(moveToTiles[0]) || this.moveToLocation;
         this.moveFromLocation = this.charLocation;
         this.moveToTiles = moveToTiles;

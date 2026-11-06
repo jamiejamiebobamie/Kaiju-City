@@ -1,4 +1,4 @@
-import { addUnlock, getUnlocks } from './Unlocks';
+import { addUnlock, getBattlegroundUnlockId, getUnlocks, saveRecruitChoice } from './Unlocks';
 import { storage } from 'Utils/storage';
 
 /*
@@ -46,6 +46,15 @@ export const TOOL_UNLOCKS = { avatars: 'tool-avatars', colors: 'tool-colors', ab
 export const getIsToolOpen = (tool: string) => getUnlocks().includes(TOOL_UNLOCKS[tool]);
 
 export const unlockTool = (tool: string) => addUnlock(TOOL_UNLOCKS[tool]);
+
+// dev testing: every character, power, tool and battleground open at once (and every recruit recruited, for their calls)
+export const unlockEverything = (battlegroundIds: Array<string>) => {
+  ROSTER.forEach(({ unlock }) => unlock && addUnlock(unlock));
+  SKILL_UNLOCKS.forEach(({ element }) => addUnlock(getSkillId(element)));
+  Object.values(TOOL_UNLOCKS).forEach(id => addUnlock(id));
+  battlegroundIds.forEach(levelId => addUnlock(getBattlegroundUnlockId(levelId)));
+  SKILL_UNLOCKS.filter(({ recruit }) => recruit != 'agent').forEach(({ recruit }) => saveRecruitChoice(recruit, 'recruit'));
+};
 
 const TEAM_KEY = 'kaiju-team-avatars';
 const COLORS_KEY = 'kaiju-avatar-colors';

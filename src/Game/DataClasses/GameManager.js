@@ -585,14 +585,14 @@ export class GameManager {
             const distance = Math.hypot(charLocation.x - player.charLocation.x, charLocation.y - player.charLocation.y);
             if (!byCast.has(key) || distance < byCast.get(key).distance) byCast.set(key, { key, charLocation, distance });
         });
-        threats.push(...[...byCast.values()].map(({ key, charLocation }) => ({ key, charLocation })));
+        threats.push(...[...byCast.values()].map(({ key, charLocation }) => ({ key, charLocation, isChasing: true })));
         // the ring's launched ghosts, heading for the player (the closest of the team to them)
         if (this.ghostRing) {
             const team = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex()).filter(piece => !piece.isDead && piece.isOnTiles);
             this.ghostRing.ghosts.filter(({ state }) => state == 'launched').forEach(ghost => {
                 const getDistance = piece => Math.hypot(piece.charLocation.x - ghost.x, piece.charLocation.y - ghost.y);
                 const chased = team.reduce((closest, piece) => !closest || getDistance(piece) < getDistance(closest) ? piece : closest, undefined);
-                if (chased == player) threats.push({ key: `phaseGhost ${ghost.id}`, charLocation: { x: ghost.x, y: ghost.y } });
+                if (chased == player) threats.push({ key: `phaseGhost ${ghost.id}`, charLocation: { x: ghost.x, y: ghost.y }, isChasing: true });
             });
         }
         // Kaiju not on the board yet, but near
@@ -656,7 +656,14 @@ export class GameManager {
         const inStart = { x: fromSpot.x - inDir.x * backBy, y: fromSpot.y - inDir.y * backBy };
         // out: it walks from all behind the edge to the far tile, all of it in view by then
         const outEdge = toWall ? { point: toWall.point, behind: toWall.behind } : { point: { x: toSpot.x - outDir.x * reachAlong({ x: -outDir.x, y: -outDir.y }), y: toSpot.y - outDir.y * reachAlong({ x: -outDir.x, y: -outDir.y }) }, behind: { x: -outDir.x, y: -outDir.y } };
-        const back = getThrough(toSpot, { x: -outDir.x, y: -outDir.y }, outEdge);
+        // where the walk out ends: on from the far tile until all of them is in view (a link's tile can be behind its edge)
+        const outAlong = -(outDir.x * outEdge.behind.x + outDir.y * outEdge.behind.y);
+        const stillBehind = Math.max(...body.map(({ x, y }) => (toSpot.x + x - outEdge.point.x) * outEdge.behind.x + (toSpot.y + y - outEdge.point.y) * outEdge.behind.y));
+        const onBy = outAlong > 0.05 && stillBehind > -1 ? (stillBehind + 2) / outAlong : 0;
+        const outEndSpot = { x: toSpot.x + outDir.x * onBy, y: toSpot.y + outDir.y * onBy };
+        const outTile = onBy > 0 ? board.getClosestWalkableTileToLocation(outEndSpot) : toTile;
+        const outSpot = board.getCharXAndYFromTileIndex(outTile);
+        const back = getThrough(outSpot, { x: -outDir.x, y: -outDir.y }, outEdge);
         const extreme = { zoomScale: PENINSULA.cameraZoom * CUTSCENE.outcomeZoomScale, isPeninsulaSized: true };
         const headOf = spot => ({ x: spot.x, y: spot.y - CUTSCENE.shotHeadRows * rowPx * 0.5 });
         const inShot = { point: headOf(inEdge.point), ...extreme, panMs: PORTAL_WALK.zoomInMs };
@@ -667,7 +674,7 @@ export class GameManager {
             piece.dir = getDirName(dir);
         };
         piece.stopMoving();
-        this.portalWalk = { piece, toTile, toSpot, back, outDir, outEdge, extreme, headOf, walkTo, stage: 'in' };
+        this.portalWalk = { piece, toTile, toSpot: outSpot, outTile, back, outDir, outEdge, extreme, headOf, walkTo, stage: 'in' };
         this.startCutscene([
             { shot: inShot, ms: PORTAL_WALK.zoomInMs, onStart: () => { piece.portalMask = inEdge; walkTo(inStart, inStart, inDir)(0); } },
             { shot: inShot, ms: PORTAL_WALK.walkMs, onTick: walkTo(inStart, inEnd, inDir) },
@@ -682,7 +689,7 @@ export class GameManager {
                 this.portalWalk.acrossMs = 0;
                 this.portalShot = { point: headOf(inEdge.point), isPlayZoom: true, panMs: PORTAL_WALK.zoomOutMs };
             } }
-        ]);
+        ], { isMidFight: true });
         return true;
     };
 
@@ -697,11 +704,11 @@ export class GameManager {
         }
         if (walk.acrossMs < PORTAL_WALK.zoomOutMs + PORTAL_WALK.panMs) return;
         // out: the fight holds, in close, and they walk out of it
-        const { piece, toTile, toSpot, back, outDir, outEdge, extreme, headOf, walkTo } = walk;
+        const { piece, toTile, toSpot, outTile, back, outDir, outEdge, extreme, headOf, walkTo } = walk;
         walk.stage = 'out';
         this.portalShot = undefined;
         const outShot = { point: headOf(outEdge.point), ...extreme, panMs: PORTAL_WALK.zoomInMs };
-        piece.setTileIndex(toTile);
+        piece.setTileIndex(outTile);
         piece.charLocation = { ...back };
         piece.isOnTiles = true;
         piece.isVisible = true;
@@ -720,7 +727,7 @@ export class GameManager {
                 piece.dir = 'idle';
                 this.portalWalk = undefined;
             } }
-        ]);
+        ], { isMidFight: true });
     }
 
     // - - - the final battle (GiantKaiju.ts) - - -
@@ -1027,7 +1034,7 @@ export class GameManager {
             { shot: topShot, ms: SHATTER_SCREAM.portalMs, isLive: true, onStart: () => this.gameBoardManager.closeWormholes() },
             { shot: topShot, ms: getSpeechMs(toCreatures.text), isLive: true, speech: () => ({ ...this.getSpeechOver(rival, toCreatures.name, toCreatures.text), isShout: true }) },
             { shot: topShot, ms: 0, onStart: () => { this.nextMermaidHealAt = this.accTime + AQUARIUM_FLOOD.healEveryMs; } }
-        ]);
+        ], { isMidFight: true });
     }
 
     // a panel breaks: its water pours from here on, and maybe a sea creature comes out with it
@@ -1212,7 +1219,7 @@ export class GameManager {
             ...this.getTeamTeleportSteps(this.level.ghostBoss.ringSpot, team => this.ghostTeleport(team, recruits, isLast)),
             { shot: ringShot, ms: Math.max(GHOST_SCREAM.toRingMs, GHOST_BOSS.fadeInMs), onStart: () => this.startGhostRing(count, teammate) },
             { shot: ringShot, ms: 0, onStart: () => { this.isGhostScreaming = false; } }
-        ]);
+        ], { isMidFight: true });
     }
 
     /*
@@ -1577,11 +1584,13 @@ export class GameManager {
 
     // the shot holds on whoever's death ended the fight, and follows their body
 
-    startCutscene(steps) {
+    // 'isMidFight': a scene in the middle of a fight (a boss's scream, a walk through a portal): it holds the fight,
+    // but the HUDs stay up and the log stays closed
+    startCutscene(steps, { isMidFight = false } = {}) {
         // in the log, a conversation in a wide shot cuts to each speaker: first it holds on the whole scene
         const [first] = steps;
         if (getIsDialogueLog() && first && first.speech && first.shot && first.shot.isWide) steps = [{ shot: { isWide: true }, ms: DIALOGUE.establishMs }, ...steps];
-        this.cutscene = { steps, index: -1, msLeft: 0 };
+        this.cutscene = { steps, index: -1, msLeft: 0, isMidFight };
         this.nextCutsceneStep();
     }
 
@@ -2485,7 +2494,7 @@ export class GameManager {
             isPaused: this.isPaused,
             activePhases: this.getActivePhases(),
             isWideShot: this.getIsWideShot(),
-            isCutscene: !!this.cutscene,
+            isCutscene: !!this.cutscene && !this.cutscene.isMidFight, // a mid-fight scene keeps the HUDs up
             unlockMessage: this.unlockMessage,
             unlockImage: this.unlockImage,
             speech: this.speech,
