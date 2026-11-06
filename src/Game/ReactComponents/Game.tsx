@@ -1007,6 +1007,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 }}
                 onChangePowers={handleChangePowers}
                 onAlarm={() => setIsRadioAlarm(true)}
+                kaijuCount={CAMPAIGN_SECTIONS[campaignIndex].kills || 0}
               />
             </PlayWindow>
           </GameFrame>

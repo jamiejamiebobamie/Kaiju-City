@@ -4,10 +4,12 @@ import styled from "styled-components";
 import { getIsClickThrough } from "Game/DataClasses/DialogueLog";
 import { DialogueLogPanel } from "./DialogueLogPanel";
 import { ROSTER } from "Game/DataClasses/Avatars";
+import { RadarMap } from "./RadarMap";
 
 /*
   A radio call from the Agent: its lines go to the dialogue log beside the monitor, as every conversation does,
-  while the monitor shows the map, darkened. The player's choices and the Go button are on the log.
+  while the monitor shows the Peninsula on a radar (RadarMap): with the siren, the Kaiju coming for it.
+  The player's choices and the Go button are on the log.
   With Click through, each line waits for a key or a click. Without it, each holds a while and the call goes on.
 */
 const RADIO_LOOK = {
@@ -20,8 +22,7 @@ const Page = styled.div`
   position: absolute;
   inset: 0;
   z-index: 2147482900;
-  background: linear-gradient(rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0.62)), url(/Map.gif) center / cover no-repeat, black;
-  image-rendering: pixelated;
+  background: black;
 `;
 
 const NAMES = { agent: "Agent", player: "You", teammate: "Teammate" };
@@ -32,7 +33,8 @@ const getHoldMs = text => {
 };
 
 // 'onAlarm': called once the call reaches the line about Kaiju coming, for the siren
-export const RadioCall = ({ lines, playerAvatar, teammateAvatar, isResuming, onGo, onChangePowers, onAlarm = () => {} }) => {
+// 'kaijuCount': the Kaiju in the fight this call sends the team to, shown on the radar once the siren goes
+export const RadioCall = ({ lines, playerAvatar, teammateAvatar, isResuming, onGo, onChangePowers, onAlarm = () => {}, kaijuCount = 0 }) => {
   const [script, setScript] = useState(lines);
   const [lineIndex, setLineIndex] = useState(0);
 
@@ -40,7 +42,12 @@ export const RadioCall = ({ lines, playerAvatar, teammateAvatar, isResuming, onG
   const isChoice = !!line.choices;
   const isLastLine = lineIndex == script.length - 1;
   const isAlarmed = script.slice(0, lineIndex + 1).some(({ isAlarm }) => isAlarm);
-  useEffect(() => { if (isAlarmed) onAlarm(); }, [isAlarmed]);
+  const [alarmAtMs, setAlarmAtMs] = useState(undefined);
+  useEffect(() => {
+    if (!isAlarmed) return;
+    onAlarm();
+    setAlarmAtMs(alarmAt => alarmAt ?? performance.now());
+  }, [isAlarmed]);
 
   const nextLine = () => {
     if (isLastLine || isChoice) return;
@@ -81,7 +88,9 @@ export const RadioCall = ({ lines, playerAvatar, teammateAvatar, isResuming, onG
   useLayoutEffect(() => setFrame(document.querySelector("[data-game-frame]")), []);
   return (
     <>
-      <Page />
+      <Page>
+        <RadarMap dotCount={kaijuCount} alarmAtMs={alarmAtMs} />
+      </Page>
       {frame && createPortal(<DialogueLogPanel entries={entries} isWaiting={!isChoice && !isLastLine} isVisible onContinue={nextLine} actions={actions} />, frame)}
     </>
   );

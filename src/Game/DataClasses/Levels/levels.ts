@@ -769,7 +769,7 @@ const MAP_ICONS = {
 };
 
 // the Lab can be visited from the map, and then the walk carries on
-const LAB_SPOT = { x: 150, y: 680 };
+export const LAB_SPOT = { x: 150, y: 680 };
 const LAB_SITE = { spot: LAB_SPOT, color: '#4a8fb0', icon: 'lab', isDetour: true };
 
 // where to go next pulses: a bright ring of its color, in and out, under its icon
