@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
 import { GHOST_BOSS } from 'Game/DataClasses/GhostBoss';
+import { AQUARIUM_FLOOD } from 'Game/DataClasses/AquariumFlood';
 import { createPortal } from "react-dom";
 import styled, { keyframes } from "styled-components";
 import { useSnapshot } from "valtio";
@@ -453,6 +454,9 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   // the ghost boss's ring, tuned in the dev panel: its size, and the ghosts in each phase's ring (the next ring uses them)
   const [ghostRadiusRows, setGhostRadiusRows] = useState(GHOST_BOSS.ringRadiusRows);
   const [ghostRings, setGhostRings] = useState(GHOST_BOSS.rings.join(', '));
+  // the Aquarium's flood, tuned in the dev panel (the next flood uses them)
+  const [floodSeconds, setFloodSeconds] = useState(AQUARIUM_FLOOD.floodMs / 1000);
+  const [floodStyle, setFloodStyle] = useState(AQUARIUM_FLOOD.flowStyle);
   const npcAggressionRef = useRef(npcAggression);
   npcAggressionRef.current = npcAggression;
   const [isMonitorAlways, setIsMonitorAlways] = useState(true); // a playtest: the TV never opens up, and wide shots play inside it
@@ -1016,6 +1020,28 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                   <input type="checkbox" checked={activePhases.includes(id)} onChange={() => togglePhase(id)} /> {label}
                 </label>
               ))}
+              {level.aquariumFlood && (
+                <>
+                  <button onClick={() => gameManager.current.devDownRival()}>Mermaid to zero</button>
+                  <label>
+                    Flood{' '}
+                    <input aria-label="Flood seconds" type="number" min={5} max={180} style={{ width: 52 }} value={floodSeconds} onChange={event => {
+                      const seconds = Number(event.target.value);
+                      setFloodSeconds(seconds);
+                      if (seconds > 0) AQUARIUM_FLOOD.floodMs = seconds * 1000;
+                    }} /> s
+                  </label>
+                  <select aria-label="Water style" value={floodStyle} onChange={event => {
+                    const style = event.target.value as 'flow' | 'bounce';
+                    setFloodStyle(style);
+                    AQUARIUM_FLOOD.flowStyle = style;
+                    event.target.blur();
+                  }}>
+                    <option value="flow">Water flows</option>
+                    <option value="bounce">Water bounces</option>
+                  </select>
+                </>
+              )}
               {level.ghostBoss && (
                 <>
                   <button onClick={() => gameManager.current.devDownRival()}>Punk Girl to zero</button>

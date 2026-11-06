@@ -61,7 +61,9 @@ const TILE_LOOK = {
   smokeFadeMs: 350,
   // where a status moves on, its icon leaves a fading ghost in the power's own color
   iconGhostOpacity: 0.22, // faint, so a ghost is never taken for the power itself
-  iconGhostMs: 350
+  iconGhostMs: 350,
+  floodColor: "#3c7fde", // the Aquarium's flood: Water's own color and icon
+  floodOpacity: 0.85
 };
 
 // any css color as [r, g, b]: the canvas turns names like 'tomato' into hex
@@ -483,6 +485,15 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
         const center = getTileCenter(grid, tileIndex);
         if (!level.goalColor) drawGoalBeam(ctx, center, radius);
         drawSprite(ctx, getSoftSprite(level.goalColor || TILE_LOOK.goalColor, TILE_LOOK.statusTintOpacity), center, pixelRatio);
+      });
+      ctx.globalAlpha = 1;
+
+      // the Aquarium's flood: water on the tiles, under any power (a power on a tile has washed it away)
+      ctx.globalAlpha = TILE_LOOK.floodOpacity;
+      (gameManager.getFloodTiles ? gameManager.getFloodTiles() : []).forEach(tileIndex => {
+        const center = getTileCenter(grid, tileIndex);
+        drawSprite(ctx, getStatusSprite(TILE_LOOK.floodColor), center, pixelRatio);
+        drawIcon(ctx, { iconClass: "fa-tint", rotation: 0 }, center, radius, TILE_LOOK.floodColor, lineScale);
       });
       ctx.globalAlpha = 1;
 

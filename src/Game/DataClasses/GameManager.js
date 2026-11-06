@@ -768,6 +768,7 @@ export class GameManager {
         const rival = this.rivalPiece;
         if (!rival || rival.isDead || this.cutscene) return;
         rival.lastDmgAccTime = 0;
+        rival.isUnhurtable = false; // dev: even while she heals upstairs
         rival.decrementHealth(this.accTime, rival.lives + rival.livesModifier);
     };
 
