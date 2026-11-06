@@ -50,7 +50,8 @@ export const SHATTER_SCREAM = {
   screamMs: 700, // after her word, the scream
   panMs: 700, // the camera's move to each panel, and back to her
   panelMs: 1600, // on each panel as it breaks and its water pours out
-  panelZoomShare: 0.7, // a panel's shot, as a share of the extreme zoom
+  restZoomShare: 1.15, // after the team's teleport: back from the extreme zoom, but not all the way out (a share of the usual zoom)
+  onHerMs: 600, // on her a moment, before the glass
   creatureEvery: 2, // every second panel lets a sea creature out as it breaks
   portalMs: 700 // the portal opening, her going through, and it closing
 };
@@ -798,14 +799,18 @@ export class GameManager {
         const scream = getDialogueLine(screamScene);
         const toCreatures = getDialogueLine(creaturesScene);
         const extreme = { zoomScale: PENINSULA.cameraZoom * CUTSCENE.outcomeZoomScale, isPeninsulaSized: true };
-        const onHer = () => ({ point: { x: rival.charLocation.x, y: rival.charLocation.y - CUTSCENE.shotHeadRows * rowPx * 0.5 }, ...extreme, panMs: SHATTER_SCREAM.panMs });
-        const herShot = onHer();
+        // after the team's teleport, the rest is a step back from the extreme zoom (Jamie)
+        const nearer = { zoomScale: PENINSULA.cameraZoom * SHATTER_SCREAM.restZoomShare, isPeninsulaSized: true };
+        const onHer = (zoom = nearer) => ({ point: { x: rival.charLocation.x, y: rival.charLocation.y - CUTSCENE.shotHeadRows * rowPx * 0.5 }, ...zoom, panMs: SHATTER_SCREAM.panMs });
+        const herShot = onHer(extreme);
+        const herAfter = onHer();
+        const { recruits } = this.getGhostTeam();
         const backOnHer = onHer();
         const topShot = {}; // on her up on the walkway: filled in once she is there
         const topTile = this.gameBoardManager.getClosestWalkableTileToLocation(topSpot);
         this.startAquariumFlood();
         const panelSteps = panels.flatMap((panel, k) => {
-            const shot = { point: panel.focus, zoomScale: extreme.zoomScale * SHATTER_SCREAM.panelZoomShare, isPeninsulaSized: true, panMs: SHATTER_SCREAM.panMs };
+            const shot = { point: panel.focus, ...nearer, panMs: SHATTER_SCREAM.panMs };
             return [
                 { shot, ms: SHATTER_SCREAM.panMs, isLive: true },
                 { shot, ms: SHATTER_SCREAM.panelMs, isLive: true, phase: panel.phase, onStart: () => this.breakPanel(panel, k % SHATTER_SCREAM.creatureEvery == 0) }
@@ -814,6 +819,9 @@ export class GameManager {
         this.startCutscene([
             { shot: herShot, ms: CUTSCENE.outcomePullMs },
             { shot: herShot, ms: getSpeechMs(scream.text) + SHATTER_SCREAM.screamMs, speech: { ...this.getSpeechOver(rival, scream.name, scream.text), isShout: true } },
+            // the scream pulls the team to the bottom of the hall, below the tank, as the Rooftop's does
+            ...this.getTeamTeleportSteps(this.level.aquariumFlood.teamSpot, team => this.placeTeam(team, recruits, this.level.aquariumFlood.teamSpot)),
+            { shot: herAfter, ms: SHATTER_SCREAM.panMs + SHATTER_SCREAM.onHerMs },
             ...panelSteps,
             // the whole hall darkens, and the camera is back on her
             { shot: backOnHer, ms: SHATTER_SCREAM.panMs, isLive: true, phase: this.level.flood.phase },
@@ -1005,53 +1013,73 @@ export class GameManager {
         const extreme = { zoomScale: PENINSULA.cameraZoom * CUTSCENE.outcomeZoomScale, isPeninsulaSized: true };
         const headOf = piece => ({ x: piece.charLocation.x, y: piece.charLocation.y - CUTSCENE.shotHeadRows * rowPx * 0.5 });
         const onHer = { point: headOf(rival), ...extreme, panMs: CUTSCENE.outcomePullMs };
-        // the two of them, left to right. 'pair': in one shot if they fit at this zoom, side by side if not (GameBoard)
-        const team = teammate ? [player, teammate].sort((a, b) => a.charLocation.x - b.charLocation.x) : [player];
-        const teamShot = team.length > 1 ? { pair: team.map(headOf), ...extreme, panMs: GHOST_SCREAM.toTeamMs } : { point: headOf(player), ...extreme, panMs: GHOST_SCREAM.toTeamMs };
-        const together = { shot: { ...teamShot, isCut: true }, ms: GHOST_SCREAM.togetherMs };
-        const merged = { shot: { point: headOf(player), ...extreme, isCut: true }, ms: GHOST_SCREAM.mergedMs };
         // the ring goes round the whole roof: the camera pulls out to all of it
         const ringShot = { isWide: true, panMs: GHOST_SCREAM.toRingMs };
         this.startCutscene([
             { shot: onHer, ms: CUTSCENE.outcomePullMs },
             { shot: onHer, ms: getSpeechMs(text) + GHOST_SCREAM.screamMs, speech: { ...this.getSpeechOver(rival, name, text), isShout: true } },
+            ...this.getTeamTeleportSteps(this.level.ghostBoss.ringSpot, team => this.ghostTeleport(team, recruits, isLast)),
+            { shot: ringShot, ms: Math.max(GHOST_SCREAM.toRingMs, GHOST_BOSS.fadeInMs), onStart: () => this.startGhostRing(count, teammate) },
+            { shot: ringShot, ms: 0, onStart: () => { this.isGhostScreaming = false; } }
+        ]);
+    }
+
+    /*
+        The bosses' scream pulls the team somewhere (the Rooftop, the Aquarium): in close on the two of them (side by side
+        if they are apart), a red flash, and they are standing together at 'spot', at the same zoom, so it looks as if the
+        level changed under them. 'onTeleport(team)' moves everyone. Returns the steps, to put in the boss's cutscene.
+    */
+    getTeamTeleportSteps(spot, onTeleport) {
+        const { player, teammate } = this.getGhostTeam();
+        const rowPx = this.getGhostRowPx();
+        const extreme = { zoomScale: PENINSULA.cameraZoom * CUTSCENE.outcomeZoomScale, isPeninsulaSized: true };
+        const headOf = piece => ({ x: piece.charLocation.x, y: piece.charLocation.y - CUTSCENE.shotHeadRows * rowPx * 0.5 });
+        // the two of them, left to right. 'pair': in one shot if they fit at this zoom, side by side if not (GameBoard)
+        const team = teammate ? [player, teammate].sort((a, b) => a.charLocation.x - b.charLocation.x) : [player];
+        const teamShot = team.length > 1 ? { pair: team.map(headOf), ...extreme, panMs: GHOST_SCREAM.toTeamMs } : { point: headOf(player), ...extreme, panMs: GHOST_SCREAM.toTeamMs };
+        const together = { shot: { ...teamShot, isCut: true }, ms: GHOST_SCREAM.togetherMs };
+        const merged = { shot: { point: headOf(player), ...extreme, isCut: true }, ms: GHOST_SCREAM.mergedMs };
+        return [
             { shot: teamShot, ms: GHOST_SCREAM.toTeamMs + GHOST_SCREAM.onTeamMs },
             { shot: teamShot, ms: GHOST_SCREAM.flashInMs, onStart: () => { this.ghostFlashCount += 1; } },
             Object.assign(together, { onStart: () => {
-                this.ghostTeleport(team, recruits, isLast);
+                onTeleport(team);
                 // the same shot as before, now on the two of them side by side: the halves meet in the middle
                 const heads = team.map(headOf);
                 together.shot = heads.length > 1 ? { pair: heads, isSeam: true, ...extreme, isCut: true } : { point: heads[0], ...extreme, isCut: true };
                 const middle = { x: (heads[0].x + heads[heads.length - 1].x) / 2, y: heads[0].y };
                 merged.shot = { point: middle, ...extreme, isCut: true };
             } }),
-            merged,
-            { shot: ringShot, ms: Math.max(GHOST_SCREAM.toRingMs, GHOST_BOSS.fadeInMs), onStart: () => this.startGhostRing(count, teammate) },
-            { shot: ringShot, ms: 0, onStart: () => { this.isGhostScreaming = false; } }
-        ]);
+            merged
+        ];
     }
 
-    // no portals: everyone is just elsewhere, under the flash
-    ghostTeleport(team, recruits, isLast) {
-        const rival = this.rivalPiece;
-        const { ringSpot, rivalSpot } = this.level.ghostBoss;
+    // no portals: the powers in play are gone with the flash, and the team stands together at 'spot' (recruits a row below)
+    placeTeam(team, recruits, spot) {
         const { colStep, scale } = this.level.grid;
         const board = this.gameBoardManager;
-        // the powers in play are gone with the flash
         board.getTilesInFlatArray().forEach(tile => tile.clearTileStatus());
         board.closeWormholes();
         const besideCols = team.length > 1 ? GHOST_SCREAM.besideCols : 0;
         const taken = new Set();
-        const place = (piece, spot) => {
-            let tile = board.getClosestWalkableTileToLocation(spot);
+        const place = (piece, at) => {
+            let tile = board.getClosestWalkableTileToLocation(at);
             if (taken.has(`${tile.i} ${tile.j}`)) tile = board.getAdjacentTileIndices(tile).filter(board.getIsInBounds).find(next => !taken.has(`${next.i} ${next.j}`)) || tile;
             taken.add(`${tile.i} ${tile.j}`);
             piece.initCharLocation(true, tile);
             piece.stopMoving();
             piece.shouldTeleport = false;
         };
-        team.forEach((piece, k) => place(piece, { x: ringSpot.x + (k == 0 ? -1 : 1) * besideCols * colStep * scale, y: ringSpot.y }));
-        recruits.forEach((piece, k) => place(piece, { x: ringSpot.x + (k - (recruits.length - 1) / 2) * colStep * scale * 2, y: ringSpot.y + this.getGhostRowPx() }));
+        team.forEach((piece, k) => place(piece, { x: spot.x + (k == 0 ? -1 : 1) * besideCols * colStep * scale, y: spot.y }));
+        recruits.forEach((piece, k) => place(piece, { x: spot.x + (k - (recruits.length - 1) / 2) * colStep * scale * 2, y: spot.y + this.getGhostRowPx() }));
+        return place;
+    }
+
+    // the Rooftop's teleport: the team onto the graveyard roof, and she is back on her own roof
+    ghostTeleport(team, recruits, isLast) {
+        const rival = this.rivalPiece;
+        const { ringSpot, rivalSpot } = this.level.ghostBoss;
+        const place = this.placeTeam(team, recruits, ringSpot);
         this.endGhostRing();
 
         // she is back on her own roof, whole again, and stays there

@@ -190,6 +190,7 @@ export type LevelConfig = {
   aquariumFlood?: { // the Aquarium fight in phases (AquariumFlood.ts)
     panels: Array<{ phase: string; focus: { x: number; y: number }; pour: { x: number; y: number } }>; // the glass, in the order it breaks
     topSpot: { x: number; y: number }; // where she goes up to, to heal
+    teamSpot: { x: number; y: number }; // where her scream pulls the team
     groundSpot: { x: number; y: number }; // where she comes back down to
     topFloor: { maxY: number; stairs: { minX: number; maxX: number; minY: number } }; // her ground while the tanks pour: above maxY, less the middle stairs
     screamScene: string;
@@ -479,6 +480,7 @@ const AQUARIUM_SCENE = {
     // the panels, left to right, as the scream breaks them: where the camera looks, and where each pours out onto the floor
     panels: GLASS_PANEL_PLACES.map(({ id, x, y, width, height }) => ({ phase: getGlassPhase(id), focus: { x: x + width / 2, y: y + height / 2 }, pour: { x: x + width / 2, y: Math.max(y + height, 560) } })),
     topSpot: { x: 704, y: 228 }, // the walkway over the hall, under the sign
+    teamSpot: { x: 702, y: 742 }, // the scream pulls the team here: the bottom of the hall, in the middle, below the tank
     groundSpot: { x: 872, y: 655 },
     topFloor: { maxY: 400, stairs: { minX: 555, maxX: 845, minY: 290 } }, // the middle stairs only go up to the teleport links
     screamScene: 'aquarium.stopScream',

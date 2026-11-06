@@ -695,6 +695,9 @@ describe('rivals', () => {
       expect(gm.aquariumFlood).toBeDefined();
       expect(gm.getIsTopFloor(rival.getTileIndex())).toBe(true);
       expect(rival.lives).toBe(1);
+      // the scream pulled the team to the bottom of the hall, below the tank
+      const { teamSpot } = LEVELS.aquarium.aquariumFlood;
+      gm.gameBoardPiecesManager.getTeamPieces(0).forEach(piece => expect(Math.hypot(piece.charLocation.x - teamSpot.x, piece.charLocation.y - teamSpot.y)).toBeLessThan(60));
       gm.accTime += 5000;
       rival.decrementHealth(gm.accTime, 3);
       expect(rival.lives).toBe(1);
