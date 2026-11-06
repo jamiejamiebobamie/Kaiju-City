@@ -1134,7 +1134,7 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
     <World ref={isMain ? worldRef : rightWorldRef} data-game-world={isMain ? "" : undefined} style={{ width: `${world.width}px`, height: `${world.height}px`, opacity: isPaused ? 0 : 1, transition: "opacity 0.3s", ...(!isMain && splitCameras ? { transform: splitCameras.right.getTransform() } : {}) }}>
         {levelLayers}
         {foregroundLayers}
-        <SceneElements level={level} activePhases={activePhases} isPaused={isPaused} onHotspot={onHotspot} isDialogueLog={getIsDialogueLog()} />
+        <SceneElements level={level} activePhases={activePhases} isPaused={isPaused} onHotspot={onHotspot} isDialogueLog={getIsDialogueLog()} isSettled={!isMain} />
         {isSlowMotion && !recruitScene && <WinDimmer />}
         {recruitScene && (recruitScene.body.spriteSheetSrc ? (
           // their own sprite, lying still on their side: the same body a ragdoll comes to rest as

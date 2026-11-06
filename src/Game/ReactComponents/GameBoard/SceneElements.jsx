@@ -296,12 +296,13 @@ const SequenceCanvas = ({ element, isActive, isPaused, style }) => {
   A glowing Kaiju part. Its first two frames fade through each other.
   Touched, it runs through all of its frames, flares, and is gone.
 */
-const KaijuPart = ({ element, activePhases, style }) => {
+// 'isSettled': drawn fresh partway through the fight (the split screen's second view): a part already touched is just gone, with no flash
+const KaijuPart = ({ element, activePhases, style, isSettled = false }) => {
   const { src, width, height, seconds, delaySeconds = 0, touchPhase, brightPhase, flashColor, glowColor } = element;
   const isTouched = !!touchPhase && activePhases.includes(touchPhase);
   const isBright = !!brightPhase && activePhases.includes(brightPhase);
-  const [isGone, setIsGone] = useState(false);
-  useEffect(() => setIsGone(false), [isTouched]);
+  const [isGone, setIsGone] = useState(isSettled && isTouched);
+  useEffect(() => setIsGone(isSettled && isTouched), [isTouched]);
 
   const layerStyle = {
     backgroundImage: `url(${src})`,
@@ -312,16 +313,7 @@ const KaijuPart = ({ element, activePhases, style }) => {
   const glowSize = Math.max(width, height) * PART_CRESCENDO.glowSize;
 
   const getPart = () => {
-    if (isBright) {
-      return <>
-        <PartGlowSwell style={{
-          width: `${glowSize}px`,
-          height: `${glowSize}px`,
-          background: `radial-gradient(circle, ${glowColor} 0%, ${glowColor} 25%, transparent 70%)`
-        }} />
-        <PartCrescendoFrames style={layerStyle} />
-      </>;
-    }
+    if (isBright) return <PartCrescendoFrames style={layerStyle} />;
     if (isTouched) return <PartTransforming style={layerStyle} onAnimationEnd={e => e.animationName == transformSwell.getName() && setIsGone(true)} />;
     return <>
       <PartLayer style={layerStyle} />
@@ -338,7 +330,17 @@ const KaijuPart = ({ element, activePhases, style }) => {
   return (
     <>
       {!isGone && <PartFrame style={style}>{getPart()}</PartFrame>}
-      {isTouched && !!flashColor && createPortal(<ScreenFlash style={{ background: flashColor }} />, document.querySelector("[data-play-screen]") || document.body)}
+      {/* the glows go one layer up, over every part: so each part fades into the others' light, the last one too (Sewer 2's claw) */}
+      {isBright && (
+        <PartFrame style={{ ...style, zIndex: (style.zIndex || 0) + 1 }}>
+          <PartGlowSwell style={{
+            width: `${glowSize}px`,
+            height: `${glowSize}px`,
+            background: `radial-gradient(circle, ${glowColor} 0%, ${glowColor} 25%, transparent 70%)`
+          }} />
+        </PartFrame>
+      )}
+      {isTouched && !isSettled && !!flashColor && createPortal(<ScreenFlash style={{ background: flashColor }} />, document.querySelector("[data-play-screen]") || document.body)}
     </>
   );
 };
@@ -686,7 +688,7 @@ const HotspotLabel = styled.div`
 `;
 
 // 'isDialogueLog': a scene's speech goes to the log beside the monitor instead
-export const SceneElements = ({ level, activePhases, isPaused, onHotspot, isDialogueLog = false }) => (
+export const SceneElements = ({ level, activePhases, isPaused, onHotspot, isDialogueLog = false, isSettled = false }) => (
   <>
     {level.sceneElements.map(element => {
       const {
@@ -784,7 +786,7 @@ export const SceneElements = ({ level, activePhases, isPaused, onHotspot, isDial
       }
       if (type == "speech") return isDialogueLog ? null : <SpeechBubble key={id} element={element} style={style} />;
       if (type == "part") {
-        const part = <KaijuPart key={id} element={element} activePhases={activePhases} style={style} />;
+        const part = <KaijuPart key={id} element={element} activePhases={activePhases} style={style} isSettled={isSettled} />;
         if (!element.overFront) return part;
         // where the part overlaps a foreground layer, a copy of that piece of it is drawn over the layer
         const { box: [left, top, right, bottom], sortY: frontSortY } = element.overFront;
@@ -792,7 +794,7 @@ export const SceneElements = ({ level, activePhases, isPaused, onHotspot, isDial
         return (
           <React.Fragment key={id}>
             {part}
-            <KaijuPart element={element} activePhases={activePhases} style={{ ...style, zIndex: getSortZIndex(level, frontSortY), clipPath, pointerEvents: "none" }} />
+            <KaijuPart element={element} activePhases={activePhases} isSettled={isSettled} style={{ ...style, zIndex: getSortZIndex(level, frontSortY), clipPath, pointerEvents: "none" }} />
           </React.Fragment>
         );
       }
