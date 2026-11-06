@@ -519,12 +519,102 @@ describe('rivals', () => {
   });
 
   it('defeating the rival wins the level', () => {
-    const gm = makeFight('rooftop');
+    const gm = makeFight('rapidTransit');
     const rival = stepUntilRival(gm);
     expect(gm.getGameResult()).toBe(null);
     gm.accTime += 5000;
     rival.decrementHealth(gm.accTime, rival.maxLives);
     expect(gm.getGameResult()).toBe(GameResult.PlayerWon);
+  });
+
+  describe('the ghost boss: the Rooftop fight in phases', () => {
+    const makeGhostFight = (isTeammate = true) => {
+      const settingsManager = new SettingsManager();
+      settingsManager.setSortedPlayerChosenAbilityElementsString(['Fire', 'Ice', 'Metal']);
+      settingsManager.setIsTeammate(isTeammate);
+      const gm = new GameManager({ level: LEVELS.rooftop, settingsManager });
+      gm.initGame();
+      return { gm, rival: stepUntilRival(gm) };
+    };
+    // brings her to zero, and plays the scream through to the ring
+    const downHer = gm => {
+      gm.accTime += 5000;
+      gm.rivalPiece.lastDmgAccTime = 0;
+      gm.rivalPiece.decrementHealth(gm.accTime, gm.rivalPiece.lives + gm.rivalPiece.livesModifier);
+      for (let k = 0; k < 400 && (gm.isGhostScreamPending || gm.cutscene); k += 1) gm.stepPieces();
+    };
+    const getTeam = gm => gm.gameBoardPiecesManager.getTeamPieces(gm.gameBoardPiecesManager.getPlayerTeamIndex());
+
+    it('at zero she does not die: she screams, and the team is pulled into a ring of five ghosts', () => {
+      const { gm, rival } = makeGhostFight();
+      downHer(gm);
+      expect(gm.getGameResult()).toBe(null);
+      expect(rival.isDead).toBe(false);
+      expect(rival.lives).toBe(rival.maxLives);
+      expect(gm.ghostRing.ghosts.length).toBe(5);
+      expect(gm.cutscene).toBeUndefined();
+      // the two of them stand side by side in the ring's middle, and she is back on the left building
+      const { ringSpot } = LEVELS.rooftop.ghostBoss;
+      getTeam(gm).forEach(piece => expect(Math.hypot(piece.charLocation.x - ringSpot.x, piece.charLocation.y - ringSpot.y)).toBeLessThan(40));
+      expect(gm.getIsRivalGround(rival.getTileIndex())).toBe(true);
+      expect(rival.charLocation.x).toBeLessThan(330);
+    });
+
+    it('the rings grow from five to seven to nine, and then she is a ghost: one more blow and she is gone', () => {
+      const { gm, rival } = makeGhostFight();
+      downHer(gm);
+      downHer(gm);
+      expect(gm.ghostRing.ghosts.length).toBe(7);
+      expect(rival.isGhostForm).toBe(false);
+      downHer(gm);
+      expect(gm.ghostRing.ghosts.length).toBe(9);
+      expect(rival.isGhostForm).toBe(true);
+      expect(rival.lives).toBe(1);
+      expect(gm.getGameResult()).toBe(null);
+      gm.accTime += 5000;
+      rival.decrementHealth(gm.accTime, 1);
+      expect(rival.isDead).toBe(true);
+      expect(gm.getGameResult()).toBe(GameResult.PlayerWon);
+    });
+
+    it('her own roof is the left building, without the crane beam', () => {
+      const { gm } = makeGhostFight();
+      expect(gm.getIsRivalGround({ i: 8, j: 15 })).toBe(true);
+      expect(gm.getIsRivalGround({ i: 3, j: 22 })).toBe(true);
+      expect(gm.getIsRivalGround({ i: 12, j: 22 })).toBe(false); // on the beam
+      expect(gm.getIsRivalGround({ i: 30, j: 20 })).toBe(false); // the graveyard roof
+    });
+
+    it('she never walks off her roof', () => {
+      const { gm, rival } = makeGhostFight(false);
+      downHer(gm);
+      for (let k = 0; k < 300; k += 1) {
+        gm.stepPieces();
+        gm.stepTiles();
+        if (rival.isDead || gm.getGameResult() !== null) break;
+        expect(gm.getIsRivalGround(rival.getTileIndex())).toBe(true);
+      }
+    });
+
+    it('the ghosts cost the team health, and the teammate stays inside the ring', () => {
+      const { gm } = makeGhostFight();
+      downHer(gm);
+      const [player, teammate] = getTeam(gm);
+      const startLives = player.lives + teammate.lives;
+      const ring = gm.ghostRing;
+      for (let k = 0; k < 200 && gm.ghostRing; k += 1) {
+        gm.stepPieces();
+        if (gm.ghostRing && !teammate.isDead) expect(Math.hypot(teammate.charLocation.x - ring.center.x, teammate.charLocation.y - ring.center.y)).toBeLessThan(ring.radiusPx);
+      }
+      expect(gm.ghostRing).toBeUndefined(); // spent
+      expect(player.lives + teammate.lives).toBeLessThan(startLives);
+      expect(teammate.allowedTile).toBeUndefined();
+    });
+
+    it('the other rivals still go down in one go', () => {
+      expect(LEVELS.rapidTransit.ghostBoss).toBeUndefined();
+      expect(LEVELS.aquarium.ghostBoss).toBeUndefined();
+    });
   });
 
   it('Peninsula has no rival, and still needs its Kaiju kills', () => {

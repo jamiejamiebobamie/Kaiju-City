@@ -1,4 +1,4 @@
-import { fillPronouns, getDialogueTexts, getRecruitChoiceLines, getSpokenLines } from './Dialogue/dialogue';
+import { fillPronouns, getDialogueLine, getDialogueTexts, getRecruitChoiceLines, getSpokenLines } from './Dialogue/dialogue';
 import { GameMode, GAME_TICK, PIECES_INFO, ZoomLvl } from 'Utils/gameState';
 import { TimeoutHandler } from './TimeoutHandler';
 import { GameManagerProxy } from './GameManagerProxy';
@@ -15,7 +15,8 @@ import { WIDE_SHOT } from './Camera';
 import { addUnlock, getRecruitChoices, getUnlocks } from './Unlocks';
 import { ROSTER } from './Avatars';
 import { getSpeechMs } from './speechTiming';
-import { getTileCenter } from './GameBoard/hexGrid';
+import { getTileCenter, getTileIndexAtLocation } from './GameBoard/hexGrid';
+import { GHOST_BOSS, GhostRing } from './GhostBoss';
 import { getTorsoSpot, startRagdoll, stepRagdoll } from './Ragdoll';
 import { DIALOGUE, getIsClickThrough, getIsDialogueLog } from './DialogueLog';
 import { getIsSpacing } from './SpacingTest';
@@ -28,6 +29,19 @@ export const GameResult = Object.freeze({
 // timing of the moments the game holds still for
 const TRIGGER_ROWS = 2; // how close a door or a walk-here spot has to be
 const SITE_ROWS = 3; // how close a site on the map has to be
+
+// the ghost boss's scream (startGhostScream), in milliseconds
+export const GHOST_SCREAM = {
+  screamMs: 900, // after her words, the scream
+  toTeamMs: 900, // the pull to the team
+  onTeamMs: 700, // held on them before the flash
+  flashInMs: 350, // the flash comes up; they are moved at its peak
+  togetherMs: 1300, // side by side on the new roof, still in two halves if they were apart
+  mergedMs: 600, // one shot
+  toRingMs: 1500, // the pull out to the ring
+  ringZoomShare: 0.8, // the ring's shot, as a share of the usual zoom
+  besideCols: 1 // the two of them land this many columns either side of the ring's middle
+};
 
 export const CUTSCENE = {
   wideMs: 1800,
@@ -128,6 +142,13 @@ export class GameManager {
         this.resultMs = 0; // how long the fight has been over
         this.timeScale = 1; // the game's speed: below 1 in slow motion
         this.outcomeShot = undefined;
+        // the ghost boss (GhostBoss.ts): the Rooftop fight in phases
+        this.ghostBossDowns = 0; // how many times she has been brought to zero
+        this.ghostRing = undefined;
+        this.ghostRingTeammate = undefined;
+        this.isGhostScreaming = false; // from the blow that brings her to zero until the new ring has formed
+        this.isGhostScreamPending = false;
+        this.ghostFlashCount = 0; // each scream's red flash
         this.enemyPowersAtMs = 0; // before this, the other side can't use powers
         // the dialogue log (DialogueLog.ts): every line said so far, and talk that runs outside of cutscenes
         this.dialogueLog = []; // { key, who, name, text, avatar, chain }
@@ -462,7 +483,175 @@ export class GameManager {
         piece.facingDir = startFacing;
         piece.introZIndex = getSortZIndex(this.level, introSortY);
         this.rivalPiece = piece;
+        if (this.level.ghostBoss) piece.onBeforeDeath = () => this.onGhostBossDown();
     }
+
+    // - - - the ghost boss (GhostBoss.ts) - - -
+
+    // brought to zero, she doesn't die: she screams, and a ring of ghosts comes. after the last ring, she is a ghost, and the next blow kills her.
+    onGhostBossDown() {
+        if (this.isGhostScreaming) return true;
+        if (this.ghostBossDowns >= GHOST_BOSS.rings.length) return false;
+        this.ghostBossDowns += 1;
+        this.isGhostScreaming = true;
+        this.isGhostScreamPending = true; // it starts on the next tick, once the blow is done
+        return true;
+    }
+
+    getGhostRowPx() {
+        const { rowStep, scale } = this.level.grid;
+        return rowStep * scale;
+    }
+
+    // her own roof, after the first scream: the left building, less the crane beam
+    getIsRivalGround = tileIndex => {
+        const { maxI, beamFromI, beamFromJ } = this.level.ghostBoss.rivalGround;
+        return tileIndex.i <= maxI && !(tileIndex.i >= beamFromI && tileIndex.j >= beamFromJ);
+    };
+
+    // the player, the teammate (not recruits called in) and any recruits, still standing
+    getGhostTeam() {
+        const team = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex()).filter(piece => !piece.isDead);
+        const player = this.gameBoardPiecesManager.getPlayerPiece();
+        const teammate = team.find(piece => piece != player && !piece.isRecruit);
+        return { player, teammate, recruits: team.filter(piece => piece.isRecruit) };
+    }
+
+    // the scream: her words, the scream, the camera on the team (side by side if they are apart), a red flash,
+    // and they are on the graveyard roof, standing together. then the camera pulls out as the ghosts fade in around them.
+    // the keys are off only for this.
+    startGhostScream() {
+        this.isGhostScreamPending = false;
+        const rival = this.rivalPiece;
+        const { player, teammate, recruits } = this.getGhostTeam();
+        const rowPx = this.getGhostRowPx();
+        const count = GHOST_BOSS.rings[this.ghostBossDowns - 1];
+        const isLast = this.ghostBossDowns == GHOST_BOSS.rings.length;
+        const { name, text } = getDialogueLine(this.level.ghostBoss.screamScene);
+        const extreme = { zoomScale: PENINSULA.cameraZoom * CUTSCENE.outcomeZoomScale, isPeninsulaSized: true };
+        const headOf = piece => ({ x: piece.charLocation.x, y: piece.charLocation.y - CUTSCENE.shotHeadRows * rowPx * 0.5 });
+        const onHer = { point: headOf(rival), ...extreme, panMs: CUTSCENE.outcomePullMs };
+        // the two of them, left to right. 'pair': in one shot if they fit at this zoom, side by side if not (GameBoard)
+        const team = teammate ? [player, teammate].sort((a, b) => a.charLocation.x - b.charLocation.x) : [player];
+        const teamShot = team.length > 1 ? { pair: team.map(headOf), ...extreme, panMs: GHOST_SCREAM.toTeamMs } : { point: headOf(player), ...extreme, panMs: GHOST_SCREAM.toTeamMs };
+        const together = { shot: { ...teamShot, isCut: true }, ms: GHOST_SCREAM.togetherMs };
+        const merged = { shot: { point: headOf(player), ...extreme, isCut: true }, ms: GHOST_SCREAM.mergedMs };
+        const ringSpot = this.level.ghostBoss.ringSpot;
+        const ringShot = { point: ringSpot, zoomScale: PENINSULA.cameraZoom * GHOST_SCREAM.ringZoomShare, isPeninsulaSized: true, panMs: GHOST_SCREAM.toRingMs };
+        this.startCutscene([
+            { shot: onHer, ms: CUTSCENE.outcomePullMs },
+            { shot: onHer, ms: getSpeechMs(text) + GHOST_SCREAM.screamMs, speech: { ...this.getSpeechOver(rival, name, text), isShout: true } },
+            { shot: teamShot, ms: GHOST_SCREAM.toTeamMs + GHOST_SCREAM.onTeamMs },
+            { shot: teamShot, ms: GHOST_SCREAM.flashInMs, onStart: () => { this.ghostFlashCount += 1; } },
+            Object.assign(together, { onStart: () => {
+                this.ghostTeleport(team, recruits, isLast);
+                // the same shot as before, now on the two of them side by side: the halves meet in the middle
+                const heads = team.map(headOf);
+                together.shot = heads.length > 1 ? { pair: heads, isSeam: true, ...extreme, isCut: true } : { point: heads[0], ...extreme, isCut: true };
+                const middle = { x: (heads[0].x + heads[heads.length - 1].x) / 2, y: heads[0].y };
+                merged.shot = { point: middle, ...extreme, isCut: true };
+            } }),
+            merged,
+            { shot: ringShot, ms: Math.max(GHOST_SCREAM.toRingMs, GHOST_BOSS.fadeInMs), onStart: () => this.startGhostRing(count, teammate) },
+            { shot: ringShot, ms: 0, onStart: () => { this.isGhostScreaming = false; } }
+        ]);
+    }
+
+    // no portals: everyone is just elsewhere, under the flash
+    ghostTeleport(team, recruits, isLast) {
+        const rival = this.rivalPiece;
+        const { ringSpot, rivalSpot } = this.level.ghostBoss;
+        const { colStep, scale } = this.level.grid;
+        const board = this.gameBoardManager;
+        // the powers in play are gone with the flash
+        board.getTilesInFlatArray().forEach(tile => tile.clearTileStatus());
+        board.wormholes = [];
+        const besideCols = team.length > 1 ? GHOST_SCREAM.besideCols : 0;
+        const taken = new Set();
+        const place = (piece, spot) => {
+            let tile = board.getClosestWalkableTileToLocation(spot);
+            if (taken.has(`${tile.i} ${tile.j}`)) tile = board.getAdjacentTileIndices(tile).filter(board.getIsInBounds).find(next => !taken.has(`${next.i} ${next.j}`)) || tile;
+            taken.add(`${tile.i} ${tile.j}`);
+            piece.initCharLocation(true, tile);
+            piece.stopMoving();
+            piece.shouldTeleport = false;
+        };
+        team.forEach((piece, k) => place(piece, { x: ringSpot.x + (k == 0 ? -1 : 1) * besideCols * colStep * scale, y: ringSpot.y }));
+        recruits.forEach((piece, k) => place(piece, { x: ringSpot.x + (k - (recruits.length - 1) / 2) * colStep * scale * 2, y: ringSpot.y + this.getGhostRowPx() }));
+        this.endGhostRing();
+
+        // she is back on her own roof, whole again, and stays there
+        rival.respawn(this.accTime);
+        rival.allowedTile = this.getIsRivalGround;
+        place(rival, rivalSpot);
+        rival.isGhostForm = isLast;
+        if (isLast) rival.lives = GHOST_BOSS.ghostLives;
+    }
+
+    startGhostRing(count, teammate) {
+        const ring = new GhostRing({ center: this.level.ghostBoss.ringSpot, count, rowPx: this.getGhostRowPx(), radiusRows: GHOST_BOSS.ringRadiusRows });
+        this.ghostRing = ring;
+        // the teammate stays in the ring until it is spent, whatever the player does
+        if (teammate) teammate.allowedTile = tile => ring.getIsWellInside(this.gameBoardManager.getCharXAndYFromTileIndex(tile));
+        this.ghostRingTeammate = teammate;
+    }
+
+    updateGhostRing() {
+        const ring = this.ghostRing;
+        const team = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex()).filter(piece => !piece.isDead && piece.isOnTiles);
+        const hits = ring.step(GAME_TICK.pieceMs, team.map(piece => ({ key: piece.pieceIndex, spot: piece.charLocation })), this.getIsDispelledAt);
+        hits.forEach(({ key, dirs }) => {
+            const piece = this.gameBoardPiecesManager.getPiece(key);
+            piece.lastHitDirs = dirs;
+            piece.lastHitBy = this.rivalPiece.pieceIndex;
+            piece.decrementHealth(this.accTime, 1);
+        });
+        if (ring.getIsSpent()) this.endGhostRing();
+    }
+
+    endGhostRing() {
+        this.ghostRing = undefined;
+        if (this.ghostRingTeammate) this.ghostRingTeammate.allowedTile = undefined;
+        this.ghostRingTeammate = undefined;
+    }
+
+    // over the team's Dispel: only the players' Bubble counts
+    getIsDispelledAt = spot => {
+        const { grid } = this.level;
+        const { i, j } = getTileIndexAtLocation(grid, { x: spot.x - grid.charOffsetX * grid.scale, y: spot.y - grid.charOffsetY * grid.scale }) || {};
+        const tile = this.gameBoardManager.tiles[i] && this.gameBoardManager.tiles[i][j];
+        const status = tile && tile.getTileStatus();
+        return !!status && status.getAppliedStatus() == 'isBubble' && tile.teamIndex == this.gameBoardPiecesManager.getPlayerTeamIndex();
+    };
+
+    // the teammate in the ring: stays well inside it, and steps away from the ghost about to launch, or flying in
+    getGhostRingMove = piece => {
+        const ring = this.ghostRing;
+        if (!ring || this.cutscene || piece != this.ghostRingTeammate || piece.isDead) return undefined;
+        const board = this.gameBoardManager;
+        const here = piece.getTileIndex();
+        const getSpot = tile => board.getCharXAndYFromTileIndex(tile);
+        const getFromMiddle = tile => Math.hypot(getSpot(tile).x - ring.center.x, getSpot(tile).y - ring.center.y);
+        const near = board.getAdjacentTileIndices(here).filter(board.getIsInBounds);
+        if (!ring.getIsWellInside(getSpot(here))) {
+            // outside the safe middle: back toward it
+            const best = near.reduce((closest, tile) => getFromMiddle(tile) < getFromMiddle(closest) ? tile : closest, here);
+            return best != here ? [best] : [];
+        }
+        const threats = ring.getThreats();
+        if (!threats.length) return [];
+        const getSafety = tile => Math.min(...threats.map(threat => Math.hypot(getSpot(tile).x - threat.x, getSpot(tile).y - threat.y)));
+        const best = near.filter(tile => ring.getIsWellInside(getSpot(tile))).reduce((safest, tile) => getSafety(tile) > getSafety(safest) + 1 ? tile : safest, here);
+        return best != here ? [best] : [];
+    };
+
+    // dev: bring her straight to zero, to try the next phase
+    devDownRival = () => {
+        const rival = this.rivalPiece;
+        if (!rival || rival.isDead || this.cutscene) return;
+        rival.lastDmgAccTime = 0;
+        rival.decrementHealth(this.accTime, rival.lives + rival.livesModifier);
+    };
 
     // a recruit called in to help: they fight beside the team with the powers they had as a rival
     callRecruit = (avatar) => {
@@ -836,6 +1025,7 @@ export class GameManager {
 
     updateCutscene() {
         const { cutscene } = this;
+        if (this.ghostRing && !this.ghostRing.getIsFormed()) this.ghostRing.stepForming(GAME_TICK.pieceMs);
         const step = cutscene.steps[cutscene.index];
         if (step.arrivals) {
             step.arrivals = step.arrivals.filter(({ piece }) => !piece.stepArrival());
@@ -1482,6 +1672,7 @@ export class GameManager {
         this.updateTalks();
         this.updateWalkers();
         if (this.recruitScene) return;
+        if (this.isGhostScreamPending) this.startGhostScream();
         if (this.cutscene) {
             this.updateCutscene();
             return;
@@ -1514,6 +1705,7 @@ export class GameManager {
         if (this.level.unlock) this.updateUnlock();
         if (this.level.exit) this.updateExit();
         this.gameBoardPiecesManager.movePieces({ accTime: this.accTime, playerInputHandler: this.playerInputHandler });
+        if (this.ghostRing) this.updateGhostRing();
     }
 
     stepTiles() {
@@ -1612,6 +1804,7 @@ export class GameManager {
                 if (!this.getIsOnCatwalk(tileIndex)) return false;
                 return !!piece && piece.teamIndex == this.catwalkAgent.teamIndex && piece != this.catwalkAgent;
             },
+            getGhostRingMove: this.getGhostRingMove,
             getIsWormholeTile: ({ i, j }) => this.gameBoardManager.getWormholes().some(({ from, to }) => [from, to].some(end => end.i == i && end.j == j)),
             getSafeTileIndex: this.gameBoardManager.getSafeTileIndex,
             getHighlightedTiles: this.gameBoardManager.getHighlightedTiles,

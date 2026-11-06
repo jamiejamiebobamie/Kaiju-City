@@ -182,6 +182,12 @@ export type LevelConfig = {
   hasTrainSchedule: boolean;
   shakePhases: Array<string>; // phases that shake the whole scene
   rival?: Rival;
+  ghostBoss?: { // the Rooftop fight in phases (GhostBoss.ts)
+    ringSpot: { x: number; y: number }; // the ring's middle, where the team is pulled to
+    rivalSpot: { x: number; y: number }; // where she goes after each scream
+    rivalGround: { maxI: number; beamFromI: number; beamFromJ: number }; // her roof: tiles up to column maxI, less the beam
+    screamScene: string; // her words before the scream, in dialogue.json
+  };
   exit?: { spot: { x: number; y: number }; afterMs?: number; afterPhase?: string; isShownWhenOpen?: boolean; nearRows?: number }; // opens after a time or a phase. reaching it ends the level.
   walkIn?: { // the opening of a scene: who stands where, and who says what
     teammateSpot?: { x: number; y: number };
@@ -376,6 +382,14 @@ const RAPID_TRANSIT_SCENE = {
 
 const ROOFTOP_SCENE = {
   wideShots: { headTouched: PART_TOUCH_HOLD_MS },
+  // brought to zero, she screams, the team is pulled to the middle of the graveyard roof (where the Kaiju head was),
+  // halfway between the graves and the roof's edge, and she goes back to the left building's roof to fight from there
+  ghostBoss: {
+    ringSpot: { x: 735, y: 466 },
+    rivalSpot: { x: 130, y: 300 },
+    rivalGround: { maxI: 18, beamFromI: 8, beamFromJ: 20 }, // the crane beam starts at column 8, row 20
+    screamScene: 'rooftop.ghostScream'
+  },
   rival: {
     ...RIVAL_LOOK,
     avatar: 'black_female',

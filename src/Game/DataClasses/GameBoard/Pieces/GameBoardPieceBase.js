@@ -34,6 +34,9 @@ export class GameBoardPieceBase {
         this.isTileHidden = false; // its tile isn't highlighted, while it makes an entrance
         this.charmEndsAt = 0;
         this.homeTeamIndex = teamIndex; // the team it goes back to, and the team its death counts against
+        this.allowedTile = undefined; // when set, the piece never steps, jumps or teleports onto a tile this says no to (the ghost boss)
+        this.onBeforeDeath = undefined; // when set and it says so, a blow that would kill the piece doesn't (the ghost boss's phases)
+        this.isGhostForm = false; // the ghost boss's last phase: milk-white and see-through
 
         // aesthetics
         this.avatar = avatar; // enum?
@@ -196,6 +199,10 @@ export class GameBoardPieceBase {
         // intention: even the player can be Charmed and lose control for a moment of his piece....
         if (this.isNpc && this.isOnTiles && this.escapeTile) {
             this.runForEscape();
+        } else if (this.isNpc && this.isOnTiles && this.gameManagerProxy.getGhostRingMove(this) !== undefined) {
+            // inside the ghost ring: the teammate stays in, and steps out of the way of the next ghost
+            if (this.isThere) this.moveToTiles = this.gameManagerProxy.getGhostRingMove(this);
+            this.useAbilities(accTime);
         } else if (this.isNpc && this.isOnTiles && this.brainAction) {
             // a trained NPC: its model chooses, in place of the rules below
             followBrainAction(this, accTime);
@@ -299,8 +306,18 @@ export class GameBoardPieceBase {
         return this.moveToTiles;
     }
 
+    getIsAllowedTile(tileIndex) {
+        return !this.allowedTile || (!!tileIndex && this.allowedTile(tileIndex));
+    }
+
     getNextDestination() {
         const [nextTileIndex, ...tileIndices] = this.moveToTiles;
+        // kept to its own ground: the path stops at the edge
+        if (!this.getIsAllowedTile(nextTileIndex)) {
+            this.moveToTiles = [];
+            this.stopMoving();
+            return;
+        }
 
         // the path crosses a tile link
         const linkedTile = this.gameManagerProxy.getLinkedTile(this.tileIndex);
@@ -390,6 +407,7 @@ export class GameBoardPieceBase {
     }
 
     jumpToLinkedTile(linkedTile) {
+        if (!this.getIsAllowedTile(linkedTile)) return;
         const location = this.gameManagerProxy.getCharXAndYFromTileIndex(linkedTile);
         this.setTileIndex(linkedTile);
         this.linkArrivalTile = linkedTile;
@@ -482,7 +500,9 @@ export class GameBoardPieceBase {
         // updates useEffect to trigger floating text 'Zip!'
         this.isTeleported = !this.isTeleported;
 
-        const teleportTileIndex = this.isNpc ? this.gameManagerProxy.getSafeTileIndex(this.pieceIndex, true) : this.moveToTiles[this.moveToTiles.length - 1];
+        const pickedTileIndex = this.isNpc ? this.gameManagerProxy.getSafeTileIndex(this.pieceIndex, true) : this.moveToTiles[this.moveToTiles.length - 1];
+        const teleportTileIndex = this.getIsAllowedTile(pickedTileIndex) ? pickedTileIndex : undefined;
+        if (!teleportTileIndex) this.shouldTeleport = false; // nowhere it may go: the Teleport is spent
 
         if (teleportTileIndex) {
             // it leaves a wormhole between where it was and where it lands
@@ -671,6 +691,7 @@ export class GameBoardPieceBase {
             const lives = this.lives + this.livesModifier;
 
             if (!this.isDead && lives < 1) {
+                if (this.onBeforeDeath && this.onBeforeDeath()) return;
                 this.handleDeath();
             }
         }

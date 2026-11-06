@@ -300,6 +300,17 @@
         }
       ]
     },
+    "rooftop.ghostScream": {
+      "label": "Rooftop: brought to zero, before her scream",
+      "lines": [
+        {
+          "speaker": "Punk Girl",
+          "text": "Protect me, ancestors!",
+          "id": "rooftop.ghostScream.0",
+          "note": "jamie"
+        }
+      ]
+    },
     "sewer1.walkIn": {
       "label": "Sewer 1: hiding out",
       "lines": [

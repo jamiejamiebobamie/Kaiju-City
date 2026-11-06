@@ -147,6 +147,11 @@ export class GameManagerProxy {
     }
 
     // one end of a Teleport's wormhole (not a level's own link, like the Aquarium's stairs)
+    // the ghost boss: where the teammate steps inside the ghost ring, or undefined when it isn't in one
+    getGhostRingMove(piece) {
+        return this.props.getGhostRingMove ? this.props.getGhostRingMove(piece) : undefined;
+    }
+
     getIsWormholeTile(tileIndex) {
         return !!this.props.getIsWormholeTile && this.props.getIsWormholeTile(tileIndex);
     }
