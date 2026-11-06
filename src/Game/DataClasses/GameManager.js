@@ -1,4 +1,4 @@
-import { fillPronouns, getDialogueLine, getDialogueTexts, getRecruitChoiceLines, getSpokenLines } from './Dialogue/dialogue';
+import { fillPronouns, getDialogueLine, getDialogueTexts, getKeyedLines, getRecruitChoiceLines, getSpokenLines } from './Dialogue/dialogue';
 import { GameMode, GAME_TICK, PIECES_INFO, ZoomLvl } from 'Utils/gameState';
 import { TimeoutHandler } from './TimeoutHandler';
 import { GameManagerProxy } from './GameManagerProxy';
@@ -184,6 +184,7 @@ export class GameManager {
         this.isGiantDraining = false; // the ray gun is on it
         this.giantShrinkAtMs = undefined; // when it began to shrink back into the teammate
         this.isFinaleWon = false;
+        this.transformState = undefined; // the Lab fight: 'transforming', then 'done'
         this.enemyPowersAtMs = 0; // before this, the other side can't use powers
         // the dialogue log (DialogueLog.ts): every line said so far, and talk that runs outside of cutscenes
         this.dialogueLog = []; // { key, who, name, text, avatar, chain }
@@ -540,6 +541,7 @@ export class GameManager {
         this.giantPiece.color = this.giantColor;
         this.giantPiece.onBeforeDeath = () => this.onGiantDrained();
         this.moveGiantPiece();
+        this.giantVoices = getKeyedLines('finalBattle.voices');
         // everyone recruited fights beside the player, from the start
         const recruited = Object.entries(getRecruitChoices()).filter(([, choice]) => choice == 'recruit').map(([avatar]) => avatar);
         const player = this.gameBoardPiecesManager.getPlayerPiece();
@@ -550,6 +552,63 @@ export class GameManager {
             const near = this.gameBoardManager.getAdjacentTileIndices(player.getTileIndex()).filter(this.gameBoardManager.getIsInBounds);
             piece.initCharLocation(true, near[k % Math.max(near.length, 1)] || player.getTileIndex());
         });
+        if (!this.isRetry) this.startFinalBattleIntro();
+    }
+
+    // a scene's lines as cutscene steps, each over its speaker ('getSpeaker' can place a speaker with no piece)
+    getSceneSteps(sceneId, getShot, getSpeaker = () => undefined) {
+        return getSpokenLines(sceneId).map(({ speaker, text }) => {
+            const { name, piece } = this.getLineSpeaker(speaker);
+            const over = piece || getSpeaker(speaker);
+            const speech = over ? this.getSpeechOver(over, name, text) : { name, text };
+            return { shot: getShot(over), ms: getSpeechMs(text), speech: { ...speech, avatar: speaker == 'agent' ? 'agent' : speech.avatar } };
+        });
+    }
+
+    // the clones are down, and the teammate turns: their words, the scream, a flash, and they are gone (the final battle comes next)
+    startTransformation() {
+        const { player, teammate } = this.getGhostTeam();
+        if (!teammate || teammate.isDead) {
+            this.transformState = 'done';
+            return;
+        }
+        this.transformState = 'transforming';
+        const rowPx = this.getGhostRowPx();
+        const closeOn = piece => ({ point: { x: piece.charLocation.x, y: piece.charLocation.y - CUTSCENE.shotHeadRows * rowPx * 0.5 }, zoomScale: PENINSULA.cameraZoom * CUTSCENE.outcomeZoomScale * 0.8, isPeninsulaSized: true, panMs: CUTSCENE.outcomePullMs });
+        const steps = this.getSceneSteps(this.level.transformScene, over => closeOn(over || teammate));
+        const lastLine = steps.pop();
+        this.startCutscene([
+            { shot: closeOn(teammate), ms: CUTSCENE.outcomePullMs },
+            ...steps,
+            { shot: closeOn(teammate), ms: GHOST_SCREAM.flashInMs, onStart: () => { this.ghostFlashCount += 1; } },
+            { shot: closeOn(teammate), ms: GHOST_SCREAM.togetherMs, onStart: () => {
+                teammate.isVisible = false;
+                teammate.isOnTiles = false;
+            } },
+            { ...lastLine, shot: closeOn(player) },
+            { shot: closeOn(player), ms: 0, onStart: () => { this.transformState = 'done'; } }
+        ]);
+    }
+
+    // the final battle opens on the whole Peninsula, then the giant, then the player
+    startFinalBattleIntro() {
+        const giant = this.giant;
+        const player = this.gameBoardPiecesManager.getPlayerPiece();
+        const feet = giant.getFeet();
+        const onGiant = { point: { x: feet.x, y: feet.y - giant.getSizePx().height * 0.5 }, zoomScale: PENINSULA.cameraZoom * 0.7, isPeninsulaSized: true, panMs: FINALE.pullMs };
+        const onPlayer = { point: { ...player.charLocation }, zoomScale: PENINSULA.cameraZoom, isPeninsulaSized: true, panMs: FINALE.pullMs };
+        const lines = this.getSceneSteps('finalBattle.intro', over => over ? onPlayer : onGiant, speaker => speaker == 'agent' ? player : undefined);
+        this.startCutscene([
+            { shot: { isWide: true }, ms: CUTSCENE.wideMs },
+            { shot: onGiant, ms: FINALE.pullMs + 600 },
+            ...lines
+        ]);
+    }
+
+    // the teammate's name in the final battle, where they are the giant (the team's second piece may be a recruit)
+    getFinaleTeammateName() {
+        const entry = ROSTER.find(({ id }) => id == this.settingsManager.getTeammateAvatar());
+        return entry ? entry.name : 'Teammate';
     }
 
     // the board's piece for the giant stands on the walkable tile nearest its weak spot
@@ -628,6 +687,9 @@ export class GameManager {
         // the Kaiju come to protect it, a wave as each share of its power goes
         giant.takeWaves(piece.lives / piece.maxLives).forEach(({ count }) => {
             for (let k = 0; k < count; k += 1) this.kaijuManager.addKaijuPiece(this.accTime);
+            // the teammate's voice, from inside it, as each wave comes (to the log: the fight goes on)
+            const text = this.giantVoices && this.giantVoices[`wave${giant.wavesSent}`];
+            if (text) this.addTalk([{ name: this.getFinaleTeammateName(), text, avatar: this.settingsManager.getTeammateAvatar() }]);
         });
         this.moveGiantPiece();
     }
@@ -646,8 +708,10 @@ export class GameManager {
         const wideShot = { point: between, zoomScale: PENINSULA.cameraZoom * FINALE.rayZoomShare, isPeninsulaSized: true, panMs: FINALE.pullMs };
         const onTeammate = { point: { x: feet.x, y: feet.y - rowPx }, zoomScale: PENINSULA.cameraZoom * CUTSCENE.outcomeZoomScale, isPeninsulaSized: true, panMs: FINALE.pullMs };
         this.giantWarnings = [];
+        const [rayLine] = getSpokenLines('finalBattle.ray');
+        const reunion = getSpokenLines('finalBattle.reunion');
         this.startCutscene([
-            { shot: wideShot, ms: FINALE.pullMs },
+            { shot: wideShot, ms: FINALE.pullMs, speech: rayLine ? this.getSpeechOver(player, this.getLineSpeaker('player').name, rayLine.text) : undefined },
             { shot: wideShot, ms: FINALE.rayMs, onStart: () => {
                 this.rayBeam = { from: { x: player.charLocation.x, y: player.charLocation.y - rowPx }, color: FINALE.rayColor, targets: [bodyMiddle] };
                 this.giantShrinkAtMs = performance.now();
@@ -656,6 +720,11 @@ export class GameManager {
                 this.rayBeam = undefined; // (not endRay: that takes the team's powers)
                 this.restoreTeammate(feet);
             } },
+            // their words, each over its speaker: the teammate is standing again by now
+            ...reunion.map(({ speaker, text }) => ({ shot: onTeammate, ms: getSpeechMs(text), speech: () => {
+                const isTeammate = speaker == 'teammate';
+                return this.getSpeechOver(isTeammate ? this.restoredTeammate : player, isTeammate ? this.getFinaleTeammateName() : this.getLineSpeaker('player').name, text);
+            } })),
             { shot: onTeammate, ms: 0, onStart: () => { this.isFinaleWon = true; } }
         ]);
         return true;
@@ -1976,6 +2045,7 @@ export class GameManager {
         if (this.recruitScene) return;
         if (this.isGhostScreamPending) this.startGhostScream();
         if (this.isShatterPending) this.startShatter();
+        if (this.level.transformScene && !this.transformState && !this.cutscene && this.score >= this.getKillsToWin()) this.startTransformation();
         if (this.cutscene) {
             this.updateCutscene();
             return;
@@ -2020,6 +2090,8 @@ export class GameManager {
     }
 
     getGameResult() {
+        // the Lab fight is won only once the teammate has transformed
+        if (this.level.transformScene && this.transformState != 'done' && this.score >= this.getKillsToWin() && !this.gameBoardPiecesManager.getIsPlayerTeamDead()) return null;
         if (this.level.giantKaiju) {
             // drained and saved, or at the city; Kaiju killed along the way don't decide it
             if (this.isFinaleWon) return GameResult.PlayerWon;

@@ -24,8 +24,8 @@ export const STORY: Array<StorySection> = [
   { label: 'Lab trap', scenes: ['labTrap.trap', 'labTrap.chase'] },
   { label: 'Sewer 1', scenes: ['sewer1.walkIn', 'sewer1.reveal'] },
   { label: 'Sewer 2', scenes: ['sewer2.walkIn'] },
-  { label: 'Lab fight', scenes: ['lab.showdown'] },
-  { label: 'Final battle', scenes: [] },
+  { label: 'Lab fight', scenes: ['lab.showdown', 'lab.transformation'] },
+  { label: 'Final battle', scenes: ['finalBattle.intro', 'finalBattle.voices', 'finalBattle.ray', 'finalBattle.reunion'] },
   { label: 'Visiting a battleground (any map walk, after its fight)', scenes: ['visit'] }
 ];
 

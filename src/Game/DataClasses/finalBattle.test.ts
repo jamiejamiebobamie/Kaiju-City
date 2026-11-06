@@ -29,6 +29,26 @@ const hitWeakSpot = gm => {
   gm.updateFinalBattle();
 };
 
+describe('the end of the Lab fight', () => {
+  it('with the clones beaten, the teammate transforms before the fight is won', () => {
+    const settingsManager = new SettingsManager();
+    settingsManager.setSortedPlayerChosenAbilityElementsString(['Fire', 'Ice', 'Metal']);
+    settingsManager.setIsTeammate(true);
+    const gm = new GameManager({ level: LEVELS.lab, settingsManager });
+    gm.initGame();
+    for (let k = 0; k < 3000 && (gm.cutscene || !gm.getPieces().some(piece => piece.avatar == 'agent' && piece.isOnTiles)); k += 1) gm.stepPieces();
+    const { teammate } = gm.getGhostTeam();
+    expect(teammate).toBeDefined();
+    gm.score = gm.getKillsToWin();
+    expect(gm.getGameResult()).toBe(null);
+    gm.stepPieces();
+    expect(gm.transformState).toBe('transforming');
+    for (let k = 0; k < 600 && gm.transformState != 'done'; k += 1) gm.stepPieces();
+    expect(teammate.isVisible).toBe(false);
+    expect(gm.getGameResult()).toBe(GameResult.PlayerWon);
+  });
+});
+
 describe('the final battle', () => {
   it('is the last section, on the Peninsula three times the size, with tiles and people their usual size', () => {
     expect(CAMPAIGN_SECTIONS[CAMPAIGN_SECTIONS.length - 1].levelId).toBe('finalBattle');

@@ -833,7 +833,11 @@ describe('the Agents in the Lab', () => {
     expect(gm.getGameResult()).toBe(null);
     gm.accTime += 5000;
     finish(last);
+    // the teammate transforms first: then it is won, and the teammate is gone (they are the final battle's giant)
+    const teammate = gm.getGhostTeam().teammate;
+    for (let k = 0; k < 600 && gm.transformState != 'done'; k += 1) gm.stepPieces();
     expect(gm.getGameResult()).toBe(GameResult.PlayerWon);
+    if (teammate) expect(teammate.isVisible).toBe(false);
   });
 });
 

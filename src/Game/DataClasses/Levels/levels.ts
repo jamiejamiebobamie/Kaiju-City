@@ -183,6 +183,7 @@ export type LevelConfig = {
   hasTrainSchedule: boolean;
   shakePhases: Array<string>; // phases that shake the whole scene
   rival?: Rival;
+  transformScene?: string; // after the fight is won, the teammate transforms (dialogue.json)
   giantKaiju?: { // the final battle (GiantKaiju.ts): the teammate as a giant Kaiju, marching up the Peninsula
     route: Array<{ x: number; y: number }>; // from the foot of the Peninsula to the city, in the big map's pixels
   };
@@ -657,6 +658,7 @@ const LAB_INTRO_SCENE = {
 const LAB_SHOWDOWN_SCRIPT = getDialogueScript('lab.showdown');
 
 const LAB_SCENE = {
+  transformScene: 'lab.transformation', // the clones beaten, the teammate turns into the giant Kaiju (the final battle)
   showdown: { script: LAB_SHOWDOWN_SCRIPT, speechSpot: { x: 700, y: 365 } },
   extras: [standingAgent(700, 480)],
   agentDrops: {

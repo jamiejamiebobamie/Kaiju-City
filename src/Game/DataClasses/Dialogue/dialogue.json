@@ -604,6 +604,35 @@
         }
       ]
     },
+    "lab.transformation": {
+      "label": "Lab fight: after the clones, the teammate transforms",
+      "lines": [
+        {
+          "speaker": "teammate",
+          "text": "Something's wrong... my hands... they're burning.",
+          "id": "lab.transformation.0",
+          "note": "draft"
+        },
+        {
+          "speaker": "player",
+          "text": "Hey. Hey, look at me. Breathe.",
+          "id": "lab.transformation.1",
+          "note": "draft"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Get away from me! I can't... hold it...",
+          "id": "lab.transformation.2",
+          "note": "draft"
+        },
+        {
+          "speaker": "player",
+          "text": "No... no, no, no.",
+          "id": "lab.transformation.3",
+          "note": "draft"
+        }
+      ]
+    },
     "labTrap.trap": {
       "label": "Lab trap: the ray",
       "lines": [
@@ -869,6 +898,83 @@
           "text": "Looking good!",
           "isBalloon": true,
           "id": "labIntro.vatPraise.0"
+        }
+      ]
+    },
+    "finalBattle.intro": {
+      "label": "Final battle: the giant at the foot of the Peninsula",
+      "lines": [
+        {
+          "speaker": "agent",
+          "text": "Your partner has reached critical mass, soldier. It's headed for the city.",
+          "id": "finalBattle.intro.0",
+          "note": "draft"
+        },
+        {
+          "speaker": "player",
+          "text": "That's not a Kaiju. That's my partner.",
+          "id": "finalBattle.intro.1",
+          "note": "draft"
+        },
+        {
+          "speaker": "player",
+          "text": "Hold on. I'm bringing you back.",
+          "id": "finalBattle.intro.2",
+          "note": "draft"
+        }
+      ]
+    },
+    "finalBattle.voices": {
+      "label": "Final battle: the teammate's voice, from inside the Kaiju, as each wave comes",
+      "lines": [
+        {
+          "speaker": "teammate",
+          "text": "I can hear you... I can't stop walking...",
+          "id": "finalBattle.voices.0",
+          "note": "draft",
+          "key": "wave1"
+        },
+        {
+          "speaker": "teammate",
+          "text": "They're coming for you... because of me...",
+          "id": "finalBattle.voices.1",
+          "note": "draft",
+          "key": "wave2"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Keep going... it's working... I can feel it fading...",
+          "id": "finalBattle.voices.2",
+          "note": "draft",
+          "key": "wave3"
+        }
+      ]
+    },
+    "finalBattle.ray": {
+      "label": "Final battle: the ray gun",
+      "lines": [
+        {
+          "speaker": "player",
+          "text": "This is going to hurt. Hold still.",
+          "id": "finalBattle.ray.0",
+          "note": "draft"
+        }
+      ]
+    },
+    "finalBattle.reunion": {
+      "label": "Final battle: the teammate, back",
+      "lines": [
+        {
+          "speaker": "teammate",
+          "text": "...Did I... hurt anyone?",
+          "id": "finalBattle.reunion.0",
+          "note": "draft"
+        },
+        {
+          "speaker": "player",
+          "text": "You're back. That's all that matters.",
+          "id": "finalBattle.reunion.1",
+          "note": "draft"
         }
       ]
     }
