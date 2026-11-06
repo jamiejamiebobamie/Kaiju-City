@@ -570,6 +570,16 @@ export class GameManager {
         a power chasing the player (Haunt, Overgrowth's leading tiles, Ice Slice, Charm, the Aquarium's sea creatures; not Heal),
         the ghost boss's launched ghosts coming for the player, and Kaiju walking in that are near the player.
     */
+    // the enemy zoom leaves these out: while the ghost boss's ring is up and the player is inside it, Punk Girl (Jamie).
+    // the ring is the fight then, not her.
+    getIsCameraKeptOff = (player, piece) => {
+        const ring = this.ghostRing;
+        if (!ring || piece != this.rivalPiece || !player) return false;
+        const dx = player.charLocation.x - ring.center.x;
+        const dy = (player.charLocation.y - ring.center.y) / GHOST_BOSS.ringSquash;
+        return Math.hypot(dx, dy) <= ring.radiusPx;
+    };
+
     getCameraThreats = player => {
         if (!player || player.isDead) return [];
         const board = this.gameBoardManager;

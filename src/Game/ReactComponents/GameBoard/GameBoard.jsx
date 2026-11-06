@@ -608,7 +608,9 @@ const getIsEnemyInPlay = (player, piece) => piece.getTeamIndex() != player.getTe
   ('isChasing': these come first), and Kaiju not yet on the board but near.
 */
 const getEnemyTargets = (player, gameManager) => [
-  ...gameManager.getPieces().filter(piece => getIsEnemyInPlay(player, piece)).map(piece => ({ key: `piece ${piece.pieceIndex}`, charLocation: piece.charLocation })),
+  ...gameManager.getPieces()
+    .filter(piece => getIsEnemyInPlay(player, piece) && !(gameManager.getIsCameraKeptOff && gameManager.getIsCameraKeptOff(player, piece)))
+    .map(piece => ({ key: `piece ${piece.pieceIndex}`, charLocation: piece.charLocation })),
   ...(gameManager.getCameraThreats ? gameManager.getCameraThreats(player) : [])
 ];
 

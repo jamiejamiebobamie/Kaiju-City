@@ -594,6 +594,21 @@ describe('rivals', () => {
       ghostTiles.filter(({ isOffBoard }) => isOffBoard).forEach(({ tileIndex }) => expect(gm.gameBoardManager.getIsInBounds(tileIndex)).toBe(false));
     });
 
+    it('while the ring is up and the player is inside it, the enemy zoom leaves her out', () => {
+      const { gm, rival } = makeGhostFight();
+      const player = gm.getPieces()[0];
+      expect(gm.getIsCameraKeptOff(player, rival)).toBe(false);
+      downHer(gm);
+      expect(gm.ghostRing).toBeDefined();
+      expect(gm.getIsCameraKeptOff(player, rival)).toBe(true);
+      // out of the ring (over on her roof), she counts again
+      player.charLocation = { ...rival.charLocation };
+      expect(gm.getIsCameraKeptOff(player, rival)).toBe(false);
+      gm.endGhostRing();
+      player.charLocation = { ...LEVELS.rooftop.ghostBoss.ringCenter };
+      expect(gm.getIsCameraKeptOff(player, rival)).toBe(false);
+    });
+
     it('her own roof is the left building, without the crane beam', () => {
       const { gm } = makeGhostFight();
       expect(gm.getIsRivalGround({ i: 8, j: 15 })).toBe(true);
