@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import styled, { keyframes } from "styled-components";
+import styled, { css, keyframes } from "styled-components";
 
 const Wrapper = styled.i.attrs(({ zIndex, charLocation, isVisible, pieceScale }) => ({
   style: {
@@ -271,6 +271,21 @@ const SpriteSheet = styled.div`
   }
 
 `;
+// the ghost boss's last phase: Punk Girl is a ghost, milk-white and see-through, and drifts as she stands
+const ghostDrift = keyframes`
+  0%, 100% { transform: translateY(0); opacity: 0.62; }
+  50% { transform: translateY(-3px); opacity: 0.5; }
+`;
+
+const GhostForm = styled.div`
+  position: absolute;
+  inset: 0;
+  ${props => props.$isGhost && css`
+    filter: grayscale(1) contrast(0.4) brightness(3.2) drop-shadow(0 0 4px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 10px rgba(220, 230, 255, 0.8));
+    animation: ${ghostDrift} 2.4s ease-in-out infinite;
+  `}
+`;
+
 const Character = styled.div`
     margin-left: -20px;
     margin-top: -45px;
@@ -405,6 +420,7 @@ export const GameBoardPieceComponent = ({
   pieceScale,
   isQuiet = false, // the Recruit or Terminate choice: no shaking, and no numbers
   isSpeaking = false, // their line is up: they jitter as they talk
+  isGhostForm = false, // the ghost boss's last phase
   isOnBoard = true // not yet on the tiles (a Kaiju still walking in): no numbers
 }) => {
   const numberAnchor = React.useRef(null);
@@ -474,14 +490,14 @@ export const GameBoardPieceComponent = ({
       {!isQuiet && modifierText}
       <HealthBarWrapper lives={lives}>{bars}</HealthBarWrapper>
       <Character isDamaged={isDamaged && !isQuiet} isSpeaking={isSpeaking}>
-        {isFalling ? <FallingFrame src="/levels/npcs/agentFalling.png" /> : <SpriteSheet
+        {isFalling ? <FallingFrame src="/levels/npcs/agentFalling.png" /> : <GhostForm $isGhost={isGhostForm}><SpriteSheet
           avatar={avatar}
           spriteSheetSrc={spriteSheetSrc}
           isGoingToSpewFire={isGoingToSpewFire} // Kaiju-only
           lives={lives}
           anim={anim}
           color={color}
-        />}
+        /></GhostForm>}
       </Character>
     </Wrapper>
   );

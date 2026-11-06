@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import styled, { css, keyframes } from "styled-components";
 import { DeadPlayer } from "./Pieces/DeadPlayerPiece";
 import { ExplodingKaiju } from "./Pieces/ExplodingKaijuPiece";
@@ -17,6 +18,7 @@ import { getHexRadius } from 'Game/DataClasses/GameBoard/hexGrid';
 import { BADGE_HEADS } from './badgeHeads';
 import { PIECES_INFO } from 'Utils/gameState';
 import { startRagdoll } from 'Game/DataClasses/Ragdoll';
+import { GhostRingLayer } from './GhostRingLayer';
 
 // a body lying at rest where its feet were: on its side, still
 const getRestingBody = ({ x, y }, pieceScale, rowPx) => ({
@@ -60,6 +62,46 @@ const World = styled.div`
 
 const WorldContent = styled.div`
   position: absolute;
+`;
+
+// the split screen (the ghost boss's scream): each half of the view has its own camera on one of the team
+const ViewPane = styled.div`
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  overflow: hidden;
+`;
+
+const SplitBar = styled.div`
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 6px;
+  margin-left: -3px;
+  background: #050507;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35), 0 0 12px rgba(0, 0, 0, 0.8);
+  z-index: 2147482500;
+  pointer-events: none;
+`;
+
+// the ghost boss's scream: a red flash, and under it the team is somewhere else
+const SCREAM_FLASH = { color: "#ff1a0d", seconds: 1.6 };
+const screamFlash = keyframes`
+  0% { opacity: 0; }
+  22% { opacity: 1; }
+  36% { opacity: 1; }
+  100% { opacity: 0; }
+`;
+const ScreamFlash = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 2147482995;
+  border-radius: 1.8cqw;
+  pointer-events: none;
+  opacity: 0;
+  background: ${SCREAM_FLASH.color};
+  animation: ${screamFlash} ${SCREAM_FLASH.seconds}s ease-out forwards;
 `;
 
 const LevelLayer = styled.img`
@@ -635,6 +677,7 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
     onChooseRecruit(choice);
   };
   const worldRef = useRef(null);
+  const rightWorldRef = useRef(null); // the right half of a split screen
   const mouseAim = useRef({ x: 0, y: 0 }); // where the mouse is in the view: -1 to 1, with 0 in the middle
   const [frame, setFrame] = useState({ width: 1, height: 1 });
   const isFrameMeasured = frame.width > 1;
@@ -707,6 +750,8 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
     const coverZoom = Math.max(shotView.viewWidth / world.width, shotView.viewHeight / world.height);
     let zoom = (isCover ? coverZoom : fitZoom) * zoomScale;
     const speech = speechRef.current;
+    // a shot on two people (the ghost boss's scream) has no words of its own to make room for
+    if (!point) return { zoom, center: undefined };
     if (!speech || speech.isLogged) return { zoom, center: point }; // words in the log take no room in the shot
     const box = getSpeechScreenBox(speech, SpeechBubbleScale);
     const usedWidth = shotView.viewWidth * (1 - SHOT_FIT.margin * 2);
@@ -731,6 +776,33 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
     const lean = shot.isFollowingMouse ? shotView.viewWidth / shotCamera.zoom * RECRUIT_LOOK_LEAN : 0;
     shotCamera.centerOn({ x: center.x + mouseAim.current.x * lean, y: center.y + mouseAim.current.y * lean });
     return shotCamera;
+  };
+
+  /*
+    A shot on two people ('pair'): one shot on both if they fit at its zoom, or the view split down the middle,
+    one of them in each half. 'isSeam': they are now side by side, and the halves show the two sides of one shot,
+    so the bar can go and nothing moves. returns { single } or { left, right }.
+  */
+  const wasPairSplit = useRef(false);
+  const getPairCameras = shot => {
+    const [a, b] = shot.pair;
+    const { zoom } = getShotFraming({ point: a, zoomScale: shot.zoomScale, isPeninsulaSized: shot.isPeninsulaSized });
+    const middle = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    const isFitting = Math.abs(b.x - a.x) * zoom <= shotView.viewWidth * (1 - SHOT_FIT.margin * 2) && Math.abs(b.y - a.y) * zoom <= shotView.viewHeight * (1 - SHOT_FIT.margin * 2);
+    const isSplit = shot.isSeam ? wasPairSplit.current : !isFitting;
+    if (!shot.isSeam) wasPairSplit.current = isSplit;
+    if (!isSplit) {
+      const single = new Camera({ ...fullFrameSizes, zoom });
+      single.centerOn(middle);
+      return { single };
+    }
+    const half = { ...fullFrameSizes, viewWidth: shotView.viewWidth / 2, zoom };
+    const left = new Camera(half);
+    const right = new Camera(half);
+    const quarter = shotView.viewWidth / 4 / zoom;
+    left.centerOn(shot.isSeam ? { x: middle.x - quarter, y: middle.y } : a);
+    right.centerOn(shot.isSeam ? { x: middle.x + quarter, y: middle.y } : b);
+    return { left, right };
   };
 
   useEffect(() => {
@@ -759,6 +831,12 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
       const isFollowingMouse = !!shot && shot.isFollowingMouse && nowMs >= pullEndMs;
       worldRef.current.style.transition = isCutting ? "none" : isFollowingMouse ? `transform ${CAMERA.panTransitionMs}ms linear` : nowMs < pullEndMs ? `transform ${pullMs}ms ${pullEase}` : "";
       isCutting = false;
+      if (shot && shot.pair) {
+        const { single, left, right } = getPairCameras(shot);
+        worldRef.current.style.transform = (single || left).getTransform();
+        if (right && rightWorldRef.current) rightWorldRef.current.style.transform = right.getTransform();
+        return;
+      }
       if (shot && !shot.isWide) {
         worldRef.current.style.transform = getShotCamera(shot).getTransform();
         return;
@@ -1002,11 +1080,14 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
       isShowHealthBarOnComponent={p.isShowHealthBarOnComponent}
       isQuiet={!!recruitScene}
       isSpeaking={p.pieceIndex === speakingPieceIndex}
+      isGhostForm={!!p.isGhostForm}
       isOnBoard={p.isOnTiles !== false}
     />
   );
 
   const currentShot = gameManager.getCameraShot();
+  const pairCameras = currentShot && currentShot.pair ? getPairCameras(currentShot) : undefined;
+  const splitCameras = pairCameras && pairCameras.right ? pairCameras : undefined;
   // the zoom the balloons are drawn for: the shot's, the follow camera's in a scene that fills the monitor, or the whole scene's
   const shotZoom = currentShot && !currentShot.isWide ? getShotFraming(currentShot).zoom
     : getIsCoverScene() ? coverCamera.zoom
@@ -1045,14 +1126,9 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
     />
   ));
 
-  return (
-    <Board
-      ref={boardRef}
-      style={recruitScene ? { cursor: "pointer" } : undefined}>
-      {isPaused && <PauseModal />}
-      <SceneShake $isShaking={!isPaused && level.shakePhases.some(id => activePhases.includes(id))}>
-      {/* paused: the whole scene fades, and only the word "Paused" shows */}
-      <World ref={worldRef} data-game-world style={{ width: `${world.width}px`, height: `${world.height}px`, opacity: isPaused ? 0 : 1, transition: "opacity 0.3s" }}>
+  // the world, drawn once, or twice for a split screen: the second copy has no words or buttons on it
+  const renderWorld = isMain => (
+    <World ref={isMain ? worldRef : rightWorldRef} data-game-world={isMain ? "" : undefined} style={{ width: `${world.width}px`, height: `${world.height}px`, opacity: isPaused ? 0 : 1, transition: "opacity 0.3s", ...(!isMain && splitCameras ? { transform: splitCameras.right.getTransform() } : {}) }}>
         {levelLayers}
         {foregroundLayers}
         <SceneElements level={level} activePhases={activePhases} isPaused={isPaused} onHotspot={onHotspot} isDialogueLog={getIsDialogueLog()} />
@@ -1072,7 +1148,7 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
           top: `${recruitScene.body.y}px`,
           height: `${pieceScale * RECRUIT_BODY_SIZE}px`
         }} />)}
-        {recruitScene && !getIsDialogueLog() && (
+        {isMain && recruitScene && !getIsDialogueLog() && (
           <RecruitPrompt style={{ left: `${recruitScene.prompt.x}px`, top: `${recruitScene.prompt.y}px`, transform: `translate(-50%, -100%) scale(${overlayScale}) translateX(${RECRUIT_PROMPT_SHIFT}px)` }}>
             <ChoiceButton choice="recruit" recruitChoice={recruitChoice} onChooseRecruit={chooseRecruit} />
             <ChoiceButton choice="terminate" recruitChoice={recruitChoice} onChooseRecruit={chooseRecruit} />
@@ -1093,7 +1169,7 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
             </RayBeams>
           );
         })()}
-        {speech && !isPaused && !speech.isLogged && (speech.lines
+        {isMain && speech && !isPaused && !speech.isLogged && (speech.lines
           ? <PagedSpeechBalloon name={speech.name} lines={speech.lines} x={getSpeechX(speech)} y={speech.y} isFlipped={speech.isFlipped} zIndex={2147482000} scale={overlayScale} />
           : <SpeechBalloon name={speech.name} text={speech.text} x={getSpeechX(speech)} y={speech.y} isFlipped={speech.isFlipped} zIndex={2147482000} scale={overlayScale} />)}
         <WorldContent style={{ left: `${contentOffset.x}px`, top: `${contentOffset.y}px` }}>
@@ -1102,9 +1178,25 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
           {isFrameMeasured && <WakeCanvas gameManager={gameManager} level={level} zoom={closeCamera.zoom} isActive={!!level.flood && activePhases.includes(level.flood.phase)} />}
           {piecesComponents}
           {deathPiecesComponents}
+          <GhostRingLayer gameManager={gameManager} grid={grid} />
         </WorldContent>
       </World>
+  );
+
+  return (
+    <Board
+      ref={boardRef}
+      style={recruitScene ? { cursor: "pointer" } : undefined}>
+      {isPaused && <PauseModal />}
+      <SceneShake $isShaking={!isPaused && level.shakePhases.some(id => activePhases.includes(id))}>
+      {/* paused: the whole scene fades, and only the word "Paused" shows */}
+      <ViewPane style={{ left: 0, width: splitCameras ? "50%" : "100%" }}>
+        {renderWorld(true)}
+      </ViewPane>
+      {splitCameras && <ViewPane style={{ left: "50%", width: "50%" }}>{renderWorld(false)}</ViewPane>}
+      {splitCameras && <SplitBar />}
       </SceneShake>
+      {gameManager.ghostFlashCount > 0 && createPortal(<ScreamFlash key={gameManager.ghostFlashCount} />, document.querySelector("[data-play-screen]") || document.body)}
       {recruitScene && recruitChoice && <ChoiceConfirm choice={recruitChoice} from={choiceFrom.current} board={boardRef.current} />}
       {!isPaused && edgeCarets}
       {!isPaused && trainWarning}

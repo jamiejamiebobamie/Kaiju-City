@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
+import { GHOST_BOSS } from 'Game/DataClasses/GhostBoss';
 import { createPortal } from "react-dom";
 import styled, { keyframes } from "styled-components";
 import { useSnapshot } from "valtio";
@@ -449,6 +450,9 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const [isTrainedNpcs, setIsTrainedNpcs] = useState(true); // NPCs play by the trained model in public/models in fights with no Kaiju; against a Kaiju they hand back to the rules
   const [isDevHidden, setIsDevHidden] = useState(false); // the dev tools tucked away, to see the game as it will ship
   const [npcAggression, setNpcAggression] = useState(DEFAULT_AGGRESSION); // the trained NPCs', 0 careful to 1 reckless
+  // the ghost boss's ring, tuned in the dev panel: its size, and the ghosts in each phase's ring (the next ring uses them)
+  const [ghostRadiusRows, setGhostRadiusRows] = useState(GHOST_BOSS.ringRadiusRows);
+  const [ghostRings, setGhostRings] = useState(GHOST_BOSS.rings.join(', '));
   const npcAggressionRef = useRef(npcAggression);
   npcAggressionRef.current = npcAggression;
   const [isMonitorAlways, setIsMonitorAlways] = useState(true); // a playtest: the TV never opens up, and wide shots play inside it
@@ -1012,6 +1016,27 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                   <input type="checkbox" checked={activePhases.includes(id)} onChange={() => togglePhase(id)} /> {label}
                 </label>
               ))}
+              {level.ghostBoss && (
+                <>
+                  <button onClick={() => gameManager.current.devDownRival()}>Punk Girl to zero</button>
+                  <label>
+                    <input type="range" min={1.5} max={7} step={0.1} value={ghostRadiusRows} onChange={event => {
+                      const rows = Number(event.target.value);
+                      setGhostRadiusRows(rows);
+                      GHOST_BOSS.ringRadiusRows = rows;
+                    }} />
+                    {' '}Ghost ring {ghostRadiusRows.toFixed(1)} rows
+                  </label>
+                  <label>
+                    Ghosts per ring{' '}
+                    <input aria-label="Ghosts per ring" style={{ width: 70 }} value={ghostRings} onChange={event => {
+                      setGhostRings(event.target.value);
+                      const counts = event.target.value.split(',').map(count => Math.round(Number(count))).filter(count => count > 0);
+                      if (counts.length) GHOST_BOSS.rings = counts;
+                    }} />
+                  </label>
+                </>
+              )}
               <label>
                 <input type="checkbox" checked={isWholeScene} onChange={() => setIsWholeScene(!isWholeScene)} /> Whole scene
               </label>
