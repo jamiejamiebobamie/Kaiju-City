@@ -12,7 +12,8 @@ const WAKE_LOOK = {
   armLength: 1.5, // the V behind a piece, in rows
   armSpread: 0.6, // angle of each arm of the V, in radians
   rippleSize: 1, // in rows
-  opacity: 1,
+  opacity: 0.45, // see-through: the water stays the thing you see (Jamie, 2026-11-06)
+  vOpacity: 0.6, // the V is fainter still than the ripples
   lineWidth: 3,
   maxPixelRatio: 1.5
 };
@@ -58,7 +59,7 @@ export const WakeCanvas = ({ gameManager, level, isActive, zoom }) => {
         if (distance < rowHeight * WAKE_LOOK.spacing) return;
         lastSpots.set(piece, { x, y });
         if (y < flood.top) return;
-        wakes.push({ x, y, angle: Math.atan2(y - last.y, x - last.x), startMs: nowMs });
+        wakes.push({ piece, x, y, angle: Math.atan2(y - last.y, x - last.x), startMs: nowMs });
       });
     };
 
@@ -69,20 +70,28 @@ export const WakeCanvas = ({ gameManager, level, isActive, zoom }) => {
       ctx.strokeStyle = WAKE_LOOK.color;
       ctx.lineWidth = WAKE_LOOK.lineWidth;
       ctx.lineCap = "round";
-      wakes.forEach(({ x, y, angle, startMs }) => {
+      // only each walker's newest wake draws its V: older ones are ripples, so the V's don't stack up inside each other
+      const newest = new Map();
+      wakes.forEach(wake => newest.set(wake.piece, wake));
+      wakes.forEach(wake => {
+        const { x, y, angle, startMs } = wake;
         const age = (nowMs - startMs) / WAKE_LOOK.lifeMs;
         const length = rowHeight * WAKE_LOOK.armLength * (0.5 + age);
         const ripple = rowHeight * WAKE_LOOK.rippleSize * (0.3 + age);
         ctx.globalAlpha = WAKE_LOOK.opacity * (1 - age);
 
         // the V, opening out behind the piece
-        ctx.beginPath();
-        [-1, 1].forEach(side => {
-          const armAngle = angle + Math.PI + side * WAKE_LOOK.armSpread;
-          ctx.moveTo(x, y);
-          ctx.lineTo(x + Math.cos(armAngle) * length, y + Math.sin(armAngle) * length * 0.6);
-        });
-        ctx.stroke();
+        if (newest.get(wake.piece) == wake) {
+          ctx.globalAlpha = WAKE_LOOK.opacity * WAKE_LOOK.vOpacity * (1 - age);
+          ctx.beginPath();
+          [-1, 1].forEach(side => {
+            const armAngle = angle + Math.PI + side * WAKE_LOOK.armSpread;
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + Math.cos(armAngle) * length, y + Math.sin(armAngle) * length * 0.6);
+          });
+          ctx.stroke();
+          ctx.globalAlpha = WAKE_LOOK.opacity * (1 - age);
+        }
 
         // a ripple, flattened to sit on the floor
         ctx.beginPath();
