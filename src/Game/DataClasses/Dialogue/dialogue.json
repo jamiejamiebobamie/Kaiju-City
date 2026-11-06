@@ -290,6 +290,17 @@
         }
       ]
     },
+    "aquarium.stopScream": {
+      "label": "Aquarium: brought to zero, her scream shatters the glass",
+      "lines": [
+        {
+          "speaker": "Aquarium Worker",
+          "text": "Stop!!!",
+          "id": "aquarium.stopScream.0",
+          "note": "jamie"
+        }
+      ]
+    },
     "rooftop.afterTouch": {
       "label": "Rooftop: after the touch",
       "lines": [

@@ -17,6 +17,7 @@ import { MASTER_PENINSULA as PENINSULA, MASTER_PENINSULA_TILES as PENINSULA_TILE
 import { Camera, CAMERA, getCameraZoom, getCloseZoom, WIDE_SHOT } from './Camera';
 import { getCharXAndY, getPerimeterEdges, getTileCenter, getTileIndexAtLocation, getTileXAndY } from './GameBoard/hexGrid';
 import { CENTER_TILE, makeGame, placePiece } from './testHelpers';
+import { AQUARIUM_FLOOD, getWaterSlow } from './AquariumFlood';
 import { storage } from 'Utils/storage';
 
 const { grid } = PENINSULA;
@@ -612,8 +613,91 @@ describe('rivals', () => {
     });
 
     it('the other rivals still go down in one go', () => {
+      expect(LEVELS.rapidTransit.aquariumFlood).toBeUndefined();
       expect(LEVELS.rapidTransit.ghostBoss).toBeUndefined();
       expect(LEVELS.aquarium.ghostBoss).toBeUndefined();
+    });
+  });
+
+  describe('the Aquarium: one shatter, then the flood', () => {
+    const makeAquariumFight = (isTeammate = true) => {
+      const settingsManager = new SettingsManager();
+      settingsManager.setSortedPlayerChosenAbilityElementsString(['Fire', 'Ice', 'Metal']);
+      settingsManager.setIsTeammate(isTeammate);
+      const gm = new GameManager({ level: LEVELS.aquarium, settingsManager });
+      gm.initGame();
+      return { gm, rival: stepUntilRival(gm) };
+    };
+    const downHer = gm => {
+      gm.accTime += 5000;
+      gm.rivalPiece.lastDmgAccTime = 0;
+      gm.rivalPiece.decrementHealth(gm.accTime, gm.rivalPiece.lives + gm.rivalPiece.livesModifier);
+      for (let k = 0; k < 400 && (gm.isShatterPending || gm.cutscene); k += 1) gm.stepPieces();
+    };
+    const saved = { ...AQUARIUM_FLOOD };
+    afterEach(() => Object.assign(AQUARIUM_FLOOD, saved));
+
+    it('at zero she screams, the glass shatters, and she is up on the top floor, where she can\'t be hurt', () => {
+      const { gm, rival } = makeAquariumFight();
+      downHer(gm);
+      expect(rival.isDead).toBe(false);
+      expect(gm.getGameResult()).toBe(null);
+      expect(gm.getActivePhases()).toContain('shattered');
+      expect(gm.aquariumFlood).toBeDefined();
+      expect(gm.getIsTopFloor(rival.getTileIndex())).toBe(true);
+      expect(rival.lives).toBe(1);
+      gm.accTime += 5000;
+      rival.decrementHealth(gm.accTime, 3);
+      expect(rival.lives).toBe(1);
+    });
+
+    it('she heals herself up there until she is whole, and only then can be hurt', () => {
+      const { gm, rival } = makeAquariumFight();
+      downHer(gm);
+      for (let k = 0; k < 400 && rival.isUnhurtable; k += 1) gm.stepPieces();
+      expect(rival.lives).toBe(rival.maxLives);
+      expect(rival.isUnhurtable).toBe(false);
+      for (let k = 0; k < 100; k += 1) {
+        gm.stepPieces();
+        expect(gm.getIsTopFloor(rival.getTileIndex())).toBe(true); // she stays up there while the tanks pour
+      }
+    });
+
+    it('the water slows the team, one step a touch, up to three', () => {
+      const { gm } = makeAquariumFight();
+      downHer(gm);
+      const player = gm.getPieces()[0];
+      // standing in water the whole time (it flows on, so here it is kept under them)
+      gm.aquariumFlood.getIsWet = () => true;
+      for (let k = 0; k < 15; k += 1) {
+        gm.updateAquariumFlood();
+        gm.accTime += 110;
+      }
+      expect(getWaterSlow(player.waterSlowEnds, gm.accTime)).toBe(3);
+      gm.accTime += 1100;
+      expect(getWaterSlow(player.waterSlowEnds, gm.accTime)).toBe(0);
+    });
+
+    it('once the water is gone she comes back down to the hall, and the next zero is her last', () => {
+      AQUARIUM_FLOOD.floodMs = 2000;
+      AQUARIUM_FLOOD.drainMs = 500;
+      AQUARIUM_FLOOD.ghostLifeMs = 1000;
+      const { gm, rival } = makeAquariumFight(false); // no teammate to finish her off while she is away
+      // no one steers the player here: they are kept standing, so the fight runs on until she is back
+      gm.getPieces().filter(piece => piece != rival).forEach(piece => { piece.isUnhurtable = true; });
+      downHer(gm);
+      for (let k = 0; k < 2000 && (gm.aquariumFlood || rival.walkToTile); k += 1) {
+        gm.stepPieces();
+        gm.stepTiles();
+        if (rival.isDead) break;
+      }
+      expect(gm.aquariumFlood).toBeUndefined();
+      expect(gm.getIsFloodTile(rival.getTileIndex()) || !gm.getIsTopFloor(rival.getTileIndex())).toBe(true);
+      gm.accTime += 5000;
+      rival.lastDmgAccTime = 0;
+      rival.decrementHealth(gm.accTime, rival.lives + rival.livesModifier);
+      expect(rival.isDead).toBe(true);
+      expect(gm.getGameResult()).toBe(GameResult.PlayerWon);
     });
   });
 
@@ -1036,6 +1120,7 @@ describe('Charm', () => {
 
   it('a charmed enemy that dies still counts as a kill', () => {
     const { gm, player, rival, board } = makeFight();
+    gm.isShattered = true; // past the Aquarium's shatter: the next zero is her last
     addSecondEnemy(gm);
     charmTile(gm, board, rival, player.teamIndex);
     rival.updateCharm(gm.accTime);

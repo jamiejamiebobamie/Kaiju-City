@@ -1,3 +1,4 @@
+import { getWaterSlow } from 'Game/DataClasses/AquariumFlood';
 import { getThrowVec } from 'Game/DataClasses/Ragdoll';
 import { followBrainAction } from 'Game/DataClasses/npcBrain/brain';
 
@@ -37,6 +38,9 @@ export class GameBoardPieceBase {
         this.allowedTile = undefined; // when set, the piece never steps, jumps or teleports onto a tile this says no to (the ghost boss)
         this.onBeforeDeath = undefined; // when set and it says so, a blow that would kill the piece doesn't (the ghost boss's phases)
         this.isGhostForm = false; // the ghost boss's last phase: milk-white and see-through
+        this.isUnhurtable = false; // the Aquarium: healing up on the top floor, she can't be hurt until she is whole
+        this.walkToTile = undefined; // an NPC sent somewhere: it walks there, then fights on (the Mermaid, back down)
+        this.waterSlowEnds = []; // the Aquarium's flood: when each step of slowing wears off
 
         // aesthetics
         this.avatar = avatar; // enum?
@@ -199,6 +203,16 @@ export class GameBoardPieceBase {
         // intention: even the player can be Charmed and lose control for a moment of his piece....
         if (this.isNpc && this.isOnTiles && this.escapeTile) {
             this.runForEscape();
+        } else if (this.isNpc && this.isOnTiles && this.walkToTile) {
+            // sent somewhere: it goes, using its powers on the way, then fights on
+            const { i, j } = this.walkToTile;
+            if (this.tileIndex.i == i && this.tileIndex.j == j) this.walkToTile = undefined;
+            else if (this.isThere) {
+                const path = this.gameManagerProxy.getPathFromTileToTile({ fromTile: this.tileIndex, toTile: this.walkToTile });
+                if (path && path.length) this.updateMovmement(path);
+                else this.walkToTile = undefined;
+            }
+            this.useAbilities(accTime);
         } else if (this.isNpc && this.isOnTiles && this.gameManagerProxy.getGhostRingMove(this) !== undefined) {
             // inside the ghost ring: the teammate stays in, and steps out of the way of the next ghost
             if (this.isThere) this.moveToTiles = this.gameManagerProxy.getGhostRingMove(this);
@@ -422,7 +436,7 @@ export class GameBoardPieceBase {
             currentLocation: this.charLocation,
             moveFromLocation: this.moveFromLocation,
             moveToLocation: this.moveToLocation,
-            moveSpeed: this.moveSpeed + this.moveSpeedModifier
+            moveSpeed: Math.max(this.moveSpeed + this.moveSpeedModifier - getWaterSlow(this.waterSlowEnds, this.accTime), 1)
         });
         this.charLocation = newLocation;
         this.moveFromLocation = newLocation;
@@ -668,6 +682,7 @@ export class GameBoardPieceBase {
     }
 
     decrementHealth(accTime, dmg) {
+        if (this.isUnhurtable && dmg > 0) return;
         if (this.getIsDamageable(accTime)) {
             this.setLastDmgAccTime(accTime);
 

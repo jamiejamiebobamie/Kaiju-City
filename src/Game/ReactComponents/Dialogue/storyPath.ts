@@ -18,7 +18,7 @@ export const STORY: Array<StorySection> = [
   { label: 'Rooftop', scenes: ['rooftop.intro', 'rooftop.afterTouch', 'rooftop.ghostScream', 'recruit.choice'], rival: 'black_female' },
   { label: 'Peninsula 3', scenes: ['radio.peninsula3'] },
   { label: 'Map to Aquarium', scenes: ['radio.mapAquarium'] },
-  { label: 'Aquarium', scenes: ['aquarium.intro', 'recruit.choice'], rival: 'mermaid' },
+  { label: 'Aquarium', scenes: ['aquarium.intro', 'aquarium.stopScream', 'recruit.choice'], rival: 'mermaid' },
   { label: 'Peninsula 4', scenes: ['radio.peninsula4'] },
   { label: 'Map to Lab', scenes: ['radio.mapLab'] },
   { label: 'Lab trap', scenes: ['labTrap.trap', 'labTrap.chase'] },

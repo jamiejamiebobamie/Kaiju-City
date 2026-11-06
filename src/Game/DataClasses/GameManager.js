@@ -17,6 +17,7 @@ import { ROSTER } from './Avatars';
 import { getSpeechMs } from './speechTiming';
 import { getTileCenter, getTileIndexAtLocation } from './GameBoard/hexGrid';
 import { GHOST_BOSS, GhostRing } from './GhostBoss';
+import { AQUARIUM_FLOOD, AquariumFlood } from './AquariumFlood';
 import { getTorsoSpot, startRagdoll, stepRagdoll } from './Ragdoll';
 import { DIALOGUE, getIsClickThrough, getIsDialogueLog } from './DialogueLog';
 import { getIsSpacing } from './SpacingTest';
@@ -29,6 +30,12 @@ export const GameResult = Object.freeze({
 // timing of the moments the game holds still for
 const TRIGGER_ROWS = 2; // how close a door or a walk-here spot has to be
 const SITE_ROWS = 3; // how close a site on the map has to be
+
+// the Aquarium's scream (startShatter), in milliseconds
+export const SHATTER_SCREAM = {
+  screamMs: 700, // after her word, the scream
+  wideMs: 3200 // the whole hall as the glass bursts
+};
 
 // the ghost boss's scream (startGhostScream), in milliseconds
 export const GHOST_SCREAM = {
@@ -149,6 +156,11 @@ export class GameManager {
         this.isGhostScreaming = false; // from the blow that brings her to zero until the new ring has formed
         this.isGhostScreamPending = false;
         this.ghostFlashCount = 0; // each scream's red flash
+        // the Aquarium (AquariumFlood.ts): one shatter, then the flood
+        this.isShattered = false;
+        this.isShatterPending = false;
+        this.aquariumFlood = undefined;
+        this.nextMermaidHealAt = 0;
         this.enemyPowersAtMs = 0; // before this, the other side can't use powers
         // the dialogue log (DialogueLog.ts): every line said so far, and talk that runs outside of cutscenes
         this.dialogueLog = []; // { key, who, name, text, avatar, chain }
@@ -484,7 +496,113 @@ export class GameManager {
         piece.introZIndex = getSortZIndex(this.level, introSortY);
         this.rivalPiece = piece;
         if (this.level.ghostBoss) piece.onBeforeDeath = () => this.onGhostBossDown();
+        if (this.level.aquariumFlood) piece.onBeforeDeath = () => this.onMermaidDown();
     }
+
+    // - - - the Aquarium (AquariumFlood.ts) - - -
+
+    // the first time she is brought to zero, she screams and the glass shatters. the second time, she is down.
+    onMermaidDown() {
+        if (this.isShattered) return false;
+        this.isShattered = true;
+        this.isShatterPending = true;
+        const rival = this.rivalPiece;
+        rival.lives = 1;
+        rival.isUnhurtable = true;
+        return true;
+    }
+
+    // while the tanks pour, she keeps to the top floor: above the hall, less the middle stairs (they only reach the links)
+    getIsTopFloor = tile => {
+        const { maxY, stairs } = this.level.aquariumFlood.topFloor;
+        const { x, y } = this.gameBoardManager.getCharXAndYFromTileIndex(tile);
+        return y < maxY && !(x > stairs.minX && x < stairs.maxX && y > stairs.minY);
+    };
+
+    // the floor the water covers
+    getIsFloodTile = tile => this.gameBoardManager.getCharXAndYFromTileIndex(tile).y >= this.level.flood.top;
+
+    // "Stop!!!": the battle holds, the scream breaks the glass, and she is up on the top floor
+    startShatter() {
+        this.isShatterPending = false;
+        const rival = this.rivalPiece;
+        const rowPx = this.getGhostRowPx();
+        const { name, text } = getDialogueLine(this.level.aquariumFlood.screamScene);
+        const onHer = { point: { x: rival.charLocation.x, y: rival.charLocation.y - CUTSCENE.shotHeadRows * rowPx * 0.5 }, zoomScale: PENINSULA.cameraZoom * CUTSCENE.outcomeZoomScale, isPeninsulaSized: true, panMs: CUTSCENE.outcomePullMs };
+        this.startCutscene([
+            { shot: onHer, ms: CUTSCENE.outcomePullMs },
+            { shot: onHer, ms: getSpeechMs(text) + SHATTER_SCREAM.screamMs, speech: { ...this.getSpeechOver(rival, name, text), isShout: true } },
+            { shot: { isWide: true }, ms: SHATTER_SCREAM.wideMs, phase: this.level.flood.phase, onStart: () => this.startAquariumFlood() }
+        ]);
+    }
+
+    startAquariumFlood() {
+        const rival = this.rivalPiece;
+        const board = this.gameBoardManager;
+        const { tankSpots, topSpot } = this.level.aquariumFlood;
+        // she is up on the top floor, out of the water's reach, and heals there
+        rival.stopMoving();
+        rival.initCharLocation(true, board.getClosestWalkableTileToLocation(topSpot));
+        rival.allowedTile = this.getIsTopFloor;
+        rival.walkToTile = undefined;
+        this.nextMermaidHealAt = this.accTime + AQUARIUM_FLOOD.healEveryMs;
+        const { grid } = this.level;
+        const floodTiles = board.walkableTiles.filter(this.getIsFloodTile);
+        const getClosestFloodTile = spot => floodTiles.reduce((closest, tile) => {
+            const a = board.getCharXAndYFromTileIndex(tile);
+            const b = closest && board.getCharXAndYFromTileIndex(closest);
+            return !closest || Math.hypot(a.x - spot.x, a.y - spot.y) < Math.hypot(b.x - spot.x, b.y - spot.y) ? tile : closest;
+        }, undefined);
+        const sources = tankSpots.map(getClosestFloodTile).filter(Boolean);
+        this.aquariumFlood = new AquariumFlood({
+            sources,
+            rowPx: grid.rowStep * grid.scale,
+            board: {
+                getSpot: board.getCharXAndYFromTileIndex,
+                getNeighbors: tile => board.getAdjacentTileIndices(tile),
+                getIsWaterTile: this.getIsFloodTile,
+                getIsPowerOnTile: ({ i, j }) => { const tile = board.tiles[i] && board.tiles[i][j]; return !!tile && !!tile.getTileStatus(); },
+                getTileAt: spot => getTileIndexAtLocation(grid, { x: spot.x - grid.charOffsetX * grid.scale, y: spot.y - grid.charOffsetY * grid.scale })
+            }
+        });
+    }
+
+    updateAquariumFlood() {
+        const flood = this.aquariumFlood;
+        const rival = this.rivalPiece;
+        const team = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex()).filter(piece => !piece.isDead && piece.isOnTiles);
+        const hits = flood.step(GAME_TICK.pieceMs, team.map(piece => ({ key: piece.pieceIndex, spot: piece.charLocation })));
+        hits.forEach(({ key }) => {
+            const piece = this.gameBoardPiecesManager.getPiece(key);
+            piece.lastHitBy = rival.pieceIndex;
+            piece.decrementHealth(this.accTime, 1);
+        });
+        // wading: a step slower for each touch of the water, up to three, each wearing off after a second
+        const { stackMs, everyMs, maxStacks } = AQUARIUM_FLOOD.slow;
+        team.forEach(piece => {
+            if (!flood.getIsWet(piece.getTileIndex()) || (piece.nextWaterSlowAt || 0) > this.accTime) return;
+            piece.nextWaterSlowAt = this.accTime + everyMs;
+            piece.waterSlowEnds = [...piece.waterSlowEnds.filter(endsAt => endsAt > this.accTime), this.accTime + stackMs].slice(-maxStacks);
+        });
+        // up there, she heals herself until she is whole: then she can be hurt again
+        if (rival.isUnhurtable && !rival.isDead && this.accTime >= this.nextMermaidHealAt) {
+            this.nextMermaidHealAt = this.accTime + AQUARIUM_FLOOD.healEveryMs;
+            this.gameBoardManager.updateTileWithAbilityStatus({ accTime: this.accTime, pieceIndex: rival.pieceIndex, appliedStatus: 'isHealing' });
+            rival.lives = Math.min(rival.lives + 1, rival.maxLives);
+            rival.isHealed = !rival.isHealed;
+            if (rival.lives >= rival.maxLives) rival.isUnhurtable = false;
+        }
+        // the water is gone: she comes back down to the hall
+        if (flood.getIsOver()) {
+            this.aquariumFlood = undefined;
+            rival.allowedTile = undefined;
+            rival.isUnhurtable = false;
+            if (!rival.isDead) rival.walkToTile = this.gameBoardManager.getClosestWalkableTileToLocation(this.level.aquariumFlood.groundSpot);
+        }
+    }
+
+    // the water on the tiles, for the tiles' canvas
+    getFloodTiles = () => this.aquariumFlood ? this.aquariumFlood.getWaterTiles() : [];
 
     // - - - the ghost boss (GhostBoss.ts) - - -
 
@@ -1673,6 +1791,7 @@ export class GameManager {
         this.updateWalkers();
         if (this.recruitScene) return;
         if (this.isGhostScreamPending) this.startGhostScream();
+        if (this.isShatterPending) this.startShatter();
         if (this.cutscene) {
             this.updateCutscene();
             return;
@@ -1706,6 +1825,7 @@ export class GameManager {
         if (this.level.exit) this.updateExit();
         this.gameBoardPiecesManager.movePieces({ accTime: this.accTime, playerInputHandler: this.playerInputHandler });
         if (this.ghostRing) this.updateGhostRing();
+        if (this.aquariumFlood) this.updateAquariumFlood();
     }
 
     stepTiles() {

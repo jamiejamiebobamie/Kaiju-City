@@ -182,6 +182,13 @@ export type LevelConfig = {
   hasTrainSchedule: boolean;
   shakePhases: Array<string>; // phases that shake the whole scene
   rival?: Rival;
+  aquariumFlood?: { // the Aquarium fight in phases (AquariumFlood.ts)
+    tankSpots: Array<{ x: number; y: number }>; // where each broken tank pours out onto the floor
+    topSpot: { x: number; y: number }; // where she goes up to, to heal
+    groundSpot: { x: number; y: number }; // where she comes back down to
+    topFloor: { maxY: number; stairs: { minX: number; maxX: number; minY: number } }; // her ground while the tanks pour: above maxY, less the middle stairs
+    screamScene: string;
+  };
   ghostBoss?: { // the Rooftop fight in phases (GhostBoss.ts)
     ringSpot: { x: number; y: number }; // the ring's middle, where the team is pulled to
     rivalSpot: { x: number; y: number }; // where she goes after each scream
@@ -456,6 +463,14 @@ const TANK_SORT_Y = 650; // the middle of the round tank: characters south of it
 
 const AQUARIUM_SCENE = {
   wideShots: { tongueTouched: PART_TOUCH_HOLD_MS, shattered: SHATTER_HOLD_MS },
+  // at zero she screams, the glass shatters, and the tanks pour out across the ground floor (below 'flood.top')
+  aquariumFlood: {
+    tankSpots: GLASS_PANEL_PLACES.map(({ x, y, width, height }) => ({ x: x + width / 2, y: Math.max(y + height, 560) })),
+    topSpot: { x: 704, y: 228 }, // the walkway over the hall, under the sign
+    groundSpot: { x: 872, y: 655 },
+    topFloor: { maxY: 400, stairs: { minX: 555, maxX: 845, minY: 290 } }, // the middle stairs only go up to the teleport links
+    screamScene: 'aquarium.stopScream'
+  },
   rival: {
     ...RIVAL_LOOK,
     avatar: 'mermaid',
