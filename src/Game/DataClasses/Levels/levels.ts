@@ -184,6 +184,7 @@ export type LevelConfig = {
   shakePhases: Array<string>; // phases that shake the whole scene
   rival?: Rival;
   transformScene?: string; // after the fight is won, the teammate transforms (dialogue.json)
+  linkWalls?: Array<{ tile: TileIndex; point: { x: number; y: number }; behind: { x: number; y: number }; outDir: { x: number; y: number } }>; // where a tile link's walk-through goes out of sight
   giantKaiju?: { // the final battle (GiantKaiju.ts): the teammate as a giant Kaiju, marching up the Peninsula
     route: Array<{ x: number; y: number }>; // from the foot of the Peninsula to the city, in the big map's pixels
   };
@@ -499,6 +500,12 @@ const AQUARIUM_SCENE = {
     }
   },
   tileTone: 'dark' as const,
+  // walking through a link: the stairs go up behind the pillars, so the body goes out of sight at a pillar's edge.
+  // 'point' and 'behind': the edge, and its out-of-sight side. 'outDir': the way down the stairs, out from behind it.
+  linkWalls: [
+    { tile: { i: 25, j: 11 }, point: { x: 582, y: 313 }, behind: { x: -1, y: 0 }, outDir: { x: 0.86, y: 0.5 } }, // the left stairs
+    { tile: { i: 36, j: 12 }, point: { x: 827, y: 327 }, behind: { x: 1, y: 0 }, outDir: { x: -0.86, y: 0.5 } } // the right stairs
+  ],
   phaseTileTones: { shattered: 'white' as const }, // the shattered hall is much darker
   flood: { phase: 'shattered', top: 530 }, // pieces below this line, in scene pixels, walk through water
   phases: [

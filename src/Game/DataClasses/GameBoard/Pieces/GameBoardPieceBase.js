@@ -41,6 +41,7 @@ export class GameBoardPieceBase {
         this.isUnhurtable = false; // the Aquarium: healing up on the top floor, she can't be hurt until she is whole
         this.walkToTile = undefined; // an NPC sent somewhere: it walks there, then fights on (the Mermaid, back down)
         this.waterSlowEnds = []; // the Aquarium's flood: when each step of slowing wears off
+        this.portalMask = undefined; // walking through a portal: { point, behind }. the body past this line, on the 'behind' side, isn't drawn
 
         // aesthetics
         this.avatar = avatar; // enum?
@@ -191,6 +192,7 @@ export class GameBoardPieceBase {
 
     movePiece({ accTime, playerInputHandler = undefined }) {
         if (this.isDead) return;
+        if (this.isInPortal) return; // between a portal's two ends: nowhere, and no keys move them
 
         this.accTime = accTime;
         // knocked down by the train: lying where they were thrown until they get up
@@ -422,6 +424,8 @@ export class GameBoardPieceBase {
 
     jumpToLinkedTile(linkedTile) {
         if (!this.getIsAllowedTile(linkedTile)) return;
+        // the player walks through it, in a little scene of its own (GameManager.startPortalWalk)
+        if (!this.isNpc && this.gameManagerProxy.startPortalWalk(this, linkedTile)) return;
         const location = this.gameManagerProxy.getCharXAndYFromTileIndex(linkedTile);
         this.setTileIndex(linkedTile);
         this.linkArrivalTile = linkedTile;

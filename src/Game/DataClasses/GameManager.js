@@ -1,5 +1,5 @@
 import { fillPronouns, getDialogueLine, getDialogueTexts, getKeyedLines, getRecruitChoiceLines, getSpokenLines } from './Dialogue/dialogue';
-import { GameMode, GAME_TICK, PIECES_INFO, ZoomLvl } from 'Utils/gameState';
+import { GameMode, GAME_TICK, PIECES_INFO, TILE_DIR_NORM_VECS, TILE_DIRS, ZoomLvl } from 'Utils/gameState';
 import { TimeoutHandler } from './TimeoutHandler';
 import { GameManagerProxy } from './GameManagerProxy';
 import { PlayerInputHandler } from './PlayerInputHandler';
@@ -34,6 +34,31 @@ export const GameResult = Object.freeze({
 // timing of the moments the game holds still for
 const TRIGGER_ROWS = 2; // how close a door or a walk-here spot has to be
 const SITE_ROWS = 3; // how close a site on the map has to be
+
+// the player walking through a portal (startPortalWalk), in milliseconds
+export const PORTAL_WALK = {
+  zoomInMs: 550, // the camera in close on the way in, or the way out
+  walkMs: 1100, // walking in, or out
+  zoomOutMs: 450, // back to the usual zoom where they went in
+  panMs: 1300, // across to the other end: quick, but slow enough to see the fight on the way
+  // the body, from where the piece stands, in the piece's own size (a person's sprite box)
+  body: [{ x: -16, y: -46 }, { x: 22, y: -46 }, { x: -16, y: 4 }, { x: 22, y: 4 }]
+};
+
+// a facing, as a way on the screen
+const PORTAL_DIR_VECS = {
+  up: { x: 0, y: -1 }, down: { x: 0, y: 1 }, upRight: { x: 0.868, y: -0.496 }, downRight: { x: 0.868, y: 0.496 },
+  downLeft: { x: -0.868, y: 0.496 }, upLeft: { x: -0.868, y: -0.496 }, left: { x: -1, y: 0 }, right: { x: 1, y: 0 }
+};
+
+// the walk's name for a way on the screen (its sprite sheet's rows)
+const getDirName = ({ x, y }) => {
+  const names = ['upRight', 'downRight', 'down', 'downLeft', 'upLeft', 'up'];
+  const angles = [-30, 30, 90, 150, 210, 270];
+  const angle = ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+  const closest = angles.reduce((best, each, k) => Math.abs(((angle - each + 540) % 360) - 180) < Math.abs(((angle - angles[best] + 540) % 360) - 180) ? k : best, 0);
+  return names[closest];
+};
 
 // what else the enemy zoom looks toward (getCameraThreats)
 export const CAMERA_THREATS = {
@@ -198,6 +223,8 @@ export class GameManager {
         this.giantShrinkAtMs = undefined; // when it began to shrink back into the teammate
         this.isFinaleWon = false;
         this.transformState = undefined; // the Lab fight: 'transforming', then 'done'
+        this.portalWalk = undefined; // the player going through a portal: see startPortalWalk
+        this.portalShot = undefined; // the camera between the two ends, while the fight goes on
         this.enemyPowersAtMs = 0; // before this, the other side can't use powers
         // the dialogue log (DialogueLog.ts): every line said so far, and talk that runs outside of cutscenes
         this.dialogueLog = []; // { key, who, name, text, avatar, chain }
@@ -578,6 +605,123 @@ export class GameManager {
         });
         return threats;
     };
+
+    /*
+        The player going through a portal (a Teleport's wormhole, or a level's tile link such as the Aquarium's stairs).
+        In: the fight holds, the camera goes in close on the way in, and the player walks into it, the body gone past its
+        edge, as through a door. Across: the camera pulls back to the usual zoom and pans to the other end while the fight
+        goes on (the player is nowhere). Out: the fight holds again, in close, and the player walks out the same way.
+        A level can say where a link's edge is ('linkWalls'): the Aquarium's stairs go behind a pillar.
+    */
+    startPortalWalk = (piece, toTile) => {
+        if (this.portalWalk || this.cutscene || piece != this.gameBoardPiecesManager.getPlayerPiece()) return false;
+        const board = this.gameBoardManager;
+        const fromTile = piece.getTileIndex();
+        const rowPx = this.getGhostRowPx();
+        const scale = this.level.pieceScale;
+        const unit = ({ x, y }) => { const length = Math.hypot(x, y) || 1; return { x: x / length, y: y / length }; };
+        // which way they were going: their last step, or up
+        const moving = { x: piece.charLocation.x - piece.moveFromLocation.x, y: piece.charLocation.y - piece.moveFromLocation.y };
+        const stepDir = TILE_DIRS.indexOf(piece.dir) >= 0 ? TILE_DIR_NORM_VECS[TILE_DIRS.indexOf(piece.dir)] : undefined;
+        const fallback = PORTAL_DIR_VECS[piece.dir] || PORTAL_DIR_VECS[piece.getFacingDir()] || { x: 0, y: -1 };
+        let inDir = Math.hypot(moving.x, moving.y) > 0.5 ? unit(moving) : (stepDir || fallback);
+        const getWall = tile => (this.level.linkWalls || []).find(({ tile: wallTile }) => wallTile.i == tile.i && wallTile.j == tile.j);
+        const fromWall = getWall(fromTile);
+        const toWall = getWall(toTile);
+        if (fromWall) inDir = { x: -fromWall.outDir.x, y: -fromWall.outDir.y };
+        // the way out: the link's own, or on the way they were going if there is room, or toward the nearest open tile
+        const toSpot = board.getCharXAndYFromTileIndex(toTile);
+        const neighbors = board.getAdjacentTileIndices(toTile).filter(board.getIsInBounds);
+        const toward = tile => { const spot = board.getCharXAndYFromTileIndex(tile); return unit({ x: spot.x - toSpot.x, y: spot.y - toSpot.y }); };
+        const outDir = toWall ? toWall.outDir
+            : neighbors.length ? toward(neighbors.reduce((best, tile) => { const a = toward(tile); const b = toward(best); return a.x * inDir.x + a.y * inDir.y > b.x * inDir.x + b.y * inDir.y ? tile : best; }))
+            : inDir;
+        // the body, from where the piece stands (its feet), in the level's pixels
+        const body = PORTAL_WALK.body.map(({ x, y }) => ({ x: x * scale, y: y * scale }));
+        const reachAlong = dir => Math.max(...body.map(({ x, y }) => x * dir.x + y * dir.y)); // how far the body goes out that way
+        // in: the edge it goes through, and where it walks to, all of it past the edge
+        const fromSpot = { ...piece.charLocation };
+        const inEdge = fromWall ? { point: fromWall.point, behind: fromWall.behind } : { point: { x: fromSpot.x + inDir.x * reachAlong(inDir), y: fromSpot.y + inDir.y * reachAlong(inDir) }, behind: inDir };
+        const getThrough = (start, dir, { point, behind }) => {
+            const along = dir.x * behind.x + dir.y * behind.y;
+            if (along <= 0.05) return { x: start.x + dir.x * rowPx * 2, y: start.y + dir.y * rowPx * 2 };
+            const t = Math.max(...body.map(({ x, y }) => -((start.x + x - point.x) * behind.x + (start.y + y - point.y) * behind.y) / along)) + 2;
+            return { x: start.x + dir.x * Math.max(t, 0), y: start.y + dir.y * Math.max(t, 0) };
+        };
+        const inEnd = getThrough(fromSpot, inDir, inEdge);
+        // the walk in starts with all of them in view: where a link's tile is already past the edge (the stairs), a step back
+        const along = inDir.x * inEdge.behind.x + inDir.y * inEdge.behind.y;
+        const pastEdge = Math.max(...body.map(({ x, y }) => (fromSpot.x + x - inEdge.point.x) * inEdge.behind.x + (fromSpot.y + y - inEdge.point.y) * inEdge.behind.y));
+        const backBy = along > 0.05 && pastEdge > -1 ? (pastEdge + 2) / along : 0;
+        const inStart = { x: fromSpot.x - inDir.x * backBy, y: fromSpot.y - inDir.y * backBy };
+        // out: it walks from all behind the edge to the far tile, all of it in view by then
+        const outEdge = toWall ? { point: toWall.point, behind: toWall.behind } : { point: { x: toSpot.x - outDir.x * reachAlong({ x: -outDir.x, y: -outDir.y }), y: toSpot.y - outDir.y * reachAlong({ x: -outDir.x, y: -outDir.y }) }, behind: { x: -outDir.x, y: -outDir.y } };
+        const back = getThrough(toSpot, { x: -outDir.x, y: -outDir.y }, outEdge);
+        const extreme = { zoomScale: PENINSULA.cameraZoom * CUTSCENE.outcomeZoomScale, isPeninsulaSized: true };
+        const headOf = spot => ({ x: spot.x, y: spot.y - CUTSCENE.shotHeadRows * rowPx * 0.5 });
+        const inShot = { point: headOf(inEdge.point), ...extreme, panMs: PORTAL_WALK.zoomInMs };
+        const walkTo = (from, to, dir) => share => {
+            piece.charLocation = { x: from.x + (to.x - from.x) * share, y: from.y + (to.y - from.y) * share };
+            piece.moveFromLocation = piece.charLocation;
+            piece.moveToLocation = piece.charLocation;
+            piece.dir = getDirName(dir);
+        };
+        piece.stopMoving();
+        this.portalWalk = { piece, toTile, toSpot, back, outDir, outEdge, extreme, headOf, walkTo, stage: 'in' };
+        this.startCutscene([
+            { shot: inShot, ms: PORTAL_WALK.zoomInMs, onStart: () => { piece.portalMask = inEdge; walkTo(inStart, inStart, inDir)(0); } },
+            { shot: inShot, ms: PORTAL_WALK.walkMs, onTick: walkTo(inStart, inEnd, inDir) },
+            { shot: inShot, ms: 0, onStart: () => {
+                // gone through: nowhere, while the camera goes across and the fight goes on
+                piece.portalMask = undefined;
+                piece.isVisible = false;
+                piece.isOnTiles = false;
+                piece.isInPortal = true;
+                piece.dir = 'idle';
+                this.portalWalk.stage = 'across';
+                this.portalWalk.acrossMs = 0;
+                this.portalShot = { point: headOf(inEdge.point), isPlayZoom: true, panMs: PORTAL_WALK.zoomOutMs };
+            } }
+        ]);
+        return true;
+    };
+
+    // across: back to the usual zoom where they went in, then over to the other end, the fight going on below
+    updatePortalTransit() {
+        const walk = this.portalWalk;
+        if (walk.stage != 'across') return;
+        walk.acrossMs += GAME_TICK.pieceMs;
+        if (walk.acrossMs >= PORTAL_WALK.zoomOutMs && !walk.isPanning) {
+            walk.isPanning = true;
+            this.portalShot = { point: walk.headOf(walk.outEdge.point), isPlayZoom: true, panMs: PORTAL_WALK.panMs };
+        }
+        if (walk.acrossMs < PORTAL_WALK.zoomOutMs + PORTAL_WALK.panMs) return;
+        // out: the fight holds, in close, and they walk out of it
+        const { piece, toTile, toSpot, back, outDir, outEdge, extreme, headOf, walkTo } = walk;
+        walk.stage = 'out';
+        this.portalShot = undefined;
+        const outShot = { point: headOf(outEdge.point), ...extreme, panMs: PORTAL_WALK.zoomInMs };
+        piece.setTileIndex(toTile);
+        piece.charLocation = { ...back };
+        piece.isOnTiles = true;
+        piece.isVisible = true;
+        piece.isInPortal = false;
+        piece.portalMask = outEdge;
+        piece.linkArrivalTile = toTile; // standing on the far end doesn't send them straight back
+        this.startCutscene([
+            { shot: outShot, ms: PORTAL_WALK.zoomInMs },
+            { shot: outShot, ms: PORTAL_WALK.walkMs, onTick: walkTo(back, toSpot, outDir) },
+            { shot: outShot, ms: 0, onStart: () => {
+                piece.portalMask = undefined;
+                piece.charLocation = { ...toSpot };
+                piece.moveFromLocation = piece.charLocation;
+                piece.moveToLocation = piece.charLocation;
+                piece.isThere = true;
+                piece.dir = 'idle';
+                this.portalWalk = undefined;
+            } }
+        ]);
+    }
 
     // - - - the final battle (GiantKaiju.ts) - - -
 
@@ -1334,7 +1478,7 @@ export class GameManager {
     getCameraShot() {
         if (this.recruitScene) return this.recruitScene.shot;
         if (this.cutscene) return this.cutscene.steps[this.cutscene.index].shot;
-        return this.outcomeShot || this.knockShot; // the player knocked down by the train: in close on them
+        return this.outcomeShot || this.knockShot || this.portalShot; // the player knocked down by the train: in close on them
     }
 
     getTimeScale = () => {
@@ -1627,6 +1771,8 @@ export class GameManager {
             if (!step.arrivals.length) this.nextCutsceneStep();
             return;
         }
+        // a step can move things along as it goes: 0 at its start, 1 at its end
+        if (step.onTick) step.onTick(Math.min(1 - (cutscene.msLeft - GAME_TICK.pieceMs) / Math.max(step.ms, 1), 1));
         cutscene.msLeft -= GAME_TICK.pieceMs;
         if (cutscene.msLeft <= 0) this.nextCutsceneStep();
     }
@@ -2305,6 +2451,7 @@ export class GameManager {
         if (this.ghostRing) this.updateGhostRing();
         if (this.aquariumFlood) this.updateAquariumFlood();
         if (this.giant) this.updateFinalBattle();
+        if (this.portalWalk) this.updatePortalTransit();
     }
 
     stepTiles() {
@@ -2413,6 +2560,7 @@ export class GameManager {
                 return !!piece && piece.teamIndex == this.catwalkAgent.teamIndex && piece != this.catwalkAgent;
             },
             getGhostRingMove: this.getGhostRingMove,
+            startPortalWalk: this.startPortalWalk,
             // the Aquarium's sea creatures keep to the flooded floor
             getIsStatusAllowedOn: (appliedStatus, tileIndex) => appliedStatus != 'isSeaGhost' || !this.level.flood || this.getIsFloodTile(tileIndex),
             getIsWormholeTile: ({ i, j }) => this.gameBoardManager.getWormholes().some(({ from, to }) => [from, to].some(end => end.i == i && end.j == j)),

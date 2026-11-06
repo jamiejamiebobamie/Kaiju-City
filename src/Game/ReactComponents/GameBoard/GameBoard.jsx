@@ -752,7 +752,9 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
   // with words on screen, the shot looks between the spot and the balloon, and pulls out until both fit
   const speechRef = useRef(speech);
   speechRef.current = speech; // the camera's loop is set up once, and reads the words from here
-  const getShotFraming = ({ point, zoomScale, isCover, isPeninsulaSized = false }) => {
+  const getShotFraming = ({ point, zoomScale, isCover, isPeninsulaSized = false, isPlayZoom = false }) => {
+    // 'isPlayZoom': the zoom the fight is played at (the portal walk's pan between its two ends)
+    if (isPlayZoom) return { zoom: closeCamera.zoom, center: point };
     // 'isPeninsulaSized': the zoom that makes people as big on screen as this shot would at the Peninsula
     const fitZoom = isPeninsulaSized
       ? getFitZoom({ ...shotView, worldWidth: PENINSULA.world.width, worldHeight: PENINSULA.world.height }) * PENINSULA.pieceScale / level.pieceScale
@@ -1091,6 +1093,7 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
       isQuiet={!!recruitScene}
       isSpeaking={p.pieceIndex === speakingPieceIndex}
       isGhostForm={!!p.isGhostForm}
+      portalMask={p.portalMask}
       isOnBoard={p.isOnTiles !== false}
     />
   );

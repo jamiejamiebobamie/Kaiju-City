@@ -286,6 +286,23 @@ const GhostForm = styled.div`
   `}
 `;
 
+/*
+  Walking through a portal: only the body on this side of its edge is drawn. The clip is in the character box's own
+  units: the box sits 20 left of and 45 above where the piece stands, scaled by 'pieceScale' (see Wrapper and Character).
+*/
+const getPortalClip = ({ point, behind }, charLocation, pieceScale) => {
+  const local = { x: (point.x - (charLocation.x + 3.5)) / pieceScale + 20, y: (point.y - charLocation.y) / pieceScale + 45 };
+  const across = { x: -behind.y, y: behind.x };
+  const far = 600;
+  const corners = [
+    { x: local.x + across.x * far, y: local.y + across.y * far },
+    { x: local.x + across.x * far - behind.x * far, y: local.y + across.y * far - behind.y * far },
+    { x: local.x - across.x * far - behind.x * far, y: local.y - across.y * far - behind.y * far },
+    { x: local.x - across.x * far, y: local.y - across.y * far }
+  ];
+  return `polygon(${corners.map(({ x, y }) => `${x}px ${y}px`).join(", ")})`;
+};
+
 const Character = styled.div`
     margin-left: -20px;
     margin-top: -45px;
@@ -421,6 +438,7 @@ export const GameBoardPieceComponent = ({
   isQuiet = false, // the Recruit or Terminate choice: no shaking, and no numbers
   isSpeaking = false, // their line is up: they jitter as they talk
   isGhostForm = false, // the ghost boss's last phase
+  portalMask = undefined, // walking through a portal: { point, behind } in level pixels. the body past that edge isn't drawn
   isOnBoard = true // not yet on the tiles (a Kaiju still walking in): no numbers
 }) => {
   const numberAnchor = React.useRef(null);
@@ -489,7 +507,7 @@ export const GameBoardPieceComponent = ({
       <NumberAnchor ref={numberAnchor} />
       {!isQuiet && modifierText}
       <HealthBarWrapper lives={lives}>{bars}</HealthBarWrapper>
-      <Character isDamaged={isDamaged && !isQuiet} isSpeaking={isSpeaking}>
+      <Character isDamaged={isDamaged && !isQuiet} isSpeaking={isSpeaking} style={portalMask ? { clipPath: getPortalClip(portalMask, charLocation, pieceScale) } : undefined}>
         {isFalling ? <FallingFrame src="/levels/npcs/agentFalling.png" /> : <GhostForm $isGhost={isGhostForm}><SpriteSheet
           avatar={avatar}
           spriteSheetSrc={spriteSheetSrc}

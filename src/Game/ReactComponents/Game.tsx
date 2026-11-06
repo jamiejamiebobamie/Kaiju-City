@@ -544,6 +544,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival, killsToWin, returnSpot, isRetry });
     gm.initGame();
     gameManager.current = gm;
+    if (import.meta.env.DEV) (window as any).__kaijuGame = gm; // dev only: a handle for scripted browser checks
     resetGameUi();
     publishGameUi(gm.getUiState());
 

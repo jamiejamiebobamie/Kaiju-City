@@ -147,6 +147,11 @@ export class GameManagerProxy {
     }
 
     // one end of a Teleport's wormhole (not a level's own link, like the Aquarium's stairs)
+    // the player stepping through a portal or a tile link: true if the game plays it out
+    startPortalWalk(piece, toTile) {
+        return !!this.props.startPortalWalk && this.props.startPortalWalk(piece, toTile);
+    }
+
     // a status kept to its own ground (the Aquarium's sea creatures, to the flooded floor)
     getIsStatusAllowedOn(appliedStatus, tileIndex) {
         return !this.props.getIsStatusAllowedOn || this.props.getIsStatusAllowedOn(appliedStatus, tileIndex);
