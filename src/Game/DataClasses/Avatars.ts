@@ -15,6 +15,9 @@ export const ROSTER = [
   { id: 'agent', name: 'Agent', unlock: 'agent' }
 ];
 
+// powers no one picks or rolls: Kaiju Fire is the Kaiju's own, and Water (Tidal Wave) is kept for the Aquarium fight's hazard (Jamie, 2026-11-05)
+export const OUT_OF_PLAY_POWERS = ['kaijuFire', 'water'];
+
 // powers that are closed until the recruit who wields them is terminated
 export const SKILL_UNLOCKS = [
   { element: 'wood', name: 'Overgrowth', recruit: 'punk', recruitName: 'Punk Guy' },

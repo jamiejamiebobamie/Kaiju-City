@@ -159,11 +159,12 @@ export class GameBoardTile {
         this.isHighlighted = isHighlighted;
     }
 
-    getIsDmgTile(teamIndex) {
+    // healTeamIndex: a heal only helps its caster's own side, so a charmed enemy (on the charmer's team for now) is not healed by it
+    getIsDmgTile(teamIndex, healTeamIndex = teamIndex) {
         if (!this.tileStatus) return 0;
         const dmg = this.tileStatus.getDmgAmt();
         const isDmg = this.teamIndex != teamIndex && dmg > 0;
-        const isHeal = this.teamIndex == teamIndex && dmg < 0;
+        const isHeal = this.teamIndex == healTeamIndex && dmg < 0;
         return isHeal || isDmg;
     }
 

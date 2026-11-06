@@ -2,12 +2,9 @@ import React, { useState, useContext } from "react";
 import styled from "styled-components";
 import { GlobalSettingsContext } from 'Home';
 import { getSciFiClass } from "../DataClasses/sciFiClasses";
-import { getIsSkillOpen, getSkillUnlock } from "../DataClasses/Avatars";
+import { getIsSkillOpen, getSkillUnlock, OUT_OF_PLAY_POWERS } from "../DataClasses/Avatars";
 
 const PICK_COUNT = 3;
-
-// powers the player can't pick: the Kaiju's own fire, and Water (Tidal Wave), taken out of the picker (Jamie, 2026-11-05); NPCs still use Water
-const PICKER_HIDDEN = ["kaijuFire", "water"];
 
 const GROUPS = [
   { label: "Offense", getIsInGroup: ({ type }) => type[0] == "offensive" },
@@ -246,7 +243,7 @@ export const AbilityPicker = ({
   const { settingsManager } = useContext(GlobalSettingsContext);
   const [powers] = useState(() => {
     settingsManager.initAbilityStatusData();
-    return Object.values(settingsManager.getAbilityAndTileStatusData()).filter(({ element }) => !PICKER_HIDDEN.includes(element));
+    return Object.values(settingsManager.getAbilityAndTileStatusData()).filter(({ element }) => !OUT_OF_PLAY_POWERS.includes(element));
   });
   const [hovered, setHovered] = useState(undefined); // { power, part: 'active' or 'passive' }
 

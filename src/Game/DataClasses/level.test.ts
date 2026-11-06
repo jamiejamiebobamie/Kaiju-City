@@ -968,8 +968,27 @@ describe('Charm', () => {
     expect(input.getPressedDir()).toBe('down');
   });
 
-  it('the Mermaid fights with Bubble, Water and Charm', () => {
-    expect(LEVELS.aquarium.rival.abilities).toEqual(['bubble', 'water', 'wink']);
+  it('Heal does not help a charmed enemy, even while they fight on the healer side', () => {
+    const { gm, player, rival, board } = makeFight();
+    addSecondEnemy(gm);
+    charmTile(gm, board, rival, player.teamIndex);
+    rival.updateCharm(1000);
+    expect(rival.teamIndex).toBe(player.teamIndex);
+    const { i, j } = rival.getTileIndex();
+    const heal = gm.settingsManager.getAbilityAndTileStatusData().isHealing;
+    board.tiles[i][j].updateTileStatus({ updateKey: 0, tileStatus: heal, currCount: 20, dirs: ['up'], teamIndex: player.teamIndex, targetIndex: -1 });
+    expect(board.getDmg(rival.pieceIndex)).toBe(0);
+    // aimed Heal looks for the most hurt of the healer's own team, which a charmed enemy never joins
+    rival.lives = 1;
+    expect(gm.gameBoardPiecesManager.getMostDmgedTeammate(player.pieceIndex)).not.toBe(rival);
+    // the player's own heal still works on the player
+    const spot = player.getTileIndex();
+    board.tiles[spot.i][spot.j].updateTileStatus({ updateKey: 0, tileStatus: heal, currCount: 20, dirs: ['up'], teamIndex: player.teamIndex, targetIndex: -1 });
+    expect(board.getDmg(player.pieceIndex)).toBeLessThan(0);
+  });
+
+  it('the Mermaid fights with Heal, Bubble and Charm', () => {
+    expect(LEVELS.aquarium.rival.abilities).toEqual(['love', 'bubble', 'wink']);
     expect(makeFight().rival.abilities.length).toBe(3);
   });
 });

@@ -445,7 +445,7 @@ const AQUARIUM_SCENE = {
   rival: {
     ...RIVAL_LOOK,
     avatar: 'mermaid',
-    abilities: ['bubble', 'water', 'wink'], touchPhase: 'tongueTouched', spot: { x: 872, y: 655 }, recruitSpot: { x: 430, y: 700 }, pronoun: 'her',
+    abilities: ['love', 'bubble', 'wink'], touchPhase: 'tongueTouched', spot: { x: 872, y: 655 }, recruitSpot: { x: 430, y: 700 }, pronoun: 'her',
     startFacing: 'down',
     introSortY: 655,
     intro: {
@@ -629,7 +629,7 @@ const LAB_SCENE = {
   agentDrops: {
     kits: {
       enforcer: ['fire', 'lightning', 'metal'], // Wildfire, Discharge, Aegis
-      frostWarden: ['ice', 'water', 'bubble'], // Ice Slice, Tidal Wave, Dispel
+      frostWarden: ['ice', 'metal', 'bubble'], // Ice Slice, Aegis, Dispel
       reaper: ['death', 'wood', 'glass'], // Haunt, Overgrowth, Escape
       handler: ['wink', 'kaijuFire', 'love'] // Charm, Kaiju Fire, Heal
     },

@@ -1,4 +1,4 @@
-import { getIsSkillOpen } from './Avatars';
+import { getIsSkillOpen, OUT_OF_PLAY_POWERS } from './Avatars';
 import { Difficulty, GameMode, TILE_STATUSES_AND_ABILITY_DATA } from 'Utils/gameState';
 import { GameBoardTileStatusAndAbilityData } from 'Game/DataClasses/GameBoard/Tile/GameBoardTileStatusAndAbilityData';
 import { GameBoardPieceAbility } from 'Game/DataClasses/GameBoard/Pieces/GameBoardPieceAbility';
@@ -98,8 +98,8 @@ export class SettingsManager {
     }
 
     getThreeRandomAbilities() {
-        // Kaiju Fire belongs to the Kaiju
-        const available = Object.values(this.abilityAndTileStatusData).filter(({ element }) => element != 'kaijuFire' && getIsSkillOpen(element));
+        // Kaiju Fire belongs to the Kaiju, and Water is out of play (see 'OUT_OF_PLAY_POWERS')
+        const available = Object.values(this.abilityAndTileStatusData).filter(({ element }) => !OUT_OF_PLAY_POWERS.includes(element) && getIsSkillOpen(element));
         const takeFrom = abilities => {
             const unpicked = abilities.filter(ability => available.includes(ability));
             const ability = unpicked[getRandomIntInRange({ max: unpicked.length - 1 })];

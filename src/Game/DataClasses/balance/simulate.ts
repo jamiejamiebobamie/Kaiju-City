@@ -2,14 +2,15 @@ import { GAME_TICK, PIECES_INFO, Difficulty, TILE_STATUSES_AND_ABILITY_DATA } fr
 import { GameManager } from '../GameManager';
 import { SettingsManager } from '../SettingsManager';
 import { LEVELS } from '../Levels/levels';
+import { OUT_OF_PLAY_POWERS } from '../Avatars';
 
 /*
   AI against AI, with no browser, to compare the powers.
   'edits' are ability changes by applied status, and go through the same edits an ability editor would make.
 */
-export const POWERS = TILE_STATUSES_AND_ABILITY_DATA.map(({ element }) => element).filter((element, index, all) => element != 'kaijuFire' && all.indexOf(element) == index);
+export const POWERS = TILE_STATUSES_AND_ABILITY_DATA.map(({ element }) => element).filter((element, index, all) => !OUT_OF_PLAY_POWERS.includes(element) && all.indexOf(element) == index);
 
-const ATTACK_POWERS = ['ice', 'fire', 'water', 'wood', 'lightning', 'death', 'wink'];
+const ATTACK_POWERS = ['ice', 'fire', 'wood', 'lightning', 'death', 'wink']; // no Water: it is out of play until the Aquarium fight
 export const VERSUS_LIMIT_MS = 120000;
 export const KAIJU_LIMIT_MS = 300000;
 export const KAIJU_TO_WIN = 20;

@@ -778,7 +778,9 @@ export class GameBoardManager {
     getDmg = (pieceIndex, tileIndex = this.gameManagerProxy.getPieceTileIndex(pieceIndex)) => {
         const teamIndex = this.gameManagerProxy.getPieceTeamIndex(pieceIndex);
         const tile = this.tiles[tileIndex.i][tileIndex.j];
-        const statusDmg = tile.getIsDmgTile(teamIndex) ? tile.getDmgAmt() : 0;
+        const piece = this.gameManagerProxy.getPiece(pieceIndex);
+        const homeTeamIndex = piece && piece.homeTeamIndex !== undefined ? piece.homeTeamIndex : teamIndex;
+        const statusDmg = tile.getIsDmgTile(teamIndex, homeTeamIndex) ? tile.getDmgAmt() : 0;
         const isContactDmg = this.gameManagerProxy.getIsContactDmg(pieceIndex, tileIndex);
         return isContactDmg ? Math.max(statusDmg, 1) : statusDmg;
     }
