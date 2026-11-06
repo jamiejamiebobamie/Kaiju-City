@@ -2413,8 +2413,8 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
 
     // UI data - - - - - - - - - -
     color: "#ff7ad9",
-    displayLookup: "abilityCharm",
-    element: "charm",
+    displayLookup: "abilityWink",
+    element: "wink",
 
     activeIcon: "fa-two-hearts",
     passiveIcon: "fa-two-hearts",

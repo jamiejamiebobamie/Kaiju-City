@@ -9,7 +9,7 @@ import { LEVELS } from '../Levels/levels';
 */
 export const POWERS = TILE_STATUSES_AND_ABILITY_DATA.map(({ element }) => element).filter((element, index, all) => element != 'kaijuFire' && all.indexOf(element) == index);
 
-const ATTACK_POWERS = ['ice', 'fire', 'water', 'wood', 'lightning', 'death', 'charm'];
+const ATTACK_POWERS = ['ice', 'fire', 'water', 'wood', 'lightning', 'death', 'wink'];
 export const VERSUS_LIMIT_MS = 120000;
 export const KAIJU_LIMIT_MS = 300000;
 export const KAIJU_TO_WIN = 20;

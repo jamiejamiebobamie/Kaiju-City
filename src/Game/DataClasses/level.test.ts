@@ -969,7 +969,7 @@ describe('Charm', () => {
   });
 
   it('the Mermaid fights with Bubble, Water and Charm', () => {
-    expect(LEVELS.aquarium.rival.abilities).toEqual(['bubble', 'water', 'charm']);
+    expect(LEVELS.aquarium.rival.abilities).toEqual(['bubble', 'water', 'wink']);
     expect(makeFight().rival.abilities.length).toBe(3);
   });
 });
@@ -988,7 +988,7 @@ describe('roster and unlocks', () => {
   });
 
   it('every combination of three powers has a class', () => {
-    const powers = ['Bubble', 'Charm', 'Death', 'Fire', 'Glass', 'Ice', 'Lightning', 'Love', 'Metal', 'Water', 'Wood'];
+    const powers = ['Bubble', 'Death', 'Fire', 'Glass', 'Ice', 'Lightning', 'Love', 'Metal', 'Water', 'Wink', 'Wood'];
     expect(Object.keys(SCI_FI_CLASSES).length).toBe(165);
     powers.forEach(a => powers.forEach(b => powers.forEach(c => {
       if (a < b && b < c) expect(getSciFiClass([c, a, b])).toBeDefined();
@@ -1006,10 +1006,10 @@ describe('roster and unlocks', () => {
 
   it('a recruit\'s power opens when they are terminated', () => {
     useStorage();
-    expect(getIsSkillOpen('charm')).toBe(false);
+    expect(getIsSkillOpen('wink')).toBe(false);
     expect(getIsSkillOpen('fire')).toBe(true);
     expect(unlockRecruitSkill('mermaid').name).toBe('Charm');
-    expect(getIsSkillOpen('charm')).toBe(true);
+    expect(getIsSkillOpen('wink')).toBe(true);
   });
 
   it('Teleport opens by beating the Agents', () => {
@@ -1030,7 +1030,7 @@ describe('roster and unlocks', () => {
     expect(gm.getPieces()[1].avatar).toBe('punk');
     for (let k = 0; k < 200; k++) {
       const elements = settingsManager.getThreeRandomAbilities().map(({ gameBoardPieceAbilityData }) => gameBoardPieceAbilityData.element);
-      ['wood', 'death', 'charm', 'glass'].forEach(element => expect(elements).not.toContain(element));
+      ['wood', 'death', 'wink', 'glass'].forEach(element => expect(elements).not.toContain(element));
     }
   });
 

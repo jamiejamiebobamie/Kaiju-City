@@ -19,7 +19,7 @@ export const ROSTER = [
 export const SKILL_UNLOCKS = [
   { element: 'wood', name: 'Overgrowth', recruit: 'punk', recruitName: 'Punk Guy' },
   { element: 'death', name: 'Haunt', recruit: 'black_female', recruitName: 'Punk Girl' },
-  { element: 'charm', name: 'Charm', recruit: 'mermaid', recruitName: 'the Aquarium Worker' },
+  { element: 'wink', name: 'Charm', recruit: 'mermaid', recruitName: 'the Aquarium Worker' },
   { element: 'glass', name: 'Teleport', recruit: 'agent', recruitName: 'the Agents' }
 ];
 

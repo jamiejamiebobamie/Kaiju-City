@@ -6,7 +6,7 @@ import { TILE_STATUSES_AND_ABILITY_DATA } from "Utils/gameState";
 /*
   /classes (dev only): pick a class name and its description for every combination of three powers.
   Each combo has three names, and each name three descriptions. Pick a name, then one of its descriptions, then confirm.
-  Keys: 1 2 3 (or arrows and Enter) pick; C confirms; Esc or Backspace goes back: from the descriptions to the names,
+  Keys: a number (or arrows and Enter) pick; C confirms; Esc or Backspace goes back: from the descriptions to the names,
   from the names to the last combo confirmed. Every confirm saves classOptions.json and writes the pick into sciFiClasses.ts.
   Names and descriptions are unique: one confirmed on one combo is taken everywhere else.
 */
@@ -209,8 +209,8 @@ export const ClassReview = () => {
       const list = nameIndex === undefined ? combo.names : combo.names[nameIndex].descriptions;
       const pick = nameIndex === undefined ? pickName : pickDescription;
       const moves = {
-        Digit1: () => pick(0), Digit2: () => pick(1), Digit3: () => pick(2),
-        Numpad1: () => pick(0), Numpad2: () => pick(1), Numpad3: () => pick(2),
+        // a number key picks that option (some combos have more than three names)
+        ...Object.fromEntries(list.flatMap((_, index) => index < 9 ? [[`Digit${index + 1}`, () => pick(index)], [`Numpad${index + 1}`, () => pick(index)]] : [])),
         ArrowDown: () => setFocus(index => Math.min(index + 1, list.length - 1)),
         ArrowUp: () => setFocus(index => Math.max(index - 1, 0)),
         Enter: () => pick(focus),
@@ -267,7 +267,7 @@ export const ClassReview = () => {
           </>
         )}
         <Keys>
-          1 2 3 or ↑ ↓ and Enter pick · C confirms and moves on<br />
+          A number or ↑ ↓ and Enter pick · C confirms and moves on<br />
           Esc or Backspace goes back: to the names, then to the last combo you confirmed
         </Keys>
       </Main>

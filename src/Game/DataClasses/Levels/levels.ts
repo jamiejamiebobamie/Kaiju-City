@@ -445,7 +445,7 @@ const AQUARIUM_SCENE = {
   rival: {
     ...RIVAL_LOOK,
     avatar: 'mermaid',
-    abilities: ['bubble', 'water', 'charm'], touchPhase: 'tongueTouched', spot: { x: 872, y: 655 }, recruitSpot: { x: 430, y: 700 }, pronoun: 'her',
+    abilities: ['bubble', 'water', 'wink'], touchPhase: 'tongueTouched', spot: { x: 872, y: 655 }, recruitSpot: { x: 430, y: 700 }, pronoun: 'her',
     startFacing: 'down',
     introSortY: 655,
     intro: {
@@ -631,7 +631,7 @@ const LAB_SCENE = {
       enforcer: ['fire', 'lightning', 'metal'], // Wildfire, Discharge, Aegis
       frostWarden: ['ice', 'water', 'bubble'], // Ice Slice, Tidal Wave, Dispel
       reaper: ['death', 'wood', 'glass'], // Haunt, Overgrowth, Escape
-      handler: ['charm', 'kaijuFire', 'love'] // Charm, Kaiju Fire, Heal
+      handler: ['wink', 'kaijuFire', 'love'] // Charm, Kaiju Fire, Heal
     },
     // the Agent who did the talking: he teleports up to the catwalk, leaving a portal, and comes down once his clones have
     talkerKit: 'reaper',

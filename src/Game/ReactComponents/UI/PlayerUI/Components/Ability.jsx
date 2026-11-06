@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 
 const ICON_LOOKUP = {
-  charm: { active: "fa-two-hearts", passive: "fa-two-hearts", loader: "fa-spinner" },
+  wink: { active: "fa-two-hearts", passive: "fa-two-hearts", loader: "fa-spinner" },
   love: {
     passive: "fa-gratipay",
     active: "fa-plus",
