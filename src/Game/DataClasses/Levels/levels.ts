@@ -1,6 +1,7 @@
 import { getDialogueLine, getDialogueScript, getDialogueTexts, getIntroLines, getKeyedLines } from 'Game/DataClasses/Dialogue/dialogue';
 import { getSpeechMs } from '../speechTiming';
-import { getTileCenter } from 'Game/DataClasses/GameBoard/hexGrid';
+import { getTileCenter, getTileIndexAtLocation } from 'Game/DataClasses/GameBoard/hexGrid';
+import { GIANT_KAIJU } from 'Game/DataClasses/GiantKaiju';
 import type { HexGrid } from 'Game/DataClasses/GameBoard/hexGrid';
 import aquarium from './data/aquarium.json';
 import lab from './data/lab.json';
@@ -182,6 +183,9 @@ export type LevelConfig = {
   hasTrainSchedule: boolean;
   shakePhases: Array<string>; // phases that shake the whole scene
   rival?: Rival;
+  giantKaiju?: { // the final battle (GiantKaiju.ts): the teammate as a giant Kaiju, marching up the Peninsula
+    route: Array<{ x: number; y: number }>; // from the foot of the Peninsula to the city, in the big map's pixels
+  };
   aquariumFlood?: { // the Aquarium fight in phases (AquariumFlood.ts)
     tankSpots: Array<{ x: number; y: number }>; // where each broken tank pours out onto the floor
     topSpot: { x: number; y: number }; // where she goes up to, to heal
@@ -901,6 +905,60 @@ Object.keys(BATTLEGROUND_SITES).forEach(levelId => {
 });
 
 export const PENINSULA = LEVELS.peninsula;
+
+/*
+  The final battle: the Peninsula, GIANT_KAIJU.mapScale times the size. People and tiles are the size they always are,
+  so there is far more ground, and the camera follows the player across it. The tiles are the Peninsula's, scaled up:
+  a tile is walkable where the Peninsula's tile under it is (touch them up in the level editor).
+*/
+const buildFinalBattle = (): LevelConfig => {
+  const scale = GIANT_KAIJU.mapScale;
+  const { grid, world, walkableTiles, kaijuEntry } = PENINSULA;
+  const bigGrid = { ...grid, columns: Math.ceil(grid.columns * scale) + 2, rows: Math.ceil(grid.rows * scale) + 2 };
+  const walkable = new Set(walkableTiles.map(({ i, j }) => `${i} ${j}`));
+  const tiles = [];
+  for (let i = 0; i < bigGrid.columns; i += 1) {
+    for (let j = 0; j < bigGrid.rows; j += 1) {
+      const center = getTileCenter(bigGrid, { i, j });
+      if (center.x < 0 || center.y < 0 || center.x > world.width * scale || center.y > world.height * scale) continue;
+      const small = getTileIndexAtLocation(grid, { x: center.x / scale, y: center.y / scale });
+      if (!small) continue;
+      const key = `${small.i} ${small.j}`;
+      if (walkable.has(key)) tiles.push({ i, j });
+    }
+  }
+  // where Kaiju walk on from: the Peninsula's own, moved out to the big map
+  const entryTiles = kaijuEntry.perimeterTiles.map(tile => {
+    const { x, y } = getTileCenter(grid, tile);
+    return getTileIndexAtLocation(bigGrid, { x: x * scale, y: y * scale });
+  }).filter(Boolean);
+  const getClosest = spot => tiles.reduce((closest, tile) => {
+    const a = getTileCenter(bigGrid, tile);
+    const b = getTileCenter(bigGrid, closest);
+    return Math.hypot(a.x - spot.x, a.y - spot.y) < Math.hypot(b.x - spot.x, b.y - spot.y) ? tile : closest;
+  });
+  // up the middle of the Peninsula, from its foot (the Lab) to the city at its tip, in the Peninsula's own pixels
+  const route = [[230, 712], [205, 600], [170, 470], [160, 380], [185, 260], [200, 170]].map(([x, y]) => ({ x: x * scale, y: y * scale }));
+  return {
+    ...PENINSULA,
+    id: 'finalBattle',
+    name: 'Final battle',
+    world: { width: world.width * scale, height: world.height * scale },
+    grid: bigGrid,
+    walkableTiles: tiles,
+    tileSets: { base: tiles },
+    spawnTiles: [getClosest({ x: 205 * scale, y: 560 * scale }), getClosest({ x: 225 * scale, y: 565 * scale })],
+    kaijuEntry: {
+      perimeterTiles: entryTiles,
+      bounds: { minX: kaijuEntry.bounds.minX * scale, minY: kaijuEntry.bounds.minY * scale, maxX: kaijuEntry.bounds.maxX * scale, maxY: kaijuEntry.bounds.maxY * scale }
+    },
+    phases: [{ id: GIANT_STOMP_PHASE, label: 'Stomp shake' }],
+    shakePhases: [GIANT_STOMP_PHASE],
+    giantKaiju: { route }
+  };
+};
+export const GIANT_STOMP_PHASE = 'giantStomp';
+LEVELS.finalBattle = buildFinalBattle();
 
 // the level editor saved a level: the game uses it from now on
 export const applyLevelFile = file => {

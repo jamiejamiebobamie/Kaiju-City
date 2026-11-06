@@ -873,8 +873,8 @@ describe('campaign', () => {
     kills.forEach((count, index) => index && expect(count).toBeGreaterThan(kills[index - 1]));
   });
 
-  it('ends on the Peninsula', () => {
-    expect(levelIds[levelIds.length - 1]).toBe('peninsula');
+  it('ends on the Peninsula, three times the size: the final battle', () => {
+    expect(levelIds[levelIds.length - 1]).toBe('finalBattle');
     expect(getIsLastSection(levelIds.length - 1)).toBe(true);
     expect(getIsLastSection(0)).toBe(false);
   });

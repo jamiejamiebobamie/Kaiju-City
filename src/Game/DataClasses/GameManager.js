@@ -7,7 +7,7 @@ import { SettingsManager } from './SettingsManager';
 import { GameBoardPiecesManager } from './GameBoard/Pieces/GameBoardPiecesManager';
 import { KaijuManager } from './KaijuManager';
 import { GameBoardManager } from './GameBoard/GameBoardManager';
-import { CHARACTER_FEET, CHARACTER_HEIGHT_PX, EXIT_OPEN_PHASE, getSortZIndex, LEVELS, PENINSULA, RIVAL_IN_PHASE } from 'Game/DataClasses/Levels/levels';
+import { CHARACTER_FEET, CHARACTER_HEIGHT_PX, EXIT_OPEN_PHASE, getSortZIndex, GIANT_STOMP_PHASE, LEVELS, PENINSULA, RIVAL_IN_PHASE } from 'Game/DataClasses/Levels/levels';
 import { TrainSchedule, TRAIN_HIT } from './TrainSchedule';
 import { GameBoardPieceAgent } from './GameBoard/Pieces/GameBoardPieceAgent';
 import { GameBoardPieceExtra } from './GameBoard/Pieces/GameBoardPieceExtra';
@@ -18,6 +18,9 @@ import { getSpeechMs } from './speechTiming';
 import { getTileCenter, getTileIndexAtLocation } from './GameBoard/hexGrid';
 import { GHOST_BOSS, GhostRing } from './GhostBoss';
 import { AQUARIUM_FLOOD, AquariumFlood } from './AquariumFlood';
+import { GIANT_KAIJU, GiantKaiju } from './GiantKaiju';
+import { GameBoardPieceGiant } from './GameBoard/Pieces/GameBoardPieceGiant';
+import { getAvatarColor } from './Avatars';
 import { getTorsoSpot, startRagdoll, stepRagdoll } from './Ragdoll';
 import { DIALOGUE, getIsClickThrough, getIsDialogueLog } from './DialogueLog';
 import { getIsSpacing } from './SpacingTest';
@@ -30,6 +33,16 @@ export const GameResult = Object.freeze({
 // timing of the moments the game holds still for
 const TRIGGER_ROWS = 2; // how close a door or a walk-here spot has to be
 const SITE_ROWS = 3; // how close a site on the map has to be
+
+// the final battle's end (onGiantDrained), in milliseconds
+export const FINALE = {
+  pullMs: 1200,
+  rayMs: 3200, // the ray gun on the giant, as it shrinks
+  teammateMs: 2600, // on the teammate, back to themselves
+  rayZoomShare: 0.6, // the ray's shot, wide enough for the player and the giant
+  rayColor: '#b45cff'
+};
+const GIANT_SHAKE_MS = 450; // a stomp shakes the scene this long
 
 // the Aquarium's scream (startShatter), in milliseconds
 export const SHATTER_SCREAM = {
@@ -161,6 +174,16 @@ export class GameManager {
         this.isShatterPending = false;
         this.aquariumFlood = undefined;
         this.nextMermaidHealAt = 0;
+        // the final battle (GiantKaiju.ts)
+        this.giant = undefined; // the giant's march and attacks
+        this.giantPiece = undefined; // where the board sees it: on its weak spot
+        this.giantColor = undefined; // the teammate's color
+        this.giantWarnings = []; // stomps and tail sweeps on their way: { type, spot, radiusPx, endsAtMs }, in the giant's time
+        this.giantHitAtMs = -Infinity; // the weak spot flashes when hit
+        this.stompShakeUntil = 0;
+        this.isGiantDraining = false; // the ray gun is on it
+        this.giantShrinkAtMs = undefined; // when it began to shrink back into the teammate
+        this.isFinaleWon = false;
         this.enemyPowersAtMs = 0; // before this, the other side can't use powers
         // the dialogue log (DialogueLog.ts): every line said so far, and talk that runs outside of cutscenes
         this.dialogueLog = []; // { key, who, name, text, avatar, chain }
@@ -390,7 +413,8 @@ export class GameManager {
             GameMode.Story
         ]
         // - does player want a teammate?
-        if (mandatoryTeammateGamemodes.includes(gameMode) && this.settingsManager.getIsTeammate()) {
+        // in the final battle, the teammate is the giant Kaiju
+        if (mandatoryTeammateGamemodes.includes(gameMode) && this.settingsManager.getIsTeammate() && !this.level.giantKaiju) {
             const teammateAvatar = this.settingsManager.getTeammateAvatar();
             const teammateAbilities = this.settingsManager.getThreeRandomAbilities();
 
@@ -416,6 +440,7 @@ export class GameManager {
         if (getIsDialogueLog()) this.addSceneTalks();
         if (this.level.isDepowered) this.depowerPlayerTeam();
 
+        if (this.level.giantKaiju) this.startFinalBattle();
         if (this.hasArrival) this.startArrival();
         else if (this.level.rival) this.startRivalIntro();
         else if (this.level.isMapWalk) this.startMapIntro();
@@ -498,6 +523,163 @@ export class GameManager {
         if (this.level.ghostBoss) piece.onBeforeDeath = () => this.onGhostBossDown();
         if (this.level.aquariumFlood) piece.onBeforeDeath = () => this.onMermaidDown();
     }
+
+    // - - - the final battle (GiantKaiju.ts) - - -
+
+    // the teammate is a giant Kaiju at the foot of the Peninsula, heading for the city. the recruits are with the player.
+    startFinalBattle() {
+        const { grid } = this.level;
+        this.giant = new GiantKaiju({ route: this.level.giantKaiju.route, rowPx: grid.rowStep * grid.scale });
+        const teammateAvatar = this.settingsManager.getTeammateAvatar();
+        this.giantColor = getAvatarColor(teammateAvatar) || (PIECES_INFO[teammateAvatar] || {}).color || '#7fff7f';
+        this.giantPiece = this.gameBoardPiecesManager.addPiece({
+            pieceClass: GameBoardPieceGiant,
+            pieceInfo: { ...PIECES_INFO.kaiju, abilities: [], maxLives: GIANT_KAIJU.drainHits, moveSpeed: 0 },
+            teamIndex: 1
+        });
+        this.giantPiece.color = this.giantColor;
+        this.giantPiece.onBeforeDeath = () => this.onGiantDrained();
+        this.moveGiantPiece();
+        // everyone recruited fights beside the player, from the start
+        const recruited = Object.entries(getRecruitChoices()).filter(([, choice]) => choice == 'recruit').map(([avatar]) => avatar);
+        const player = this.gameBoardPiecesManager.getPlayerPiece();
+        recruited.forEach((avatar, k) => {
+            const rivalLevel = Object.values(LEVELS).find(({ rival }) => rival && rival.avatar == avatar);
+            if (!rivalLevel) return;
+            const piece = this.gameBoardPiecesManager.addRecruit(avatar, this.settingsManager.getAbilitiesFromElements(rivalLevel.rival.abilities));
+            const near = this.gameBoardManager.getAdjacentTileIndices(player.getTileIndex()).filter(this.gameBoardManager.getIsInBounds);
+            piece.initCharLocation(true, near[k % Math.max(near.length, 1)] || player.getTileIndex());
+        });
+    }
+
+    // the board's piece for the giant stands on the walkable tile nearest its weak spot
+    moveGiantPiece() {
+        const { center } = this.giant.getPartBox();
+        this.giantPiece.standAt(this.gameBoardManager.getClosestWalkableTileToLocation(center));
+    }
+
+    // the tiles under a box of the giant, by their middles
+    getTilesInBox({ left, top, width, height }) {
+        const { grid } = this.level;
+        const from = getTileIndexAtLocation(grid, { x: left, y: top });
+        const to = getTileIndexAtLocation(grid, { x: left + width, y: top + height });
+        if (!from || !to) return [];
+        const tiles = [];
+        for (let i = Math.min(from.i, to.i) - 1; i <= Math.max(from.i, to.i) + 1; i += 1) {
+            for (let j = Math.min(from.j, to.j) - 1; j <= Math.max(from.j, to.j) + 1; j += 1) {
+                const tile = this.gameBoardManager.tiles[i] && this.gameBoardManager.tiles[i][j];
+                if (!tile) continue;
+                const { x, y } = getTileCenter(grid, { i, j });
+                if (x >= left && x <= left + width && y >= top && y <= top + height) tiles.push(tile);
+            }
+        }
+        return tiles;
+    }
+
+    updateFinalBattle() {
+        const giant = this.giant;
+        const piece = this.giantPiece;
+        if (this.isGiantDraining) return;
+        const playerTeam = this.gameBoardPiecesManager.getPlayerTeamIndex();
+        const team = this.gameBoardPiecesManager.getTeamPieces(playerTeam).filter(member => !member.isDead && member.isOnTiles);
+        const events = giant.step(GAME_TICK.pieceMs, team.map(member => member.charLocation));
+        const hurtWithin = (spot, radiusPx) => team.forEach(member => {
+            const dx = member.charLocation.x - spot.x;
+            const dy = member.charLocation.y - spot.y;
+            if (Math.hypot(dx, dy) > radiusPx) return;
+            member.lastHitDirs = [Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up')];
+            member.lastHitBy = piece.pieceIndex;
+            member.decrementHealth(this.accTime, 1);
+        });
+        events.forEach(event => {
+            if (event.type == 'stompWarn') this.giantWarnings.push({ type: 'stomp', spot: event.spot, radiusPx: GIANT_KAIJU.stomp.radiusRows * giant.rowPx, endsAtMs: event.endsAtMs, startMs: giant.ms });
+            if (event.type == 'tailWarn') this.giantWarnings.push({ type: 'tail', spot: event.spot, radiusPx: GIANT_KAIJU.tail.radiusRows * giant.rowPx, endsAtMs: event.endsAtMs, startMs: giant.ms });
+            if (event.type == 'stomp' || event.type == 'tail') {
+                hurtWithin(event.spot, event.radiusPx);
+                this.stompShakeUntil = this.accTime + GIANT_SHAKE_MS;
+                this.setPhase(GIANT_STOMP_PHASE, true);
+            }
+            if (event.type == 'breath') {
+                // Kaiju Fire, from its head, at the closest of the team
+                const weakTile = piece.getTileIndex();
+                piece.setTileIndex(this.gameBoardManager.getClosestWalkableTileToLocation(giant.getHead()));
+                this.gameBoardManager.updateTileWithAbilityStatus({ accTime: this.accTime, pieceIndex: piece.pieceIndex, appliedStatus: 'isOnKaijuFire' });
+                piece.setTileIndex(weakTile);
+            }
+        });
+        this.giantWarnings = this.giantWarnings.filter(({ endsAtMs }) => endsAtMs > giant.ms);
+        if (this.stompShakeUntil && this.accTime >= this.stompShakeUntil) {
+            this.stompShakeUntil = 0;
+            this.setPhase(GIANT_STOMP_PHASE, false);
+        }
+
+        // the team's powers on the tiles under the weak spot drain it, and stagger its march
+        const isHit = this.getTilesInBox(giant.getPartBox()).some(tile => {
+            const status = tile.getTileStatus();
+            return !!status && status.getDmgAmt() > 0 && tile.teamIndex == playerTeam;
+        });
+        if (isHit && piece.getIsDamageable(this.accTime)) {
+            piece.decrementHealth(this.accTime, 1);
+            if (!this.isGiantDraining) {
+                giant.hit();
+                this.giantHitAtMs = giant.ms;
+            }
+        }
+        // the Kaiju come to protect it, a wave as each share of its power goes
+        giant.takeWaves(piece.lives / piece.maxLives).forEach(({ count }) => {
+            for (let k = 0; k < count; k += 1) this.kaijuManager.addKaijuPiece(this.accTime);
+        });
+        this.moveGiantPiece();
+    }
+
+    // drained: the ray gun pulls out the last of its power, and it is the teammate again
+    onGiantDrained() {
+        if (this.isGiantDraining) return true;
+        this.isGiantDraining = true;
+        const giant = this.giant;
+        const player = this.gameBoardPiecesManager.getPlayerPiece();
+        const feet = giant.getFeet();
+        const { height } = giant.getSizePx();
+        const bodyMiddle = { x: feet.x, y: feet.y - height * 0.5 };
+        const rowPx = giant.rowPx;
+        const between = { x: (player.charLocation.x + bodyMiddle.x) / 2, y: (player.charLocation.y + bodyMiddle.y) / 2 };
+        const wideShot = { point: between, zoomScale: PENINSULA.cameraZoom * FINALE.rayZoomShare, isPeninsulaSized: true, panMs: FINALE.pullMs };
+        const onTeammate = { point: { x: feet.x, y: feet.y - rowPx }, zoomScale: PENINSULA.cameraZoom * CUTSCENE.outcomeZoomScale, isPeninsulaSized: true, panMs: FINALE.pullMs };
+        this.giantWarnings = [];
+        this.startCutscene([
+            { shot: wideShot, ms: FINALE.pullMs },
+            { shot: wideShot, ms: FINALE.rayMs, onStart: () => {
+                this.rayBeam = { from: { x: player.charLocation.x, y: player.charLocation.y - rowPx }, color: FINALE.rayColor, targets: [bodyMiddle] };
+                this.giantShrinkAtMs = performance.now();
+            } },
+            { shot: onTeammate, ms: FINALE.teammateMs, onStart: () => {
+                this.rayBeam = undefined; // (not endRay: that takes the team's powers)
+                this.restoreTeammate(feet);
+            } },
+            { shot: onTeammate, ms: 0, onStart: () => { this.isFinaleWon = true; } }
+        ]);
+        return true;
+    }
+
+    // the giant is gone, and the teammate is lying where it stood
+    restoreTeammate(feet) {
+        const piece = this.giantPiece;
+        piece.isOnTiles = false;
+        piece.setIsDead(true); // not a kill: it is the teammate
+        this.giantIsGone = true;
+        const avatar = this.settingsManager.getTeammateAvatar();
+        const teammate = this.gameBoardPiecesManager.addPiece({ pieceInfo: { ...PIECES_INFO[avatar], abilities: [], color: this.giantColor }, teamIndex: this.gameBoardPiecesManager.getPlayerTeamIndex() });
+        teammate.initCharLocation(true, this.gameBoardManager.getClosestWalkableTileToLocation(feet));
+        teammate.facingDir = 'down';
+        this.restoredTeammate = teammate;
+    }
+
+    // dev: drain it almost all the way, to try the end
+    devDrainGiant = () => {
+        if (!this.giantPiece || this.cutscene) return;
+        this.giantPiece.lives = 1;
+        this.giantPiece.lastDmgAccTime = 0;
+    };
 
     // - - - the Aquarium (AquariumFlood.ts) - - -
 
@@ -1818,7 +2000,7 @@ export class GameManager {
         this.timeoutHandler.update(this.accTime);
         this.gameBoardManager.updateWormholes(this.accTime);
         if (this.trainSchedule) this.trainSchedule.update(this.accTime);
-        if (this.level.kaijuEntry) this.kaijuManager.update(this.accTime, this.score);
+        if (this.level.kaijuEntry && !this.level.giantKaiju) this.kaijuManager.update(this.accTime, this.score); // the final battle's Kaiju come in waves
         if (this.level.rival) this.updateRival();
         if (this.level.agentDrops) this.updateAgentDrops();
         if (this.level.greeting) this.updateGreeting();
@@ -1827,6 +2009,7 @@ export class GameManager {
         this.gameBoardPiecesManager.movePieces({ accTime: this.accTime, playerInputHandler: this.playerInputHandler });
         if (this.ghostRing) this.updateGhostRing();
         if (this.aquariumFlood) this.updateAquariumFlood();
+        if (this.giant) this.updateFinalBattle();
     }
 
     stepTiles() {
@@ -1836,6 +2019,12 @@ export class GameManager {
     }
 
     getGameResult() {
+        if (this.level.giantKaiju) {
+            // drained and saved, or at the city; Kaiju killed along the way don't decide it
+            if (this.isFinaleWon) return GameResult.PlayerWon;
+            if ((this.giant && this.giant.getIsAtCity()) || this.gameBoardPiecesManager.getIsPlayerTeamDead()) return GameResult.PlayerLost;
+            return null;
+        }
         if (this.getIsAtGoal()) return GameResult.PlayerWon;
         if (this.score >= this.getKillsToWin()) return GameResult.PlayerWon;
         if (this.gameBoardPiecesManager.getIsPlayerTeamDead()) return GameResult.PlayerLost;
