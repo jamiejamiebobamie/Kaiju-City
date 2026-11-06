@@ -494,6 +494,9 @@ export class GameBoardPieceBase {
             if (tileIndex) {
                 seenTiles.add(`${tileIndex.i} ${tileIndex.j}`);
                 moveToTiles.push(tileIndex);
+                // a key's walk stops on a tile link, and stopping there takes it (the Aquarium's floors). otherwise the walk,
+                // which goes on until the tiles run out, would carry the player over it.
+                if (this.gameManagerProxy.getLinkedTile(tileIndex)) break;
             }
         }
         return moveToTiles;

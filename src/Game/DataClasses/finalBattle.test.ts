@@ -30,7 +30,8 @@ const hitWeakSpot = gm => {
 };
 
 describe('the end of the Lab fight', () => {
-  it('with the clones beaten, the teammate transforms before the fight is won', () => {
+  it('with the clones beaten, the teammate transforms before the fight is won (when the giant is the final battle)', () => {
+    GIANT_KAIJU.isFinalBattle = true;
     const settingsManager = new SettingsManager();
     settingsManager.setSortedPlayerChosenAbilityElementsString(['Fire', 'Ice', 'Metal']);
     settingsManager.setIsTeammate(true);
@@ -50,8 +51,8 @@ describe('the end of the Lab fight', () => {
 });
 
 describe('the final battle', () => {
-  it('is the last section, on the Peninsula three times the size, with tiles and people their usual size', () => {
-    expect(CAMPAIGN_SECTIONS[CAMPAIGN_SECTIONS.length - 1].levelId).toBe('finalBattle');
+  it('is on the Peninsula three times the size, with tiles and people their usual size (the last section when it is on)', () => {
+    expect(CAMPAIGN_SECTIONS[CAMPAIGN_SECTIONS.length - 1].levelId).toBe(GIANT_KAIJU.isFinalBattle ? 'finalBattle' : 'peninsula');
     const level = LEVELS.finalBattle;
     expect(level.world.width).toBe(PENINSULA.world.width * GIANT_KAIJU.mapScale);
     expect(level.grid.rowStep).toBe(PENINSULA.grid.rowStep);

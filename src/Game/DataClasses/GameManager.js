@@ -565,6 +565,11 @@ export class GameManager {
         });
     }
 
+    // the Lab fight ends with the teammate transforming, when the final battle is the giant
+    getIsTransforming() {
+        return !!this.level.transformScene && GIANT_KAIJU.isFinalBattle;
+    }
+
     // the clones are down, and the teammate turns: their words, the scream, a flash, and they are gone (the final battle comes next)
     startTransformation() {
         const { player, teammate } = this.getGhostTeam();
@@ -2045,7 +2050,7 @@ export class GameManager {
         if (this.recruitScene) return;
         if (this.isGhostScreamPending) this.startGhostScream();
         if (this.isShatterPending) this.startShatter();
-        if (this.level.transformScene && !this.transformState && !this.cutscene && this.score >= this.getKillsToWin()) this.startTransformation();
+        if (this.getIsTransforming() && !this.transformState && !this.cutscene && this.score >= this.getKillsToWin()) this.startTransformation();
         if (this.cutscene) {
             this.updateCutscene();
             return;
@@ -2091,7 +2096,7 @@ export class GameManager {
 
     getGameResult() {
         // the Lab fight is won only once the teammate has transformed
-        if (this.level.transformScene && this.transformState != 'done' && this.score >= this.getKillsToWin() && !this.gameBoardPiecesManager.getIsPlayerTeamDead()) return null;
+        if (this.getIsTransforming() && this.transformState != 'done' && this.score >= this.getKillsToWin() && !this.gameBoardPiecesManager.getIsPlayerTeamDead()) return null;
         if (this.level.giantKaiju) {
             // drained and saved, or at the city; Kaiju killed along the way don't decide it
             if (this.isFinaleWon) return GameResult.PlayerWon;

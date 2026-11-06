@@ -815,7 +815,7 @@ const BATTLEGROUND_SITES = {
 const MAP_WALKS = [
   ['mapSubway', 'Map to Subway', { start: { x: 250, y: 505 } }, [BATTLEGROUND_SITES.rapidTransit, LAB_SITE]],
   ['mapRooftop', 'Map to Rooftop', { start: FOOT }, [BATTLEGROUND_SITES.rooftop, LAB_SITE]],
-  ['mapAquarium', 'Map to Aquarium', { start: { x: 90, y: 345 }, teammateStart: { x: 70, y: 470 } }, [BATTLEGROUND_SITES.aquarium, LAB_SITE]],
+  ['mapAquarium', 'Map to Aquarium', { start: { x: 90, y: 345 } }, [BATTLEGROUND_SITES.aquarium, LAB_SITE]], // the teammate starts beside the player (Jamie, 2026-11-06)
   ['mapLab', 'Map to Lab', { start: { x: 143, y: 214 }, teammateStart: { x: 104, y: 131 } }, [{ ...LAB_SITE, isDetour: false }]]
 ] as const;
 

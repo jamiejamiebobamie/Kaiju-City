@@ -460,7 +460,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const [isMouseLook, setIsMouseLook] = useState(true);
   const [isEnemyZoom, setIsEnemyZoom] = useState(true);
   const [isTeamColors, setIsTeamColors] = useState(true); // a playtest: statuses in their side's color
-  const [isTrainedNpcs, setIsTrainedNpcs] = useState(true); // NPCs play by the trained model in public/models in fights with no Kaiju; against a Kaiju they hand back to the rules
+  const [isTrainedNpcs, setIsTrainedNpcs] = useState(false); // off by default (Jamie, 2026-11-06). NPCs play by the trained model in public/models in fights with no Kaiju; against a Kaiju they hand back to the rules
   const [isDevHidden, setIsDevHidden] = useState(false); // the dev tools tucked away, to see the game as it will ship
   const [npcAggression, setNpcAggression] = useState(DEFAULT_AGGRESSION); // the trained NPCs', 0 careful to 1 reckless
   // the ghost boss's ring, tuned in the dev panel: its size, and the ghosts in each phase's ring (the next ring uses them)
@@ -704,7 +704,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const getMatchEnd = isWon => {
     const title = isWon ? getWinTitle() : "You Lost";
     // the end of the game: the title, then the credits, then the landing screen
-    if (isWon && level.giantKaiju) return { title: "You saved the city!", buttons: [], isFinale: true };
+    if (isWon && (level.giantKaiju || (campaignIndex !== null && getIsLastSection(campaignIndex)))) return { title: "You saved the city!", buttons: [], isFinale: true };
     if (campaignIndex === null) {
       return { title, buttons: [{ text: "Play again", onClick: () => triggerTransition(resetMatch) }, { text: "Leave", onClick: handleClickHome }] };
     }

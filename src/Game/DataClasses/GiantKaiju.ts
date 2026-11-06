@@ -9,6 +9,7 @@
 */
 
 export const GIANT_KAIJU = {
+  isFinalBattle: false, // true: the campaign ends with the giant. false: the Peninsula's usual fight, 30 Kaiju (and the teammate doesn't transform)
   mapScale: 3, // the final battle's Peninsula, this many times the usual (tune with the march speed)
   sizeRows: { width: 6, height: 8 }, // the giant, in tile rows
   marchRowsPerSecond: 0.5, // its walk up the Peninsula

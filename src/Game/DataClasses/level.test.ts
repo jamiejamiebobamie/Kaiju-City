@@ -18,6 +18,7 @@ import { Camera, CAMERA, getCameraZoom, getCloseZoom, WIDE_SHOT } from './Camera
 import { getCharXAndY, getPerimeterEdges, getTileCenter, getTileIndexAtLocation, getTileXAndY } from './GameBoard/hexGrid';
 import { CENTER_TILE, makeGame, placePiece } from './testHelpers';
 import { AQUARIUM_FLOOD, getWaterSlow } from './AquariumFlood';
+import { GIANT_KAIJU } from './GiantKaiju';
 import { storage } from 'Utils/storage';
 
 const { grid } = PENINSULA;
@@ -619,6 +620,39 @@ describe('rivals', () => {
     });
   });
 
+  it('the Aquarium: a key walk stops on a tile link, and takes it', () => {
+    const settingsManager = new SettingsManager();
+    settingsManager.setSortedPlayerChosenAbilityElementsString(['Fire', 'Ice', 'Metal']);
+    settingsManager.setIsTeammate(false);
+    const gm = new GameManager({ level: LEVELS.aquarium, settingsManager });
+    gm.initGame();
+    while (gm.cutscene) gm.stepPieces();
+    const player = gm.getPieces()[0];
+    const [link, other] = LEVELS.aquarium.tileLinks[0];
+    const board = gm.gameBoardManager;
+    // from a tile beside the link, a key pointing at it: the walk ends on the link, not past it
+    const input = gm.getPlayerInputHandler();
+    const dirs = ['up', 'down', 'left', 'right', 'up left', 'up right', 'down left', 'down right'];
+    // a tile two steps off, so the walk would carry on past the link if it didn't stop there
+    const twoOff = board.getAdjacentTileIndices(other).flatMap(tile => board.getAdjacentTileIndices(tile));
+    const start = twoOff.find(tile => dirs.some(dir => {
+      player.initCharLocation(true, tile);
+      const path = player.getPathFromPressedDir(dir, input);
+      return path.length > 1 && path.some(({ i, j }) => i == other.i && j == other.j);
+    }));
+    expect(start).toBeDefined();
+    const dir = dirs.find(each => {
+      player.initCharLocation(true, start);
+      return player.getPathFromPressedDir(each, input).some(({ i, j }) => i == other.i && j == other.j);
+    });
+    player.initCharLocation(true, start);
+    const path = player.getPathFromPressedDir(dir, input);
+    expect(path[path.length - 1]).toEqual(other);
+    player.updateMovmement(path);
+    for (let k = 0; k < 60; k += 1) gm.stepPieces();
+    expect(player.getTileIndex()).toEqual(link);
+  });
+
   describe('the Aquarium: one shatter, then the flood', () => {
     const makeAquariumFight = (isTeammate = true) => {
       const settingsManager = new SettingsManager();
@@ -877,8 +911,8 @@ describe('campaign', () => {
     kills.forEach((count, index) => index && expect(count).toBeGreaterThan(kills[index - 1]));
   });
 
-  it('ends on the Peninsula, three times the size: the final battle', () => {
-    expect(levelIds[levelIds.length - 1]).toBe('finalBattle');
+  it('ends on the final battle: the giant on the big Peninsula, or the usual Peninsula fight', () => {
+    expect(levelIds[levelIds.length - 1]).toBe(GIANT_KAIJU.isFinalBattle ? 'finalBattle' : 'peninsula');
     expect(getIsLastSection(levelIds.length - 1)).toBe(true);
     expect(getIsLastSection(0)).toBe(false);
   });

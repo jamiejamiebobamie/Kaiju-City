@@ -1,4 +1,5 @@
 import { getRadioLines } from './Dialogue/dialogue';
+import { GIANT_KAIJU } from './GiantKaiju';
 /*
   The story, in order. Each section is a level, played after its radio call if it has one.
   A radio call is built when it starts, so it can mention what the player has done.
@@ -77,7 +78,8 @@ export const CAMPAIGN_SECTIONS: Array<CampaignSection> = [
   { label: 'Sewer 1', levelId: 'sewer1' },
   { label: 'Sewer 2', levelId: 'sewer2' },
   { label: 'Lab fight', levelId: 'lab' },
-  { label: 'Final battle', levelId: 'finalBattle' } // the teammate as a giant Kaiju (GiantKaiju.ts)
+  // the teammate as a giant Kaiju (GiantKaiju.ts), or the Peninsula's usual fight: GIANT_KAIJU.isFinalBattle
+  GIANT_KAIJU.isFinalBattle ? { label: 'Final battle', levelId: 'finalBattle' } : { label: 'Final battle', levelId: 'peninsula', kills: 30 }
 ];
 
 export const getIsLastSection = (index: number) => index == CAMPAIGN_SECTIONS.length - 1;
