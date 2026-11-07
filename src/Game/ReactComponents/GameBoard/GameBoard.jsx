@@ -1093,7 +1093,7 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
       facingDir={p.getFacingDir()}
       pieceScale={pieceScale * (p.perspectiveScale || 1)}
       spriteSheetSrc={p.spriteSheetSrc}
-      lives={p.lives}
+      lives={Math.max(p.lives + Math.min(p.livesModifier || 0, 0), 0)} // a passive that costs health (Haunt's Lichdom) shows on the bar: at none, they are down
       isGoingToSpewFire={p.isGoingToSpewFire}
       isShowHealthBarOnComponent={p.isShowHealthBarOnComponent}
       isQuiet={!!recruitScene}

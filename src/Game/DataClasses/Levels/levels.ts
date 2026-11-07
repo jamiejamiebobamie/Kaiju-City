@@ -505,9 +505,9 @@ const AQUARIUM_SCENE = {
   linkWalls: [
     { tile: { i: 25, j: 11 }, point: { x: 582, y: 313 }, behind: { x: -1, y: 0 }, outDir: { x: 0.86, y: 0.5 } }, // the left stairs
     { tile: { i: 36, j: 12 }, point: { x: 827, y: 327 }, behind: { x: 1, y: 0 }, outDir: { x: -0.86, y: 0.5 } }, // the right stairs
-    // the balcony doors upstairs: out of sight past the door opening's inner edge
-    { tile: { i: 4, j: 8 }, point: { x: 94, y: 217 }, behind: { x: -1, y: 0 }, outDir: { x: 0.86, y: 0.51 } }, // the left door
-    { tile: { i: 57, j: 8 }, point: { x: 1316, y: 231 }, behind: { x: 1, y: 0 }, outDir: { x: -0.87, y: 0.49 } } // the right door
+    // the balcony doors upstairs: across the doorway, and out of sight behind the wall at its far side (the jamb away from the balcony)
+    { tile: { i: 4, j: 8 }, point: { x: 22, y: 217 }, behind: { x: -1, y: 0 }, outDir: { x: 0.86, y: 0.51 } }, // the left door
+    { tile: { i: 57, j: 8 }, point: { x: 1384, y: 231 }, behind: { x: 1, y: 0 }, outDir: { x: -0.87, y: 0.49 } } // the right door
   ],
   phaseTileTones: { shattered: 'white' as const }, // the shattered hall is much darker
   flood: { phase: 'shattered', top: 530 }, // pieces below this line, in scene pixels, walk through water

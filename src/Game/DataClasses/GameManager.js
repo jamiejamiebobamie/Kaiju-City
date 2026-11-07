@@ -97,7 +97,9 @@ export const GHOST_SCREAM = {
   mergedMs: 600, // one shot
   toRingMs: 1500, // the pull out to the ring
   ringZoomShare: 0.8, // the ring's shot, as a share of the usual zoom
-  besideCols: 1 // the two of them land this many columns either side of the ring's middle
+  besideCols: 1, // the two of them land this many columns either side of the ring's middle
+  ringShotZoom: 1.1, // the whole ring, while no ghost is coming for the player: a share of the whole scene's zoom
+  ringShotPanMs: 700 // the camera's move out to it, and back
 };
 
 export const CUTSCENE = {
@@ -570,6 +572,24 @@ export class GameManager {
         a power chasing the player (Haunt, Overgrowth's leading tiles, Ice Slice, Charm, the Aquarium's sea creatures; not Heal),
         the ghost boss's launched ghosts coming for the player, and Kaiju walking in that are near the player.
     */
+    /*
+        The ghost boss's ring, while the player is inside it and no launched ghost is coming for them: the camera pulls back
+        to the whole ring (Jamie). A ghost coming for them takes the camera back (the enemy zoom follows it).
+    */
+    getGhostRingShot() {
+        const ring = this.ghostRing;
+        const player = this.gameBoardPiecesManager.getPlayerPiece();
+        const isOn = !!ring && ring.getIsFormed() && !!player && !player.isDead && !this.cutscene && this.getIsCameraKeptOff(player, this.rivalPiece)
+            && !this.getCameraThreats(player).some(({ key }) => key.startsWith('phaseGhost'));
+        if (!isOn) {
+            this.ghostRingShot = undefined;
+            return undefined;
+        }
+        // the same shot while it lasts: a new one would start the camera's pull again
+        if (!this.ghostRingShot) this.ghostRingShot = { point: { ...ring.center }, zoomScale: GHOST_SCREAM.ringShotZoom, panMs: GHOST_SCREAM.ringShotPanMs };
+        return this.ghostRingShot;
+    }
+
     // the enemy zoom leaves these out: while the ghost boss's ring is up and the player is inside it, Punk Girl (Jamie).
     // the ring is the fight then, not her.
     getIsCameraKeptOff = (player, piece) => {
@@ -648,10 +668,9 @@ export class GameManager {
             : inDir;
         // the body, from where the piece stands (its feet), in the level's pixels
         const body = PORTAL_WALK.body.map(({ x, y }) => ({ x: x * scale, y: y * scale }));
-        const reachAlong = dir => Math.max(...body.map(({ x, y }) => x * dir.x + y * dir.y)); // how far the body goes out that way
         // in: the edge it goes through, and where it walks to, all of it past the edge
         const fromSpot = { ...piece.charLocation };
-        const inEdge = fromWall ? { point: fromWall.point, behind: fromWall.behind } : { point: { x: fromSpot.x + inDir.x * reachAlong(inDir), y: fromSpot.y + inDir.y * reachAlong(inDir) }, behind: inDir };
+        const inEdge = fromWall ? { point: fromWall.point, behind: fromWall.behind } : { point: { ...fromSpot }, behind: inDir }; // into the portal itself
         const getThrough = (start, dir, { point, behind }) => {
             const along = dir.x * behind.x + dir.y * behind.y;
             if (along <= 0.05) return { x: start.x + dir.x * rowPx * 2, y: start.y + dir.y * rowPx * 2 };
@@ -665,7 +684,7 @@ export class GameManager {
         const backBy = along > 0.05 && pastEdge > -1 ? (pastEdge + 2) / along : 0;
         const inStart = { x: fromSpot.x - inDir.x * backBy, y: fromSpot.y - inDir.y * backBy };
         // out: it walks from all behind the edge to the far tile, all of it in view by then
-        const outEdge = toWall ? { point: toWall.point, behind: toWall.behind } : { point: { x: toSpot.x - outDir.x * reachAlong({ x: -outDir.x, y: -outDir.y }), y: toSpot.y - outDir.y * reachAlong({ x: -outDir.x, y: -outDir.y }) }, behind: { x: -outDir.x, y: -outDir.y } };
+        const outEdge = toWall ? { point: toWall.point, behind: toWall.behind } : { point: { ...toSpot }, behind: { x: -outDir.x, y: -outDir.y } }; // out of the portal itself
         // where the walk out ends: on from the far tile until all of them is in view (a link's tile can be behind its edge)
         const outAlong = -(outDir.x * outEdge.behind.x + outDir.y * outEdge.behind.y);
         const stillBehind = Math.max(...body.map(({ x, y }) => (toSpot.x + x - outEdge.point.x) * outEdge.behind.x + (toSpot.y + y - outEdge.point.y) * outEdge.behind.y));
@@ -1495,7 +1514,7 @@ export class GameManager {
     getCameraShot() {
         if (this.recruitScene) return this.recruitScene.shot;
         if (this.cutscene) return this.cutscene.steps[this.cutscene.index].shot;
-        return this.outcomeShot || this.knockShot || this.portalShot; // the player knocked down by the train: in close on them
+        return this.outcomeShot || this.knockShot || this.portalShot || this.getGhostRingShot(); // the player knocked down by the train: in close on them
     }
 
     getTimeScale = () => {

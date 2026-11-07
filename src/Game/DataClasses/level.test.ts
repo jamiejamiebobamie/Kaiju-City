@@ -609,6 +609,19 @@ describe('rivals', () => {
       expect(gm.getIsCameraKeptOff(player, rival)).toBe(false);
     });
 
+    it('inside the ring, with no ghost coming for the player, the camera holds the whole ring', () => {
+      const { gm } = makeGhostFight();
+      const player = gm.getPieces()[0];
+      downHer(gm);
+      for (let k = 0; k < 40 && !gm.ghostRing.getIsFormed(); k += 1) gm.stepPieces();
+      const shot = gm.getCameraShot();
+      expect(shot && shot.point).toEqual(LEVELS.rooftop.ghostBoss.ringCenter);
+      expect(gm.getCameraShot()).toBe(shot); // the same shot while it lasts
+      // out of the ring, the camera is the player's again
+      player.charLocation = { ...gm.rivalPiece.charLocation };
+      expect(gm.getCameraShot()).toBeUndefined();
+    });
+
     it('her own roof is the left building, without the crane beam', () => {
       const { gm } = makeGhostFight();
       expect(gm.getIsRivalGround({ i: 8, j: 15 })).toBe(true);
