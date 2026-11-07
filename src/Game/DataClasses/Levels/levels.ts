@@ -184,6 +184,7 @@ export type LevelConfig = {
   shakePhases: Array<string>; // phases that shake the whole scene
   rival?: Rival;
   transformScene?: string; // after the fight is won, the teammate transforms (dialogue.json)
+  finalTurn?: { scene: string; kaijuLives: number; coolDownMs: number }; // the last fight: once its Kaiju are beaten, the teammate turns Kaiju
   linkWalls?: Array<{ tile: TileIndex; point: { x: number; y: number }; behind: { x: number; y: number }; outDir: { x: number; y: number } }>; // where a tile link's walk-through goes out of sight
   giantKaiju?: { // the final battle (GiantKaiju.ts): the teammate as a giant Kaiju, marching up the Peninsula
     route: Array<{ x: number; y: number }>; // from the foot of the Peninsula to the city, in the big map's pixels
@@ -981,6 +982,15 @@ const buildFinalBattle = (): LevelConfig => {
   };
 };
 export const GIANT_STOMP_PHASE = 'giantStomp';
+
+// the last fight (Jamie, 2026-11-06): the Peninsula's usual fight. once its Kaiju are beaten, the teammate turns, in the log,
+// into a Kaiju with every power, and that is the last of it.
+LEVELS.finalPeninsula = {
+  ...PENINSULA,
+  id: 'finalPeninsula',
+  name: 'Final battle (Peninsula)',
+  finalTurn: { scene: 'peninsula.finalTurn', kaijuLives: 10, coolDownMs: 6000 }
+};
 LEVELS.finalBattle = buildFinalBattle();
 
 // the level editor saved a level: the game uses it from now on

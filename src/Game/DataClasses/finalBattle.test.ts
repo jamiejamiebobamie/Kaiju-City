@@ -29,6 +29,60 @@ const hitWeakSpot = gm => {
   gm.updateFinalBattle();
 };
 
+describe('the last fight: the teammate turns', () => {
+  const makeLast = () => {
+    const settingsManager = new SettingsManager();
+    settingsManager.setSortedPlayerChosenAbilityElementsString(['Fire', 'Ice', 'Metal']);
+    settingsManager.setIsTeammate(true);
+    const gm = new GameManager({ level: LEVELS.finalPeninsula, settingsManager, killsToWin: 30 });
+    gm.initGame();
+    while (gm.cutscene) gm.stepPieces();
+    return gm;
+  };
+
+  it('is the last section when the giant is off, after the team’s own radio call (no Agent)', () => {
+    const last = CAMPAIGN_SECTIONS[CAMPAIGN_SECTIONS.length - 1];
+    if (GIANT_KAIJU.isFinalBattle) return;
+    expect(last.levelId).toBe('finalPeninsula');
+    expect(last.kills).toBe(30);
+    const speakers = last.radio({ powerName: 'Wildfire', choices: {} }).map(({ speaker }) => speaker);
+    expect(speakers).not.toContain('agent');
+    expect(speakers).toEqual(expect.arrayContaining(['player', 'teammate']));
+  });
+
+  it('its Kaiju beaten, the teammate turns into a Kaiju with every power and 10 health; beating it wins', () => {
+    const gm = makeLast();
+    const [player, teammate] = gm.gameBoardPiecesManager.getTeamPieces(0);
+    gm.score = 30;
+    expect(gm.getGameResult()).toBe(null);
+    gm.stepPieces();
+    expect(gm.finalTurnState).toBe('turning');
+    for (let k = 0; k < 600 && gm.finalTurnState != 'fighting'; k += 1) gm.stepPieces();
+    expect(teammate.isVisible).toBe(false);
+    const kaiju = gm.teammateKaiju as any;
+    expect(kaiju.avatar).toBe('kaiju');
+    expect(kaiju.maxLives).toBe(10);
+    expect(kaiju.abilities.length).toBeGreaterThanOrEqual(10);
+    expect(kaiju.getTeamIndex()).not.toBe(player.getTeamIndex());
+    expect(gm.getGameResult()).toBe(null);
+    gm.accTime += 5000;
+    kaiju.decrementHealth(gm.accTime, kaiju.maxLives);
+    expect(gm.getGameResult()).toBe(GameResult.PlayerWon);
+  });
+
+  it('the player downed by the teammate’s Kaiju loses, though the 30 were beaten', () => {
+    const gm = makeLast();
+    const [player] = gm.gameBoardPiecesManager.getTeamPieces(0);
+    gm.score = 30;
+    gm.stepPieces();
+    for (let k = 0; k < 600 && gm.finalTurnState != 'fighting'; k += 1) gm.stepPieces();
+    gm.accTime += 5000;
+    player.lastDmgAccTime = 0;
+    player.decrementHealth(gm.accTime, player.lives + player.livesModifier);
+    expect(gm.getGameResult()).toBe(GameResult.PlayerLost);
+  });
+});
+
 describe('the end of the Lab fight', () => {
   it('with the clones beaten, the teammate transforms before the fight is won (when the giant is the final battle)', () => {
     GIANT_KAIJU.isFinalBattle = true;
@@ -52,7 +106,7 @@ describe('the end of the Lab fight', () => {
 
 describe('the final battle', () => {
   it('is on the Peninsula three times the size, with tiles and people their usual size (the last section when it is on)', () => {
-    expect(CAMPAIGN_SECTIONS[CAMPAIGN_SECTIONS.length - 1].levelId).toBe(GIANT_KAIJU.isFinalBattle ? 'finalBattle' : 'peninsula');
+    expect(CAMPAIGN_SECTIONS[CAMPAIGN_SECTIONS.length - 1].levelId).toBe(GIANT_KAIJU.isFinalBattle ? 'finalBattle' : 'finalPeninsula');
     const level = LEVELS.finalBattle;
     expect(level.world.width).toBe(PENINSULA.world.width * GIANT_KAIJU.mapScale);
     expect(level.grid.rowStep).toBe(PENINSULA.grid.rowStep);

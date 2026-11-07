@@ -225,6 +225,83 @@
         }
       ]
     },
+    "radio.final": {
+      "label": "Final battle: radio call, the team alone (no Agent)",
+      "lines": [
+        {
+          "speaker": "teammate",
+          "text": "No word from the Lab. Nobody's giving orders anymore.",
+          "id": "radio.final.0",
+          "note": "draft"
+        },
+        {
+          "speaker": "player",
+          "text": "Then we give them ourselves.",
+          "id": "radio.final.1",
+          "note": "draft"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Look at the radar... that's every Kaiju left in the sea. All of them, coming at once.",
+          "id": "radio.final.2",
+          "note": "draft",
+          "isAlarm": true
+        },
+        {
+          "speaker": "player",
+          "text": "Then this is the last fight. We hold the Peninsula, together.",
+          "id": "radio.final.3",
+          "note": "draft"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Together. I don't feel scared, you know. I just feel... strange.",
+          "id": "radio.final.4",
+          "note": "draft"
+        }
+      ]
+    },
+    "peninsula.finalTurn": {
+      "label": "Final battle: after the last Kaiju, the teammate turns",
+      "lines": [
+        {
+          "speaker": "teammate",
+          "text": "That's the last of them... isn't it?",
+          "id": "peninsula.finalTurn.0",
+          "note": "draft"
+        },
+        {
+          "speaker": "player",
+          "text": "That's all of them. We did it. The city's safe.",
+          "id": "peninsula.finalTurn.1",
+          "note": "draft"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Then why can I still hear them? They're calling me...",
+          "id": "peninsula.finalTurn.2",
+          "note": "draft"
+        },
+        {
+          "speaker": "teammate",
+          "text": "My hands... they're burning. Something's wrong.",
+          "id": "peninsula.finalTurn.3",
+          "note": "draft"
+        },
+        {
+          "speaker": "player",
+          "text": "Hey. Look at me. Stay with me.",
+          "id": "peninsula.finalTurn.4",
+          "note": "draft"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Get away from me. Please... I can't stop it.",
+          "id": "peninsula.finalTurn.5",
+          "note": "draft"
+        }
+      ]
+    },
     "rapidTransit.intro": {
       "label": "Subway: Punk Guy finds the eye",
       "lines": [

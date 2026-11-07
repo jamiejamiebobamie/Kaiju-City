@@ -25,7 +25,7 @@ export const STORY: Array<StorySection> = [
   { label: 'Sewer 1', scenes: ['sewer1.walkIn', 'sewer1.reveal'] },
   { label: 'Sewer 2', scenes: ['sewer2.walkIn'] },
   { label: 'Lab fight', scenes: ['lab.showdown', 'lab.transformation'] },
-  { label: 'Final battle', scenes: ['finalBattle.intro', 'finalBattle.voices', 'finalBattle.ray', 'finalBattle.reunion'] },
+  { label: 'Final battle', scenes: ['radio.final', 'peninsula.finalTurn'] }, // (the giant's lines, finalBattle.*, are kept for GIANT_KAIJU.isFinalBattle)
   { label: 'Visiting a battleground (any map walk, after its fight)', scenes: ['visit'] }
 ];
 

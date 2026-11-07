@@ -984,7 +984,7 @@ describe('campaign', () => {
   });
 
   it('ends on the final battle: the giant on the big Peninsula, or the usual Peninsula fight', () => {
-    expect(levelIds[levelIds.length - 1]).toBe(GIANT_KAIJU.isFinalBattle ? 'finalBattle' : 'peninsula');
+    expect(levelIds[levelIds.length - 1]).toBe(GIANT_KAIJU.isFinalBattle ? 'finalBattle' : 'finalPeninsula');
     expect(getIsLastSection(levelIds.length - 1)).toBe(true);
     expect(getIsLastSection(0)).toBe(false);
   });

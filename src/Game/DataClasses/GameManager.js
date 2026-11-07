@@ -20,6 +20,7 @@ import { GHOST_BOSS, GhostRing } from './GhostBoss';
 import { AQUARIUM_FLOOD, AquariumFlood } from './AquariumFlood';
 import { GIANT_KAIJU, GiantKaiju } from './GiantKaiju';
 import { GameBoardPieceGiant } from './GameBoard/Pieces/GameBoardPieceGiant';
+import { GameBoardPieceKaiju } from './GameBoard/Pieces/GameBoardPieceKaiju';
 import { NO_CAST } from './GameBoard/Tile/TileContender';
 import { getAvatarColor } from './Avatars';
 import { getTorsoSpot, startRagdoll, stepRagdoll } from './Ragdoll';
@@ -225,6 +226,8 @@ export class GameManager {
         this.giantShrinkAtMs = undefined; // when it began to shrink back into the teammate
         this.isFinaleWon = false;
         this.transformState = undefined; // the Lab fight: 'transforming', then 'done'
+        this.finalTurnState = undefined; // the last fight: 'turning', then 'fighting' (the teammate is a Kaiju)
+        this.teammateKaiju = undefined;
         this.portalWalk = undefined; // the player going through a portal: see startPortalWalk
         this.portalShot = undefined; // the camera between the two ends, while the fight goes on
         this.enemyPowersAtMs = 0; // before this, the other side can't use powers
@@ -827,6 +830,59 @@ export class GameManager {
             { ...lastLine, shot: closeOn(player) },
             { shot: closeOn(player), ms: 0, onStart: () => { this.transformState = 'done'; } }
         ]);
+    }
+
+    /*
+        The last fight's end (Jamie, 2026-11-06): its Kaiju beaten, the team talks (in the log), and the teammate turns:
+        a flash, and in their place a Kaiju with every power, 10 health, in their color. It is the last fight.
+        No ray, no rescue. Without a teammate, the fight is simply won.
+    */
+    startFinalTurn() {
+        const { player, teammate } = this.getGhostTeam();
+        if (!teammate || teammate.isDead) {
+            this.finalTurnState = 'fighting';
+            this.teammateKaiju = { isDead: true };
+            return;
+        }
+        this.finalTurnState = 'turning';
+        const rowPx = this.getGhostRowPx();
+        const closeOn = piece => ({ point: { x: piece.charLocation.x, y: piece.charLocation.y - CUTSCENE.shotHeadRows * rowPx * 0.5 }, zoomScale: PENINSULA.cameraZoom * 1.4, isPeninsulaSized: true, panMs: CUTSCENE.outcomePullMs });
+        const lines = this.getSceneSteps(this.level.finalTurn.scene, over => closeOn(over || teammate));
+        this.startCutscene([
+            { shot: closeOn(teammate), ms: CUTSCENE.outcomePullMs },
+            ...lines,
+            { shot: closeOn(teammate), ms: GHOST_SCREAM.flashInMs, onStart: () => { this.ghostFlashCount += 1; } },
+            { shot: closeOn(teammate), ms: GHOST_SCREAM.togetherMs, onStart: () => this.turnTeammateKaiju(teammate) },
+            { shot: closeOn(player), ms: 0, onStart: () => { this.finalTurnState = 'fighting'; } }
+        ]);
+    }
+
+    turnTeammateKaiju(teammate) {
+        const { kaijuLives, coolDownMs } = this.level.finalTurn;
+        const tile = teammate.getTileIndex();
+        // they are gone (not a death: nothing to count), and a Kaiju stands where they were
+        teammate.isVisible = false;
+        teammate.isOnTiles = false;
+        teammate.setIsDead(true);
+        const elements = Object.values(this.settingsManager.getAbilityAndTileStatusData())
+            .map(({ element }) => element)
+            .filter((element, index, all) => element && !['water', 'phaseGhost', 'seaGhost', 'flood'].includes(element) && all.indexOf(element) == index);
+        const kaiju = this.gameBoardPiecesManager.addPiece({
+            pieceClass: GameBoardPieceKaiju,
+            pieceInfo: {
+                ...PIECES_INFO.kaiju,
+                abilities: this.settingsManager.getAbilitiesFromElements(elements),
+                spewFireCoolDown: coolDownMs,
+                maxLives: kaijuLives,
+                moveSpeed: 2,
+                isDoAvoidEnemy: false,
+                color: teammate.color
+            },
+            teamIndex: 1
+        });
+        kaiju.initCharLocation(true, tile);
+        kaiju.isTeammateKaiju = true;
+        this.teammateKaiju = kaiju;
     }
 
     // the final battle opens on the whole Peninsula, then the giant, then the player
@@ -2172,7 +2228,7 @@ export class GameManager {
             const rivalLevel = Object.values(LEVELS).find(({ rival }) => rival && rival.avatar == piece.avatar);
             piece.abilities = rivalLevel ? this.settingsManager.getAbilitiesFromElements(rivalLevel.rival.abilities) : [];
             piece.isRecruit = true;
-            piece.isShowHealthBarOnComponent = true;
+            piece.isShowHealthBarOnComponent = false; // on the player's side, with HUDs of their own: no bar over their heads (Jamie)
         });
         this.isRecruitsFighting = this.followers.length > 0;
         // the teammate makes a run for the exit. the player has to follow.
@@ -2454,6 +2510,7 @@ export class GameManager {
         if (this.isGhostScreamPending) this.startGhostScream();
         if (this.isShatterPending) this.startShatter();
         if (this.getIsTransforming() && !this.transformState && !this.cutscene && this.score >= this.getKillsToWin()) this.startTransformation();
+        if (this.level.finalTurn && !this.finalTurnState && !this.cutscene && this.score >= this.getKillsToWin()) this.startFinalTurn();
         if (this.cutscene) {
             this.updateCutscene();
             return;
@@ -2500,6 +2557,12 @@ export class GameManager {
     }
 
     getGameResult() {
+        // the last fight: won when the teammate, turned Kaiju, is down. until then, its Kaiju beaten is not the end.
+        if (this.level.finalTurn) {
+            if (this.gameBoardPiecesManager.getIsPlayerTeamDead()) return GameResult.PlayerLost; // the 30 beaten don't make it a win
+            if (this.finalTurnState == 'fighting') return this.teammateKaiju.isDead ? GameResult.PlayerWon : null;
+            if (this.score >= this.getKillsToWin()) return null;
+        }
         // the Lab fight is won only once the teammate has transformed
         if (this.getIsTransforming() && this.transformState != 'done' && this.score >= this.getKillsToWin() && !this.gameBoardPiecesManager.getIsPlayerTeamDead()) return null;
         if (this.level.giantKaiju) {

@@ -79,7 +79,8 @@ export const CAMPAIGN_SECTIONS: Array<CampaignSection> = [
   { label: 'Sewer 2', levelId: 'sewer2' },
   { label: 'Lab fight', levelId: 'lab' },
   // the teammate as a giant Kaiju (GiantKaiju.ts), or the Peninsula's usual fight: GIANT_KAIJU.isFinalBattle
-  GIANT_KAIJU.isFinalBattle ? { label: 'Final battle', levelId: 'finalBattle' } : { label: 'Final battle', levelId: 'peninsula', kills: 30 }
+  // otherwise (Jamie, 2026-11-06): the team's own radio call, the Peninsula's 30 Kaiju, and then the teammate turns (finalPeninsula)
+  GIANT_KAIJU.isFinalBattle ? { label: 'Final battle', levelId: 'finalBattle' } : { label: 'Final battle', levelId: 'finalPeninsula', kills: 30, radio: radioCall('radio.final') }
 ];
 
 export const getIsLastSection = (index: number) => index == CAMPAIGN_SECTIONS.length - 1;
