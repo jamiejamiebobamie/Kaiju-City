@@ -20,6 +20,7 @@ export class GameBoardPieceKaiju extends GameBoardPieceBase {
 
     useAbilities(accTime) {
         if (!this.isOnTiles) return;
+        if (this.castEveryMs) return this.useOneAbility(accTime);
 
         this.abilities.forEach(a => {
             const isCooldownOver =
@@ -45,6 +46,36 @@ export class GameBoardPieceKaiju extends GameBoardPieceBase {
                 this.determineIfIsGoingToSpewFire(a, accTime);
             }
         });
+        this.updateSpeedBoost(accTime);
+    }
+
+    /*
+        The teammate turned Kaiju (the last fight), with every power: one at a time, every 'castEveryMs', a different one
+        each time, so each is seen. All at once, they land on the same tiles together and seem like nothing at all (Jamie).
+    */
+    useOneAbility(accTime) {
+        const sinceCast = accTime - (this.lastCastAt ?? -Infinity);
+        if (sinceCast >= this.castEveryMs) {
+            // an enemy right on top of it (it walks into them) is in reach too: an empty path there isn't 'no one to fight'
+            const enemy = this.gameManagerProxy.getClosestEnemy(this.pieceIndex);
+            const numTilesToEnemy = !enemy ? 0 : Math.max(this.gameManagerProxy.getPathToClosestEnemy(this.pieceIndex).length, 1);
+            const ready = this.abilities.filter(a => a.getType().includes("offensive") && !!numTilesToEnemy && a.getDesiredAIRange() >= numTilesToEnemy
+                && ((accTime - a.accTime) >= this.spewFireCoolDown || accTime < a.accTime || !a.accTime));
+            const fresh = ready.filter(a => a != this.lastCast);
+            const pool = fresh.length ? fresh : ready;
+            const ability = pool[Math.floor(Math.random() * pool.length)];
+            if (ability) {
+                ability.useAbility({
+                    accTime,
+                    piece: this,
+                    registerTimeout: this.gameManagerProxy.registerTimeout,
+                    updateTileWithAbilityStatus: this.gameManagerProxy.updateTileWithAbilityStatus
+                });
+                this.lastCast = ability;
+                this.lastCastAt = accTime;
+            }
+        }
+        this.isGoingToSpewFire = accTime - (this.lastCastAt ?? -Infinity) >= this.castEveryMs * 0.6;
         this.updateSpeedBoost(accTime);
     }
 

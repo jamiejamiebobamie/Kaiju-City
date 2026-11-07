@@ -135,11 +135,14 @@ export class PlayerInputHandler {
     }
 
     usePlayerAbilityFromIndex(i, accTime) {
-        const a = this.playerAbilities[i];
-        if (!a || this.gameManagerProxy.getIsPowersOff()) return;
-
+        if (i < 0) return;
         const pieceIndex = Math.floor(i / 3); // each player-team piece gets 3 abilities
         const piece = this.gameManagerProxy.getPiece(pieceIndex);
+        // charmed, the piece's keys are scrambled: the player can't know which power a key will give (Jamie)
+        const slot = !!piece && piece.isCharmed && piece.abilityScramble ? pieceIndex * 3 + piece.abilityScramble[i % 3] : i;
+        const a = this.playerAbilities[slot];
+        if (!a || this.gameManagerProxy.getIsPowersOff()) return;
+
         if (piece.getIsDead() || piece.knockedUntil > accTime || a.getIsOnCooldown(accTime, piece.isNpc)) return;
 
         const passiveAbility = a.useAbility({

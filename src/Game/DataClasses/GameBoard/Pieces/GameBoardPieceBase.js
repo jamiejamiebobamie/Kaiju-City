@@ -297,7 +297,8 @@ export class GameBoardPieceBase {
         if (this.isThere) this.updateMovmement(this.gameManagerProxy.getPathFromTileToTile({ fromTile: this.tileIndex, toTile: this.escapeTile }));
     }
 
-    // a charmed piece fights for the other team for a while. the player keeps their piece, but its keys are reversed.
+    // a charmed piece fights for the other team for a while. the player keeps their piece, but its keys are reversed,
+    // and its power keys scrambled.
     updateCharm(accTime) {
         const hasNoOneToFight = this.isNpc && this.isCharmed && !this.gameManagerProxy.getHasAllyOnBoard(this.pieceIndex, this.homeTeamIndex);
         if (this.isCharmed && (accTime >= this.charmEndsAt || hasNoOneToFight)) {
@@ -323,6 +324,8 @@ export class GameBoardPieceBase {
         }
         this.isCharmed = true;
         this.charmEndsAt = accTime + CHARM_MS;
+        // the player's power keys, scrambled while it lasts: no key keeps its own power (PlayerInputHandler)
+        if (!this.isNpc) this.abilityScramble = Math.random() < 0.5 ? [1, 2, 0] : [2, 0, 1];
         this.charmedBy = charmer;
         if (this.isNpc) {
             this.setTeamIndex(charmingTeam);
@@ -449,6 +452,7 @@ export class GameBoardPieceBase {
         if (!this.getIsAllowedTile(linkedTile)) return;
         if (this.getIsPortalResting()) return;
         if (this.isNpc) this.portalRestUntil = (this.accTime || 0) + PORTAL_REST_MS;
+        this.gameManagerProxy.useWormhole(this.tileIndex, this.accTime || 0); // a Teleport's wormhole: one trip, then it shuts
         // the player walks through it, in a little scene of its own (GameManager.startPortalWalk)
         if (!this.isNpc && this.gameManagerProxy.startPortalWalk(this, linkedTile)) return;
         const location = this.gameManagerProxy.getCharXAndYFromTileIndex(linkedTile);

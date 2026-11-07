@@ -13,13 +13,18 @@
 export const AQUARIUM_FLOOD = {
   floodMs: 45000, // how long the tanks pour (tune it)
   taperFromShare: 0.55, // from this share of the flood on, the pouring slows until it stops
-  pourEveryMs: 320, // at first, each broken tank lets out water this often
+  pourEveryMs: 320, // at first, each broken tank lets out water this often (between the waves: see 'waves')
+  // the tanks pour in waves (Jamie): a surge of water every 'everyMs', for 'surgeMs', each tank letting out water every
+  // 'surgePourEveryMs'; between surges, a trickle every 'tricklePourEveryMs'. each surge sends out a sea creature too.
+  waves: { everyMs: 5000, surgeMs: 1800, surgePourEveryMs: 110, tricklePourEveryMs: 900 },
+  // water that reaches the bottom of the floor (within this many rows of its lowest tiles) drains away this soon (Jamie)
+  bottomDrain: { rows: 2.5, ms: 1100 },
   drainMs: 9000, // once the pouring stops, the water left drains away over this long
   flowStyle: 'flow' as 'flow' | 'bounce', // 'flow': runs downhill, spreads sideways and pools. 'bounce': runs straight and bounces off the edges, like Wildfire
   bounceLifeMs: 7000, // a bouncing parcel of water lasts this long
   isYielding: true, // any power on a tile washes the water and the sea ghosts there away
   slow: { perStack: 1, maxStacks: 3, stackMs: 1000, everyMs: 250 }, // wading: each touch of water (every 'everyMs' in it) slows by one, up to three, each for a second
-  ghostEveryMs: 3200, // a sea creature comes out of a broken tank this often while the tanks pour
+  ghostEveryMs: 1800, // a sea creature comes out of a broken tank this often while the tanks pour (and one with each wave)
   healEveryMs: 1400, // up on the top floor, she heals one health this often until she is whole
   // each sea creature in one color of its own, from nature (Jamie)
   ghostIcons: {
@@ -56,12 +61,15 @@ export class AquariumFlood {
   nextPourMs = 0;
   nextGhostMs: number;
   random: () => number;
+  bottomY: number | undefined; // the floor's lowest tiles, where the water drains away (no draining without it)
+  lastWave = -1;
 
-  constructor({ sources, board, rowPx, random = Math.random }: { sources: Array<Tile>; board: FloodBoard; rowPx: number; random?: () => number }) {
+  constructor({ sources, board, rowPx, random = Math.random, bottomY }: { sources: Array<Tile>; board: FloodBoard; rowPx: number; random?: () => number; bottomY?: number }) {
     this.sources = sources;
     this.board = board;
     this.rowPx = rowPx;
     this.random = random;
+    this.bottomY = bottomY;
     this.nextGhostMs = AQUARIUM_FLOOD.ghostEveryMs * 0.5;
   }
 
@@ -101,6 +109,7 @@ export class AquariumFlood {
     this.ms += ms;
     this.pour();
     this.flow();
+    this.drainAtBottom();
     if (AQUARIUM_FLOOD.isYielding) [...this.water.entries()].forEach(([tileKey, { tile }]) => { if (this.board.getIsPowerOnTile(tile)) this.water.delete(tileKey); });
     [...this.water.entries()].forEach(([tileKey, { dryAtMs }]) => { if (this.ms >= dryAtMs) this.water.delete(tileKey); });
     return this.spawnGhosts();
@@ -110,7 +119,7 @@ export class AquariumFlood {
     if (!this.getIsPouring() || this.ms < this.nextPourMs) return;
     const share = this.getPourShare();
     if (share <= 0) return;
-    this.nextPourMs = this.ms + AQUARIUM_FLOOD.pourEveryMs / share;
+    this.nextPourMs = this.ms + this.getPourEveryMs() / share;
     this.sources.forEach(source => {
       if (this.water.has(key(source))) {
         // the tank's own tile is full: the water pushes out onto a free neighbor
@@ -121,6 +130,26 @@ export class AquariumFlood {
         return;
       }
       this.water.set(key(source), { tile: source, dir: Math.floor(this.random() * 6), bornMs: this.ms, dryAtMs: this.getDryAt(this.ms) });
+    });
+  }
+
+  // in a wave's surge, the tanks gush; between, they trickle
+  getIsSurging() {
+    const { everyMs, surgeMs } = AQUARIUM_FLOOD.waves;
+    return this.ms % everyMs < surgeMs;
+  }
+
+  private getPourEveryMs() {
+    const { surgePourEveryMs, tricklePourEveryMs } = AQUARIUM_FLOOD.waves;
+    return this.getIsSurging() ? surgePourEveryMs : tricklePourEveryMs;
+  }
+
+  // water at the bottom of the floor drains away soon (it would otherwise pool there for the whole flood)
+  private drainAtBottom() {
+    if (this.bottomY === undefined) return;
+    const { rows, ms } = AQUARIUM_FLOOD.bottomDrain;
+    this.water.forEach(parcel => {
+      if (this.board.getSpot(parcel.tile).y >= this.bottomY! - rows * this.rowPx) parcel.dryAtMs = Math.min(parcel.dryAtMs, this.ms + ms);
     });
   }
 
@@ -164,14 +193,28 @@ export class AquariumFlood {
   }
 
   private spawnGhosts(): Array<SeaGhostSpawn> {
-    if (!this.getIsPouring() || this.ms < this.nextGhostMs || !this.sources.length) return [];
+    if (!this.getIsPouring() || !this.sources.length) return [];
     const share = this.getPourShare();
     if (share <= 0) return [];
-    this.nextGhostMs = this.ms + AQUARIUM_FLOOD.ghostEveryMs / Math.max(share, 0.35);
+    const spawns: Array<SeaGhostSpawn> = [];
+    // each wave sends one out as it surges
+    const wave = Math.floor(this.ms / AQUARIUM_FLOOD.waves.everyMs);
+    if (wave != this.lastWave && this.getIsSurging()) {
+      this.lastWave = wave;
+      spawns.push(this.getGhostSpawn());
+    }
+    if (this.ms >= this.nextGhostMs) {
+      this.nextGhostMs = this.ms + AQUARIUM_FLOOD.ghostEveryMs / Math.max(share, 0.35);
+      spawns.push(this.getGhostSpawn());
+    }
+    return spawns;
+  }
+
+  private getGhostSpawn(): SeaGhostSpawn {
     const source = this.sources[Math.floor(this.random() * this.sources.length)];
     const icons = Object.keys(AQUARIUM_FLOOD.ghostIcons);
     const icon = icons[Math.floor(this.random() * icons.length)];
-    return [{ source, icon, color: AQUARIUM_FLOOD.ghostIcons[icon] }];
+    return { source, icon, color: AQUARIUM_FLOOD.ghostIcons[icon] };
   }
 
 }

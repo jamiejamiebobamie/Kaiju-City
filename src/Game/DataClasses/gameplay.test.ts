@@ -662,6 +662,7 @@ describe('the Lab fight', () => {
   it('the talker comes down only once every clone has', () => {
     const gm = makeLabFight(false);
     const agent: any = gm.catwalkAgent;
+    agent.isUnhurtable = true; // this is about when he comes down: the team sometimes downs him up there first
     for (let k = 0; k < 3000 && gm.agentsDropped < LEVELS.lab.agentDrops.drops.length; k++) gm.stepPieces();
     expect(agent.isHeldOnCatwalk).toBe(true);
     for (let k = 0; k < 3000 && agent.isHeldOnCatwalk; k++) gm.stepPieces();

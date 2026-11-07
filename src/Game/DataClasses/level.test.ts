@@ -620,6 +620,10 @@ describe('rivals', () => {
       // out of the ring, the camera is the player's again
       player.charLocation = { ...gm.rivalPiece.charLocation };
       expect(gm.getCameraShot()).toBeUndefined();
+      // and back in: this time the camera pulls out slowly (Jamie)
+      player.charLocation = { ...LEVELS.rooftop.ghostBoss.ringCenter };
+      expect(shot.panMs).toBeLessThan(1000);
+      expect(gm.getCameraShot().panMs).toBeGreaterThan(shot.panMs * 3);
     });
 
     it('her own roof is the left building, without the crane beam', () => {

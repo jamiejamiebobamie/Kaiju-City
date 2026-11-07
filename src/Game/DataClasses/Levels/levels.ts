@@ -184,7 +184,7 @@ export type LevelConfig = {
   shakePhases: Array<string>; // phases that shake the whole scene
   rival?: Rival;
   transformScene?: string; // after the fight is won, the teammate transforms (dialogue.json)
-  finalTurn?: { scene: string; kaijuLives: number; coolDownMs: number }; // the last fight: once its Kaiju are beaten, the teammate turns Kaiju
+  finalTurn?: { scene: string; kaijuLives: number; coolDownMs: number; castEveryMs: number }; // the last fight: once its Kaiju are beaten, the teammate turns Kaiju
   linkWalls?: Array<{ tile: TileIndex; point: { x: number; y: number }; behind: { x: number; y: number }; outDir: { x: number; y: number } }>; // where a tile link's walk-through goes out of sight
   giantKaiju?: { // the final battle (GiantKaiju.ts): the teammate as a giant Kaiju, marching up the Peninsula
     route: Array<{ x: number; y: number }>; // from the foot of the Peninsula to the city, in the big map's pixels
@@ -211,6 +211,8 @@ export type LevelConfig = {
     doorTile: { i: number; j: number }; // where recruits walk in from
     standSpots: Array<{ x: number; y: number }>;
     frontSpots?: Array<{ x: number; y: number }>; // where the player and teammate step to before the words
+    isTeamInPlace?: boolean; // the recruits are already in their places: no one comes in at the door but the player (and teammate, to frontSpots)
+    playerSpot?: { x: number; y: number }; // with isTeamInPlace: where the player walks in to, from the door
     talkBeatMs?: number; // a quiet moment once all are in, before the words
     isWaitingToBePassed?: boolean; // the recruits and teammate only follow once the player has gone past them
     script: Array<{ who: string; text: string }>; // 'who' is 'teammate', 'player', or 'recruit': a recruit, or the player if there are none
@@ -464,11 +466,13 @@ const GLASS_PANELS = GLASS_PANEL_PLACES.map(({ id, x, y, width, height }) => ({
 
 // a fish leaps out of its tank's panel as the glass bursts
 const FISH_BURST_DELAY_SECONDS = 0.3;
+// over the tile canvas (z 1) and under every character (their sort z is 20001 and up): the fish flop on the tiles (Jamie)
+const ABOVE_TILES_Z = 2;
 
 const fish = (id, x, y, width, height, flip, fps, panelId) => {
   const panel = GLASS_PANEL_PLACES.find(({ id }) => id == panelId);
   return {
-    id, type: 'sprite' as const, phase: getGlassPhase(panelId), src: '/levels/aquarium/fish-spritesheet.png', x, y, width, height, sheetFrames: 4, frames: 4, zIndex: -1, flip, fps,
+    id, type: 'sprite' as const, phase: getGlassPhase(panelId), src: '/levels/aquarium/fish-spritesheet.png', x, y, width, height, sheetFrames: 4, frames: 4, zIndex: ABOVE_TILES_Z, flip, fps,
     comesFrom: { x: panel.x + panel.width / 2, y: panel.y + panel.height / 2 },
     appearSeconds: FISH_BURST_DELAY_SECONDS
   };
@@ -507,9 +511,9 @@ const AQUARIUM_SCENE = {
   linkWalls: [
     { tile: { i: 25, j: 11 }, point: { x: 582, y: 313 }, behind: { x: -1, y: 0 }, outDir: { x: 0.86, y: 0.5 } }, // the left stairs
     { tile: { i: 36, j: 12 }, point: { x: 827, y: 327 }, behind: { x: 1, y: 0 }, outDir: { x: -0.86, y: 0.5 } }, // the right stairs
-    // the balcony doors upstairs: across the doorway, and out of sight behind the wall at its far side (the jamb away from the balcony)
-    { tile: { i: 4, j: 8 }, point: { x: 22, y: 217 }, behind: { x: -1, y: 0 }, outDir: { x: 0.86, y: 0.51 } }, // the left door
-    { tile: { i: 57, j: 8 }, point: { x: 1384, y: 231 }, behind: { x: 1, y: 0 }, outDir: { x: -0.87, y: 0.49 } } // the right door
+    // the balcony doors upstairs ("To 1st floor"): out of sight at the doorway's inner jamb, the one by the balcony (Jamie's red lines)
+    { tile: { i: 4, j: 8 }, point: { x: 92, y: 217 }, behind: { x: -1, y: 0 }, outDir: { x: 0.86, y: 0.51 } }, // the left door: its opening runs x 22 to 92
+    { tile: { i: 57, j: 8 }, point: { x: 1316, y: 231 }, behind: { x: 1, y: 0 }, outDir: { x: -0.87, y: 0.49 } } // the right door: x 1316 to 1385
   ],
   phaseTileTones: { shattered: 'white' as const }, // the shattered hall is much darker
   flood: { phase: 'shattered', top: 530 }, // pieces below this line, in scene pixels, walk through water
@@ -549,6 +553,8 @@ const SEWER1_WALK_IN = {
   // the recruits spread out to rest around the sewer, away from the door
   standSpots: [{ x: 1180, y: 540 }, { x: 960, y: 610 }, { x: 820, y: 470 }],
   talkBeatMs: 2500,
+  isTeamInPlace: true, // all in their places as the player walks in, the whole sewer in view; then in close for the words (Jamie)
+  playerSpot: { x: 1150, y: 610 },
   isWaitingToBePassed: true, // the recruits and the teammate wait where they rest until the player goes by, heading left
   script: getDialogueScript('sewer1.walkIn'),
   // then the doorway lights up, someone sees it, and after a beat the way on shows. draft words.
@@ -586,6 +592,7 @@ const SEWER2_WALK_IN = {
   doorTile: { i: 18, j: 4 },
   standSpots: [{ x: 1100, y: 520 }, { x: 1040, y: 590 }, { x: 1170, y: 600 }],
   frontSpots: [{ x: 705, y: 560 }, { x: 772, y: 598 }], // the player and teammate step to the front of the group, on the far left, before they talk
+  isTeamInPlace: true, // the recruits are already there; only the player and teammate run in, to the front (Jamie)
   script: getDialogueScript('sewer2.walkIn'),
   ending: { spots: [{ x: 638, y: 523 }, { x: 705, y: 485 }], phase: 'blinding', climaxMs: 8500 } // the climb to the whiteout, in SceneElements
 };
@@ -991,7 +998,7 @@ LEVELS.finalPeninsula = {
   ...PENINSULA,
   id: 'finalPeninsula',
   name: 'Final battle (Peninsula)',
-  finalTurn: { scene: 'peninsula.finalTurn', kaijuLives: 10, coolDownMs: 6000 }
+  finalTurn: { scene: 'peninsula.finalTurn', kaijuLives: 10, coolDownMs: 6000, castEveryMs: 1200 } // each power waits coolDownMs; one of them every castEveryMs
 };
 LEVELS.finalBattle = buildFinalBattle();
 

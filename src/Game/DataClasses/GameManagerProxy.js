@@ -50,6 +50,10 @@ export class GameManagerProxy {
         return this.props.getTeamLeaderPiece(pieceIndex);
     }
 
+    useWormhole(tile, accTime) {
+        if (this.props.useWormhole) this.props.useWormhole(tile, accTime);
+    }
+
     addWormhole(from, to, accTime, durationMs) {
         this.props.addWormhole(from, to, accTime, durationMs);
     }

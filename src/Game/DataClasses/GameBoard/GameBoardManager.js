@@ -17,6 +17,9 @@ import { getCharXAndY, getTileCenter, getTileXAndY } from 'Game/DataClasses/Game
 // powers aim at a Kaiju walking in, ahead of the closest enemy on the tiles, once it is this many tiles from stepping on (Jamie)
 export const AIM_ENTERING_TILES = 2;
 
+// a used wormhole stays in sight this long after its link has gone, for the walk through it
+export const WORMHOLE_USED_MS = 2500;
+
 // how much pathing avoids the tiles around enemies, in tiles
 const ENEMY_NEARBY_TILE_COST = 4;
 
@@ -52,6 +55,19 @@ export class GameBoardManager {
         this.linkedTiles.set(getKey(from), to);
         this.linkedTiles.set(getKey(to), from);
         this.wormholes.push({ from, to, startsAt: accTime, endsAt: accTime + durationMs });
+    }
+
+    /*
+        A Teleport's wormhole is good for one trip besides the Teleport's own (Jamie): it shuts as someone goes through,
+        so two side by side can't pass a piece back and forth forever. The link goes at once; the portal stays in sight a
+        moment longer, for the walk through it. The bosses' own portals (open until shut) stay.
+    */
+    useWormhole = (tile, accTime) => {
+        const getKey = ({ i, j }) => `${i} ${j}`;
+        const wormhole = this.wormholes.find(({ from, to, endsAt }) => endsAt < Infinity && [from, to].some(end => getKey(end) == getKey(tile)));
+        if (!wormhole) return;
+        [wormhole.from, wormhole.to].forEach(end => this.linkedTiles.delete(getKey(end)));
+        wormhole.endsAt = Math.min(wormhole.endsAt, accTime + WORMHOLE_USED_MS);
     }
 
     // a wormhole closes when its time is up, or early when the tile at either end is gone (the Subway's tracks, a train in. Jamie)

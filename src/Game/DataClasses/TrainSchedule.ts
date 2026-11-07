@@ -5,7 +5,7 @@ import { getRandomIntInRange } from 'Game/utils';
   idle -> warning (signal lights flash) -> train -> clearing (lights still flash) -> idle
 */
 export const TRAIN_SCHEDULE = {
-  idleMs: { min: 3500, max: 7000 }, // more often (Jamie, 2026-11-06)
+  idleMs: { min: 6000, max: 12000 }, // (tried 3500-7000: far too often. Jamie, 2026-11-06)
   warningMs: { min: 2500, max: 4000 },
   trainMs: { min: 2500, max: 5000 }, // and through sooner
   clearingMs: { min: 1500, max: 2500 }

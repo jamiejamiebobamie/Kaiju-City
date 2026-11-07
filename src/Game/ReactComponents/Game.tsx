@@ -1029,9 +1029,15 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               <select aria-label="Level" value={level.id} onChange={e => { switchLevel(e.target.value); e.target.blur(); }}>
                 {levelOptions}
               </select>
-              <select aria-label="Section" value={campaignIndex ?? ""} onChange={e => { showSection(Number(e.target.value)); e.target.blur(); }}>
+              <select aria-label="Section" value={campaignIndex ?? ""} onChange={e => {
+                // dev: "Credits" plays the ending from "You saved the city!" (Jamie)
+                if (e.target.value == "credits") setMatchEnd({ title: "You saved the city!", buttons: [], isFinale: true });
+                else showSection(Number(e.target.value));
+                e.target.blur();
+              }}>
                 {campaignIndex === null && <option value="">Campaign section</option>}
                 {CAMPAIGN_SECTIONS.map(({ label }, index) => <option key={label} value={index}>{index + 1}. {label}</option>)}
+                <option value="credits">{CAMPAIGN_SECTIONS.length + 1}. Credits</option>
               </select>
               {campaignIndex !== null && !getIsLastSection(campaignIndex) && <button onClick={() => showSection(campaignIndex + 1)}>Skip section</button>}
               {level.phases.map(({ id, label }) => (
@@ -1163,7 +1169,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 <BezelButton title="How to play" onClick={openControls}>Controls</BezelButton>
                 <BezelButton title="Goodbye!" onClick={handleClickHome}>Leave</BezelButton>
                 {!isWindowOpen && level.kaijuEntry && !isCutscene && !recruitScene && (
-                  <KaijuCounter count={kaijuKillCount} toWin={kaijuToWin} style={{ opacity: isPaused ? 0 : 1 }} />
+                  <KaijuCounter count={kaijuKillCount} toWin={kaijuToWin} />
                 )}
               </>
             )}>
@@ -1230,7 +1236,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               )}
               entries={dialogueLog}
               isWaiting={isDialogueWaiting}
-              isVisible={!isPaused && labScreen != "colors" && (isCutscene || !!recruitScene || isTalking)}
+              isVisible={labScreen != "colors" && (isCutscene || !!recruitScene || isTalking)} // paused, it stays as it was (Jamie)
               onContinue={() => gameManager.current && gameManager.current.advanceDialogue()}
               onBuilt={setIsLogBuilt}
               onClosing={isClosing => {

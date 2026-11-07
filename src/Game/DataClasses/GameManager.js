@@ -100,7 +100,8 @@ export const GHOST_SCREAM = {
   ringZoomShare: 0.8, // the ring's shot, as a share of the usual zoom
   besideCols: 1, // the two of them land this many columns either side of the ring's middle
   ringShotZoom: 1.1, // the whole ring, while no ghost is coming for the player: a share of the whole scene's zoom
-  ringShotPanMs: 700 // the camera's move out to it, and back
+  ringShotPanMs: 700, // the camera's move out to it, and back
+  ringShotRelaxedPanMs: 4000 // after the first time out and back in on a ghost: the slow, relaxed move out
 };
 
 export const CUTSCENE = {
@@ -585,17 +586,25 @@ export class GameManager {
         const isOn = !!ring && ring.getIsFormed() && !!player && !player.isDead && !this.cutscene && this.getIsCameraKeptOff(player, this.rivalPiece)
             && !this.getCameraThreats(player).some(({ key }) => key.startsWith('phaseGhost'));
         if (!isOn) {
+            if (this.ghostRingShot) this.ghostRingShotsSeen = (this.ghostRingShotsSeen || 0) + 1;
             this.ghostRingShot = undefined;
             return undefined;
         }
-        // the same shot while it lasts: a new one would start the camera's pull again
-        if (!this.ghostRingShot) this.ghostRingShot = { point: { ...ring.center }, zoomScale: GHOST_SCREAM.ringShotZoom, panMs: GHOST_SCREAM.ringShotPanMs };
+        // the same shot while it lasts: a new one would start the camera's pull again.
+        // the first time, it pulls out at once; after that, slowly, so the close-up action isn't left behind all at once (Jamie)
+        const panMs = this.ghostRingShotsSeen ? GHOST_SCREAM.ringShotRelaxedPanMs : GHOST_SCREAM.ringShotPanMs;
+        if (!this.ghostRingShot) this.ghostRingShot = { point: { ...ring.center }, zoomScale: GHOST_SCREAM.ringShotZoom, panMs, ease: 'ease-out' };
         return this.ghostRingShot;
     }
 
     // the enemy zoom leaves these out: while the ghost boss's ring is up and the player is inside it, Punk Girl (Jamie).
     // the ring is the fight then, not her.
     getIsCameraKeptOff = (player, piece) => {
+        // the Aquarium: the Mermaid up on the top floor, healing, while the player is down in the water (Jamie). the camera
+        // stays the usual one, on the water and the creatures; her caret still shows where she is.
+        if (this.level.aquariumFlood && this.isShattered && piece == this.rivalPiece && !!player) {
+            return this.getIsTopFloor(piece.getTileIndex()) && !this.getIsTopFloor(player.getTileIndex());
+        }
         const ring = this.ghostRing;
         if (!ring || piece != this.rivalPiece || !player) return false;
         const dx = player.charLocation.x - ring.center.x;
@@ -915,7 +924,7 @@ export class GameManager {
     }
 
     turnTeammateKaiju(teammate) {
-        const { kaijuLives, coolDownMs } = this.level.finalTurn;
+        const { kaijuLives, coolDownMs, castEveryMs } = this.level.finalTurn;
         const tile = teammate.getTileIndex();
         // they are gone (not a death: nothing to count), and a Kaiju stands where they were
         teammate.isVisible = false;
@@ -939,6 +948,7 @@ export class GameManager {
         });
         kaiju.initCharLocation(true, tile);
         kaiju.isTeammateKaiju = true;
+        kaiju.castEveryMs = castEveryMs; // one power at a time, often
         this.teammateKaiju = kaiju;
     }
 
@@ -1214,9 +1224,12 @@ export class GameManager {
         rival.walkToTile = undefined;
         this.nextMermaidHealAt = Infinity; // she heals once she is up on the walkway
         const { grid } = this.level;
+        // the floor's lowest tiles, where the water drains away
+        const bottomY = Math.max(...board.walkableTiles.filter(this.getIsFloodTile).map(tile => board.getCharXAndYFromTileIndex(tile).y));
         this.aquariumFlood = new AquariumFlood({
             sources: [], // each panel pours once it breaks (breakPanel)
             rowPx: grid.rowStep * grid.scale,
+            bottomY,
             board: {
                 getSpot: board.getCharXAndYFromTileIndex,
                 getNeighbors: tile => board.getAdjacentTileIndices(tile),
@@ -2114,7 +2127,11 @@ export class GameManager {
     // the team in a row before the Agent, each on their own tile, all facing him
     lineUpTeam({ y, spacing }) {
         const { x } = this.level.trap.speechSpot;
-        const team = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
+        const wholeTeam = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
+        // the player in the middle of the row, the rest either side of them (Jamie)
+        const player = this.gameBoardPiecesManager.getPlayerPiece();
+        const team = wholeTeam.filter(piece => piece != player);
+        if (wholeTeam.includes(player)) team.splice(Math.floor((wholeTeam.length - 1) / 2), 0, player);
         const usedTiles = new Set();
         team.forEach((piece, k) => {
             const spot = { x: x + (k - (team.length - 1) / 2) * spacing, y };
@@ -2199,7 +2216,7 @@ export class GameManager {
 
     // the teammate may have gone on ahead. after a beat the recruits catch up, the script plays, and it may end with the team walking on.
     startWalkInScene() {
-        const { teammateSpot, doorTile, standSpots, frontSpots, script, ending, reveal, talkBeatMs = 0, isWaitingToBePassed = false } = this.level.walkIn;
+        const { teammateSpot, doorTile, standSpots, frontSpots, script, ending, reveal, talkBeatMs = 0, isWaitingToBePassed = false, isTeamInPlace = false, playerSpot } = this.level.walkIn;
         const [player, teammate] = this.getPieces();
         const hasTeammate = !!teammate && !this.followers.includes(teammate);
         const getTile = spot => this.gameBoardManager.getClosestWalkableTileToLocation(spot);
@@ -2212,12 +2229,19 @@ export class GameManager {
         }
         // they stay where they are until the player has gone past them
         if (isWaitingToBePassed) [...this.followers, ...(hasTeammate ? [teammate] : [])].forEach(piece => { piece.isWaitingToBePassed = true; });
-        const arrivals = this.followers.map((piece, index) => {
+        // the recruits: already resting in their places as the player comes in (Jamie), or else coming in at the door one by one
+        const arrivals = isTeamInPlace ? [] : this.followers.map((piece, index) => {
             piece.initCharLocation(true, getTile(standSpots[index % standSpots.length]));
             piece.isVisible = false;
             piece.isTileHidden = true;
             return { shot, arrivals: [{ piece, startTile: doorTile, dir: 'downLeft' }] };
         });
+        if (isTeamInPlace) this.followers.forEach((piece, index) => {
+            piece.initCharLocation(true, getTile(standSpots[index % standSpots.length]));
+            piece.facingDir = 'downLeft';
+        });
+        // the player walks in at the door, the whole scene in view, before the words
+        const playerWalkIn = isTeamInPlace && playerSpot ? [{ shot, arrivals: [{ piece: player, startTile: doorTile, toTile: getTile(playerSpot), dir: 'downLeft' }] }] : [];
 
         // recruits take turns. with no recruits, their lines are the player's.
         const speakers = this.followers.length ? this.followers : [player];
@@ -2231,7 +2255,8 @@ export class GameManager {
         const pair = [player, teammate].filter(piece => !!piece && (piece == player || hasTeammate));
         // the two of them walk to the front of the group, where their words are in shot
         const frontSteps = !frontSpots ? [] : [
-            { shot, arrivals: pair.map((piece, index) => ({ piece, toTile: getTile(frontSpots[index]), dir: 'downLeft' })) },
+            // the team already in place: the two of them run in at the door, to the front
+            { shot, arrivals: pair.map((piece, index) => ({ piece, startTile: isTeamInPlace ? doorTile : undefined, toTile: getTile(frontSpots[index]), dir: 'downLeft' })) },
             { shot, ms: 0, onStart: () => pair.forEach(piece => { piece.facingDir = 'downLeft'; }) }
         ];
 
@@ -2264,6 +2289,7 @@ export class GameManager {
         this.startCutscene([
             { shot, ms: CUTSCENE.pullInMs },
             ...arrivals,
+            ...playerWalkIn,
             ...frontSteps,
             ...(talkBeatMs ? [{ shot, ms: talkBeatMs }] : []), // a quiet moment, all in, before anyone speaks
             ...script
@@ -2747,6 +2773,7 @@ export class GameManager {
             getStatusDirs: this.gameBoardManager.getStatusDirs,
             getStatusCaster: this.gameBoardManager.getStatusCaster,
             addWormhole: this.gameBoardManager.addWormhole,
+            useWormhole: this.gameBoardManager.useWormhole,
             getDirFromTiles: this.gameBoardManager.getDirFromTiles,
             updateTileWithAbilityStatus: this.gameBoardManager.updateTileWithAbilityStatus,
             getPieceTileIndex: this.gameBoardPiecesManager.getPieceTileIndex,
