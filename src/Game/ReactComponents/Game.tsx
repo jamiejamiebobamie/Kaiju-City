@@ -22,7 +22,7 @@ import { BREAK_TOTAL_MS, DialogueLogPanel } from "./DialogueLogPanel";
 import { ChoiceButton } from "./GameBoard/GameBoard";
 import { DEFAULT_AGGRESSION } from "Game/DataClasses/npcBrain/brain";
 import { getKaijuSpeedMode, KaijuSpeedMode, setKaijuSpeedMode } from "../DataClasses/KaijuSpeedTest";
-import { getAvatarColor, saveAvatarColor, saveTeamAvatars, unlockEverything, unlockRecruitSkill, unlockTool } from "../DataClasses/Avatars";
+import { getAvatarColor, saveAvatarColor, saveTeamAvatars, unlockEverything, unlockRecruitSkill, unlockSkill, unlockTool } from "../DataClasses/Avatars";
 import { AbilityPicker } from "./AbilityPicker";
 import { useKeyPress } from "Utils/utils";
 import { ABILITY_KEY_CODES, GAME_TICK, PIECES_INFO, TILE_STATUSES_AND_ABILITY_DATA } from "Utils/gameState";
@@ -927,6 +927,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   useEffect(() => {
     if (winner === null || !isPlayingGame) return;
     const isWon = winner === GameResult.PlayerWon;
+    if (isWon && level.skillOnLeave) unlockSkill(level.skillOnLeave); // the Street's Teleport
     if (level.isWalkingLevel && isWon) {
       const site = gameManager.current && gameManager.current.reachedSite;
       leaveWithClouds(site && site.isDetour ? () => visitSite(site) : leaveLevel);

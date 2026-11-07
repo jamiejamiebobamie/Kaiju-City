@@ -582,12 +582,6 @@
         },
         {
           "speaker": "agent",
-          "text": "Bring Teleport with you. When a train comes through, it's the only way across the platforms.",
-          "id": "street.talk.teleport",
-          "note": "draft"
-        },
-        {
-          "speaker": "agent",
           "text": "Oh, and if you need to: stop by the Lab on your way.",
           "id": "street.talk.5"
         },
@@ -600,6 +594,18 @@
           "speaker": "agent",
           "text": "or change out your teammate.",
           "id": "street.talk.7"
+        },
+        {
+          "speaker": "agent",
+          "text": "The scientists discovered a new power, too: Teleport.",
+          "id": "street.talk.teleport",
+          "note": "draft"
+        },
+        {
+          "speaker": "agent",
+          "text": "Pick it up at the Lab before you head to Rapid Transit.",
+          "id": "street.talk.teleportLab",
+          "note": "draft"
         },
         {
           "speaker": "agent",

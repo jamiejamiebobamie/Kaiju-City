@@ -6,7 +6,7 @@ import rapidTransit from 'Game/DataClasses/Levels/data/rapidTransit.json';
 import { CAMPAIGN_SECTIONS, getIsLastSection } from './Campaign';
 import { GameManager, GameResult, getRecruitLines } from './GameManager';
 import { addUnlock, getUnlocks, saveRecruitChoice } from './Unlocks';
-import { getIsAvatarOpen, getIsSkillOpen, ROSTER, saveAvatarColor, unlockRecruitSkill } from './Avatars';
+import { getIsAvatarOpen, getIsSkillOpen, ROSTER, saveAvatarColor, unlockRecruitSkill, unlockSkill } from './Avatars';
 import { PIECES_INFO as ROSTER_PIECES } from 'Utils/gameState';
 import { getSciFiClass, SCI_FI_CLASSES } from './sciFiClasses';
 import { SettingsManager } from './SettingsManager';
@@ -1316,10 +1316,15 @@ describe('roster and unlocks', () => {
     expect(getIsSkillOpen('wink')).toBe(true);
   });
 
-  it('Teleport is open from the start (Jamie, 2026-11-06)', () => {
+  it('Teleport is closed at the start, and opens as the player leaves the Street, where the Agent tells of it', () => {
     useStorage();
+    expect(getIsSkillOpen('glass')).toBe(false);
+    expect(LEVELS.street.skillOnLeave).toBe('glass');
+    unlockSkill(LEVELS.street.skillOnLeave);
     expect(getIsSkillOpen('glass')).toBe(true);
-    expect(unlockRecruitSkill('agent')).toBeUndefined();
+    const texts = LEVELS.street.sceneElements.find(({ id }) => id == 'agentSpeech').lines.join(' ');
+    expect(texts).toContain('Teleport');
+    expect(texts).toContain('Rapid Transit');
   });
 
   it('a chosen teammate joins the team, and locked powers stay out of their kit', () => {
@@ -1333,7 +1338,7 @@ describe('roster and unlocks', () => {
     expect(gm.getPieces()[1].avatar).toBe('punk');
     for (let k = 0; k < 200; k++) {
       const elements = settingsManager.getThreeRandomAbilities().map(({ gameBoardPieceAbilityData }) => gameBoardPieceAbilityData.element);
-      ['wood', 'death', 'wink'].forEach(element => expect(elements).not.toContain(element));
+      ['wood', 'death', 'wink', 'glass'].forEach(element => expect(elements).not.toContain(element));
     }
   });
 

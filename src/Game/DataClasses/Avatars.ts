@@ -23,7 +23,8 @@ export const SKILL_UNLOCKS = [
   { element: 'wood', name: 'Overgrowth', recruit: 'punk', recruitName: 'Punk Guy' },
   { element: 'death', name: 'Haunt', recruit: 'black_female', recruitName: 'Punk Girl' },
   { element: 'wink', name: 'Charm', recruit: 'mermaid', recruitName: 'the Aquarium Worker' },
-  // (Teleport, 'glass', is open from the start: the Agent says to bring it to the Subway. Jamie, 2026-11-06)
+  // the scientists' new power: the Agent tells of it on the Street, and it opens as the player leaves there, before the Subway (Jamie, 2026-11-06)
+  { element: 'glass', name: 'Teleport', recruit: 'agent', recruitName: 'the Agents' }
 ];
 
 const getSkillId = (element: string) => `skill-${element}`;
@@ -31,6 +32,9 @@ const getSkillId = (element: string) => `skill-${element}`;
 export const getSkillUnlock = (element: string) => SKILL_UNLOCKS.find(skill => skill.element == element);
 
 export const getIsSkillOpen = (element: string) => !getSkillUnlock(element) || getUnlocks().includes(getSkillId(element));
+
+// a power opened by the story itself (the Street's Teleport)
+export const unlockSkill = (element: string) => addUnlock(getSkillId(element));
 
 export const unlockRecruitSkill = (recruit: string) => {
   const skill = SKILL_UNLOCKS.find(({ recruit: id }) => id == recruit);

@@ -237,6 +237,7 @@ export type LevelConfig = {
   agentDrops?: AgentDrops;
   cameraZoom: number; // how close the camera sits during play. at 1, the whole scene fits the frame.
   liveWideShots?: Record<string, number>; // the same, for phases the game keeps running through
+  skillOnLeave?: string; // a power (its element) that opens once the player leaves the level
   unlock?: { id: string; label: string; image?: string; spot: { x: number; y: number }; afterMs?: number }; // a hidden tile, in scene pixels. 'afterMs': it only unlocks after this long
   wideShots?: Record<string, number>; // phases the camera pulls out to show, and how long it holds there in ms
   tileTone: TileTone;
@@ -760,7 +761,8 @@ const LEVEL_BUILDERS: Record<string, (file) => LevelConfig> = {
     ...STREET_SCENE,
     // on the tile of the hazmat worker sweeping by the van, once the Agent has had his say
     unlock: { id: 'hazmat', label: 'Hazmat worker', image: '/levels/portraits/hazmat.png', spot: { x: 740, y: 600 }, afterMs: STREET_TALK_MS },
-    exit: { spot: { x: 112, y: 690 }, afterMs: STREET_TALK_MS, isShownWhenOpen: true } // after the Agent's words, and the camera shows it
+    exit: { spot: { x: 112, y: 690 }, afterMs: STREET_TALK_MS, isShownWhenOpen: true }, // after the Agent's words, and the camera shows it
+    skillOnLeave: 'glass' // the scientists' new power, Teleport, from the Agent's words: it opens as the team leaves (picked up at the Lab)
   })
 };
 
