@@ -152,6 +152,11 @@ export class GameManagerProxy {
         return !!this.props.startPortalWalk && this.props.startPortalWalk(piece, toTile);
     }
 
+    // the player's Teleport toward the rival on other ground: the tiles to it across the gaps, or undefined
+    getTeleportAcross(fromTile, pressedDir, playerInputHandler) {
+        return this.props.getTeleportAcross ? this.props.getTeleportAcross(fromTile, pressedDir, playerInputHandler) : undefined;
+    }
+
     // a status kept to its own ground (the Aquarium's sea creatures, to the flooded floor)
     getIsStatusAllowedOn(appliedStatus, tileIndex) {
         return !this.props.getIsStatusAllowedOn || this.props.getIsStatusAllowedOn(appliedStatus, tileIndex);

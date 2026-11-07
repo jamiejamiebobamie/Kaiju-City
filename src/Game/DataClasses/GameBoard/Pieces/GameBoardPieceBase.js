@@ -2,6 +2,9 @@ import { getWaterSlow } from 'Game/DataClasses/AquariumFlood';
 import { getThrowVec } from 'Game/DataClasses/Ragdoll';
 import { followBrainAction } from 'Game/DataClasses/npcBrain/brain';
 
+// an NPC through a portal or a tile link rests from them this long (Jamie)
+export const PORTAL_REST_MS = 5000;
+
 const CHARM_MS = 5000;
 const SLIPPERY_SLIDE_TILES = 1;
 const CHARM_ALONE_DMG = 1;
@@ -42,6 +45,7 @@ export class GameBoardPieceBase {
         this.walkToTile = undefined; // an NPC sent somewhere: it walks there, then fights on (the Mermaid, back down)
         this.waterSlowEnds = []; // the Aquarium's flood: when each step of slowing wears off
         this.portalMask = undefined; // walking through a portal: { point, behind }. the body past this line, on the 'behind' side, isn't drawn
+        this.portalRestUntil = 0; // an NPC through a portal or a tile link can't go through one again until then (Jamie: no hopping back and forth)
 
         // aesthetics
         this.avatar = avatar; // enum?
@@ -210,7 +214,7 @@ export class GameBoardPieceBase {
             const { i, j } = this.walkToTile;
             if (this.tileIndex.i == i && this.tileIndex.j == j) this.walkToTile = undefined;
             else if (this.isThere) {
-                const path = this.gameManagerProxy.getPathFromTileToTile({ fromTile: this.tileIndex, toTile: this.walkToTile });
+                const path = this.gameManagerProxy.getPathFromTileToTile({ fromTile: this.tileIndex, toTile: this.walkToTile, pieceIndex: this.pieceIndex });
                 if (path && path.length) this.updateMovmement(path);
                 else this.walkToTile = undefined;
             }
@@ -338,6 +342,12 @@ export class GameBoardPieceBase {
         // the path crosses a tile link
         const linkedTile = this.gameManagerProxy.getLinkedTile(this.tileIndex);
         if (!!linkedTile && linkedTile.i == nextTileIndex.i && linkedTile.j == nextTileIndex.j) {
+            // resting from portals: the path ends here, and a new one goes the long way
+            if (this.getIsPortalResting()) {
+                this.moveToTiles = [];
+                this.stopMoving();
+                return;
+            }
             this.moveToTiles = tileIndices;
             this.jumpToLinkedTile(linkedTile);
             return;
@@ -422,8 +432,15 @@ export class GameBoardPieceBase {
         if (!!linkedTile && !isJustArrived) this.jumpToLinkedTile(linkedTile);
     }
 
+    // an NPC just through a portal or a tile link rests from them for a while
+    getIsPortalResting() {
+        return this.isNpc && (this.accTime || 0) < this.portalRestUntil;
+    }
+
     jumpToLinkedTile(linkedTile) {
         if (!this.getIsAllowedTile(linkedTile)) return;
+        if (this.getIsPortalResting()) return;
+        if (this.isNpc) this.portalRestUntil = (this.accTime || 0) + PORTAL_REST_MS;
         // the player walks through it, in a little scene of its own (GameManager.startPortalWalk)
         if (!this.isNpc && this.gameManagerProxy.startPortalWalk(this, linkedTile)) return;
         const location = this.gameManagerProxy.getCharXAndYFromTileIndex(linkedTile);
@@ -482,6 +499,10 @@ export class GameBoardPieceBase {
 
     // walks the board in the pressed direction until the piece runs out of tiles
     getPathFromPressedDir(pressedDir, playerInputHandler) {
+        if (!this.isNpc && this.shouldTeleport) {
+            const across = this.gameManagerProxy.getTeleportAcross(this.tileIndex, pressedDir, playerInputHandler);
+            if (across) return across;
+        }
         const moveToTiles = [];
         const seenTiles = new Set([`${this.tileIndex.i} ${this.tileIndex.j}`]);
         const isLeavingClosedTiles = this.gameManagerProxy.getIsClosedTile(this.tileIndex);
@@ -511,6 +532,7 @@ export class GameBoardPieceBase {
         // the path's first step is through a tile link (the Aquarium's floors): through it, not across the gap to it
         const linkedTile = this.gameManagerProxy.getLinkedTile(this.tileIndex);
         if (!!linkedTile && linkedTile.i == moveToTiles[0].i && linkedTile.j == moveToTiles[0].j) {
+            if (this.getIsPortalResting()) return; // not now: it waits, and goes the long way next time
             this.jumpToLinkedTile(linkedTile);
             this.moveToTiles = moveToTiles.slice(1);
             return;

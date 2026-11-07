@@ -480,11 +480,11 @@ export class GameBoardManager {
     }
 
     // a piece standing on a closed tile can still walk across closed tiles, to get off of them
-    getPathStepsFrom(startTile) {
+    getPathStepsFrom(startTile, isWithoutLinks = false) {
         const isLeavingClosedTiles = this.getIsClosedTile(startTile);
         return tile => {
             const closedSteps = isLeavingClosedTiles ? this.getNeighborTiles(tile).filter(this.getIsClosedTile) : [];
-            return [...this.getAdjacentTileIndices(tile), ...closedSteps, ...this.getLinkedTiles(tile)];
+            return [...this.getAdjacentTileIndices(tile), ...closedSteps, ...(isWithoutLinks ? [] : this.getLinkedTiles(tile))];
         };
     }
 
@@ -507,10 +507,13 @@ export class GameBoardManager {
         const getCrowdCost = tile => (crowdCosts && crowdCosts.get(`${tile.i} ${tile.j}`)) || 0;
         const getIsEnemyTile = tile => !!enemyTiles && enemyTiles.some(e => e.i === tile.i && e.j === tile.j);
         const getIsNextToEnemy = tile => !!enemyTiles && this.getAdjacentAdjacentTileIndices(tile).some(getIsEnemyTile);
+        // an NPC resting from portals plans without them
+        const piece = crowdPieceIndex === undefined ? undefined : this.gameManagerProxy.getPiece(crowdPieceIndex);
+        const isWithoutLinks = !!piece && !!piece.getIsPortalResting && piece.getIsPortalResting();
         const avoidedPath = findPath({
             start: startIndex,
             goal: goalIndex,
-            getAdjacentTiles: this.getPathStepsFrom(startIndex),
+            getAdjacentTiles: this.getPathStepsFrom(startIndex, isWithoutLinks),
             getLocation: this.getCharXAndYFromTileIndex,
             getIsBlocked: tile => getIsEnemyTile(tile) || (isAlwaysAvoid && getIsNextToEnemy(tile)),
             getExtraCost: tile => (getIsNextToEnemy(tile) ? ENEMY_NEARBY_TILE_COST : 0) + getCrowdCost(tile)

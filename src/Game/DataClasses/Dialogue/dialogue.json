@@ -582,6 +582,12 @@
         },
         {
           "speaker": "agent",
+          "text": "Bring Teleport with you. When a train comes through, it's the only way across the platforms.",
+          "id": "street.talk.teleport",
+          "note": "draft"
+        },
+        {
+          "speaker": "agent",
           "text": "Oh, and if you need to: stop by the Lab on your way.",
           "id": "street.talk.5"
         },

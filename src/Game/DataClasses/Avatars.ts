@@ -23,7 +23,7 @@ export const SKILL_UNLOCKS = [
   { element: 'wood', name: 'Overgrowth', recruit: 'punk', recruitName: 'Punk Guy' },
   { element: 'death', name: 'Haunt', recruit: 'black_female', recruitName: 'Punk Girl' },
   { element: 'wink', name: 'Charm', recruit: 'mermaid', recruitName: 'the Aquarium Worker' },
-  { element: 'glass', name: 'Teleport', recruit: 'agent', recruitName: 'the Agents' }
+  // (Teleport, 'glass', is open from the start: the Agent says to bring it to the Subway. Jamie, 2026-11-06)
 ];
 
 const getSkillId = (element: string) => `skill-${element}`;

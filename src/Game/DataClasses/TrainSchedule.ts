@@ -5,10 +5,10 @@ import { getRandomIntInRange } from 'Game/utils';
   idle -> warning (signal lights flash) -> train -> clearing (lights still flash) -> idle
 */
 export const TRAIN_SCHEDULE = {
-  idleMs: { min: 6000, max: 12000 },
-  warningMs: { min: 3000, max: 5000 },
-  trainMs: { min: 5000, max: 10000 },
-  clearingMs: { min: 2000, max: 4000 }
+  idleMs: { min: 3500, max: 7000 }, // more often (Jamie, 2026-11-06)
+  warningMs: { min: 2500, max: 4000 },
+  trainMs: { min: 2500, max: 5000 }, // and through sooner
+  clearingMs: { min: 1500, max: 2500 }
 };
 
 // what a train does to a piece on the tracks. 'mode' is 'shove' (dmg, then pushed to the platform) or 'kill'.

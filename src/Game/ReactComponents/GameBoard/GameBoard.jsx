@@ -953,7 +953,8 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
   // the Subway's signal lights, flashing: shown in panels when neither is in shot
   const signalLights = (level.sceneElements || []).filter(({ phase }) => phase == TRAIN_LOOK.phase);
   const isTrainWarning = activePhases.includes(TRAIN_LOOK.phase);
-  const isLightsOutOfShot = isTrainWarning && !isWideShot && !!focusPiece && signalLights.length > 0 && signalLights.every(({ x, y, width, height }) =>
+  // the cutouts of the lights only while a train is coming, not after one has gone (the lights still flash then)
+  const isLightsOutOfShot = activePhases.includes(TRAIN_LOOK.warningPhase) && !isWideShot && !!focusPiece && signalLights.length > 0 && signalLights.every(({ x, y, width, height }) =>
     !!caretCamera.getEdgeCaret(getWorldLocation({ x: x + width / 2, y: y + height / 2 }), getWorldLocation(focusPiece.charLocation), tilePx));
   const trainWarning = isTrainWarning && (
     <>

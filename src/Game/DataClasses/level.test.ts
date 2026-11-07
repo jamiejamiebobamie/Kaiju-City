@@ -1316,11 +1316,10 @@ describe('roster and unlocks', () => {
     expect(getIsSkillOpen('wink')).toBe(true);
   });
 
-  it('Teleport opens by beating the Agents', () => {
+  it('Teleport is open from the start (Jamie, 2026-11-06)', () => {
     useStorage();
-    expect(getIsSkillOpen('glass')).toBe(false);
-    expect(unlockRecruitSkill('agent').name).toBe('Teleport');
     expect(getIsSkillOpen('glass')).toBe(true);
+    expect(unlockRecruitSkill('agent')).toBeUndefined();
   });
 
   it('a chosen teammate joins the team, and locked powers stay out of their kit', () => {
@@ -1334,7 +1333,7 @@ describe('roster and unlocks', () => {
     expect(gm.getPieces()[1].avatar).toBe('punk');
     for (let k = 0; k < 200; k++) {
       const elements = settingsManager.getThreeRandomAbilities().map(({ gameBoardPieceAbilityData }) => gameBoardPieceAbilityData.element);
-      ['wood', 'death', 'wink', 'glass'].forEach(element => expect(elements).not.toContain(element));
+      ['wood', 'death', 'wink'].forEach(element => expect(elements).not.toContain(element));
     }
   });
 

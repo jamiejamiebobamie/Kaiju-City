@@ -762,6 +762,63 @@ export class GameManager {
         ], { isMidFight: true });
     }
 
+    /*
+        The player's Teleport, on ground of their own apart from the rival's (Jamie): the Subway's platforms with a train
+        between, the Rooftop's two buildings, the Aquarium's two floors. Pressed toward the rival, the line of tiles goes on
+        across the gaps, onto the rival's ground, and to its far edge, never past it onto other ground beyond.
+        Otherwise (same ground, or away from them), undefined: the Teleport goes as it always does.
+    */
+    getTeleportRegion = tile => {
+        if (this.level.ghostBoss) return this.getIsRivalGround(tile) ? 'theirRoof' : 'graveyardRoof';
+        if (this.level.aquariumFlood) return this.getIsTopFloor(tile) ? 'top' : 'ground';
+        // otherwise, the tiles that can be walked to from it, as things stand (a train in closes the tracks)
+        const board = this.gameBoardManager;
+        const key = `${board.walkableRevision}`;
+        if (!this.regionCache || this.regionCache.key != key) this.regionCache = { key, regions: new Map() };
+        const { regions } = this.regionCache;
+        const tileKey = `${tile.i} ${tile.j}`;
+        if (!regions.has(tileKey)) {
+            const reachable = [tile];
+            const seen = new Set([tileKey]);
+            for (const each of reachable) {
+                board.getAdjacentTileIndices(each).forEach(next => {
+                    const nextKey = `${next.i} ${next.j}`;
+                    if (seen.has(nextKey)) return;
+                    seen.add(nextKey);
+                    reachable.push(next);
+                });
+            }
+            const region = [...seen].sort()[0];
+            seen.forEach(each => regions.set(each, region));
+        }
+        return regions.get(tileKey);
+    };
+
+    getTeleportAcross = (fromTile, pressedDir, playerInputHandler) => {
+        const rival = this.rivalPiece;
+        if (!this.level.rival || !rival || rival.isDead || !rival.isOnTiles) return undefined;
+        const board = this.gameBoardManager;
+        const rivalRegion = this.getTeleportRegion(rival.getTileIndex());
+        if (this.getTeleportRegion(fromTile) == rivalRegion) return undefined;
+        // the straight line of tiles the way pressed, across gaps, to the edge of the grid
+        const line = [];
+        let tile = fromTile;
+        for (let step = 0; step < 300; step += 1) {
+            const [dir] = playerInputHandler.getTileDirsFromPressedDir(pressedDir, tile);
+            if (!dir) break;
+            const offset = board.getTileOffsetFromDir(dir, tile);
+            tile = { i: tile.i + offset.i, j: tile.j + offset.j };
+            if (tile.i < 0 || tile.j < 0 || tile.i >= board.numTileColumns || tile.j >= board.numTileRows) break;
+            line.push(tile);
+        }
+        const isTheirs = each => board.getIsInBounds(each) && this.getTeleportRegion(each) == rivalRegion;
+        const first = line.findIndex(isTheirs);
+        if (first < 0) return undefined; // not toward them
+        let last = first;
+        while (last + 1 < line.length && isTheirs(line[last + 1])) last += 1;
+        return line.slice(0, last + 1);
+    };
+
     // - - - the final battle (GiantKaiju.ts) - - -
 
     // the teammate is a giant Kaiju at the foot of the Peninsula, heading for the city. the recruits are with the player.
@@ -2662,6 +2719,7 @@ export class GameManager {
             },
             getGhostRingMove: this.getGhostRingMove,
             startPortalWalk: this.startPortalWalk,
+            getTeleportAcross: this.getTeleportAcross,
             // the Aquarium's sea creatures keep to the flooded floor
             getIsStatusAllowedOn: (appliedStatus, tileIndex) => appliedStatus != 'isSeaGhost' || !this.level.flood || this.getIsFloodTile(tileIndex),
             getIsWormholeTile: ({ i, j }) => this.gameBoardManager.getWormholes().some(({ from, to }) => [from, to].some(end => end.i == i && end.j == j)),
