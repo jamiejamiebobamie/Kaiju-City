@@ -62,6 +62,49 @@ describe('Teleport toward the rival, across the gaps (Jamie)', () => {
     expect(landed).toBeGreaterThan(5);
   });
 
+  it('cast while already walking toward them (the key held), it still goes across: its line is taken anew', () => {
+    const { gm, board, input, rival, player } = makeSubway();
+    const regions = new Map();
+    board.walkableTiles.forEach(tile => regions.set(gm.getTeleportRegion(tile), [...(regions.get(gm.getTeleportRegion(tile)) || []), tile]));
+    const byX = [...regions.values()].filter(tiles => tiles.length > 20)
+      .sort((a, b) => Math.min(...a.map(({ i }) => i)) - Math.min(...b.map(({ i }) => i)));
+    const middle = byX[1];
+    rival.setTileIndex(middle[Math.floor(middle.length / 2)]);
+    const right = byX[byX.length - 1];
+    // a tile on the right platform with some way to walk left on it, and a line left onto the middle one
+    const from = right.find(tile => gm.getTeleportAcross(tile, 'left', input) && right.some(other => other.j == tile.j && other.i < tile.i - 1));
+    expect(from).toBeDefined();
+    player.initCharLocation(true, from);
+    input.addKey('KeyA');
+    gm.accTime += 110;
+    player.movePiece({ accTime: gm.accTime, playerInputHandler: input });
+    expect(gm.getTeleportRegion(player.moveToTiles[player.moveToTiles.length - 1])).not.toBe(gm.getTeleportRegion(rival.getTileIndex())); // a walk on its own platform
+    player.setShouldTeleport(true);
+    gm.accTime += 110;
+    player.movePiece({ accTime: gm.accTime, playerInputHandler: input });
+    input.removeKey('KeyA');
+    expect(gm.getTeleportRegion(player.getTileIndex())).toBe(gm.getTeleportRegion(rival.getTileIndex()));
+  });
+
+  it('a wormhole closes early when the tile at either end is gone (a train in)', () => {
+    const { gm, board } = makeGame(LEVELS.rapidTransit);
+    gm.trainSchedule.setStage('warning', 0);
+    const open = new Set(board.walkableTiles.map(({ i, j }) => `${i} ${j}`));
+    gm.trainSchedule.setStage('train', 0);
+    gm.trainSchedule.setStage('clearing', 0); // the train gone: the tracks open again
+    const track = board.walkableTiles.find(({ i, j }) => !open.has(`${i} ${j}`));
+    const platform = board.walkableTiles.find(({ i, j }) => open.has(`${i} ${j}`) && !board.getLinkedTile({ i, j }));
+    expect(track).toBeDefined();
+    expect(board.getIsInBounds(track)).toBe(true);
+    board.addWormhole(track, platform, gm.accTime, 99999);
+    board.updateWormholes(gm.accTime);
+    expect(board.getWormholes().length).toBe(1);
+    gm.trainSchedule.setStage('warning', 0);
+    board.updateWormholes(gm.accTime);
+    expect(board.getWormholes().length).toBe(0);
+    expect(board.getLinkedTile(platform)).toBeFalsy();
+  });
+
   it('away from them, or on their platform, the Teleport goes as always', () => {
     const { gm, board, input, rival } = makeSubway();
     const rivalTile = rival.getTileIndex();

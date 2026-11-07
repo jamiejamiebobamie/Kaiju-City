@@ -245,6 +245,14 @@ export class GameBoardPieceBase {
             this.handlePlayerInput(playerInputHandler);
         }
 
+        // a direction already held as the Teleport is cast: its line is taken anew from here, not the walk already under way
+        // (that one ends at the platform's edge; the Teleport's goes across the gap toward the rival, GameManager.getTeleportAcross)
+        if (this.shouldTeleport && !this.isNpc && playerInputHandler && playerInputHandler.getIsCurrentPlayerInput()) {
+            const pressedDir = playerInputHandler.getPressedDir();
+            const path = pressedDir && pressedDir != 'idle' ? this.getPathFromPressedDir(pressedDir, playerInputHandler) : [];
+            if (path.length) this.moveToTiles = path;
+        }
+
         // the player teleports once they have chosen a destination
         if (this.shouldTeleport && (this.isNpc || this.getIsMoveToTiles())) {
             this.teleportPiece();

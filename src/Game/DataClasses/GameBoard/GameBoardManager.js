@@ -54,8 +54,10 @@ export class GameBoardManager {
         this.wormholes.push({ from, to, startsAt: accTime, endsAt: accTime + durationMs });
     }
 
+    // a wormhole closes when its time is up, or early when the tile at either end is gone (the Subway's tracks, a train in. Jamie)
     updateWormholes(accTime) {
-        const [open, closed] = [this.wormholes.filter(({ endsAt }) => endsAt > accTime), this.wormholes.filter(({ endsAt }) => endsAt <= accTime)];
+        const getIsOpen = ({ from, to, endsAt }) => endsAt > accTime && this.getIsInBounds(from) && this.getIsInBounds(to);
+        const [open, closed] = [this.wormholes.filter(getIsOpen), this.wormholes.filter(wormhole => !getIsOpen(wormhole))];
         closed.forEach(({ from, to }) => [from, to].forEach(({ i, j }) => this.linkedTiles.delete(`${i} ${j}`)));
         this.wormholes = open;
     }
