@@ -19,6 +19,9 @@ export const AQUARIUM_FLOOD = {
   waves: { everyMs: 5000, surgeMs: 1800, surgePourEveryMs: 110, tricklePourEveryMs: 900 },
   // water that reaches the bottom of the floor (within this many rows of its lowest tiles) drains away this soon (Jamie)
   bottomDrain: { rows: 2.5, ms: 1100 },
+  // a panel breaking (Jamie): a gush of water out of it, which swirls round in front of the tank (out, and back in on
+  // itself) for 'swirlMs', then runs off with the rest. 'count' parcels, within 'rows' of the tank's pour tile.
+  burst: { count: 14, rows: 3, swirlMs: 3500 },
   drainMs: 9000, // once the pouring stops, the water left drains away over this long
   flowStyle: 'flow' as 'flow' | 'bounce', // 'flow': runs downhill, spreads sideways and pools. 'bounce': runs straight and bounces off the edges, like Wildfire
   bounceLifeMs: 7000, // a bouncing parcel of water lasts this long
@@ -46,7 +49,8 @@ export type FloodBoard = {
   getTileAt: (spot: Spot) => Tile | undefined;
 };
 
-type Parcel = { tile: Tile; dir: number; bornMs: number; dryAtMs: number };
+// 'step': its last move, in pixels (the way its water runs, for the icon). 'swirl': circling a broken tank for a while.
+type Parcel = { tile: Tile; dir: number; bornMs: number; dryAtMs: number; step?: Spot; swirl?: { center: Spot; untilMs: number; sense: number } };
 
 export type SeaGhostSpawn = { source: Tile; icon: string; color: string };
 
@@ -92,6 +96,35 @@ export class AquariumFlood {
 
   getWaterTiles() {
     return [...this.water.values()].map(({ tile }) => tile);
+  }
+
+  // each wet tile, and the way its water last ran (undefined if it hasn't moved)
+  getWaterFlows() {
+    return [...this.water.values()].map(({ tile, step }) => ({ tile, step }));
+  }
+
+  // a panel breaks: a gush of water around its pour tile, swirling round in front of it for a while
+  burst(source: Tile) {
+    const { count, rows, swirlMs } = AQUARIUM_FLOOD.burst;
+    const center = this.board.getSpot(source);
+    const reach = rows * this.rowPx;
+    const seen = new Set([key(source)]);
+    const queue = [source];
+    let added = 0;
+    const sense = this.random() < 0.5 ? 1 : -1;
+    for (let k = 0; k < queue.length && added < count; k += 1) {
+      const tile = queue[k];
+      if (!this.water.has(key(tile)) && this.board.getIsWaterTile(tile)) {
+        this.water.set(key(tile), { tile, dir: Math.floor(this.random() * 6), bornMs: this.ms, dryAtMs: this.getDryAt(this.ms), swirl: { center, untilMs: this.ms + swirlMs, sense } });
+        added += 1;
+      }
+      this.board.getNeighbors(tile).forEach(next => {
+        const spot = this.board.getSpot(next);
+        if (seen.has(key(next)) || Math.hypot(spot.x - center.x, spot.y - center.y) > reach) return;
+        seen.add(key(next));
+        queue.push(next);
+      });
+    }
   }
 
   getIsWet(tile: Tile | undefined) {
@@ -162,7 +195,18 @@ export class AquariumFlood {
       const free = this.board.getNeighbors(parcel.tile).filter(tile => this.board.getIsWaterTile(tile) && !this.water.has(key(tile)));
       if (!free.length) return;
       let next: Tile | undefined;
-      if (AQUARIUM_FLOOD.flowStyle == 'bounce') {
+      if (parcel.swirl && this.ms < parcel.swirl.untilMs) {
+        // round the broken tank: the way across its radius, kept about as far out (a little in if it has drifted out)
+        const { center, sense } = parcel.swirl;
+        const out = { x: here.x - center.x, y: here.y - center.y };
+        const length = Math.hypot(out.x, out.y) || 1;
+        const around = { x: (-out.y / length) * sense, y: (out.x / length) * sense };
+        const inward = length > AQUARIUM_FLOOD.burst.rows * this.rowPx * 0.7 ? 0.5 : 0;
+        const want = { x: around.x - (out.x / length) * inward, y: around.y - (out.y / length) * inward };
+        const score = (tile: Tile) => { const spot = this.board.getSpot(tile); const dx = spot.x - here.x; const dy = spot.y - here.y; const d = Math.hypot(dx, dy) || 1; return (dx * want.x + dy * want.y) / d; };
+        next = free.reduce((best, tile) => score(tile) > score(best) ? tile : best);
+        if (score(next) < 0) return; // nowhere round from here: it waits a moment
+      } else if (AQUARIUM_FLOOD.flowStyle == 'bounce') {
         const ahead = free.filter(tile => this.getDir(parcel.tile, tile) == parcel.dir);
         if (ahead.length) next = ahead[0];
         else {
@@ -178,6 +222,8 @@ export class AquariumFlood {
         if (!options.length) return;
         next = options[Math.floor(this.random() * options.length)];
       }
+      const to = this.board.getSpot(next);
+      parcel.step = { x: to.x - here.x, y: to.y - here.y };
       this.water.delete(key(parcel.tile));
       parcel.tile = next;
       this.water.set(key(next), parcel);

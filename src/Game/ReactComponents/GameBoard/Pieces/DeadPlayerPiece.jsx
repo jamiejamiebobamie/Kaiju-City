@@ -1,5 +1,5 @@
 import React from "react";
-import styled from "styled-components";
+import styled, { css, keyframes } from "styled-components";
 import { GAME_TICK } from "Utils/gameState";
 import { getTorsoSpot, LIMBS } from "Game/DataClasses/Ragdoll";
 
@@ -107,6 +107,31 @@ const RagdollParts = ({ avatar, spriteSheetSrc, body, color }) => {
   );
 };
 
+// the ghost boss's body (Jamie): a ghost's, as her living ghost form is drawn (GameBoardPieceComponent's GhostForm)
+const GHOST_FILTER = "grayscale(1) contrast(0.4) brightness(3.2) drop-shadow(0 0 4px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 10px rgba(220, 230, 255, 0.8))";
+const GHOST_TO_BODY_SECONDS = 2.2;
+
+// at the choice: the ghost blinks, flickers and fades away, and she lies there as herself
+const ghostToBody = keyframes`
+  0%, 18% { filter: ${GHOST_FILTER}; opacity: 0.7; }
+  24% { filter: none; opacity: 1; }
+  32% { filter: ${GHOST_FILTER}; opacity: 0.6; }
+  42% { filter: none; opacity: 1; }
+  50% { filter: ${GHOST_FILTER}; opacity: 0.5; }
+  100% { filter: none; opacity: 1; }
+`;
+
+const GhostBody = styled.div`
+  ${props => props.$ghost == "ghost" && css`
+    filter: ${GHOST_FILTER};
+    opacity: 0.7;
+  `}
+  ${props => props.$ghost == "toBody" && css`
+    animation: ${ghostToBody} ${GHOST_TO_BODY_SECONDS}s ease-out 0.6s both;
+  `}
+`;
+
+// 'ghost': "ghost" draws it as a ghost; "toBody" turns a ghost back into the person
 export const DeadPlayer = ({
   charLocation,
   color,
@@ -114,7 +139,8 @@ export const DeadPlayer = ({
   avatar,
   pieceScale,
   spriteSheetSrc,
-  body
+  body,
+  ghost = undefined
 }) => {
   const spot = body ? getTorsoSpot(body, pieceScale) : charLocation;
   return (
@@ -128,9 +154,11 @@ export const DeadPlayer = ({
         transformOrigin: "0 0",
         transition: body && !body.isResting ? `left ${TICK_EASE}, top ${TICK_EASE}` : "none"
       }}>
-      {body && spriteSheetSrc
-        ? <RagdollParts avatar={avatar} spriteSheetSrc={spriteSheetSrc} body={body} color={color} />
-        : <StillBody style={{ backgroundImage: `url(/levels/dead/${avatar}.png)`, filter: `drop-shadow(0 0 ${FRAME.glowPx}px ${color})` }} />}
+      <GhostBody $ghost={ghost}>
+        {body && spriteSheetSrc
+          ? <RagdollParts avatar={avatar} spriteSheetSrc={spriteSheetSrc} body={body} color={color} />
+          : <StillBody style={{ backgroundImage: `url(/levels/dead/${avatar}.png)`, filter: `drop-shadow(0 0 ${FRAME.glowPx}px ${color})` }} />}
+      </GhostBody>
     </Wrapper>
   );
 };

@@ -191,7 +191,11 @@ const getLineShot = (line, shot) => line && line.shot == 'wide' ? WHOLE_SCENE_SH
 export class GameManager {
     // 'returnSpot': back on a map walk from a site, the team starts beside it.
     // 'isRetry': the match is played again after a loss, so its opening scene is skipped.
-    constructor({ level = PENINSULA, settingsManager, hasArrival = false, killsToWin = undefined, returnSpot = undefined, isRetry = false }) {
+    // 'autoRecruits': the recruits called in at the start of every fight, and walking with the team in the scenes the
+    // teammate is in (Jamie: a dev toggle, on by default). Empty: they are called with the buttons, as before.
+    constructor({ level = PENINSULA, settingsManager, hasArrival = false, killsToWin = undefined, returnSpot = undefined, isRetry = false, autoRecruits = [] }) {
+        this.autoRecruits = autoRecruits;
+        this.hasAutoSummoned = false;
         this.killsToWin = killsToWin;
         this.returnSpot = returnSpot;
         this.isRetry = isRetry;
@@ -488,13 +492,16 @@ export class GameManager {
 
         this.gameBoardPiecesManager.initPlayerLocationsOnBoard(this.returnSpot ? this.getReturnTiles(this.returnSpot) : this.level.spawnTiles);
 
-        if (this.level.hasRecruitFollowers) this.addRecruitFollowers();
+        // the recruits walk with the team wherever the teammate is: the walking Lab, the Street, the map walks too (Jamie)
+        const isTeammateScene = this.level.isWalkingLevel && this.settingsManager.getIsTeammate && this.settingsManager.getIsTeammate();
+        if (this.level.hasRecruitFollowers || (this.autoRecruits.length && isTeammateScene)) this.addRecruitFollowers();
         if (this.level.extras) this.level.extras.forEach(extra => this.addExtra(extra));
         if (this.level.walkers) this.level.walkers.forEach(walker => this.addWalker(walker));
         if (getIsDialogueLog()) this.addSceneTalks();
         if (this.level.isDepowered) this.depowerPlayerTeam();
 
         if (this.level.giantKaiju) this.startFinalBattle();
+        if (this.level.finalTurn && this.level.finalTurn.isStartTurned) this.startTurnedFight();
         if (this.hasArrival) this.startArrival();
         else if (this.level.rival) this.startRivalIntro();
         else if (this.level.isMapWalk) this.startMapIntro();
@@ -934,6 +941,19 @@ export class GameManager {
         ]);
     }
 
+    // the fight with the teammate's Kaiju from its start: they have already turned (no words, no Kaiju waves before it)
+    startTurnedFight() {
+        const { teammate } = this.getGhostTeam();
+        this.score = this.getKillsToWin();
+        if (!teammate) {
+            this.finalTurnState = 'fighting';
+            this.teammateKaiju = { isDead: true };
+            return;
+        }
+        this.turnTeammateKaiju(teammate);
+        this.finalTurnState = 'fighting';
+    }
+
     turnTeammateKaiju(teammate) {
         const { kaijuLives, coolDownMs, castEveryMs } = this.level.finalTurn;
         const tile = teammate.getTileIndex();
@@ -1208,6 +1228,7 @@ export class GameManager {
         const source = this.getClosestFloodTile(panel.pour);
         if (!source) return;
         flood.sources.push(source);
+        flood.burst(source); // a gush out of it, swirling round in front of the tank (Jamie)
         if (isCreature) {
             const icons = Object.keys(AQUARIUM_FLOOD.ghostIcons);
             const icon = icons[Math.floor(Math.random() * icons.length)];
@@ -1325,10 +1346,20 @@ export class GameManager {
             const status = tile.getTileStatus();
             if (status && status.getAppliedStatus() == 'isFlood') tile.clearTileStatus();
         });
+        // the way the water runs, as one of the six tile directions: its drop points that way (Jamie)
+        const steps = new Map((this.aquariumFlood ? this.aquariumFlood.getWaterFlows() : []).map(({ tile, step }) => [`${tile.i} ${tile.j}`, step]));
+        const getDirOf = step => {
+            if (!step) return undefined;
+            const length = Math.hypot(step.x, step.y) || 1;
+            const best = TILE_DIR_NORM_VECS.reduce((bestK, vec, k) => vec.x * step.x + vec.y * step.y > TILE_DIR_NORM_VECS[bestK].x * step.x + TILE_DIR_NORM_VECS[bestK].y * step.y ? k : bestK, 0);
+            return length > 0 ? TILE_DIRS[best] : undefined;
+        };
         wet.forEach(key => {
             const [i, j] = key.split(' ').map(Number);
             const tile = board.tiles[i][j];
-            if (!tile.getTileStatus()) tile.updateTileStatus({ updateKey: this.accTime, tileStatus: isFlood, currCount: 1, dirs: [], teamIndex: -1, targetIndex: -1 });
+            const dir = getDirOf(steps.get(key));
+            if (!tile.getTileStatus()) tile.updateTileStatus({ updateKey: this.accTime, tileStatus: isFlood, currCount: 1, dirs: dir ? [dir] : [], teamIndex: -1, targetIndex: -1 });
+            else if (dir && tile.getTileStatus().getAppliedStatus() == 'isFlood') tile.dirs = [dir];
         });
         this.floodTileKeys = [...wet];
     }
@@ -1374,7 +1405,7 @@ export class GameManager {
         const rowPx = this.getGhostRowPx();
         const count = GHOST_BOSS.rings[this.ghostBossDowns - 1];
         const isLast = this.ghostBossDowns == GHOST_BOSS.rings.length;
-        const { name, text } = getDialogueLine(this.level.ghostBoss.screamScene);
+        const { name, text } = getDialogueLine(this.level.ghostBoss.screamScene, this.ghostBossDowns - 1); // a line for each phase (Jamie)
         const extreme = { zoomScale: PENINSULA.cameraZoom * CUTSCENE.outcomeZoomScale, isPeninsulaSized: true };
         const headOf = piece => ({ x: piece.charLocation.x, y: piece.charLocation.y - CUTSCENE.shotHeadRows * rowPx * 0.5 });
         const onHer = { point: headOf(rival), ...extreme, panMs: CUTSCENE.outcomePullMs };
@@ -1447,7 +1478,7 @@ export class GameManager {
         const place = this.placeTeam(team, recruits, ringSpot);
         this.endGhostRing();
 
-        // she is back on her own roof, whole again, and stays there
+        // she is back on her own roof, whole again, and stays there while the ghosts fly (endGhostRing lets her roam again)
         rival.respawn(this.accTime);
         rival.allowedTile = this.getIsRivalGround;
         place(rival, rivalSpot);
@@ -1500,7 +1531,11 @@ export class GameManager {
                 if (!tile.getCanApplyStatus(phaseGhost)) return undefined; // a stronger power holds the tile
                 tile.updateTileStatus({ updateKey: this.accTime, tileStatus: phaseGhost, currCount: 1, dirs: [], teamIndex: this.rivalPiece.teamIndex, targetIndex: -1 });
             }
-            return { tileIndex, isOffBoard: !tile.getIsVisible(), isShaking: !!shaking && shaking.id == ghost.id, fade };
+            // turned the way it goes, as Haunt's ghost is (down is 0 degrees, as the tiles' own icons; then the same half turn)
+            const dx = ghost.state == 'launched' ? ghost.vx : ghost.x - ghost.lastX;
+            const dy = ghost.state == 'launched' ? ghost.vy : ghost.y - ghost.lastY;
+            const rotation = dx || dy ? -Math.atan2(dx, dy) * 180 / Math.PI + 180 : 0;
+            return { tileIndex, isOffBoard: !tile.getIsVisible(), isShaking: !!shaking && shaking.id == ghost.id, fade, rotation };
         }).filter(Boolean);
     }
 
@@ -1519,6 +1554,9 @@ export class GameManager {
     endGhostRing() {
         this.clearPhaseGhostStatuses();
         this.ghostRing = undefined;
+        // the ghosts gone, she roams the whole battlefield again (Jamie): her own roof was only while they flew
+        const rival = this.rivalPiece;
+        if (rival && rival.allowedTile == this.getIsRivalGround) rival.allowedTile = undefined;
         if (this.ghostRingTeammate) this.ghostRingTeammate.allowedTile = undefined;
         this.ghostRingTeammate = undefined;
     }
@@ -1562,6 +1600,16 @@ export class GameManager {
         rival.decrementHealth(this.accTime, rival.lives + rival.livesModifier);
     };
 
+    // once a fight's opening is over: every recruit in at once (Jamie), but not the one this fight is against
+    autoSummonRecruits() {
+        if (this.hasAutoSummoned || !this.autoRecruits.length || this.cutscene || this.level.isWalkingLevel || this.level.hasRecruitFollowers) return;
+        if (this.getGameResult() !== null) return;
+        this.hasAutoSummoned = true;
+        const onBoard = new Set(this.getPieces().filter(piece => piece.isRecruit && !piece.isDead).map(({ avatar }) => avatar));
+        const rivalAvatar = this.level.rival && this.level.rival.avatar;
+        this.autoRecruits.filter(avatar => avatar != rivalAvatar && !onBoard.has(avatar)).forEach(avatar => this.callRecruit(avatar));
+    }
+
     // a recruit called in to help: they fight beside the team with the powers they had as a rival
     callRecruit = (avatar) => {
         if (this.isPaused || this.cutscene || this.recruitScene || this.getGameResult() !== null) return false;
@@ -1569,8 +1617,11 @@ export class GameManager {
         if (!rivalLevel) return false;
         const piece = this.gameBoardPiecesManager.addRecruit(avatar, this.settingsManager.getAbilitiesFromElements(rivalLevel.rival.abilities));
         const player = this.gameBoardPiecesManager.getPlayerPiece();
-        const [besidePlayer] = this.gameBoardManager.getAdjacentTileIndices(player.getTileIndex()).filter(this.gameBoardManager.getIsInBounds);
-        piece.initCharLocation(true, besidePlayer || player.getTileIndex());
+        // beside the player, on a tile no one else is on (several come in at once)
+        const taken = new Set(this.getPieces().filter(other => other != piece && !other.isDead && other.isOnTiles).map(other => `${other.getTileIndex().i} ${other.getTileIndex().j}`));
+        const beside = this.gameBoardManager.getAdjacentTileIndices(player.getTileIndex()).filter(this.gameBoardManager.getIsInBounds);
+        const free = beside.find(({ i, j }) => !taken.has(`${i} ${j}`));
+        piece.initCharLocation(true, free || beside[0] || player.getTileIndex());
         return true;
     }
 
@@ -2105,7 +2156,7 @@ export class GameManager {
         this.enemyPowersAtMs = this.accTime + fewestMs + Math.random() * (mostMs - fewestMs);
         this.extras.forEach(extra => {
             extra.leave();
-            const floorTile = extra.getTileIndex();
+            const floorTile = this.getLabPortalFloorTile(extra.getTileIndex());
             const catwalkTile = this.gameBoardManager.getClosestWalkableTileToLocation({ x: extra.charLocation.x, y: catwalkY });
             const agent = this.addAgent({ standTile: catwalkTile, kit: talkerKit });
             agent.isHeldOnCatwalk = true;
@@ -2115,6 +2166,17 @@ export class GameManager {
             this.gameBoardManager.addWormhole(floorTile, portalTop, this.accTime, Infinity);
             this.catwalkAgent = agent;
         });
+    }
+
+    // the portal's floor end (Jamie): back against the floor's back wall, toward the window on the Peninsula, 'portalWallRows'
+    // rows out from it, in the column the Agent stood in
+    getLabPortalFloorTile(standTile) {
+        const { catwalkLastRow, portalWallRows = 2 } = this.level.agentDrops;
+        const board = this.gameBoardManager;
+        const floorRows = board.walkableTiles.filter(({ i, j }) => i == standTile.i && j > catwalkLastRow).map(({ j }) => j);
+        if (!floorRows.length) return standTile;
+        const tile = { i: standTile.i, j: Math.min(...floorRows) + portalWallRows };
+        return board.getIsInBounds(tile) ? tile : standTile;
     }
 
     // the kit's three powers
@@ -2481,7 +2543,7 @@ export class GameManager {
             shot,
             // drawn from their own sprite sheet, lying where they fell
             // a lying body draws a little above where it is placed: it is lowered onto the tile's ground, level with the team's feet
-            body: { x, y: y + (isStandingBeside ? CUTSCENE.besideBodyDropRows * rowStep * scale : 0), avatar, spriteSheetSrc: this.rivalPiece && this.rivalPiece.spriteSheetSrc, color: this.rivalPiece && this.rivalPiece.color },
+            body: { x, y: y + (isStandingBeside ? CUTSCENE.besideBodyDropRows * rowStep * scale : 0), avatar, spriteSheetSrc: this.rivalPiece && this.rivalPiece.spriteSheetSrc, color: this.rivalPiece && this.rivalPiece.color, isGhostForm: !!this.rivalPiece && !!this.rivalPiece.isGhostForm },
             prompt: { x: player.charLocation.x, y: player.charLocation.y - CUTSCENE.recruitButtonRows * rowStep * scale }
         };
     }
@@ -2615,6 +2677,7 @@ export class GameManager {
         this.updateTalks();
         this.updateWalkers();
         if (this.recruitScene) return;
+        this.autoSummonRecruits();
         if (this.isGhostScreamPending) this.startGhostScream();
         if (this.isShatterPending) this.startShatter();
         if (this.getIsTransforming() && !this.transformState && !this.cutscene && this.score >= this.getKillsToWin()) this.startTransformation();

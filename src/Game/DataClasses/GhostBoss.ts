@@ -18,7 +18,7 @@ export const GHOST_BOSS = {
   launchEveryMs: 1000, // then one launch about every second
   shakeMs: 700, // the ghost about to launch shakes this long first, still circling
   launchSpeedRows: 8, // a launched ghost's speed, in rows a second
-  turnPerSecond: 2.2, // how hard a launched ghost turns after its target, in radians a second
+  turnPerSecond: 0.8, // how hard a launched ghost turns after its target, in radians a second (was 2.2: too sure to hit, Jamie wants them dodgeable)
   launchedMaxMs: 3200, // a launched ghost that misses fades away after this long
   hitRows: 0.6, // how close a ghost's path comes to someone to hit them (it can move several tiles a tick)
   ghostLives: 1, // her health as a ghost, in the last phase

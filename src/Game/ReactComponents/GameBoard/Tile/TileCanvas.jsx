@@ -311,14 +311,17 @@ const getSeaIcon = (name, color, onLoad) => {
   seaTinted[key] = canvas;
   return canvas;
 };
-const drawSeaIcon = (ctx, name, color, center, radius, lineScale, redraw) => {
+const drawSeaIcon = (ctx, name, color, center, radius, lineScale, redraw, rotation = 0) => {
   const icon = getSeaIcon(name, color, redraw);
   if (!icon) return;
   const size = radius * 2 * TILE_LOOK.iconSizeRatio * 1.25;
   ctx.save();
   ctx.shadowColor = "black";
   ctx.shadowBlur = 3 * lineScale;
-  ctx.drawImage(icon, center.x - size / 2, center.y - size / 2, size, size);
+  // turned the way it swims
+  ctx.translate(center.x, center.y);
+  ctx.rotate((rotation * Math.PI) / 180);
+  ctx.drawImage(icon, -size / 2, -size / 2, size, size);
   ctx.restore();
 };
 
@@ -553,7 +556,7 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
         if (color) {
           if (!isHighlighted) drawSprite(ctx, getStatusSprite(pieceColor || color), center, pixelRatio);
           const icon = { iconClass: tile.getActiveIcon(), rotation: tile.getRotation() };
-          if (tile.cast.seaIcon) drawSeaIcon(ctx, tile.cast.seaIcon, tile.cast.seaColor, center, radius, lineScale, draw);
+          if (tile.cast.seaIcon) drawSeaIcon(ctx, tile.cast.seaIcon, tile.cast.seaColor, center, radius, lineScale, draw, icon.rotation);
           else drawIcon(ctx, icon, center, radius, iconColor, lineScale);
           if (icon.iconClass && !tile.teleportTileStatus) nextIconTiles.set(key, { center, icon, color: iconColor });
         }
@@ -564,7 +567,7 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
       iconTiles = nextIconTiles;
       drawFades();
       // the ghost boss's ring: its ghosts are on tiles, some where there are none to walk on (those show only while a ghost is there)
-      (gameManager.getPhaseGhostTiles ? gameManager.getPhaseGhostTiles() : []).forEach(({ tileIndex, isOffBoard, isShaking, fade }) => {
+      (gameManager.getPhaseGhostTiles ? gameManager.getPhaseGhostTiles() : []).forEach(({ tileIndex, isOffBoard, isShaking, fade, rotation = 0 }) => {
         const center = getTileCenter(grid, tileIndex);
         ctx.globalAlpha = fade;
         if (isOffBoard) {
@@ -577,7 +580,7 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
         drawSprite(ctx, getStatusSprite(TILE_LOOK.phaseGhostColor), center, pixelRatio);
         // the next to launch shakes
         const shake = isShaking ? (Math.random() - 0.5) * TILE_LOOK.phaseGhostShake : 0;
-        drawIcon(ctx, { iconClass: "fa-snapchat-ghost", rotation: shake * 12 }, { x: center.x + shake, y: center.y }, radius, TILE_LOOK.phaseGhostColor, lineScale);
+        drawIcon(ctx, { iconClass: "fa-snapchat-ghost", rotation: rotation + shake * 12 }, { x: center.x + shake, y: center.y }, radius, TILE_LOOK.phaseGhostColor, lineScale);
       });
       ctx.globalAlpha = 1;
 

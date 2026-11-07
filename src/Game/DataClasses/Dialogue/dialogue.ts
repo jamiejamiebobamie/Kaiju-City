@@ -70,8 +70,10 @@ export const getIntroLines = (sceneId: string) => getDialogueScene(sceneId).line
 export const getSpokenLines = (sceneId: string) => getDialogueScene(sceneId).lines.map(({ speaker, text }: any) => ({ speaker, text: text || '' }));
 
 // one line, by name and words
-export const getDialogueLine = (sceneId: string) => {
-  const [line] = getDialogueScene(sceneId).lines as Array<any>;
+// the scene's first line, or its line 'index' if it has one (one line per phase: the Rooftop's scream)
+export const getDialogueLine = (sceneId: string, index = 0) => {
+  const lines = getDialogueScene(sceneId).lines as Array<any>;
+  const line = lines[index] || lines[0];
   return { name: line.speaker, text: line.text };
 };
 

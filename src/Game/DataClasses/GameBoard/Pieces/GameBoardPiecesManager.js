@@ -197,7 +197,9 @@ export class GameBoardPiecesManager {
     spawnDeathPieceAtLocation = (charLocation, avatar, tileIndex, color, pieceIndex, throwVec, spriteSheetSrc) => {
         const zIndex = this.gameManagerProxy.getFlattenedArrayIndex(tileIndex);
         // a person's body is thrown. 'body' is set going by the game manager, which knows the level's scale.
-        this.deathPieces.push({ key: `death ${pieceIndex} ${this.deathPieces.length}`, charLocation, avatar, zIndex, color, pieceIndex, throwVec, spriteSheetSrc, body: undefined });
+        // the ghost boss down in her ghost form: her body is a ghost's too (Jamie)
+        const isGhostForm = !!this.pieces[pieceIndex] && !!this.pieces[pieceIndex].isGhostForm;
+        this.deathPieces.push({ key: `death ${pieceIndex} ${this.deathPieces.length}`, charLocation, avatar, zIndex, color, pieceIndex, throwVec, spriteSheetSrc, body: undefined, isGhostForm });
     }
 
     getIsTeamDamaged = (pieceIndex) => {

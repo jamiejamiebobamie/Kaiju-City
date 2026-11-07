@@ -400,13 +400,25 @@
       ]
     },
     "rooftop.ghostScream": {
-      "label": "Rooftop: brought to zero, before her scream",
+      "label": "Rooftop: brought to zero, before her scream (one line for each phase)",
       "lines": [
         {
           "speaker": "Punk Girl",
           "text": "Protect me, ancestors!",
           "id": "rooftop.ghostScream.0",
           "note": "jamie"
+        },
+        {
+          "speaker": "Punk Girl",
+          "text": "Ancestors, rise again! Guard your blood!",
+          "id": "rooftop.ghostScream.1",
+          "note": "draft"
+        },
+        {
+          "speaker": "Punk Girl",
+          "text": "Every soul in this ground... protect me!",
+          "id": "rooftop.ghostScream.2",
+          "note": "draft"
         }
       ]
     },

@@ -297,7 +297,8 @@ const SequenceCanvas = ({ element, isActive, isPaused, style }) => {
   Touched, it runs through all of its frames, flares, and is gone.
 */
 // 'isSettled': drawn fresh partway through the fight (the split screen's second view): a part already touched is just gone, with no flash
-const KaijuPart = ({ element, activePhases, style, isSettled = false }) => {
+// 'isCopy': a piece of it drawn over a foreground layer (overFront): the screen flashes once, for the part itself
+const KaijuPart = ({ element, activePhases, style, isSettled = false, isCopy = false }) => {
   const { src, width, height, seconds, delaySeconds = 0, touchPhase, brightPhase, flashColor, glowColor } = element;
   const isTouched = !!touchPhase && activePhases.includes(touchPhase);
   const isBright = !!brightPhase && activePhases.includes(brightPhase);
@@ -340,7 +341,7 @@ const KaijuPart = ({ element, activePhases, style, isSettled = false }) => {
           }} />
         </PartFrame>
       )}
-      {isTouched && !isSettled && !!flashColor && createPortal(<ScreenFlash style={{ background: flashColor }} />, document.querySelector("[data-play-screen]") || document.body)}
+      {isTouched && !isSettled && !isCopy && !!flashColor && createPortal(<ScreenFlash style={{ background: flashColor }} />, document.querySelector("[data-play-screen]") || document.body)}
     </>
   );
 };
@@ -795,13 +796,15 @@ export const SceneElements = ({ level, activePhases, isPaused, onHotspot, isDial
       if (type == "part") {
         const part = <KaijuPart key={id} element={element} activePhases={activePhases} style={style} isSettled={isSettled} />;
         if (!element.overFront) return part;
-        // where the part overlaps a foreground layer, a copy of that piece of it is drawn over the layer
-        const { box: [left, top, right, bottom], sortY: frontSortY } = element.overFront;
-        const clipPath = `inset(${top - y}px ${x + width - right}px ${y + height - bottom}px ${left - x}px)`;
+        // where the part overlaps a foreground layer, a copy of that piece of it is drawn over the layer (one or several)
+        const fronts = Array.isArray(element.overFront) ? element.overFront : [element.overFront];
         return (
           <React.Fragment key={id}>
             {part}
-            <KaijuPart element={element} activePhases={activePhases} isSettled={isSettled} style={{ ...style, zIndex: getSortZIndex(level, frontSortY), clipPath, pointerEvents: "none" }} />
+            {fronts.map(({ box: [left, top, right, bottom], sortY: frontSortY }, k) => {
+              const clipPath = `inset(${top - y}px ${x + width - right}px ${y + height - bottom}px ${left - x}px)`;
+              return <KaijuPart key={k} element={element} activePhases={activePhases} isSettled={isSettled} isCopy style={{ ...style, zIndex: getSortZIndex(level, frontSortY), clipPath, pointerEvents: "none" }} />;
+            })}
           </React.Fragment>
         );
       }

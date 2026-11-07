@@ -1128,7 +1128,7 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
     const { key, avatar, charLocation, color, zIndex, body } = death;
     return avatar == 'kaiju' ?
       <ExplodingKaiju key={key} charLocation={charLocation} color={color} zIndex={zIndex} />
-      : <DeadPlayer key={key} avatar={avatar} pieceScale={pieceScale} charLocation={charLocation} body={body} spriteSheetSrc={death.spriteSheetSrc} color={color} zIndex={zIndex} />;
+      : <DeadPlayer key={key} avatar={avatar} pieceScale={pieceScale} charLocation={charLocation} body={body} spriteSheetSrc={death.spriteSheetSrc} color={color} zIndex={zIndex} ghost={death.isGhostForm ? "ghost" : undefined} />;
   });
 
   const foregroundLayers = level.foregroundLayers.map(({ src, x, y, width, height, sortY }) => (
@@ -1152,7 +1152,7 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
     <World ref={isMain ? worldRef : rightWorldRef} data-game-world={isMain ? "" : undefined} style={{ width: `${world.width}px`, height: `${world.height}px`, opacity: isPaused ? 0 : 1, transition: "opacity 0.3s", ...(!isMain && splitCameras ? { transform: splitCameras.right.getTransform() } : {}) }}>
         {levelLayers}
         {foregroundLayers}
-        <SceneElements level={level} activePhases={activePhases} isPaused={isPaused} onHotspot={onHotspot} isDialogueLog={getIsDialogueLog()} isSettled={!isMain} />
+        <SceneElements level={level} activePhases={activePhases} isPaused={isPaused} onHotspot={onHotspot} isDialogueLog={getIsDialogueLog()} isSettled={!isMain || !!gameManager.isRetry} />
         {isSlowMotion && !recruitScene && <WinDimmer />}
         {recruitScene && (recruitScene.body.spriteSheetSrc ? (
           // their own sprite, lying still on their side: the same body a ragdoll comes to rest as
@@ -1163,6 +1163,7 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
             color={recruitScene.body.color}
             zIndex={getSortZIndex(level, recruitScene.body.y) - 20001}
             body={getRestingBody(recruitScene.body, pieceScale, grid.rowStep * grid.scale)}
+            ghost={recruitScene.body.isGhostForm ? "toBody" : undefined} // her ghost blinks away, and she lies there as herself
           />
         ) : <RecruitBody src={`/levels/dead/${recruitScene.body.avatar}.png`} style={{
           left: `${recruitScene.body.x}px`,

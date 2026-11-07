@@ -24,7 +24,8 @@ export const CAMERA = {
   panTransitionMs: 200, // smooths the pan between game ticks
   // tense (a sea creature after the player, Jamie): in closer than the usual zoom, the zoom changing quicker, and the
   // view keeping the player near its middle, so it pans with them sooner
-  tense: { zoomIn: 1.3, maxZoomStep: 0.07, edgeMargin: 0.47 }
+  // (Jamie: further in still) it stays in close, not easing out to fit the creature in: it only leans its way
+  tense: { zoomIn: 1.6, maxZoomStep: 0.07, edgeMargin: 0.47 }
 };
 
 // the camera pulling out to show the whole scene at a key moment
@@ -118,7 +119,7 @@ export class Camera {
     const easeOut = Math.max((reach - CAMERA.lookZoomStart) / (1 - CAMERA.lookZoomStart), 0);
     const topZoom = this.baseZoom * (isTense ? CAMERA.tense.zoomIn : 1);
     const lookZoom = topZoom * (1 - CAMERA.lookZoomOut * easeOut);
-    const enemyZoom = enemy ? this.getZoomToShow(player, enemy, topZoom) : this.baseZoom;
+    const enemyZoom = enemy && isTense ? topZoom : enemy ? this.getZoomToShow(player, enemy, topZoom) : this.baseZoom;
     const targetZoom = Math.max(Math.min(lookZoom, enemyZoom), this.minZoom);
     const maxStep = this.zoom * (isTense ? CAMERA.tense.maxZoomStep : CAMERA.maxZoomStep);
     this.setZoom(this.zoom + Math.max(Math.min(targetZoom - this.zoom, maxStep), -maxStep));

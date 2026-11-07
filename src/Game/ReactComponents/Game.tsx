@@ -217,6 +217,13 @@ const CardStack = styled.div`
   gap: 0.8cqw;
 `;
 
+// an unlock's card: at the top right of the screen (Jamie)
+const UnlockStack = styled(CardStack)`
+  top: 3cqw;
+  bottom: auto;
+  z-index: 2147483646;
+`;
+
 const toastIn = keyframes`
   from { opacity: 0; transform: translateX(30%); }
   to { opacity: 1; transform: translateX(0); }
@@ -460,6 +467,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const [isMouseLook, setIsMouseLook] = useState(true);
   const [isEnemyZoom, setIsEnemyZoom] = useState(true);
   const [isTeamColors, setIsTeamColors] = useState(true); // a playtest: statuses in their side's color
+  const [isAutoRecruits, setIsAutoRecruits] = useState(true); // dev toggle (Jamie): every recruit in every fight, and walking with the team; no call buttons
   const [isTrainedNpcs, setIsTrainedNpcs] = useState(false); // off by default (Jamie, 2026-11-06). NPCs play by the trained model in public/models in fights with no Kaiju; against a Kaiju they hand back to the rules
   const [isDevHidden, setIsDevHidden] = useState(false); // the dev tools tucked away, to see the game as it will ship
   const [npcAggression, setNpcAggression] = useState(DEFAULT_AGGRESSION); // the trained NPCs', 0 careful to 1 reckless
@@ -541,7 +549,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     settingsManager.setIsTeammate(isTeammate);
 
     setIsDialogueLog(isMonitorAlways); // in the monitor, conversations go to the log beside it
-    const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival, killsToWin, returnSpot, isRetry });
+    const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival, killsToWin, returnSpot, isRetry, autoRecruits: isAutoRecruits ? getCallableRecruits() : [] });
     gm.initGame();
     gameManager.current = gm;
     if (import.meta.env.DEV) (window as any).__kaijuGame = gm; // dev only: a handle for scripted browser checks
@@ -650,6 +658,11 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   // after a loss: the same fight again, without the call or the opening words a second time
   const retrySection = index => {
     const { levelId: sectionLevelId, kills } = CAMPAIGN_SECTIONS[index];
+    // lost to the teammate's Kaiju (or already in that fight): again from its start, without the Kaiju or the words (Jamie)
+    if (level.id == "finalTurnFight" || (gameManager.current && gameManager.current.finalTurnState == "fighting")) {
+      showFinalTurnFight();
+      return;
+    }
     endMatch();
     resetGameUi();
     setMatchEnd(undefined);
@@ -657,6 +670,19 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     setFadeCards(undefined);
     setRadioLines(undefined);
     startMatch(LEVELS[sectionLevelId], false, kills, { isRetry: true });
+  };
+
+  // the last fight, from the teammate's turn: a Retry after losing it, and the dev list's jump
+  const showFinalTurnFight = () => {
+    endMatch();
+    resetGameUi();
+    setCampaignIndex(CAMPAIGN_SECTIONS.length - 1);
+    setLevelId("finalTurnFight");
+    setMatchEnd(undefined);
+    setRecruitChoice(undefined);
+    setFadeCards(undefined);
+    setRadioLines(undefined);
+    startMatch(LEVELS.finalTurnFight, false, undefined, { isRetry: true });
   };
 
   // goes back through the ability picker, which returns to this section's call
@@ -1029,15 +1055,17 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               <select aria-label="Level" value={level.id} onChange={e => { switchLevel(e.target.value); e.target.blur(); }}>
                 {levelOptions}
               </select>
-              <select aria-label="Section" value={campaignIndex ?? ""} onChange={e => {
-                // dev: "Credits" plays the ending from "You saved the city!" (Jamie)
+              <select aria-label="Section" value={level.id == "finalTurnFight" ? "finalTurn" : campaignIndex ?? ""} onChange={e => {
+                // dev: "Credits" plays the ending from "You saved the city!"; the teammate's fight on its own (Jamie)
                 if (e.target.value == "credits") setMatchEnd({ title: "You saved the city!", buttons: [], isFinale: true });
+                else if (e.target.value == "finalTurn") showFinalTurnFight();
                 else showSection(Number(e.target.value));
                 e.target.blur();
               }}>
                 {campaignIndex === null && <option value="">Campaign section</option>}
                 {CAMPAIGN_SECTIONS.map(({ label }, index) => <option key={label} value={index}>{index + 1}. {label}</option>)}
-                <option value="credits">{CAMPAIGN_SECTIONS.length + 1}. Credits</option>
+                <option value="finalTurn">{CAMPAIGN_SECTIONS.length + 1}. Final battle: the teammate</option>
+                <option value="credits">{CAMPAIGN_SECTIONS.length + 2}. Credits</option>
               </select>
               {campaignIndex !== null && !getIsLastSection(campaignIndex) && <button onClick={() => showSection(campaignIndex + 1)}>Skip section</button>}
               {level.phases.map(({ id, label }) => (
@@ -1115,6 +1143,9 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               </label>
               <label>
                 <input type="checkbox" checked={isTrainedNpcs} onChange={() => setIsTrainedNpcs(!isTrainedNpcs)} /> Trained NPCs
+              </label>
+              <label>
+                <input type="checkbox" checked={isAutoRecruits} onChange={() => setIsAutoRecruits(!isAutoRecruits)} /> Recruits auto-summoned
               </label>
               {isTrainedNpcs && (
                 <label>
@@ -1207,7 +1238,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 </EndScreen>
               )}
               {isWiping && <ScreenClip><BlackWipe /></ScreenClip>}
-              {unlockMessage && <CardStack><UnlockCard style={{ position: "static", transform: "none" }}><UnlockPortrait src={unlockImage} />{unlockMessage}</UnlockCard></CardStack>}
+              {unlockMessage && <UnlockStack><UnlockCard style={{ position: "static", transform: "none" }}><UnlockPortrait src={unlockImage} />{unlockMessage}</UnlockCard></UnlockStack>}
               {fadeCards && <FadeToBlack><CardStack>{fadeCards.map(({ label, image, power }, index) => (
                 <Toast key={label} style={{ animationDelay: `${0.4 + index * 0.45}s` }}>
                   {power ? (() => {
@@ -1220,7 +1251,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               {campaignIndex !== null && level.isWalkingLevel && !level.sites && !level.exit && !level.walkIn && !isEditingTiles && (
                 <ContinueButton data-enter onClick={() => showSection(campaignIndex + 1)}>Continue</ContinueButton>
               )}
-              {!level.isWalkingLevel && !isEditingTiles && !recruitScene && winner === null && getCallableRecruits().length > 0 && (
+              {!isAutoRecruits && !level.isWalkingLevel && !isEditingTiles && !recruitScene && winner === null && getCallableRecruits().length > 0 && (
                 <RecruitCalls key={matchCount} recruits={getCallableRecruits()} onCall={avatar => !!gameManager.current && gameManager.current.callRecruit(avatar)} isDisabled={isPaused} />
               )}
             </PlayWindow>

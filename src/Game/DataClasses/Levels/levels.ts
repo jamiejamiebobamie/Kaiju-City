@@ -184,7 +184,7 @@ export type LevelConfig = {
   shakePhases: Array<string>; // phases that shake the whole scene
   rival?: Rival;
   transformScene?: string; // after the fight is won, the teammate transforms (dialogue.json)
-  finalTurn?: { scene: string; kaijuLives: number; coolDownMs: number; castEveryMs: number }; // the last fight: once its Kaiju are beaten, the teammate turns Kaiju
+  finalTurn?: { scene: string; kaijuLives: number; coolDownMs: number; castEveryMs: number; isStartTurned?: boolean }; // the last fight: once its Kaiju are beaten, the teammate turns Kaiju
   linkWalls?: Array<{ tile: TileIndex; point: { x: number; y: number }; behind: { x: number; y: number }; outDir: { x: number; y: number }; outTile?: TileIndex }>; // where a tile link's walk-through goes out of sight (and, maybe, the tile the walk out ends on)
   giantKaiju?: { // the final battle (GiantKaiju.ts): the teammate as a giant Kaiju, marching up the Peninsula
     route: Array<{ x: number; y: number }>; // from the foot of the Peninsula to the city, in the big map's pixels
@@ -400,6 +400,9 @@ const RAPID_TRANSIT_SCENE = {
   ]
 };
 
+// the front railing's overlay: where it sits, and what it is in front of (anyone standing above its bottom rail)
+const ROOFTOP_RAILING = { x: 280, y: 570, sortY: 604 };
+
 const ROOFTOP_SCENE = {
   wideShots: { headTouched: PART_TOUCH_HOLD_MS },
   // brought to zero, she screams, the team is pulled to the middle of the graveyard roof (where the Kaiju head was),
@@ -430,7 +433,8 @@ const ROOFTOP_SCENE = {
   defaultPhases: ['head'],
   sceneElements: [
     { id: 'head', type: 'part' as const, phase: 'head', touchPhase: 'headTouched', src: '/levels/rooftop/head-spritesheet.png', x: 255, y: 233, width: 959, height: 519, sortY: 573, seconds: 4.5, flashColor: '#ff1a0d',
-      overFront: { box: [255, 233, 515, 376], sortY: ABOVE_CHARACTERS + 1 } } // the head is in front of the crane where they overlap
+      // the head is in front of the crane, and of the railing, where they overlap
+      overFront: [{ box: [255, 233, 515, 376], sortY: ABOVE_CHARACTERS + 1 }, { box: [255, ROOFTOP_RAILING.y, 1214, ROOFTOP_RAILING.y + 36], sortY: ROOFTOP_RAILING.sortY + 1 }] }
   ]
 };
 
@@ -708,6 +712,7 @@ const LAB_SCENE = {
     dropIntervalMs: 7000,
     catwalkY: 130,
     catwalkLastRow: 6,
+    portalWallRows: 2, // the Reaper's portal: this many rows out from the floor's back wall (Jamie)
     portalColumns: 2,
     floorY: 450,
     // four in all, with the talker
@@ -740,7 +745,9 @@ const LEVEL_BUILDERS: Record<string, (file) => LevelConfig> = {
   rapidTransit: file => ({ ...buildLevel(file, 'Rapid Transit Station', '#57E931'), ...RAPID_TRANSIT_SCENE }),
   rooftop: file => ({
     ...buildLevel(file, 'Rooftop Cemetary', '#880808', [
-      { src: '/levels/rooftop-crane.png', x: 0, y: 0, width: 515, height: 376, sortY: ABOVE_CHARACTERS }
+      { src: '/levels/rooftop-crane.png', x: 0, y: 0, width: 515, height: 376, sortY: ABOVE_CHARACTERS },
+      // the roof's front railing, cut from the scene (Jamie): anyone behind it shows through the gaps between its bars
+      { src: '/levels/rooftop-railing.png', x: ROOFTOP_RAILING.x, y: ROOFTOP_RAILING.y, width: 870, height: 36, sortY: ROOFTOP_RAILING.sortY }
     ]),
     ...ROOFTOP_SCENE
   }),
@@ -768,8 +775,8 @@ const LEVEL_BUILDERS: Record<string, (file) => LevelConfig> = {
   street: file => ({
     ...buildLevel(file, 'Street', '#7a8a3a', [], true),
     ...STREET_SCENE,
-    // on the tile of the hazmat worker sweeping by the van, once the Agent has had his say
-    unlock: { id: 'hazmat', label: 'Hazmat worker', image: '/levels/portraits/hazmat.png', spot: { x: 740, y: 600 }, afterMs: STREET_TALK_MS },
+    // on the tile of the hazmat worker sweeping by the van: there to be found from the start, before the Agent's words too (Jamie)
+    unlock: { id: 'hazmat', label: 'Hazmat worker', image: '/levels/portraits/hazmat.png', spot: { x: 740, y: 600 } },
     exit: { spot: { x: 112, y: 690 }, afterMs: STREET_TALK_MS, isShownWhenOpen: true }, // after the Agent's words, and the camera shows it
     skillOnLeave: 'glass' // the scientists' new power, Teleport, from the Agent's words: it opens as the team leaves (picked up at the Lab)
   })
@@ -1001,6 +1008,16 @@ LEVELS.finalPeninsula = {
   id: 'finalPeninsula',
   name: 'Final battle (Peninsula)',
   finalTurn: { scene: 'peninsula.finalTurn', kaijuLives: 10, coolDownMs: 6000, castEveryMs: 1200 } // each power waits coolDownMs; one of them every castEveryMs
+};
+
+// the same last fight from the teammate's turn on (Jamie): what Retry plays after a loss to their Kaiju, and a dev jump.
+// no Kaiju come in, and no words: the teammate is a Kaiju from the start.
+LEVELS.finalTurnFight = {
+  ...LEVELS.finalPeninsula,
+  id: 'finalTurnFight',
+  name: 'Final battle (the teammate)',
+  kaijuEntry: undefined,
+  finalTurn: { ...LEVELS.finalPeninsula.finalTurn, isStartTurned: true }
 };
 LEVELS.finalBattle = buildFinalBattle();
 

@@ -3129,7 +3129,7 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     displayLookup: "abilityLove",
     element: "love",
 
-    rotationShift: 'add180',
+    rotationShift: 'doNotRotate', // the red cross stays upright (Jamie)
 
     activeIcon: "fa-plus",
     passiveIcon: "fa-gratipay",
@@ -3271,6 +3271,7 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     displayLookup: "abilityWater",
     element: "seaGhost",
     activeIcon: "", // each one is a sea creature of its own (its cast's 'seaIcon')
+    rotationShift: 'add180', // turned the way it swims, as Haunt's ghost is (Jamie)
     passiveIcon: "",
     activeName: "Sea Creature",
     activeDesc: "",
@@ -3296,6 +3297,7 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     displayLookup: "abilityWater",
     element: "flood",
     activeIcon: "fa-tint",
+    rotationShift: 'returnValue', // the drop points the way the water runs (down is 0 degrees: the drop's own point)
     passiveIcon: "",
     activeName: "Flood",
     activeDesc: "",
