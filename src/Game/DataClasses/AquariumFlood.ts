@@ -22,6 +22,10 @@ export const AQUARIUM_FLOOD = {
   // a panel breaking (Jamie): a gush of water out of it, which swirls round in front of the tank (out, and back in on
   // itself) for 'swirlMs', then runs off with the rest. 'count' parcels, within 'rows' of the tank's pour tile.
   burst: { count: 14, rows: 3, swirlMs: 3500 },
+  // the gush runs away from the glass for 'outMs'; then its edges curl back and in, like water (Jamie): looking the way
+  // it runs, the right edge turns back round a point out to its right (counterclockwise, for a gush running down the
+  // screen), the left edge the other way. the middle runs on. 'curlRows': how wide the curls are. 'middleRows': the middle.
+  wave: { outMs: 900, curlRows: 1.6, middleRows: 0.8 },
   drainMs: 9000, // once the pouring stops, the water left drains away over this long
   flowStyle: 'flow' as 'flow' | 'bounce', // 'flow': runs downhill, spreads sideways and pools. 'bounce': runs straight and bounces off the edges, like Wildfire
   bounceLifeMs: 7000, // a bouncing parcel of water lasts this long
@@ -30,12 +34,23 @@ export const AQUARIUM_FLOOD = {
   ghostEveryMs: 1800, // a sea creature comes out of a broken tank this often while the tanks pour (and one with each wave)
   healEveryMs: 1400, // up on the top floor, she heals one health this often until she is whole
   // each sea creature in one color of its own, from nature (Jamie)
+  // (angler fish, sea urchin, shark fin, shrimp and sperm whale are out: Jamie, 2026-11-06)
   ghostIcons: {
-    'angler-fish': '#6b5a48', clownfish: '#ff7f27', crab: '#d9442b', dolphin: '#8aa4b8', eel: '#6b7b3a', 'giant-squid': '#c2524a',
+    clownfish: '#ff7f27', crab: '#d9442b', dolphin: '#8aa4b8', eel: '#6b7b3a', 'giant-squid': '#c2524a',
     jellyfish: '#e6a8d7', 'kraken-tentacle': '#8e3f5a', 'manta-ray': '#3d4e5c', octopus: '#e0703a', 'sea-serpent': '#2f7a5a',
-    'sea-star': '#f28c28', 'sea-turtle': '#5a8f3c', 'sea-urchin': '#4b2a5c', seahorse: '#f2c14e', 'shark-fin': '#7d8a96',
-    'shark-jaws': '#9aa7b0', shrimp: '#f4917a', 'sperm-whale': '#5b6770', squid: '#e8b4a0', 'tropical-fish': '#2fa4e7'
-  } as Record<string, string>
+    'sea-star': '#f28c28', 'sea-turtle': '#5a8f3c', seahorse: '#f2c14e', 'shark-jaws': '#9aa7b0', squid: '#e8b4a0', 'tropical-fish': '#2fa4e7'
+  } as Record<string, string>,
+  // which way each one's head points in its picture, in screen degrees (0 right, 90 down), and how it turns as it swims:
+  // 'side': seen from the side; turned so the head leads, and mirrored when going left, so it is never upside down.
+  // 'free': seen from above; turned any way. 'mirror': only mirrored when going left. 'none': not turned.
+  ghostPoses: {
+    clownfish: { turn: 'side', head: -30 }, dolphin: { turn: 'side', head: -50 }, eel: { turn: 'side', head: 0 },
+    'sea-serpent': { turn: 'side', head: 0 }, 'sea-turtle': { turn: 'side', head: 0 }, 'tropical-fish': { turn: 'side', head: 0 },
+    'giant-squid': { turn: 'free', head: -90 }, jellyfish: { turn: 'free', head: -90 }, 'manta-ray': { turn: 'free', head: -45 },
+    octopus: { turn: 'free', head: -90 }, squid: { turn: 'free', head: -135 },
+    seahorse: { turn: 'mirror', head: 0 },
+    crab: { turn: 'none', head: 0 }, 'sea-star': { turn: 'none', head: 0 }, 'kraken-tentacle': { turn: 'none', head: 0 }, 'shark-jaws': { turn: 'none', head: 0 }
+  } as Record<string, { turn: string; head: number }>
 };
 
 type Tile = { i: number; j: number };
@@ -50,7 +65,8 @@ export type FloodBoard = {
 };
 
 // 'step': its last move, in pixels (the way its water runs, for the icon). 'swirl': circling a broken tank for a while.
-type Parcel = { tile: Tile; dir: number; bornMs: number; dryAtMs: number; step?: Spot; swirl?: { center: Spot; untilMs: number; sense: number } };
+type Wave = { away: Spot; axis: Spot; curlAtMs: number; untilMs: number };
+type Parcel = { tile: Tile; dir: number; bornMs: number; dryAtMs: number; step?: Spot; swirl?: { center: Spot; untilMs: number; sense: number }; wave?: Wave };
 
 export type SeaGhostSpawn = { source: Tile; icon: string; color: string };
 
@@ -103,8 +119,9 @@ export class AquariumFlood {
     return [...this.water.values()].map(({ tile, step }) => ({ tile, step }));
   }
 
-  // a panel breaks: a gush of water around its pour tile, swirling round in front of it for a while
-  burst(source: Tile) {
+  // a panel breaks: a gush of water around its pour tile. 'away': the way it runs off the glass (unit). without it, it only
+  // swirls round in front of the tank.
+  burst(source: Tile, away?: Spot) {
     const { count, rows, swirlMs } = AQUARIUM_FLOOD.burst;
     const center = this.board.getSpot(source);
     const reach = rows * this.rowPx;
@@ -115,7 +132,10 @@ export class AquariumFlood {
     for (let k = 0; k < queue.length && added < count; k += 1) {
       const tile = queue[k];
       if (!this.water.has(key(tile)) && this.board.getIsWaterTile(tile)) {
-        this.water.set(key(tile), { tile, dir: Math.floor(this.random() * 6), bornMs: this.ms, dryAtMs: this.getDryAt(this.ms), swirl: { center, untilMs: this.ms + swirlMs, sense } });
+        const motion = away
+          ? { wave: { away, axis: center, curlAtMs: this.ms + AQUARIUM_FLOOD.wave.outMs, untilMs: this.ms + swirlMs } }
+          : { swirl: { center, untilMs: this.ms + swirlMs, sense } };
+        this.water.set(key(tile), { tile, dir: Math.floor(this.random() * 6), bornMs: this.ms, dryAtMs: this.getDryAt(this.ms), ...motion });
         added += 1;
       }
       this.board.getNeighbors(tile).forEach(next => {
@@ -195,7 +215,25 @@ export class AquariumFlood {
       const free = this.board.getNeighbors(parcel.tile).filter(tile => this.board.getIsWaterTile(tile) && !this.water.has(key(tile)));
       if (!free.length) return;
       let next: Tile | undefined;
-      if (parcel.swirl && this.ms < parcel.swirl.untilMs) {
+      // a gush off the glass: it runs away from it; then its edges curl back and in (each its own way round), the middle on
+      if (parcel.wave && this.ms < parcel.wave.untilMs && !parcel.swirl) {
+        const { away, axis, curlAtMs, untilMs } = parcel.wave;
+        const right = { x: away.y, y: -away.x }; // its right edge as seen on screen: running down the screen, the screen's right
+        const side = (here.x - axis.x) * right.x + (here.y - axis.y) * right.y;
+        const { curlRows, middleRows } = AQUARIUM_FLOOD.wave;
+        if (this.ms >= curlAtMs && Math.abs(side) > middleRows * this.rowPx) {
+          const out = Math.sign(side);
+          // the curl's middle is out beyond the edge; seen on screen, the right edge goes round counterclockwise
+          parcel.swirl = { center: { x: here.x + right.x * out * curlRows * this.rowPx, y: here.y + right.y * out * curlRows * this.rowPx }, untilMs, sense: out > 0 ? -1 : 1 };
+        } else {
+          const along = (tile: Tile) => { const spot = this.board.getSpot(tile); const dx = spot.x - here.x; const dy = spot.y - here.y; const d = Math.hypot(dx, dy) || 1; return (dx * away.x + dy * away.y) / d; };
+          next = free.reduce((best, tile) => along(tile) > along(best) ? tile : best);
+          if (along(next) <= 0) return;
+        }
+      }
+      if (next) {
+        // on its way off the glass
+      } else if (parcel.swirl && this.ms < parcel.swirl.untilMs) {
         // round the broken tank: the way across its radius, kept about as far out (a little in if it has drifted out)
         const { center, sense } = parcel.swirl;
         const out = { x: here.x - center.x, y: here.y - center.y };

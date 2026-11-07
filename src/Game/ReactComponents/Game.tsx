@@ -28,6 +28,7 @@ import { useKeyPress } from "Utils/utils";
 import { ABILITY_KEY_CODES, GAME_TICK, PIECES_INFO, TILE_STATUSES_AND_ABILITY_DATA } from "Utils/gameState";
 import { FullscreenPage } from "Components/FullscreenPage.jsx";
 import { GameManager, GameResult } from '../DataClasses/GameManager';
+import { getActiveHotspots } from "./GameBoard/SceneElements";
 import { addUnlock, getBattlegroundUnlockId, getRecruitChoices, getWonBattlegrounds, resetUnlocks, saveRecruitChoice } from '../DataClasses/Unlocks';
 
 // the map walks show the battlegrounds already won on, from whatever was saved
@@ -467,6 +468,9 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const [isMouseLook, setIsMouseLook] = useState(true);
   const [isEnemyZoom, setIsEnemyZoom] = useState(true);
   const [isTeamColors, setIsTeamColors] = useState(true); // a playtest: statuses in their side's color
+  // who is recruited this playthrough (Jamie: React state, not saved). The dev panel switches each on or off.
+  const [recruitedAvatars, setRecruitedAvatars] = useState<Array<string>>([]);
+  const toggleRecruited = avatar => setRecruitedAvatars(list => list.includes(avatar) ? list.filter(id => id != avatar) : [...list, avatar]);
   const [isAutoRecruits, setIsAutoRecruits] = useState(true); // dev toggle (Jamie): every recruit in every fight, and walking with the team; no call buttons
   const [isTrainedNpcs, setIsTrainedNpcs] = useState(false); // off by default (Jamie, 2026-11-06). NPCs play by the trained model in public/models in fights with no Kaiju; against a Kaiju they hand back to the rules
   const [isDevHidden, setIsDevHidden] = useState(false); // the dev tools tucked away, to see the game as it will ship
@@ -549,7 +553,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     settingsManager.setIsTeammate(isTeammate);
 
     setIsDialogueLog(isMonitorAlways); // in the monitor, conversations go to the log beside it
-    const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival, killsToWin, returnSpot, isRetry, autoRecruits: isAutoRecruits ? getCallableRecruits() : [] });
+    const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival, killsToWin, returnSpot, isRetry, autoRecruits: isAutoRecruits ? getCallableRecruits() : [], recruits: recruitedAvatars });
     gm.initGame();
     gameManager.current = gm;
     if (import.meta.env.DEV) (window as any).__kaijuGame = gm; // dev only: a handle for scripted browser checks
@@ -614,11 +618,23 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     if (unlockMessage) playUnlockDing();
   }, [unlockMessage]);
 
-  // in dev, everyone can be called until the player has recruited someone
-  const getCallableRecruits = () => {
-    const recruited = Object.entries(getRecruitChoices()).filter(([, choice]) => choice == "recruit").map(([avatar]) => avatar);
-    return recruited.length || !import.meta.env.DEV ? recruited : ["punk", "black_female", "mermaid"];
-  };
+  // a walking scene's hotspots: their number keys click them (Jamie), when no one is talking
+  useEffect(() => {
+    if (!level.isWalkingLevel) return;
+    const onKey = event => {
+      const match = /^(Digit|Numpad)([1-9])$/.exec(event.code);
+      if (!match || isCutscene || recruitScene || isTalking || isDialogueWaiting || labScreen || isPaused) return;
+      const hotspot = getActiveHotspots(level, activePhases)[Number(match[2]) - 1];
+      if (!hotspot) return;
+      event.preventDefault();
+      openLabScreen(hotspot.action);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
+  // only those recruited this playthrough
+  const getCallableRecruits = () => recruitedAvatars;
 
   const levelOptions = Object.values(LEVELS).map(({ id, name }) => <option key={id} value={id}>{name}</option>);
 
@@ -824,6 +840,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     const { avatar, label } = RECRUIT_CARDS[level.rival.avatar];
     setRecruitChoice(choice);
     saveRecruitChoice(level.rival.avatar, choice);
+    if (choice == "recruit") setRecruitedAvatars(list => list.includes(level.rival.avatar) ? list : [...list, level.rival.avatar]);
     addUnlock(level.rival.avatar);
     // Terminate: their power is yours. Recruit: they can be called into fights, and their power stays closed.
     const skill = choice == "terminate" ? unlockRecruitSkill(level.rival.avatar) : undefined;
@@ -1147,6 +1164,12 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               <label>
                 <input type="checkbox" checked={isAutoRecruits} onChange={() => setIsAutoRecruits(!isAutoRecruits)} /> Recruits auto-summoned
               </label>
+              {/* dev: who is recruited, this playthrough (from the next match on) */}
+              {[["punk", "Punk Guy"], ["black_female", "Punk Girl"], ["mermaid", "Aquarium Worker"]].map(([avatar, name]) => (
+                <label key={avatar}>
+                  <input type="checkbox" checked={recruitedAvatars.includes(avatar)} onChange={() => toggleRecruited(avatar)} /> Recruit: {name}
+                </label>
+              ))}
               {isTrainedNpcs && (
                 <label>
                   <input type="range" min={0} max={1} step={0.05} value={npcAggression} onChange={event => setNpcAggression(Number(event.target.value))} />
@@ -1176,7 +1199,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 </label>
               )}
               <button onClick={() => { resetUnlocks(); updateMapWalkSites([]); }}>Reset unlocks</button>
-              <button onClick={() => { unlockEverything(['rapidTransit', 'rooftop', 'aquarium']); updateMapWalkSites(getWonBattlegrounds()); }}>Unlock everything</button>
+              <button onClick={() => { unlockEverything(['rapidTransit', 'rooftop', 'aquarium']); updateMapWalkSites(getWonBattlegrounds()); setRecruitedAvatars(["punk", "black_female", "mermaid"]); }}>Unlock everything</button>
               <select aria-label="Kaiju speed" value={kaijuSpeedMode} onChange={e => { const mode = e.target.value as KaijuSpeedMode; setKaijuSpeedMode(mode); setKaijuSpeedModeState(mode); e.target.blur(); }}>
                 <option value="rampage">Kaiju: fast after fire</option>
                 <option value="windUp">Kaiju: fast while glowing</option>

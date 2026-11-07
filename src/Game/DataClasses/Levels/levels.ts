@@ -240,6 +240,7 @@ export type LevelConfig = {
   cameraZoom: number; // how close the camera sits during play. at 1, the whole scene fits the frame.
   liveWideShots?: Record<string, number>; // the same, for phases the game keeps running through
   skillOnLeave?: string; // a power (its element) that opens once the player leaves the level
+  coverPanLeftX?: number; // a walking scene: with the player left of this, the view goes all the way to the scene's left edge
   unlock?: { id: string; label: string; image?: string; spot: { x: number; y: number }; afterMs?: number }; // a hidden tile, in scene pixels. 'afterMs': it only unlocks after this long
   wideShots?: Record<string, number>; // phases the camera pulls out to show, and how long it holds there in ms
   tileTone: TileTone;
@@ -758,7 +759,8 @@ const LEVEL_BUILDERS: Record<string, (file) => LevelConfig> = {
     ]),
     ...AQUARIUM_SCENE
   }),
-  labIntro: file => ({ ...buildLevel(file, 'Lab', '#4a8fb0', [], true), ...LAB_INTRO_SCENE }),
+  // past the girl at the desk's column, the view goes all the way left, "Change powers" and all (Jamie)
+  labIntro: file => ({ ...buildLevel(file, 'Lab', '#4a8fb0', [], true), ...LAB_INTRO_SCENE, coverPanLeftX: 450 }),
   lab: file => ({
     ...buildLevel(file, 'Lab Window', '#4a8fb0'),
     ...LAB_SCENE,

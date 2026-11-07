@@ -87,8 +87,8 @@ const GIANT_SHAKE_MS = 450; // a stomp shakes the scene this long
 export const SHATTER_SCREAM = {
   screamMs: 700, // after her word, the scream
   panMs: 700, // the camera's move to each panel, and back to her
-  panelMs: 800, // on each panel as it breaks and its water pours out (half what it was: pop, pop, pop. Jamie)
-  panelPanMs: 350, // the camera's move from panel to panel
+  panelMs: 400, // on each panel as it breaks (quicker again: no waiting for the fish to settle. Jamie)
+  panelPanMs: 250, // the camera's move from panel to panel
   restZoomShare: 1.15, // after the team's teleport: back from the extreme zoom, but not all the way out (a share of the usual zoom)
   onHerMs: 600, // on her a moment, before the glass
   creatureEvery: 2, // every second panel lets a sea creature out as it breaks
@@ -193,8 +193,10 @@ export class GameManager {
     // 'isRetry': the match is played again after a loss, so its opening scene is skipped.
     // 'autoRecruits': the recruits called in at the start of every fight, and walking with the team in the scenes the
     // teammate is in (Jamie: a dev toggle, on by default). Empty: they are called with the buttons, as before.
-    constructor({ level = PENINSULA, settingsManager, hasArrival = false, killsToWin = undefined, returnSpot = undefined, isRetry = false, autoRecruits = [] }) {
+    // 'recruits': who the player has recruited this playthrough (Game.tsx keeps it in React state). Left out: the saved choices.
+    constructor({ level = PENINSULA, settingsManager, hasArrival = false, killsToWin = undefined, returnSpot = undefined, isRetry = false, autoRecruits = [], recruits = undefined }) {
         this.autoRecruits = autoRecruits;
+        this.recruits = recruits;
         this.hasAutoSummoned = false;
         this.killsToWin = killsToWin;
         this.returnSpot = returnSpot;
@@ -500,6 +502,8 @@ export class GameManager {
         if (getIsDialogueLog()) this.addSceneTalks();
         if (this.level.isDepowered) this.depowerPlayerTeam();
 
+        // a fight: the recruits are there from its opening scene (Jamie)
+        if (!this.level.isWalkingLevel) this.autoSummonRecruits(true);
         if (this.level.giantKaiju) this.startFinalBattle();
         if (this.level.finalTurn && this.level.finalTurn.isStartTurned) this.startTurnedFight();
         if (this.hasArrival) this.startArrival();
@@ -864,7 +868,7 @@ export class GameManager {
         this.moveGiantPiece();
         this.giantVoices = getKeyedLines('finalBattle.voices');
         // everyone recruited fights beside the player, from the start
-        const recruited = Object.entries(getRecruitChoices()).filter(([, choice]) => choice == 'recruit').map(([avatar]) => avatar);
+        const recruited = this.getRecruitedAvatars();
         const player = this.gameBoardPiecesManager.getPlayerPiece();
         recruited.forEach((avatar, k) => {
             const rivalLevel = Object.values(LEVELS).find(({ rival }) => rival && rival.avatar == avatar);
@@ -1213,7 +1217,8 @@ export class GameManager {
                 Object.assign(topShot, onHer());
             } },
             { shot: topShot, ms: SHATTER_SCREAM.portalMs, isLive: true, onStart: () => this.gameBoardManager.closeWormholes() },
-            { shot: topShot, ms: getSpeechMs(toCreatures.text), isLive: true, speech: () => ({ ...this.getSpeechOver(rival, toCreatures.name, toCreatures.text), isShout: true }) },
+            // she looks down at the hall as she calls to them (Jamie)
+            { shot: topShot, ms: getSpeechMs(toCreatures.text), isLive: true, speech: () => ({ ...this.getSpeechOver(rival, toCreatures.name, toCreatures.text), isShout: true }), onStart: () => { rival.stopMoving(); rival.facingDir = 'down'; rival.dir = 'idle'; } },
             ...panelSteps,
             // the whole hall darkens, and the camera is back on her, up top
             { shot: topShot, ms: SHATTER_SCREAM.panMs, isLive: true, phase: this.level.flood.phase },
@@ -1228,7 +1233,11 @@ export class GameManager {
         const source = this.getClosestFloodTile(panel.pour);
         if (!source) return;
         flood.sources.push(source);
-        flood.burst(source); // a gush out of it, swirling round in front of the tank (Jamie)
+        // a gush out of it, running off the glass, its edges curling back in (Jamie)
+        const from = panel.focus;
+        const to = this.gameBoardManager.getCharXAndYFromTileIndex(source);
+        const length = Math.hypot(to.x - from.x, to.y - from.y) || 1;
+        flood.burst(source, { x: (to.x - from.x) / length, y: (to.y - from.y) / length });
         if (isCreature) {
             const icons = Object.keys(AQUARIUM_FLOOD.ghostIcons);
             const icon = icons[Math.floor(Math.random() * icons.length)];
@@ -1601,18 +1610,19 @@ export class GameManager {
     };
 
     // once a fight's opening is over: every recruit in at once (Jamie), but not the one this fight is against
-    autoSummonRecruits() {
-        if (this.hasAutoSummoned || !this.autoRecruits.length || this.cutscene || this.level.isWalkingLevel || this.level.hasRecruitFollowers) return;
-        if (this.getGameResult() !== null) return;
+    // 'isOpening': called as the level is set up, before its opening scene (they stand there through it)
+    autoSummonRecruits(isOpening = false) {
+        if (this.hasAutoSummoned || !this.autoRecruits.length || (this.cutscene && !isOpening) || this.level.isWalkingLevel || this.level.hasRecruitFollowers) return;
+        if (!isOpening && this.getGameResult() !== null) return;
         this.hasAutoSummoned = true;
         const onBoard = new Set(this.getPieces().filter(piece => piece.isRecruit && !piece.isDead).map(({ avatar }) => avatar));
         const rivalAvatar = this.level.rival && this.level.rival.avatar;
-        this.autoRecruits.filter(avatar => avatar != rivalAvatar && !onBoard.has(avatar)).forEach(avatar => this.callRecruit(avatar));
+        this.autoRecruits.filter(avatar => avatar != rivalAvatar && !onBoard.has(avatar)).forEach(avatar => this.callRecruit(avatar, isOpening));
     }
 
     // a recruit called in to help: they fight beside the team with the powers they had as a rival
-    callRecruit = (avatar) => {
-        if (this.isPaused || this.cutscene || this.recruitScene || this.getGameResult() !== null) return false;
+    callRecruit = (avatar, isOpening = false) => {
+        if (!isOpening && (this.isPaused || this.cutscene || this.recruitScene || this.getGameResult() !== null)) return false;
         const rivalLevel = Object.values(LEVELS).find(({ rival }) => rival && rival.avatar == avatar);
         if (!rivalLevel) return false;
         const piece = this.gameBoardPiecesManager.addRecruit(avatar, this.settingsManager.getAbilitiesFromElements(rivalLevel.rival.abilities));
@@ -1693,11 +1703,15 @@ export class GameManager {
         });
     }
 
+    // who has been recruited: this playthrough's (React state), or else the saved choices
+    getRecruitedAvatars() {
+        if (this.recruits) return [...this.recruits];
+        return Object.entries(getRecruitChoices()).filter(([, choice]) => choice == 'recruit').map(([avatar]) => avatar);
+    }
+
     addRecruitFollowers() {
         const playerTile = this.gameBoardPiecesManager.getPlayerPiece().getTileIndex();
-        Object.entries(getRecruitChoices())
-            .filter(([, choice]) => choice == 'recruit')
-            .forEach(([avatar]) => this.followers.push(this.gameBoardPiecesManager.addFollower(avatar, playerTile)));
+        this.getRecruitedAvatars().forEach(avatar => this.followers.push(this.gameBoardPiecesManager.addFollower(avatar, playerTile)));
     }
 
     getCameraShot() {
@@ -2600,7 +2614,8 @@ export class GameManager {
     // who the camera stays with: the player, then their teammate once the player is down
     getFocusPiece() {
         const team = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
-        return team.find(piece => !piece.getIsDead() && !piece.isRecruit) || this.getPieces()[0];
+        // then a recruit still fighting (Jamie): the camera stays with the fight
+        return team.find(piece => !piece.getIsDead() && !piece.isRecruit) || team.find(piece => !piece.getIsDead() && piece.isOnTiles) || this.getPieces()[0];
     }
 
     getIsAtGoal() {

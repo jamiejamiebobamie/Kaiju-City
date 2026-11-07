@@ -9,7 +9,7 @@
 */
 
 export const GHOST_BOSS = {
-  rings: [6, 12, 12], // ghosts in each phase's ring: six, then one more between each (Jamie). the third phase leaves her a ghost.
+  rings: [6, 12], // ghosts in each phase's ring (Jamie, 2026-11-06): fight, 6 ghosts, fight, 12 ghosts (she is a ghost from then), fight, the end
   ringRadiusRows: 17, // the ring's size: round the whole graveyard roof, out over the sea and down the building's face (Jamie's mockup)
   ringSquash: 1, // a circle, as in the mockup
   spinSeconds: 6, // one turn of the ring: it sweeps the walkway to the other roof, so crossing it means dodging

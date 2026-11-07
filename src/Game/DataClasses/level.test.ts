@@ -562,11 +562,10 @@ describe('rivals', () => {
       expect(rival.charLocation.x).toBeLessThan(330);
     });
 
-    it('the rings are six, then twelve, then twelve, and then she is a ghost: one more blow and she is gone', () => {
+    it('the rings are six, then twelve, and with the twelve she is a ghost: one more blow and she is gone (Jamie)', () => {
       const { gm, rival } = makeGhostFight();
       downHer(gm);
-      downHer(gm);
-      expect(gm.ghostRing.ghosts.length).toBe(12);
+      expect(gm.ghostRing.ghosts.length).toBe(6);
       expect(rival.isGhostForm).toBe(false);
       downHer(gm);
       expect(gm.ghostRing.ghosts.length).toBe(12);

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import styled, { css, keyframes } from "styled-components";
 import { GAME_TICK } from "Utils/gameState";
 import { getTorsoSpot, LIMBS } from "Game/DataClasses/Ragdoll";
@@ -80,7 +80,7 @@ const getClip = (avatar, box) => {
 
 const RagdollParts = ({ avatar, spriteSheetSrc, body, color }) => {
   const torso = toFrame(avatar, PARTS.torso.joint);
-  const ease = body.isResting ? "transform 200ms ease-out" : `transform ${TICK_EASE}`;
+  const ease = body.easeMs ? `transform ${body.easeMs}ms ease-in-out` : body.isResting ? "transform 200ms ease-out" : `transform ${TICK_EASE}`;
   const drawPart = (id, angle = 0) => {
     const joint = toFrame(avatar, PARTS[id].joint);
     return (
@@ -109,29 +109,40 @@ const RagdollParts = ({ avatar, spriteSheetSrc, body, color }) => {
 
 // the ghost boss's body (Jamie): a ghost's, as her living ghost form is drawn (GameBoardPieceComponent's GhostForm)
 const GHOST_FILTER = "grayscale(1) contrast(0.4) brightness(3.2) drop-shadow(0 0 4px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 10px rgba(220, 230, 255, 0.8))";
-const GHOST_TO_BODY_SECONDS = 2.2;
+// at the choice (Jamie): the ghost rises up off her, its arms and legs hanging down as it lifts, and fades away,
+// and she lies beneath it as herself
+const GHOST_RISE = { delayMs: 600, riseMs: 2600, rowsUp: 1.1, droopMs: 1400 };
 
-// at the choice: the ghost blinks, flickers and fades away, and she lies there as herself
-const ghostToBody = keyframes`
-  0%, 18% { filter: ${GHOST_FILTER}; opacity: 0.7; }
-  24% { filter: none; opacity: 1; }
-  32% { filter: ${GHOST_FILTER}; opacity: 0.6; }
-  42% { filter: none; opacity: 1; }
-  50% { filter: ${GHOST_FILTER}; opacity: 0.5; }
-  100% { filter: none; opacity: 1; }
+const ghostRise = keyframes`
+  0% { transform: translateY(0); opacity: 0.75; }
+  60% { opacity: 0.55; }
+  100% { transform: translateY(-${GHOST_RISE.rowsUp * 40}px); opacity: 0; }
 `;
 
 const GhostBody = styled.div`
-  ${props => props.$ghost == "ghost" && css`
+  ${props => (props.$ghost == "ghost" || props.$ghost == "rising") && css`
     filter: ${GHOST_FILTER};
     opacity: 0.7;
   `}
-  ${props => props.$ghost == "toBody" && css`
-    animation: ${ghostToBody} ${GHOST_TO_BODY_SECONDS}s ease-out 0.6s both;
+  ${props => props.$ghost == "rising" && css`
+    animation: ${ghostRise} ${GHOST_RISE.riseMs}ms ease-in ${GHOST_RISE.delayMs}ms both;
   `}
 `;
 
-// 'ghost': "ghost" draws it as a ghost; "toBody" turns a ghost back into the person
+// the arms and legs hanging straight down on the screen, however the body lies (a limb at 0 hangs down from the torso)
+const getHangingBody = body => ({ ...body, limbs: body.limbs.map(limb => ({ ...limb, angle: -body.angle })), easeMs: GHOST_RISE.droopMs });
+
+// the ghost lifting off the body
+const RisingGhost = props => {
+  const [isHanging, setIsHanging] = useState(false);
+  useEffect(() => {
+    const timeout = setTimeout(() => setIsHanging(true), GHOST_RISE.delayMs);
+    return () => clearTimeout(timeout);
+  }, []);
+  return <DeadPlayer {...props} body={isHanging ? getHangingBody(props.body) : props.body} ghost="rising" />;
+};
+
+// 'ghost': "ghost" draws it as a ghost; "toBody": the ghost rises off the person, who lies there as themself
 export const DeadPlayer = ({
   charLocation,
   color,
@@ -142,6 +153,15 @@ export const DeadPlayer = ({
   body,
   ghost = undefined
 }) => {
+  if (ghost == "toBody") {
+    const props = { charLocation, color, zIndex, avatar, pieceScale, spriteSheetSrc, body };
+    return (
+      <>
+        <DeadPlayer {...props} />
+        {body && spriteSheetSrc && <RisingGhost {...props} zIndex={(zIndex || 0) + 1} />}
+      </>
+    );
+  }
   const spot = body ? getTorsoSpot(body, pieceScale) : charLocation;
   return (
     <Wrapper

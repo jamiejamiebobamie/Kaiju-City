@@ -231,7 +231,8 @@ const COVER_LOOK = {
   nearRows: 9.5, // it starts to lean this close: from the middle of the Lab, the side tanks start to come in
   fullShare: 0.45, // and leans all the way once this much nearer
   margin: 0.06, // of the view, kept clear around the player and the spot
-  labelHalfWidthPx: 90 // a hotspot's label is about this wide either side of its middle
+  labelHalfWidthPx: 90, // a hotspot's label is about this wide either side of its middle
+  edgePanStep: 0.12 // a level's 'coverPanLeftX': how far the pan to the left edge eases in (or out) each update
 };
 
 // a scene's hotspots (where their labels are) and, once open, its way out
@@ -831,6 +832,7 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
     let pullEase = "ease-in-out";
     let isCutting = false; // the camera is already there when the shot starts
     const pickEnemy = makeEnemyFocus();
+    let leftPanShare = 0; // the walking scene's pan to its left edge (level.coverPanLeftX), eased in and out
     const moveCamera = () => {
       const player = gameManager.getFocusPiece();
       if (!player || !worldRef.current) return;
@@ -886,6 +888,14 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
             y: fit((y + spot.y) / 2, y - tileRowPx * 2, spot.y, viewHeight, viewHeight * COVER_LOOK.margin)
           };
           center = { x: center.x + (between.x - center.x) * weight, y: center.y + (between.y - center.y) * weight };
+        }
+        // past a level's 'coverPanLeftX', the view goes all the way to the scene's left edge (Jamie: the Lab's
+        // "Change powers" label in view before the player has walked all the way over)
+        if (level.coverPanLeftX !== undefined) {
+          const isLeft = x <= level.coverPanLeftX;
+          leftPanShare = Math.min(Math.max(leftPanShare + (isLeft ? 1 : -1) * COVER_LOOK.edgePanStep, 0), 1);
+          const eased = leftPanShare * leftPanShare * (3 - 2 * leftPanShare);
+          center = { ...center, x: center.x + (viewWidth / 2 - center.x) * eased };
         }
         const keepIn = (value, size, view) => view >= size ? size / 2 : Math.min(Math.max(value, view / 2), size - view / 2);
         coverCamera.centerOn({ x: keepIn(center.x, world.width, viewWidth), y: keepIn(center.y, world.height, viewHeight) });

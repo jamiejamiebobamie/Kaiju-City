@@ -2,6 +2,8 @@ import React, { useEffect, useRef } from "react";
 import styled from "styled-components";
 import { getHexRadius, getPerimeterEdges, getTileCenter } from "Game/DataClasses/GameBoard/hexGrid";
 import { EXIT_OPEN_PHASE } from "Game/DataClasses/Levels/levels";
+import { AQUARIUM_FLOOD } from "Game/DataClasses/AquariumFlood";
+import { TILE_DIRS, TILE_DIR_NORM_VECS } from "Utils/gameState";
 
 /*
   Draws every tile on one canvas: a React component per tile cannot keep up with larger levels.
@@ -311,7 +313,22 @@ const getSeaIcon = (name, color, onLoad) => {
   seaTinted[key] = canvas;
   return canvas;
 };
-const drawSeaIcon = (ctx, name, color, center, radius, lineScale, redraw, rotation = 0) => {
+// how a sea creature is drawn going 'dirs' (its tile's): its head leads, and one seen from the side is mirrored going left
+// rather than turned upside down (AQUARIUM_FLOOD.ghostPoses)
+const getSeaPose = (name, dirs) => {
+  const pose = AQUARIUM_FLOOD.ghostPoses[name] || { turn: "none", head: 0 };
+  const index = TILE_DIRS.indexOf((dirs || [])[0]);
+  if (pose.turn == "none" || index < 0) return { rotation: 0, isMirrored: false };
+  const { x, y } = TILE_DIR_NORM_VECS[index];
+  const heading = (Math.atan2(y, x) * 180) / Math.PI;
+  const isMirrored = pose.turn != "free" && x < -0.01;
+  if (pose.turn == "mirror") return { rotation: 0, isMirrored };
+  if (pose.turn == "free") return { rotation: heading - pose.head, isMirrored: false };
+  // mirrored, its head points the other way: 180 less its own angle
+  return { rotation: heading - (isMirrored ? 180 - pose.head : pose.head), isMirrored };
+};
+
+const drawSeaIcon = (ctx, name, color, center, radius, lineScale, redraw, { rotation = 0, isMirrored = false } = {}) => {
   const icon = getSeaIcon(name, color, redraw);
   if (!icon) return;
   const size = radius * 2 * TILE_LOOK.iconSizeRatio * 1.25;
@@ -321,6 +338,7 @@ const drawSeaIcon = (ctx, name, color, center, radius, lineScale, redraw, rotati
   // turned the way it swims
   ctx.translate(center.x, center.y);
   ctx.rotate((rotation * Math.PI) / 180);
+  if (isMirrored) ctx.scale(-1, 1);
   ctx.drawImage(icon, -size / 2, -size / 2, size, size);
   ctx.restore();
 };
@@ -556,7 +574,7 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
         if (color) {
           if (!isHighlighted) drawSprite(ctx, getStatusSprite(pieceColor || color), center, pixelRatio);
           const icon = { iconClass: tile.getActiveIcon(), rotation: tile.getRotation() };
-          if (tile.cast.seaIcon) drawSeaIcon(ctx, tile.cast.seaIcon, tile.cast.seaColor, center, radius, lineScale, draw, icon.rotation);
+          if (tile.cast.seaIcon) drawSeaIcon(ctx, tile.cast.seaIcon, tile.cast.seaColor, center, radius, lineScale, draw, getSeaPose(tile.cast.seaIcon, tile.dirs));
           else drawIcon(ctx, icon, center, radius, iconColor, lineScale);
           if (icon.iconClass && !tile.teleportTileStatus) nextIconTiles.set(key, { center, icon, color: iconColor });
         }

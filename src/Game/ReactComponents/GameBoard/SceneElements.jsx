@@ -675,6 +675,19 @@ const getLabelX = (x, label = "", worldWidth) => {
 // the pieces start at 20001 (GameBoardPieceComponent): just under them
 const HOTSPOT_OUTLINE_Z = 20000;
 
+// a walking scene's hotspots in view, in order: each has a number, and its number key clicks it (Jamie)
+export const getActiveHotspots = (level, activePhases) => (level.sceneElements || []).filter(({ type, phase, hidePhase }) =>
+  type == "hotspot" && (!phase || activePhases.includes(phase)) && !(hidePhase && activePhases.includes(hidePhase)));
+
+const HotspotKey = styled.span`
+  display: inline-block;
+  margin-right: 8px;
+  padding: 0 5px;
+  color: #101018;
+  background: #ffd23f;
+  box-shadow: 1px 1px 0 black;
+`;
+
 const HotspotLabel = styled.div`
   position: absolute;
   transform: translate(-50%, -100%);
@@ -776,7 +789,7 @@ export const SceneElements = ({ level, activePhases, isPaused, onHotspot, isDial
             {/* the outline is under everyone standing in the scene; its label stays over them */}
             <HotspotOutline src={element.outline} style={{ zIndex: HOTSPOT_OUTLINE_Z }} />
             <HotspotLabel style={{ left: `${getLabelX(x + width / 2, element.label, level.world.width)}px`, top: `${element.labelY || y - 14}px`, zIndex: style.zIndex }}>
-              {element.label}
+              <span><HotspotKey>{getActiveHotspots(level, activePhases).indexOf(element) + 1}</HotspotKey>{element.label}</span>
               <i className="fa fa-caret-down" />
             </HotspotLabel>
             <HotspotElement
