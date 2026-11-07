@@ -14,6 +14,9 @@ import { GameBoardTile } from 'Game/DataClasses/GameBoard/Tile/GameBoardTile'
 import { findPath } from 'Game/DataClasses/GameBoard/findPath'
 import { getCharXAndY, getTileCenter, getTileXAndY } from 'Game/DataClasses/GameBoard/hexGrid'
 
+// powers aim at a Kaiju walking in, ahead of the closest enemy on the tiles, once it is this many tiles from stepping on (Jamie)
+export const AIM_ENTERING_TILES = 2;
+
 // how much pathing avoids the tiles around enemies, in tiles
 const ENEMY_NEARBY_TILE_COST = 4;
 
@@ -155,7 +158,8 @@ export class GameBoardManager {
                 target = teammate;
             }
         } else {
-            const enemy = this.getClosestEnemy(pieceIndex);
+            // the closest enemy on the tiles, or a Kaiju about to step onto them (getClosestAimTarget)
+            const enemy = this.getClosestAimTarget(pieceIndex);
             if (!!enemy) {
                 target = enemy;
             }
@@ -171,10 +175,10 @@ export class GameBoardManager {
 
             with no target to aim at, shoot in the direction the piece is facing.
         */
-        const isTargetOnSameTile = targetTileIndex.i == pieceTileIndex.i && targetTileIndex.j == pieceTileIndex.j;
-        const [tileIndex, dirs] = isTargetOnSameTile ?
+        const isTargetOnSameTile = !!target.isOnTiles && targetTileIndex.i == pieceTileIndex.i && targetTileIndex.j == pieceTileIndex.j;
+        const [tileIndex, dirs] = target == self || isTargetOnSameTile ?
             this.getAdjacentTilesFromNormVec(pieceTileIndex, this.getNormVecFromAnimDir(self.getFacingDir()), area)
-            : this.getNumAdjacentTilesInDirectionFromTileToTile({ fromTileIndex: pieceTileIndex, toTileIndex: targetTileIndex, numTiles: area });
+            : this.getTilesTowardPiece(pieceTileIndex, target, area);
 
         const targetIndex = target.getPieceIndex();
         const teamIndex = self.getTeamIndex();
@@ -310,7 +314,7 @@ export class GameBoardManager {
                     // with nothing to chase, keep going the same way
                     const target = this.gameManagerProxy.getPiece(tile.targetIndex);
                     if (!target.getIsDead() && (target.getTeamIndex() != tile.teamIndex || tileStatus.getDmgAmt() < 0)) {
-                        const [_, dirs] = this.getNumAdjacentTilesInDirectionFromTileToTile({ fromTileIndex: tileIndex, toTileIndex: target.getTileIndex() });
+                        const [_, dirs] = this.getTilesTowardPiece(tileIndex, target);
                         // a soft chase: it turns toward the target only so far each step, so it overshoots and comes about
                         newDirs = tileStatus.getTurnSteps() !== undefined && dirs.length ? [turnToward(d, dirs[0], tileStatus.getTurnSteps())] : dirs;
                     }
@@ -605,6 +609,39 @@ export class GameBoardManager {
         const tileIndex = this.gameManagerProxy.getPieceTileIndex(pieceIndex);
         const enemyPiece = this.getClosestPieceFromTileIndex(otherTeamsPieces, tileIndex);
         return enemyPiece;
+    }
+
+    /*
+        What a power aims at (Jamie): the closest enemy on the tiles. A Kaiju still walking in, off them, instead when
+        there is no enemy on the tiles, or when it is the closest and is within AIM_ENTERING_TILES of stepping onto them.
+        The power goes its way, and meets it as it arrives.
+    */
+    getClosestAimTarget = (pieceIndex) => {
+        const onTiles = this.getClosestEnemy(pieceIndex);
+        if (onTiles && this.gameManagerProxy.getPiece(pieceIndex).spurnedBy == onTiles.pieceIndex) return onTiles; // spurned: the charmer
+        const from = this.getCharXAndYFromTileIndex(this.gameManagerProxy.getPieceTileIndex(pieceIndex));
+        const getDistance = piece => getDistanceToFrom(from, piece.charLocation);
+        const walkingIn = this.gameManagerProxy.getOtherTeamsPieces(pieceIndex)
+            .filter(piece => piece.avatar == 'kaiju' && !piece.isGiant && !piece.isDead && !piece.isOnTiles && piece.isVisible !== false && !!piece.charLocation)
+            .sort((a, b) => getDistance(a) - getDistance(b))[0];
+        if (!walkingIn) return onTiles;
+        if (!onTiles) return walkingIn;
+        return getDistance(walkingIn) < getDistance(onTiles) && this.getIsAboutToEnter(walkingIn) ? walkingIn : onTiles;
+    }
+
+    // a Kaiju walking in, within AIM_ENTERING_TILES of the tile where it steps onto the board
+    getIsAboutToEnter(piece) {
+        const entry = this.getCharXAndYFromTileIndex(piece.getTileIndex());
+        if (!entry) return false;
+        const { rowStep, scale = 1 } = this.grid;
+        return getDistanceToFrom(entry, piece.charLocation) <= AIM_ENTERING_TILES * rowStep * scale;
+    }
+
+    // the tiles (and dirs) from a tile toward a piece: its tile, or, off the tiles (a Kaiju walking in), where it stands
+    getTilesTowardPiece(fromTileIndex, piece, numTiles = 1) {
+        if (piece.isOnTiles || !piece.charLocation) return this.getNumAdjacentTilesInDirectionFromTileToTile({ fromTileIndex, toTileIndex: piece.getTileIndex(), numTiles });
+        const normVec = getNormVecFromDestAndOrigin(piece.charLocation, this.getCharXAndYFromTileIndex(fromTileIndex));
+        return this.getAdjacentTilesFromNormVec(fromTileIndex, normVec, numTiles);
     }
 
     getPathToClosestEnemy = (pieceIndex) => {
