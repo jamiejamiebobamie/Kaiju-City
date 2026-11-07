@@ -183,7 +183,10 @@ export const Ability = ({
       title={activeName}
       color={color}
     >
+      {/* a new icon for each cast, so its spin starts again: an NPC that casts again the moment it can (the Mermaid's Charm
+          and Heal) is never seen off cooldown, and the spin, run once, would sit still from then on */}
       <AbilityIcon
+        key={accTime || 0}
         disabled={true}
         className={`fa ${ICON_LOOKUP[element][iconLookupString]}`}
         isCoolDown={isOnCoolDown}
