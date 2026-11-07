@@ -899,7 +899,8 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
         closeCamera.lookToward(
           getWorldLocation(player.charLocation),
           isLooking ? mouseAim.current : { x: 0, y: 0 },
-          closestEnemy ? getWorldLocation(closestEnemy.charLocation) : undefined
+          closestEnemy ? getWorldLocation(closestEnemy.charLocation) : undefined,
+          !!closestEnemy && !!closestEnemy.isTense // a sea creature after the player: in tighter and quicker
         );
       }
       worldRef.current.style.transform = (isWide ? wideCamera : closeCamera).getTransform();

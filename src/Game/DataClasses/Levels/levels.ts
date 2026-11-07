@@ -185,7 +185,7 @@ export type LevelConfig = {
   rival?: Rival;
   transformScene?: string; // after the fight is won, the teammate transforms (dialogue.json)
   finalTurn?: { scene: string; kaijuLives: number; coolDownMs: number; castEveryMs: number }; // the last fight: once its Kaiju are beaten, the teammate turns Kaiju
-  linkWalls?: Array<{ tile: TileIndex; point: { x: number; y: number }; behind: { x: number; y: number }; outDir: { x: number; y: number } }>; // where a tile link's walk-through goes out of sight
+  linkWalls?: Array<{ tile: TileIndex; point: { x: number; y: number }; behind: { x: number; y: number }; outDir: { x: number; y: number }; outTile?: TileIndex }>; // where a tile link's walk-through goes out of sight (and, maybe, the tile the walk out ends on)
   giantKaiju?: { // the final battle (GiantKaiju.ts): the teammate as a giant Kaiju, marching up the Peninsula
     route: Array<{ x: number; y: number }>; // from the foot of the Peninsula to the city, in the big map's pixels
   };
@@ -458,7 +458,8 @@ const GLASS_PANELS = GLASS_PANEL_PLACES.map(({ id, x, y, width, height }) => ({
   phase: getGlassPhase(id),
   x, y, width, height, startDelayMs: 0,
   zIndex: -2,
-  fps: 7,
+  fps: 14, // twice as quick as it was (Jamie)
+  featherPx: 22, // soft edges, so the broken tank blends into the hall around it rather than showing as a block (Jamie)
   enter: [1, 2, 3, 4, 5].map(n => `/levels/aquarium/glass/${id}-${n}.png`),
   loop: [`/levels/aquarium/glass/${id}-5.png`],
   exit: []
@@ -511,9 +512,11 @@ const AQUARIUM_SCENE = {
   linkWalls: [
     { tile: { i: 25, j: 11 }, point: { x: 582, y: 313 }, behind: { x: -1, y: 0 }, outDir: { x: 0.86, y: 0.5 } }, // the left stairs
     { tile: { i: 36, j: 12 }, point: { x: 827, y: 327 }, behind: { x: 1, y: 0 }, outDir: { x: -0.86, y: 0.5 } }, // the right stairs
-    // the balcony doors upstairs ("To 1st floor"): out of sight at the doorway's inner jamb, the one by the balcony (Jamie's red lines)
-    { tile: { i: 4, j: 8 }, point: { x: 92, y: 217 }, behind: { x: -1, y: 0 }, outDir: { x: 0.86, y: 0.51 } }, // the left door: its opening runs x 22 to 92
-    { tile: { i: 57, j: 8 }, point: { x: 1316, y: 231 }, behind: { x: 1, y: 0 }, outDir: { x: -0.87, y: 0.49 } } // the right door: x 1316 to 1385
+    // the links upstairs by the "To 1st floor" doorways: the way down is behind the foreground wall on the balcony side of
+    // each doorway. out of sight past its edge (Jamie's red lines), coming out from behind it toward the doorway, onto the
+    // tile below and to that side of the link, and going back in the same way (Jamie, 2026-11-06)
+    { tile: { i: 4, j: 8 }, point: { x: 92, y: 217 }, behind: { x: 1, y: 0 }, outDir: { x: -0.86, y: 0.51 }, outTile: { i: 3, j: 8 } }, // the left door: the wall starts at x 92
+    { tile: { i: 57, j: 8 }, point: { x: 1316, y: 231 }, behind: { x: -1, y: 0 }, outDir: { x: 0.87, y: 0.49 }, outTile: { i: 58, j: 9 } } // the right door: the wall ends at x 1316
   ],
   phaseTileTones: { shattered: 'white' as const }, // the shattered hall is much darker
   flood: { phase: 'shattered', top: 530 }, // pieces below this line, in scene pixels, walk through water
@@ -552,7 +555,6 @@ const SEWER1_WALK_IN = {
   doorTile: { i: 37, j: 11 },
   // the recruits spread out to rest around the sewer, away from the door
   standSpots: [{ x: 1180, y: 540 }, { x: 960, y: 610 }, { x: 820, y: 470 }],
-  talkBeatMs: 2500,
   isTeamInPlace: true, // all in their places as the player walks in, the whole sewer in view; then in close for the words (Jamie)
   playerSpot: { x: 1150, y: 610 },
   isWaitingToBePassed: true, // the recruits and the teammate wait where they rest until the player goes by, heading left

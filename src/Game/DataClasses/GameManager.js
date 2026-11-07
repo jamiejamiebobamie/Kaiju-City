@@ -37,11 +37,17 @@ const TRIGGER_ROWS = 2; // how close a door or a walk-here spot has to be
 const SITE_ROWS = 3; // how close a site on the map has to be
 
 // the player walking through a portal (startPortalWalk), in milliseconds
+// two coming in at one door (Sewer 2's walk-in)
+export const WALK_IN = {
+  followDelayTicks: 5 // the second sets off this many ticks behind the first
+};
+
 export const PORTAL_WALK = {
-  zoomInMs: 550, // the camera in close on the way in, or the way out
-  walkMs: 1100, // walking in, or out
-  zoomOutMs: 450, // back to the usual zoom where they went in
-  panMs: 1300, // across to the other end: quick, but slow enough to see the fight on the way
+  // all half what they were (Jamie, 2026-11-06)
+  zoomInMs: 275, // the camera in close on the way in, or the way out
+  walkMs: 550, // walking in, or out
+  zoomOutMs: 225, // back to the usual zoom where they went in
+  panMs: 650, // across to the other end
   // the body, from where the piece stands, in the piece's own size (a person's sprite box)
   body: [{ x: -16, y: -46 }, { x: 22, y: -46 }, { x: -16, y: 4 }, { x: 22, y: 4 }]
 };
@@ -81,7 +87,8 @@ const GIANT_SHAKE_MS = 450; // a stomp shakes the scene this long
 export const SHATTER_SCREAM = {
   screamMs: 700, // after her word, the scream
   panMs: 700, // the camera's move to each panel, and back to her
-  panelMs: 1600, // on each panel as it breaks and its water pours out
+  panelMs: 800, // on each panel as it breaks and its water pours out (half what it was: pop, pop, pop. Jamie)
+  panelPanMs: 350, // the camera's move from panel to panel
   restZoomShare: 1.15, // after the team's teleport: back from the extreme zoom, but not all the way out (a share of the usual zoom)
   onHerMs: 600, // on her a moment, before the glass
   creatureEvery: 2, // every second panel lets a sea creature out as it breaks
@@ -625,9 +632,11 @@ export class GameManager {
             const key = `status ${status.getAppliedStatus()} ${tile.cast.casterIndex} ${tile.cast.seaIcon || ''}`;
             const charLocation = board.getCharXAndYFromTileIndex(tile.tileIndex);
             const distance = Math.hypot(charLocation.x - player.charLocation.x, charLocation.y - player.charLocation.y);
-            if (!byCast.has(key) || distance < byCast.get(key).distance) byCast.set(key, { key, charLocation, distance });
+            // a sea creature after the player: the camera goes in tighter and quicker (Jamie)
+            const isTense = status.getAppliedStatus() == 'isSeaGhost';
+            if (!byCast.has(key) || distance < byCast.get(key).distance) byCast.set(key, { key, charLocation, distance, isTense });
         });
-        threats.push(...[...byCast.values()].map(({ key, charLocation }) => ({ key, charLocation, isChasing: true })));
+        threats.push(...[...byCast.values()].map(({ key, charLocation, isTense }) => ({ key, charLocation, isChasing: true, isTense })));
         // the ring's launched ghosts, heading for the player (the closest of the team to them)
         if (this.ghostRing) {
             const team = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex()).filter(piece => !piece.isDead && piece.isOnTiles);
@@ -702,7 +711,9 @@ export class GameManager {
         const stillBehind = Math.max(...body.map(({ x, y }) => (toSpot.x + x - outEdge.point.x) * outEdge.behind.x + (toSpot.y + y - outEdge.point.y) * outEdge.behind.y));
         const onBy = outAlong > 0.05 && stillBehind > -1 ? (stillBehind + 2) / outAlong : 0;
         const outEndSpot = { x: toSpot.x + outDir.x * onBy, y: toSpot.y + outDir.y * onBy };
-        const outTile = onBy > 0 ? board.getClosestWalkableTileToLocation(outEndSpot) : toTile;
+        // a link may name the tile the walk out ends on (the Aquarium's doors: the one below and to the doorway's side)
+        const outTile = toWall && toWall.outTile && board.getIsInBounds(toWall.outTile) ? toWall.outTile
+            : onBy > 0 ? board.getClosestWalkableTileToLocation(outEndSpot) : toTile;
         const outSpot = board.getCharXAndYFromTileIndex(outTile);
         const back = getThrough(outSpot, { x: -outDir.x, y: -outDir.y }, outEdge);
         const extreme = { zoomScale: PENINSULA.cameraZoom * CUTSCENE.outcomeZoomScale, isPeninsulaSized: true };
@@ -1160,9 +1171,9 @@ export class GameManager {
         const topTile = this.gameBoardManager.getClosestWalkableTileToLocation(topSpot);
         this.startAquariumFlood();
         const panelSteps = panels.flatMap((panel, k) => {
-            const shot = { point: panel.focus, ...nearer, panMs: SHATTER_SCREAM.panMs };
+            const shot = { point: panel.focus, ...nearer, panMs: SHATTER_SCREAM.panelPanMs };
             return [
-                { shot, ms: SHATTER_SCREAM.panMs, isLive: true },
+                { shot, ms: SHATTER_SCREAM.panelPanMs, isLive: true },
                 { shot, ms: SHATTER_SCREAM.panelMs, isLive: true, phase: panel.phase, onStart: () => this.breakPanel(panel, k % SHATTER_SCREAM.creatureEvery == 0) }
             ];
         });
@@ -1171,10 +1182,8 @@ export class GameManager {
             { shot: herShot, ms: getSpeechMs(scream.text) + SHATTER_SCREAM.screamMs, speech: { ...this.getSpeechOver(rival, scream.name, scream.text), isShout: true } },
             // the scream pulls the team to the bottom of the hall, below the tank, as the Rooftop's does
             ...this.getTeamTeleportSteps(this.level.aquariumFlood.teamSpot, team => this.placeTeam(team, recruits, this.level.aquariumFlood.teamSpot)),
+            // then (Jamie): the camera on her; her portal up to the top floor; her words up there; and only then the glass
             { shot: herAfter, ms: SHATTER_SCREAM.panMs + SHATTER_SCREAM.onHerMs },
-            ...panelSteps,
-            // the whole hall darkens, and the camera is back on her
-            { shot: backOnHer, ms: SHATTER_SCREAM.panMs, isLive: true, phase: this.level.flood.phase },
             { shot: backOnHer, ms: SHATTER_SCREAM.portalMs, isLive: true, onStart: () => this.gameBoardManager.addWormhole(rival.getTileIndex(), topTile, this.accTime, Infinity) },
             { shot: topShot, ms: SHATTER_SCREAM.portalMs, isLive: true, onStart: () => {
                 rival.stopMoving();
@@ -1185,6 +1194,9 @@ export class GameManager {
             } },
             { shot: topShot, ms: SHATTER_SCREAM.portalMs, isLive: true, onStart: () => this.gameBoardManager.closeWormholes() },
             { shot: topShot, ms: getSpeechMs(toCreatures.text), isLive: true, speech: () => ({ ...this.getSpeechOver(rival, toCreatures.name, toCreatures.text), isShout: true }) },
+            ...panelSteps,
+            // the whole hall darkens, and the camera is back on her, up top
+            { shot: topShot, ms: SHATTER_SCREAM.panMs, isLive: true, phase: this.level.flood.phase },
             { shot: topShot, ms: 0, onStart: () => { this.nextMermaidHealAt = this.accTime + AQUARIUM_FLOOD.healEveryMs; } }
         ], { isMidFight: true });
     }
@@ -1791,12 +1803,21 @@ export class GameManager {
 
     // a piece walks to where it stands, from a tile, or from where it is to a new tile
     // it follows the tiles, so it goes round walls and water. off the tiles, it walks straight.
-    startPieceArrival({ piece, startTile, toTile, dir }) {
+    // 'delayTicks': it waits that many ticks before it sets off. 'avoidPathOf': another piece arriving with it, whose way it
+    // keeps off where it can (two from the same door would otherwise walk one inside the other, Jamie)
+    startPieceArrival({ piece, startTile, toTile, dir, delayTicks = 0, avoidPathOf = undefined }) {
         const start = startTile ? this.gameBoardManager.getCharXAndYFromTileIndex(startTile) : piece.charLocation;
         const fromTile = startTile || piece.getTileIndex();
         if (toTile) piece.initCharLocation(true, this.getUnclaimedTile(piece, toTile));
         const isOnTiles = fromTile && this.gameBoardManager.getIsInBounds(fromTile) && this.gameBoardManager.getIsInBounds(piece.getTileIndex());
-        const path = isOnTiles ? this.gameBoardManager.findPathFromTo(fromTile, piece.getTileIndex(), undefined, false, piece.pieceIndex) : [];
+        const goal = piece.getTileIndex();
+        const getKey = ({ i, j }) => `${i} ${j}`;
+        const avoid = avoidPathOf && avoidPathOf.arrivalPathTiles
+            ? avoidPathOf.arrivalPathTiles.filter(tile => getKey(tile) != getKey(fromTile) && getKey(tile) != getKey(goal))
+            : undefined;
+        const path = isOnTiles ? this.gameBoardManager.findPathFromTo(fromTile, goal, avoid && avoid.length ? avoid : undefined, false, piece.pieceIndex) : [];
+        piece.arrivalPathTiles = path;
+        piece.arrivalWaitTicks = delayTicks;
         piece.startArrival(start, dir, path.slice(0, -1).map(this.gameBoardManager.getCharXAndYFromTileIndex));
     }
 
@@ -2256,7 +2277,11 @@ export class GameManager {
         // the two of them walk to the front of the group, where their words are in shot
         const frontSteps = !frontSpots ? [] : [
             // the team already in place: the two of them run in at the door, to the front
-            { shot, arrivals: pair.map((piece, index) => ({ piece, startTile: isTeamInPlace ? doorTile : undefined, toTile: getTile(frontSpots[index]), dir: 'downLeft' })) },
+            { shot, arrivals: pair.map((piece, index) => ({
+                piece, startTile: isTeamInPlace ? doorTile : undefined, toTile: getTile(frontSpots[index]), dir: 'downLeft',
+                // the second a moment behind, and by a way of their own where there is one
+                ...(index > 0 ? { delayTicks: WALK_IN.followDelayTicks, avoidPathOf: pair[0] } : {})
+            })) },
             { shot, ms: 0, onStart: () => pair.forEach(piece => { piece.facingDir = 'downLeft'; }) }
         ];
 
@@ -2287,7 +2312,7 @@ export class GameManager {
         ];
 
         this.startCutscene([
-            { shot, ms: CUTSCENE.pullInMs },
+            { shot, ms: playerWalkIn.length ? 0 : CUTSCENE.pullInMs }, // walking in: straight away, and the words as they reach their spot
             ...arrivals,
             ...playerWalkIn,
             ...frontSteps,

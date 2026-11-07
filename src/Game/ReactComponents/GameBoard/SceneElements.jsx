@@ -497,6 +497,13 @@ export const getSpeechScreenBox = ({ text, lines, isFlipped = false }, screenSca
 };
 
 // after Jet Set Radio Future's comic balloons, drawn in pixels
+// soft edges: the element fades out over its last 'px' on every side, so a cut-out blends into the scene around it
+const getFeatherMask = px => {
+  const fade = side => `linear-gradient(to ${side}, transparent 0, black ${px}px, black calc(100% - ${px}px), transparent 100%)`;
+  const mask = `${fade("right")}, ${fade("bottom")}`;
+  return { WebkitMaskImage: mask, maskImage: mask, WebkitMaskComposite: "source-in", maskComposite: "intersect" };
+};
+
 export const SpeechBalloon = ({ name, text, x, y, zIndex, scale = 1, isFlipped = false }) => {
   const { pixel, outlineColor, fillColor, tailOffset, flippedTailOffset } = SPEECH_LOOK;
   const getLayer = (background, shape) => <SpeechLayer style={{ background, clipPath: shape }} />;
@@ -710,7 +717,7 @@ export const SceneElements = ({ level, activePhases, isPaused, onHotspot, isDial
       };
 
       // always mounted: a train has to play its way out after its phase ends
-      if (type == "sequence") return <SequenceCanvas key={id} element={element} isActive={isActive} isPaused={isPaused} style={style} />;
+      if (type == "sequence") return <SequenceCanvas key={id} element={element} isActive={isActive} isPaused={isPaused} style={element.featherPx ? { ...style, ...getFeatherMask(element.featherPx) } : style} />;
       if (type == "whiteout") {
         return <WhiteoutElement key={id} style={{
           ...style,

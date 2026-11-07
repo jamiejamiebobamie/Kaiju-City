@@ -402,6 +402,10 @@ export class GameBoardPieceBase {
 
     // says whether it has got there
     stepArrival() {
+        if (this.arrivalWaitTicks > 0) {
+            this.arrivalWaitTicks -= 1;
+            return false;
+        }
         const { newLocation, hasArrived } = this.gameManagerProxy.moveTo({
             currentLocation: this.charLocation,
             moveFromLocation: this.moveFromLocation,

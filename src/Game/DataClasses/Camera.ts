@@ -21,7 +21,10 @@ export const CAMERA = {
   edgeMargin: 0.42, // how close to the edge of the view a piece gets before the view pans, as a fraction of the view
   minMouseTilePx: 20, // with a mouse, zoom in until tiles are at least this wide
   minTouchTilePx: 50, // on touch screens, zoom in until tiles are at least this wide
-  panTransitionMs: 200 // smooths the pan between game ticks
+  panTransitionMs: 200, // smooths the pan between game ticks
+  // tense (a sea creature after the player, Jamie): in closer than the usual zoom, the zoom changing quicker, and the
+  // view keeping the player near its middle, so it pans with them sooner
+  tense: { zoomIn: 1.3, maxZoomStep: 0.07, edgeMargin: 0.47 }
 };
 
 // the camera pulling out to show the whole scene at a key moment
@@ -78,9 +81,9 @@ export class Camera {
     this.y = this.getClamped(y - this.viewHeight / 2, this.viewHeight, this.worldHeight);
   }
 
-  follow({ x, y }: Point) {
-    const marginX = this.viewWidth * CAMERA.edgeMargin;
-    const marginY = this.viewHeight * CAMERA.edgeMargin;
+  follow({ x, y }: Point, edgeMargin = CAMERA.edgeMargin) {
+    const marginX = this.viewWidth * edgeMargin;
+    const marginY = this.viewHeight * edgeMargin;
     let nextX = this.x;
     let nextY = this.y;
     if (x < nextX + marginX) nextX = x - marginX;
@@ -98,24 +101,26 @@ export class Camera {
   }
 
   // the zoom that fits the player and the enemy in the view, as far as the camera will go
-  private getZoomToShow(player: Point, enemy: Point) {
+  private getZoomToShow(player: Point, enemy: Point, maxZoom = this.baseZoom) {
     const usedView = 1 - CAMERA.enemyViewMargin * 2;
     const zoom = Math.min(
       (this.viewPxWidth * usedView) / Math.max(Math.abs(enemy.x - player.x), 1),
       (this.viewPxHeight * usedView) / Math.max(Math.abs(enemy.y - player.y), 1)
     );
-    return Math.max(Math.min(zoom, this.baseZoom), this.baseZoom * CAMERA.enemyZoomOut);
+    return Math.max(Math.min(zoom, maxZoom), this.baseZoom * CAMERA.enemyZoomOut);
   }
 
   // 'aim' is where the mouse is in the view: from -1 to 1 across, and down, with 0 in the middle
   // 'enemy' is the closest enemy, if there is one
-  lookToward(player: Point, aim: Point, enemy?: Point) {
+  // 'isTense': in closer and quicker (CAMERA.tense)
+  lookToward(player: Point, aim: Point, enemy?: Point, isTense = false) {
     const reach = Math.min(Math.max(Math.abs(aim.x), Math.abs(aim.y)), 1);
     const easeOut = Math.max((reach - CAMERA.lookZoomStart) / (1 - CAMERA.lookZoomStart), 0);
-    const lookZoom = this.baseZoom * (1 - CAMERA.lookZoomOut * easeOut);
-    const enemyZoom = enemy ? this.getZoomToShow(player, enemy) : this.baseZoom;
+    const topZoom = this.baseZoom * (isTense ? CAMERA.tense.zoomIn : 1);
+    const lookZoom = topZoom * (1 - CAMERA.lookZoomOut * easeOut);
+    const enemyZoom = enemy ? this.getZoomToShow(player, enemy, topZoom) : this.baseZoom;
     const targetZoom = Math.max(Math.min(lookZoom, enemyZoom), this.minZoom);
-    const maxStep = this.zoom * CAMERA.maxZoomStep;
+    const maxStep = this.zoom * (isTense ? CAMERA.tense.maxZoomStep : CAMERA.maxZoomStep);
     this.setZoom(this.zoom + Math.max(Math.min(targetZoom - this.zoom, maxStep), -maxStep));
 
     const getLean = (axis: 'x' | 'y', viewSize: number) => {
@@ -123,7 +128,7 @@ export class Camera {
       const lean = aim[axis] * viewSize * CAMERA.lookPan + Math.max(Math.min(toEnemy, viewSize * CAMERA.lookPan), -viewSize * CAMERA.lookPan);
       return Math.max(Math.min(lean, viewSize * CAMERA.maxLean), -viewSize * CAMERA.maxLean);
     };
-    this.follow({ x: player.x + getLean('x', this.viewWidth), y: player.y + getLean('y', this.viewHeight) });
+    this.follow({ x: player.x + getLean('x', this.viewWidth), y: player.y + getLean('y', this.viewHeight) }, isTense ? CAMERA.tense.edgeMargin : CAMERA.edgeMargin);
   }
 
   getTransform() {
