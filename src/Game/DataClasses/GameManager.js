@@ -42,6 +42,11 @@ export const WALK_IN = {
   followDelayTicks: 5 // the second sets off this many ticks behind the first
 };
 
+// the last fight's other ending: the player turns (startPlayerTurn)
+export const FINAL_TURN = {
+  playerKaijuHoldMs: 2600 // on their Kaiju a while, before the end
+};
+
 export const PORTAL_WALK = {
   // all half what they were (Jamie, 2026-11-06)
   zoomInMs: 275, // the camera in close on the way in, or the way out
@@ -70,7 +75,8 @@ const getDirName = ({ x, y }) => {
 // what else the enemy zoom looks toward (getCameraThreats)
 export const CAMERA_THREATS = {
   statuses: ['isGhosted', 'isWooded', 'isCold', 'isCharming', 'isSeaGhost'], // powers that chase their target. not Heal.
-  kaijuNearRows: 16 // a Kaiju still walking in counts once it is this close to the player, in tile rows
+  kaijuNearRows: 16, // a Kaiju still walking in counts once it is this close to the player, in tile rows
+  ghostDangerRows: 4 // an NPC's defensive powers answer a launched ghost this close (getIsBossThreatNear)
 };
 
 // the final battle's end (onGiantDrained), in milliseconds
@@ -506,6 +512,7 @@ export class GameManager {
         if (!this.level.isWalkingLevel) this.autoSummonRecruits(true);
         if (this.level.giantKaiju) this.startFinalBattle();
         if (this.level.finalTurn && this.level.finalTurn.isStartTurned) this.startTurnedFight();
+        if (this.level.ghostBoss) this.setUpGhostGuardian();
         if (this.hasArrival) this.startArrival();
         else if (this.level.rival) this.startRivalIntro();
         else if (this.level.isMapWalk) this.startMapIntro();
@@ -614,6 +621,30 @@ export class GameManager {
         if (!this.ghostRingShot) this.ghostRingShot = { point: { ...ring.center }, zoomScale: GHOST_SCREAM.ringShotZoom, panMs, ease: 'ease-out' };
         return this.ghostRingShot;
     }
+
+    /*
+        For the NPCs' defensive powers (Jamie): a launched ghost of the ring within CAMERA_THREATS.ghostDangerRows of the piece,
+        or a sea creature on a tile within two of it. (Sea creatures do harm on their tiles, so the usual check sees them too.)
+    */
+    getIsBossThreatNear = pieceIndex => {
+        const piece = this.getPieces()[pieceIndex];
+        if (!piece || piece.isDead || !piece.isOnTiles) return false;
+        const rowPx = this.getGhostRowPx();
+        if (this.ghostRing) {
+            const near = CAMERA_THREATS.ghostDangerRows * rowPx;
+            if (this.ghostRing.ghosts.some(ghost => ghost.state == 'launched' && Math.hypot(ghost.x - piece.charLocation.x, ghost.y - piece.charLocation.y) <= near)) return true;
+        }
+        if (this.aquariumFlood) {
+            const board = this.gameBoardManager;
+            const here = piece.getTileIndex();
+            return board.getAdjacentAdjacentTileIndices(here).some(({ i, j }) => {
+                const tile = board.tiles[i] && board.tiles[i][j];
+                const status = tile && tile.getTileStatus();
+                return !!status && status.getAppliedStatus() == 'isSeaGhost' && tile.teamIndex != piece.getTeamIndex();
+            });
+        }
+        return false;
+    };
 
     // the enemy zoom leaves these out: while the ghost boss's ring is up and the player is inside it, Punk Girl (Jamie).
     // the ring is the fight then, not her.
@@ -752,9 +783,35 @@ export class GameManager {
                 this.portalWalk.acrossMs = 0;
                 this.portalShot = { point: headOf(inEdge.point), isPlayZoom: true, panMs: PORTAL_WALK.zoomOutMs };
             } }
-        ], { isMidFight: true });
+        ], { isMidFight: true, isPortalWalk: true });
         return true;
     };
+
+    /*
+        A scene starting while the player is walking through a portal, or about to teleport (Jamie: they went missing from
+        the recruit choice, and from the Rooftop's team teleport): the walk ends at once, the player there at its far end,
+        and any Teleport still to happen is called off, for everyone. The scene can then put them where they belong.
+    */
+    endTravelForScene() {
+        this.getPieces().forEach(piece => { piece.shouldTeleport = false; });
+        const walk = this.portalWalk;
+        if (!walk) return;
+        const { piece, outTile, toSpot } = walk;
+        this.portalWalk = undefined;
+        this.portalShot = undefined;
+        piece.portalMask = undefined;
+        piece.isInPortal = false;
+        piece.isVisible = true;
+        piece.isOnTiles = true;
+        piece.setTileIndex(outTile);
+        piece.charLocation = { ...toSpot };
+        piece.moveFromLocation = piece.charLocation;
+        piece.moveToLocation = piece.charLocation;
+        piece.moveToTiles = [];
+        piece.isThere = true;
+        piece.dir = 'idle';
+        piece.linkArrivalTile = outTile;
+    }
 
     // across: back to the usual zoom where they went in, then over to the other end, the fight going on below
     updatePortalTransit() {
@@ -790,7 +847,7 @@ export class GameManager {
                 piece.dir = 'idle';
                 this.portalWalk = undefined;
             } }
-        ], { isMidFight: true });
+        ], { isMidFight: true, isPortalWalk: true });
     }
 
     /*
@@ -927,9 +984,9 @@ export class GameManager {
     */
     startFinalTurn() {
         const { player, teammate } = this.getGhostTeam();
+        // no teammate to turn (they fell, or there never was one): the player turns instead (Jamie)
         if (!teammate || teammate.isDead) {
-            this.finalTurnState = 'fighting';
-            this.teammateKaiju = { isDead: true };
+            this.startPlayerTurn(player);
             return;
         }
         this.finalTurnState = 'turning';
@@ -945,13 +1002,48 @@ export class GameManager {
         ]);
     }
 
+    /*
+        The other ending (Jamie, 2026-11-10): with no teammate left to turn, the player hears the Kaiju calling, and turns:
+        a flash, and a Kaiju stands where they were. It is the end: "You destroyed the city!", then the credits.
+    */
+    startPlayerTurn(player) {
+        this.finalTurnState = 'turning';
+        const rowPx = this.getGhostRowPx();
+        const closeOn = piece => ({ point: { x: piece.charLocation.x, y: piece.charLocation.y - CUTSCENE.shotHeadRows * rowPx * 0.5 }, zoomScale: PENINSULA.cameraZoom * 1.4, isPeninsulaSized: true, panMs: CUTSCENE.outcomePullMs });
+        const lines = this.getSceneSteps(this.level.finalTurn.aloneScene, over => closeOn(over || player));
+        this.startCutscene([
+            { shot: closeOn(player), ms: CUTSCENE.outcomePullMs },
+            ...lines,
+            { shot: closeOn(player), ms: GHOST_SCREAM.flashInMs, onStart: () => { this.ghostFlashCount += 1; } },
+            { shot: closeOn(player), ms: FINAL_TURN.playerKaijuHoldMs, onStart: () => this.turnPlayerKaiju(player) },
+            { shot: closeOn(player), ms: 0, onStart: () => { this.finalTurnState = 'destroyed'; } }
+        ]);
+    }
+
+    // the player gone, and in their place their Kaiju: it stands there (the city's end follows)
+    turnPlayerKaiju(player) {
+        const tile = player.getTileIndex();
+        const location = { ...player.charLocation };
+        player.isVisible = false;
+        player.isUnhurtable = true;
+        const kaiju = this.gameBoardPiecesManager.addPiece({
+            pieceClass: GameBoardPieceKaiju,
+            pieceInfo: { ...PIECES_INFO.kaiju, abilities: [], spewFireCoolDown: Infinity, maxLives: 99, moveSpeed: 0, isDoAvoidEnemy: false, color: player.color },
+            teamIndex: 1
+        });
+        kaiju.initCharLocation(true, tile);
+        kaiju.charLocation = location;
+        kaiju.isUnhurtable = true;
+        kaiju.isPlayerKaiju = true;
+        this.playerKaiju = kaiju;
+    }
+
     // the fight with the teammate's Kaiju from its start: they have already turned (no words, no Kaiju waves before it)
     startTurnedFight() {
-        const { teammate } = this.getGhostTeam();
+        const { player, teammate } = this.getGhostTeam();
         this.score = this.getKillsToWin();
         if (!teammate) {
-            this.finalTurnState = 'fighting';
-            this.teammateKaiju = { isDead: true };
+            this.startPlayerTurn(player);
             return;
         }
         this.turnTeammateKaiju(teammate);
@@ -1218,7 +1310,7 @@ export class GameManager {
             } },
             { shot: topShot, ms: SHATTER_SCREAM.portalMs, isLive: true, onStart: () => this.gameBoardManager.closeWormholes() },
             // she looks down at the hall as she calls to them (Jamie)
-            { shot: topShot, ms: getSpeechMs(toCreatures.text), isLive: true, speech: () => ({ ...this.getSpeechOver(rival, toCreatures.name, toCreatures.text), isShout: true }), onStart: () => { rival.stopMoving(); rival.facingDir = 'down'; rival.dir = 'idle'; } },
+            { shot: topShot, ms: getSpeechMs(toCreatures.text), isLive: true, speech: () => ({ ...this.getSpeechOver(rival, toCreatures.name, toCreatures.text, { isAboveHead: true }), isShout: true }), onStart: () => { rival.stopMoving(); rival.facingDir = 'down'; rival.dir = 'idle'; } },
             ...panelSteps,
             // the whole hall darkens, and the camera is back on her, up top
             { shot: topShot, ms: SHATTER_SCREAM.panMs, isLive: true, phase: this.level.flood.phase },
@@ -1506,7 +1598,7 @@ export class GameManager {
     updateGhostRing() {
         const ring = this.ghostRing;
         const team = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex()).filter(piece => !piece.isDead && piece.isOnTiles);
-        const hits = ring.step(GAME_TICK.pieceMs, team.map(piece => ({ key: piece.pieceIndex, spot: piece.charLocation })), this.getIsDispelledAt);
+        const hits = ring.step(GAME_TICK.pieceMs, team.map(piece => ({ key: piece.pieceIndex, spot: piece.charLocation })), this.getIsDispelledByTeam);
         hits.forEach(({ key, dirs }) => {
             const piece = this.gameBoardPiecesManager.getPiece(key);
             piece.lastHitDirs = dirs;
@@ -1571,6 +1663,41 @@ export class GameManager {
     }
 
     // over the team's Dispel: only the players' Bubble counts
+    /*
+        The Rooftop without the player's Dispel (Jamie): the fight can't be won without one. Then the teammate brings it
+        (Dispel, Heal, Discharge), keeps with the player rather than going after her, and attacks only what comes in range.
+        The first time their Dispel stops one of her ghosts, they say so.
+    */
+    setUpGhostGuardian() {
+        const { player, teammate } = this.getGhostTeam();
+        if (!player || !teammate || this.followers.includes(teammate)) return;
+        const hasDispel = player.abilities.some(ability => ability.gameBoardPieceAbilityData.element == 'bubble');
+        if (hasDispel) return;
+        teammate.abilities = this.settingsManager.getAbilitiesFromElements(GHOST_BOSS.guardianKit);
+        teammate.isGuardian = true;
+        this.ghostGuardian = teammate;
+    }
+
+    // a ghost on a tile of the team's Dispel. the guardian's first: their line (once)
+    getIsDispelledByTeam = spot => {
+        if (!this.getIsDispelledAt(spot)) return false;
+        const guardian = this.ghostGuardian;
+        if (guardian && !guardian.isDead && !this.hasGuardianSpoken && this.getDispelCasterAt(spot) == guardian.pieceIndex) {
+            this.hasGuardianSpoken = true;
+            const { text } = getDialogueLine('rooftop.guardian');
+            this.speech = this.fillSpeech({ ...this.getSpeechOver(guardian, this.getTeammateName(), text), isShout: true });
+            this.timeoutHandler.registerTimeout(() => { if (this.speech && this.speech.text == text) this.speech = null; }, getSpeechMs(text));
+        }
+        return true;
+    };
+
+    getDispelCasterAt = spot => {
+        const { grid } = this.level;
+        const { i, j } = getTileIndexAtLocation(grid, { x: spot.x - grid.charOffsetX * grid.scale, y: spot.y - grid.charOffsetY * grid.scale }) || {};
+        const tile = this.gameBoardManager.tiles[i] && this.gameBoardManager.tiles[i][j];
+        return tile && tile.cast ? tile.cast.casterIndex : undefined;
+    };
+
     getIsDispelledAt = spot => {
         const { grid } = this.level;
         const { i, j } = getTileIndexAtLocation(grid, { x: spot.x - grid.charOffsetX * grid.scale, y: spot.y - grid.charOffsetY * grid.scale }) || {};
@@ -1818,7 +1945,8 @@ export class GameManager {
 
     // 'isMidFight': a scene in the middle of a fight (a boss's scream, a walk through a portal): it holds the fight,
     // but the HUDs stay up and the log stays closed
-    startCutscene(steps, { isMidFight = false } = {}) {
+    startCutscene(steps, { isMidFight = false, isPortalWalk = false } = {}) {
+        if (!isPortalWalk) this.endTravelForScene();
         // in the log, a conversation in a wide shot cuts to each speaker: first it holds on the whole scene
         const [first] = steps;
         if (getIsDialogueLog() && first && first.speech && first.shot && first.shot.isWide) steps = [{ shot: { isWide: true }, ms: DIALOGUE.establishMs }, ...steps];
@@ -2198,6 +2326,13 @@ export class GameManager {
         return this.settingsManager.getAbilitiesFromElements(this.level.agentDrops.kits[kit]);
     }
 
+    // the Lab fight (Jamie): the player's NPCs (teammate, recruits) stay down on the floor. the portal up is the player's,
+    // to follow the Agent; the clones come down from the catwalk on their own.
+    getIsTileOpenTo = (piece, tileIndex) => {
+        if (!this.level.agentDrops || !piece.isNpc || piece.getTeamIndex() != this.gameBoardPiecesManager.getPlayerTeamIndex()) return true;
+        return !this.getIsOnCatwalk(tileIndex);
+    };
+
     getIsOnCatwalk = ({ j }) => {
         return !!this.level.agentDrops && j <= this.level.agentDrops.catwalkLastRow;
     }
@@ -2291,12 +2426,14 @@ export class GameManager {
     }
 
     // words over someone's head, with the balloon opening toward the middle of the scene
-    getSpeechOver(piece, name, text) {
+    // 'isAboveHead': over their head wherever they are, even near the top of the scene (in a close shot of them, the
+    // whole scene isn't in view to be kept to: the Mermaid up on the Aquarium's top floor, Jamie)
+    getSpeechOver(piece, name, text, { isAboveHead = false } = {}) {
         const { x, y } = piece.charLocation;
         const { rowStep, scale } = this.level.grid;
         // a longer balloon is taller, so it sits lower to stay in the shot
         const lineCount = Math.ceil(text.length / CUTSCENE.speechLineChars);
-        const topY = CUTSCENE.speechTopY + Math.max(lineCount - CUTSCENE.speechShortLines, 0) * CUTSCENE.speechLinePx;
+        const topY = isAboveHead ? -Infinity : CUTSCENE.speechTopY + Math.max(lineCount - CUTSCENE.speechShortLines, 0) * CUTSCENE.speechLinePx;
         return {
             name, text, x, y: Math.max(y - CUTSCENE.recruitSpeechRows * rowStep * scale, topY), isFlipped: x > this.level.world.width / 2,
             avatar: piece.avatar,
@@ -2486,6 +2623,7 @@ export class GameManager {
     }
 
     startOutcomeShot() {
+        this.endTravelForScene();
         const deaths = this.getDeathPieces().filter(({ isKnockdown }) => !isKnockdown);
         const lastDeath = deaths[deaths.length - 1];
         if (!lastDeath) return;
@@ -2511,6 +2649,7 @@ export class GameManager {
 
     // the player and teammate stand over the beaten bystander: the player's choice, with the teammate back and to the left
     startRecruitScene() {
+        this.endTravelForScene();
         this.logChain += 1;
         this.dialogueLog = []; // the words before the fight are done with: the log shows only what is said over the bystander
         const { avatar, pronoun, recruitSpot, isStandingBeside } = this.level.rival;
@@ -2746,6 +2885,7 @@ export class GameManager {
         // the last fight: won when the teammate, turned Kaiju, is down. until then, its Kaiju beaten is not the end.
         if (this.level.finalTurn) {
             if (this.gameBoardPiecesManager.getIsPlayerTeamDead()) return GameResult.PlayerLost; // the 30 beaten don't make it a win
+            if (this.finalTurnState == 'destroyed') return GameResult.PlayerWon; // the ending where the player turned
             if (this.finalTurnState == 'fighting') return this.teammateKaiju.isDead ? GameResult.PlayerWon : null;
             if (this.score >= this.getKillsToWin()) return null;
         }
@@ -2849,6 +2989,9 @@ export class GameManager {
             getGhostRingMove: this.getGhostRingMove,
             startPortalWalk: this.startPortalWalk,
             getTeleportAcross: this.getTeleportAcross,
+            getClosestWalkableTile: tile => this.gameBoardManager.getClosestWalkableTile(tile),
+            getIsBossThreatNear: this.getIsBossThreatNear,
+            getIsTileOpenTo: this.getIsTileOpenTo,
             // the Aquarium's sea creatures keep to the flooded floor
             getIsStatusAllowedOn: (appliedStatus, tileIndex) => appliedStatus != 'isSeaGhost' || !this.level.flood || this.getIsFloodTile(tileIndex),
             getIsWormholeTile: ({ i, j }) => this.gameBoardManager.getWormholes().some(({ from, to }) => [from, to].some(end => end.i == i && end.j == j)),

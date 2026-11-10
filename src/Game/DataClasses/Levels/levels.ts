@@ -184,7 +184,7 @@ export type LevelConfig = {
   shakePhases: Array<string>; // phases that shake the whole scene
   rival?: Rival;
   transformScene?: string; // after the fight is won, the teammate transforms (dialogue.json)
-  finalTurn?: { scene: string; kaijuLives: number; coolDownMs: number; castEveryMs: number; isStartTurned?: boolean }; // the last fight: once its Kaiju are beaten, the teammate turns Kaiju
+  finalTurn?: { scene: string; aloneScene: string; kaijuLives: number; coolDownMs: number; castEveryMs: number; isStartTurned?: boolean }; // the last fight: once its Kaiju are beaten, the teammate turns Kaiju
   linkWalls?: Array<{ tile: TileIndex; point: { x: number; y: number }; behind: { x: number; y: number }; outDir: { x: number; y: number }; outTile?: TileIndex }>; // where a tile link's walk-through goes out of sight (and, maybe, the tile the walk out ends on)
   giantKaiju?: { // the final battle (GiantKaiju.ts): the teammate as a giant Kaiju, marching up the Peninsula
     route: Array<{ x: number; y: number }>; // from the foot of the Peninsula to the city, in the big map's pixels
@@ -1009,7 +1009,8 @@ LEVELS.finalPeninsula = {
   ...PENINSULA,
   id: 'finalPeninsula',
   name: 'Final battle (Peninsula)',
-  finalTurn: { scene: 'peninsula.finalTurn', kaijuLives: 10, coolDownMs: 6000, castEveryMs: 1200 } // each power waits coolDownMs; one of them every castEveryMs
+  // 'aloneScene': with no teammate left to turn, the player's own words before they turn (startPlayerTurn)
+  finalTurn: { scene: 'peninsula.finalTurn', aloneScene: 'peninsula.finalTurnAlone', kaijuLives: 10, coolDownMs: 6000, castEveryMs: 1200 } // each power waits coolDownMs; one of them every castEveryMs
 };
 
 // the same last fight from the teammate's turn on (Jamie): what Retry plays after a loss to their Kaiju, and a dev jump.

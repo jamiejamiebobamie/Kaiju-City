@@ -302,6 +302,35 @@
         }
       ]
     },
+    "peninsula.finalTurnAlone": {
+      "label": "Final battle: after the last Kaiju, with no teammate left, the player turns",
+      "lines": [
+        {
+          "speaker": "player",
+          "text": "That's the last of them...",
+          "id": "peninsula.finalTurnAlone.0",
+          "note": "draft"
+        },
+        {
+          "speaker": "player",
+          "text": "It's quiet. Too quiet, without you here.",
+          "id": "peninsula.finalTurnAlone.1",
+          "note": "draft"
+        },
+        {
+          "speaker": "player",
+          "text": "Why can I still hear them? They're calling me...",
+          "id": "peninsula.finalTurnAlone.2",
+          "note": "draft"
+        },
+        {
+          "speaker": "player",
+          "text": "My hands... they're burning. No... not me too...",
+          "id": "peninsula.finalTurnAlone.3",
+          "note": "draft"
+        }
+      ]
+    },
     "rapidTransit.intro": {
       "label": "Subway: Punk Guy finds the eye",
       "lines": [
@@ -418,6 +447,17 @@
           "speaker": "Punk Girl",
           "text": "Every soul in this ground... protect me!",
           "id": "rooftop.ghostScream.2",
+          "note": "draft"
+        }
+      ]
+    },
+    "rooftop.guardian": {
+      "label": "Rooftop: the teammate's first Dispel of her ghosts (the player has no Dispel)",
+      "lines": [
+        {
+          "speaker": "teammate",
+          "text": "Let's stick together. I'll block her ghosts.",
+          "id": "rooftop.guardian.0",
           "note": "draft"
         }
       ]

@@ -747,7 +747,9 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const getMatchEnd = isWon => {
     const title = isWon ? getWinTitle() : "You Lost";
     // the end of the game: the title, then the credits, then the landing screen
-    if (isWon && (level.giantKaiju || (campaignIndex !== null && getIsLastSection(campaignIndex)))) return { title: "You saved the city!", buttons: [], isFinale: true };
+    // the last fight's ends: the city saved, or (the player turned, with no teammate left to) destroyed (Jamie)
+    const isDestroyed = !!gameManager.current && gameManager.current.finalTurnState == "destroyed";
+    if (isWon && (level.giantKaiju || (campaignIndex !== null && getIsLastSection(campaignIndex)))) return { title: isDestroyed ? "You destroyed the city!" : "You saved the city!", buttons: [], isFinale: true };
     if (campaignIndex === null) {
       return { title, buttons: [{ text: "Play again", onClick: () => triggerTransition(resetMatch) }, { text: "Leave", onClick: handleClickHome }] };
     }

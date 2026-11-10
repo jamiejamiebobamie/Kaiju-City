@@ -532,10 +532,13 @@ export class GameBoardManager {
         // an NPC resting from portals plans without them
         const piece = crowdPieceIndex === undefined ? undefined : this.gameManagerProxy.getPiece(crowdPieceIndex);
         const isWithoutLinks = !!piece && !!piece.getIsPortalResting && piece.getIsPortalResting();
+        // and keeps to the tiles it may go on (the ghost boss's roof, the Lab's floor for the player's NPCs)
+        const getSteps = this.getPathStepsFrom(startIndex, isWithoutLinks);
+        const getAllowedSteps = piece && piece.getIsAllowedTile ? tile => getSteps(tile).filter(next => piece.getIsAllowedTile(next)) : getSteps;
         const avoidedPath = findPath({
             start: startIndex,
             goal: goalIndex,
-            getAdjacentTiles: this.getPathStepsFrom(startIndex, isWithoutLinks),
+            getAdjacentTiles: getAllowedSteps,
             getLocation: this.getCharXAndYFromTileIndex,
             getIsBlocked: tile => getIsEnemyTile(tile) || (isAlwaysAvoid && getIsNextToEnemy(tile)),
             getExtraCost: tile => (getIsNextToEnemy(tile) ? ENEMY_NEARBY_TILE_COST : 0) + getCrowdCost(tile)
@@ -845,7 +848,8 @@ export class GameBoardManager {
                     ||
                     !!otherTeamsTilesLookup[`${t.i} ${t.j}`] // enemy tile, will cause dmg
             );
-        return isInDanger;
+        // the bosses' own threats (Jamie): the ghost boss's launched ghosts, which do their harm off the tiles' damage
+        return isInDanger || this.gameManagerProxy.getIsBossThreatNear(pieceIndex);
     }
 
     // includes dmg from Kaiju on the tile and dmg status tiles (and 'Heals', ie. negative dmg)

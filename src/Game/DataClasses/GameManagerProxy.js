@@ -193,6 +193,21 @@ export class GameManagerProxy {
         return this.props.getIsInBounds(tileIndex);
     }
 
+    // a level's own rule for a piece on a tile (the Lab fight: the player's NPCs stay off the catwalk)
+    getIsTileOpenTo(piece, tileIndex) {
+        return !this.props.getIsTileOpenTo || this.props.getIsTileOpenTo(piece, tileIndex);
+    }
+
+    // a boss's threat close to the piece: something its defensive powers should answer
+    getIsBossThreatNear(pieceIndex) {
+        return !!this.props.getIsBossThreatNear && this.props.getIsBossThreatNear(pieceIndex);
+    }
+
+    // the nearest tile that can be walked on
+    getClosestWalkableTile(tileIndex) {
+        return this.props.getClosestWalkableTile ? this.props.getClosestWalkableTile(tileIndex) : undefined;
+    }
+
     getIsClosedTile(tileIndex) {
         return this.props.getIsClosedTile(tileIndex);
     }

@@ -9,6 +9,7 @@
 */
 
 export const GHOST_BOSS = {
+  guardianKit: ['bubble', 'love', 'lightning'], // the teammate's, when the player has no Dispel: Dispel, Heal, Discharge (Jamie)
   rings: [6, 12], // ghosts in each phase's ring (Jamie, 2026-11-06): fight, 6 ghosts, fight, 12 ghosts (she is a ghost from then), fight, the end
   ringRadiusRows: 17, // the ring's size: round the whole graveyard roof, out over the sea and down the building's face (Jamie's mockup)
   ringSquash: 1, // a circle, as in the mockup

@@ -15,7 +15,7 @@ export const STORY: Array<StorySection> = [
   { label: 'Subway', scenes: ['rapidTransit.intro', 'recruit.choice'], rival: 'punk' },
   { label: 'Peninsula 2', scenes: ['radio.peninsula2'] },
   { label: 'Map to Rooftop', scenes: ['radio.mapRooftop'] },
-  { label: 'Rooftop', scenes: ['rooftop.intro', 'rooftop.afterTouch', 'rooftop.ghostScream', 'recruit.choice'], rival: 'black_female' },
+  { label: 'Rooftop', scenes: ['rooftop.intro', 'rooftop.afterTouch', 'rooftop.ghostScream', 'rooftop.guardian', 'recruit.choice'], rival: 'black_female' },
   { label: 'Peninsula 3', scenes: ['radio.peninsula3'] },
   { label: 'Map to Aquarium', scenes: ['radio.mapAquarium'] },
   { label: 'Aquarium', scenes: ['aquarium.intro', 'aquarium.stopScream', 'aquarium.toCreatures', 'recruit.choice'], rival: 'mermaid' },
@@ -25,7 +25,7 @@ export const STORY: Array<StorySection> = [
   { label: 'Sewer 1', scenes: ['sewer1.walkIn', 'sewer1.reveal'] },
   { label: 'Sewer 2', scenes: ['sewer2.walkIn'] },
   { label: 'Lab fight', scenes: ['lab.showdown', 'lab.transformation'] },
-  { label: 'Final battle', scenes: ['radio.final', 'peninsula.finalTurn'] }, // (the giant's lines, finalBattle.*, are kept for GIANT_KAIJU.isFinalBattle)
+  { label: 'Final battle', scenes: ['radio.final', 'peninsula.finalTurn', 'peninsula.finalTurnAlone'] }, // (the giant's lines, finalBattle.*, are kept for GIANT_KAIJU.isFinalBattle)
   { label: 'Visiting a battleground (any map walk, after its fight)', scenes: ['visit'] }
 ];
 

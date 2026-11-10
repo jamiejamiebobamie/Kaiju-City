@@ -219,6 +219,14 @@ export class GameBoardPieceBase {
                 else this.walkToTile = undefined;
             }
             this.useAbilities(accTime);
+        } else if (this.isNpc && this.isOnTiles && this.gameManagerProxy.getIsClosedTile(this.tileIndex)) {
+            // on tiles that have closed (the Subway's tracks, a train coming): off them first, by the nearest way (Jamie)
+            if (this.isThere) {
+                const offTile = this.gameManagerProxy.getClosestWalkableTile(this.tileIndex);
+                const path = offTile ? this.gameManagerProxy.getPathFromTileToTile({ fromTile: this.tileIndex, toTile: offTile, pieceIndex: this.pieceIndex }) : [];
+                if (path.length) this.updateMovmement(path);
+            }
+            this.useAbilities(accTime);
         } else if (this.isNpc && this.isOnTiles && this.gameManagerProxy.getGhostRingMove(this) !== undefined) {
             // inside the ghost ring: the teammate stays in, and steps out of the way of the next ghost
             if (this.isThere) this.moveToTiles = this.gameManagerProxy.getGhostRingMove(this);
@@ -233,7 +241,8 @@ export class GameBoardPieceBase {
             // DETERMINE DESIRED MOVEMENT LOGIC
             // only re-path between tiles. a new path each tick is wasted while walking to the next tile.
             if (this.isThere) {
-                if (!enemy) {
+                // the Rooftop's guardian (no Dispel with the player): stays with the player, whoever is about
+                if (!enemy || this.isGuardian) {
                     this.followLeader();
                 } else {
                     this.moveWithEnemy(enemy);
@@ -338,6 +347,7 @@ export class GameBoardPieceBase {
     }
 
     getIsAllowedTile(tileIndex) {
+        if (!!tileIndex && !this.gameManagerProxy.getIsTileOpenTo(this, tileIndex)) return false; // the level's own rules (the Lab's catwalk)
         return !this.allowedTile || (!!tileIndex && this.allowedTile(tileIndex));
     }
 
