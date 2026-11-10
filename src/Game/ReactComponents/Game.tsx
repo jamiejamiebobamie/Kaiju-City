@@ -8,7 +8,7 @@ import styled, { keyframes } from "styled-components";
 import { useSnapshot } from "valtio";
 import { GlobalSettingsContext } from "Home";
 import { GameBoard } from "./GameBoard/GameBoard";
-import { BezelButton, KaijuCounter, FULL_WINDOW, loadPlayWindow, PlayWindow, PORTRAIT_WINDOW, savePlayWindow } from "./GameBoard/PlayWindow";
+import { BezelButton, KaijuCounter, FULL_WINDOW, loadPlayWindow, ObjectiveTicker, PlayWindow, PORTRAIT_WINDOW, savePlayWindow } from "./GameBoard/PlayWindow";
 import { UI } from "./UI/UI";
 import { RadioCall } from "./RadioCall";
 import { IrradiationVat } from "./IrradiationVat";
@@ -29,6 +29,7 @@ import { ABILITY_KEY_CODES, GAME_TICK, PIECES_INFO, TILE_STATUSES_AND_ABILITY_DA
 import { FullscreenPage } from "Components/FullscreenPage.jsx";
 import { GameManager, GameResult } from '../DataClasses/GameManager';
 import { getActiveHotspots } from "./GameBoard/SceneElements";
+import { getIsDetourLevel } from "../DataClasses/Objectives";
 import { addUnlock, getBattlegroundUnlockId, getRecruitChoices, getWonBattlegrounds, resetUnlocks, saveRecruitChoice } from '../DataClasses/Unlocks';
 
 // the map walks show the battlegrounds already won on, from whatever was saved
@@ -219,6 +220,36 @@ const CardStack = styled.div`
 `;
 
 // an unlock's card: at the top right of the screen (Jamie)
+// a new objective's title: in the screen's upper part, a while, then gone
+const OBJECTIVE_NOTICE_MS = 2600;
+const noticeInOut = keyframes`
+  0% { opacity: 0; transform: translateX(-50%) scale(1.6); }
+  12% { opacity: 1; transform: translateX(-50%) scale(1); }
+  80% { opacity: 1; transform: translateX(-50%) scale(1); }
+  100% { opacity: 0; transform: translateX(-50%) scale(0.96); }
+`;
+const ObjectiveNotice = styled.div`
+  position: absolute;
+  top: 22%;
+  left: 50%;
+  z-index: 2147483600;
+  pointer-events: none;
+  font-family: gameboy;
+  font-size: min(3.6cqw, 3vw);
+  text-transform: uppercase;
+  text-align: center;
+  white-space: nowrap;
+  color: #4dff6a;
+  -webkit-text-stroke: 0.1cqw #c8ffd1;
+  /* "Kaiju Terminated"'s stepped block shadow, in green */
+  text-shadow:
+    0 0 0.6cqw #5cff8a,
+    -0.12cqw 0.12cqw 0 #00701a, -0.24cqw 0.24cqw 0 #005a15, -0.36cqw 0.36cqw 0 #004410, -0.48cqw 0.48cqw 0 #00300b,
+    -0.6cqw 0.6cqw 0 #001f07, -0.72cqw 0.72cqw 0 black, -0.9cqw 0.9cqw 0.6cqw rgba(0, 0, 0, 0.8),
+    0 0 2.5cqw #00ff40;
+  animation: ${noticeInOut} ${OBJECTIVE_NOTICE_MS}ms ease-out both;
+`;
+
 const UnlockStack = styled(CardStack)`
   top: 3cqw;
   bottom: auto;
@@ -416,7 +447,7 @@ const RECRUIT_TIMING = {
 
 const RECRUIT_CARDS = {
   punk: { avatar: 'punk', label: 'Punk Guy' },
-  black_female: { avatar: 'black_female', label: 'Punk Girl' },
+  black_female: { avatar: 'black_female', label: 'Ghost Girl' },
   mermaid: { avatar: 'mermaid', label: 'Aquarium Worker' }
 };
 
@@ -432,6 +463,7 @@ const FinaleCredits = ({ title, onDone }) => {
 
 export const Game = ({ handleClickHome, triggerTransition }) => {
   const { selectedAvatar, setSelectedAvatar, selectedTeammate, setSelectedTeammate, selectedDifficulty, settingsManager } = useContext(GlobalSettingsContext);
+  const { objectiveText, isObjectiveKaijuCount, objectiveCount } = useSnapshot(gameUiStore);
   const { isPaused, winner, isPlayerDead, players, recruits, kaijuKillCount, kaijuToWin, activePhases, isWideShot, isCutscene, unlockMessage, unlockImage, speech, recruitScene, dialogueLog, isDialogueWaiting, isTalking, isRecruitTalkDone, speakingPieceIndex } = useSnapshot(gameUiStore);
   const [isRadioAlarm, setIsRadioAlarm] = useState(false); // the radio call has told of Kaiju coming: the siren glows
   const recruitChoiceFrom = useRef(undefined); // where the pressed Recruit or Terminate button was, for its word to fly from
@@ -553,7 +585,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     settingsManager.setIsTeammate(isTeammate);
 
     setIsDialogueLog(isMonitorAlways); // in the monitor, conversations go to the log beside it
-    const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival, killsToWin, returnSpot, isRetry, autoRecruits: isAutoRecruits ? getCallableRecruits() : [], recruits: recruitedAvatars });
+    const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival, killsToWin, returnSpot, isRetry, autoRecruits: isAutoRecruits ? getCallableRecruits() : [], recruits: recruitedAvatars, carriedObjective: lastObjective.current });
     gm.initGame();
     gameManager.current = gm;
     if (import.meta.env.DEV) (window as any).__kaijuGame = gm; // dev only: a handle for scripted browser checks
@@ -632,6 +664,20 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });
+
+  // a new objective: its title on the screen a while (Jamie: in the style of "Kaiju Terminated", in green)
+  const [objectiveNotice, setObjectiveNotice] = useState<{ key: number; text: string } | undefined>(undefined);
+  useEffect(() => {
+    if (!objectiveCount || !objectiveText) return;
+    setObjectiveNotice({ key: objectiveCount, text: objectiveText });
+    const timeout = setTimeout(() => setObjectiveNotice(undefined), OBJECTIVE_NOTICE_MS);
+    return () => clearTimeout(timeout);
+  }, [objectiveCount]);
+  // the objective before a detour (the walking Lab off a map walk): it carries over there
+  const lastObjective = useRef(null);
+  useEffect(() => {
+    if (!getIsDetourLevel(level.id)) lastObjective.current = objectiveText ? { text: objectiveText, isKaijuCount: isObjectiveKaijuCount } : null;
+  }, [objectiveText, isObjectiveKaijuCount, level.id]);
 
   // only those recruited this playthrough
   const getCallableRecruits = () => recruitedAvatars;
@@ -1129,7 +1175,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               )}
               {level.ghostBoss && (
                 <>
-                  <button onClick={() => gameManager.current.devDownRival()}>Punk Girl to zero</button>
+                  <button onClick={() => gameManager.current.devDownRival()}>Ghost Girl to zero</button>
                   <label>
                     <input type="range" min={1.5} max={7} step={0.1} value={ghostRadiusRows} onChange={event => {
                       const rows = Number(event.target.value);
@@ -1167,7 +1213,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 <input type="checkbox" checked={isAutoRecruits} onChange={() => setIsAutoRecruits(!isAutoRecruits)} /> Recruits auto-summoned
               </label>
               {/* dev: who is recruited, this playthrough (from the next match on) */}
-              {[["punk", "Punk Guy"], ["black_female", "Punk Girl"], ["mermaid", "Aquarium Worker"]].map(([avatar, name]) => (
+              {[["punk", "Punk Guy"], ["black_female", "Ghost Girl"], ["mermaid", "Aquarium Worker"]].map(([avatar, name]) => (
                 <label key={avatar}>
                   <input type="checkbox" checked={recruitedAvatars.includes(avatar)} onChange={() => toggleRecruited(avatar)} /> Recruit: {name}
                 </label>
@@ -1224,8 +1270,9 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 <BezelButton title="Pause" onClick={handleClickPause}>Pause</BezelButton>
                 <BezelButton title="How to play" onClick={openControls}>Controls</BezelButton>
                 <BezelButton title="Goodbye!" onClick={handleClickHome}>Leave</BezelButton>
-                {!isWindowOpen && level.kaijuEntry && !isCutscene && !recruitScene && (
-                  <KaijuCounter count={kaijuKillCount} toWin={kaijuToWin} />
+                {/* the objective's display: always there (Jamie), running the objective, or the Kaiju count */}
+                {!isWindowOpen && (
+                  <ObjectiveTicker text={objectiveText} isKaijuCount={isObjectiveKaijuCount} count={kaijuKillCount} toWin={kaijuToWin} />
                 )}
               </>
             )}>
@@ -1263,6 +1310,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 </EndScreen>
               )}
               {isWiping && <ScreenClip><BlackWipe /></ScreenClip>}
+              {objectiveNotice && <ObjectiveNotice key={objectiveNotice.key}>{objectiveNotice.text}</ObjectiveNotice>}
               {unlockMessage && <UnlockStack><UnlockCard style={{ position: "static", transform: "none" }}><UnlockPortrait src={unlockImage} />{unlockMessage}</UnlockCard></UnlockStack>}
               {fadeCards && <FadeToBlack><CardStack>{fadeCards.map(({ label, image, power }, index) => (
                 <Toast key={label} style={{ animationDelay: `${0.4 + index * 0.45}s` }}>

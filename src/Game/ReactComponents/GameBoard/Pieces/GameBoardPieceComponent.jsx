@@ -271,7 +271,7 @@ const SpriteSheet = styled.div`
   }
 
 `;
-// the ghost boss's last phase: Punk Girl is a ghost, milk-white and see-through, and drifts as she stands
+// the ghost boss's last phase: Ghost Girl is a ghost, milk-white and see-through, and drifts as she stands
 const ghostDrift = keyframes`
   0%, 100% { transform: translateY(0); opacity: 0.62; }
   50% { transform: translateY(-3px); opacity: 0.5; }

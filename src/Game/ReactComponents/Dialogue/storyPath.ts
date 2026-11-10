@@ -32,7 +32,7 @@ export const STORY: Array<StorySection> = [
 // the bystanders, in the order they are met, and how they are spoken of
 export const RIVALS = [
   { id: 'punk', name: 'Punk Guy', pronoun: 'him' },
-  { id: 'black_female', name: 'Punk Girl', pronoun: 'her' },
+  { id: 'black_female', name: 'Ghost Girl', pronoun: 'her' },
   { id: 'mermaid', name: 'Aquarium Worker', pronoun: 'her' }
 ];
 const POSSESSIVES = { him: 'his', her: 'her' };

@@ -300,6 +300,50 @@ export const KaijuCounter = ({ count, toWin, style = undefined }) => {
   );
 };
 
+// the objective's display in the casing (Jamie): it is always there; the objective runs across it, right to left
+const OBJECTIVE_TICKER = { width: "16cqw", pxPerSecond: 7 }; // how fast it runs, in cqw a second
+
+const tickerRun = keyframes`
+  from { transform: translateX(var(--from)); }
+  to { transform: translateX(var(--to)); }
+`;
+
+const TickerDisplay = styled(BezelDisplay)`
+  width: ${OBJECTIVE_TICKER.width};
+  min-height: 1.1cqw;
+  overflow: hidden;
+  text-align: center;
+`;
+
+const TickerText = styled.span`
+  display: inline-block;
+  white-space: nowrap;
+  animation: ${tickerRun} linear infinite;
+`;
+
+// 'text': the objective ('' for none: the display stays, empty). 'isKaijuCount': the Kaiju count, as before.
+export const ObjectiveTicker = ({ text, isKaijuCount, count, toWin }) => {
+  const [pops, setPops] = useState([]);
+  const lastCount = useRef(count);
+  useEffect(() => {
+    if (isKaijuCount && count > lastCount.current) setPops(previous => [...previous.slice(-3), { key: count }]);
+    lastCount.current = count;
+  }, [count, isKaijuCount]);
+  // from just past the right edge to just past the left one: the run's length, in cqw (gameboy letters are about 0.85cqw)
+  const textCqw = text.length * 0.85 + 2;
+  const seconds = (16 + textCqw) / OBJECTIVE_TICKER.pxPerSecond;
+  return (
+    <CounterHolder>
+      <TickerDisplay>
+        {isKaijuCount
+          ? `KAIJU ${String(count).padStart(2, "0")}/${toWin}`
+          : text && <TickerText key={text} style={{ "--from": OBJECTIVE_TICKER.width, "--to": `-${textCqw}cqw`, animationDuration: `${seconds}s` }}>{text.toUpperCase()}</TickerText>}
+      </TickerDisplay>
+      {isKaijuCount && pops.map(({ key }) => <CountPop key={key}>+1</CountPop>)}
+    </CounterHolder>
+  );
+};
+
 export const BezelButton = styled.button`
   padding: 0.25cqw 0.8cqw;
   font-family: gameboy;

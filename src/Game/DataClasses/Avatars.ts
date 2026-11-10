@@ -9,7 +9,7 @@ export const ROSTER = [
   { id: 'guy', name: 'Guy' },
   { id: 'girl', name: 'Girl' },
   { id: 'punk', name: 'Punk Guy', unlock: 'punk' },
-  { id: 'black_female', name: 'Punk Girl', unlock: 'black_female' },
+  { id: 'black_female', name: 'Ghost Girl', unlock: 'black_female' },
   { id: 'mermaid', name: 'Aquarium Worker', unlock: 'mermaid' },
   { id: 'hazmat', name: 'Hazmat Worker', unlock: 'hazmat' },
   { id: 'agent', name: 'Agent', unlock: 'agent' }
@@ -21,7 +21,7 @@ export const OUT_OF_PLAY_POWERS = ['kaijuFire', 'water', 'phaseGhost', 'seaGhost
 // powers that are closed until the recruit who wields them is terminated
 export const SKILL_UNLOCKS = [
   { element: 'wood', name: 'Overgrowth', recruit: 'punk', recruitName: 'Punk Guy' },
-  { element: 'death', name: 'Haunt', recruit: 'black_female', recruitName: 'Punk Girl' },
+  { element: 'death', name: 'Haunt', recruit: 'black_female', recruitName: 'Ghost Girl' },
   { element: 'wink', name: 'Charm', recruit: 'mermaid', recruitName: 'the Aquarium Worker' },
   // the scientists' new power: the Agent tells of it on the Street, and it opens as the player leaves there, before the Subway (Jamie, 2026-11-06)
   { element: 'glass', name: 'Teleport', recruit: 'agent', recruitName: 'the Agents' }

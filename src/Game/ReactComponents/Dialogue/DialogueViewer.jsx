@@ -19,7 +19,7 @@ import { DEFAULT_PATH, getIsBranchingSection, getSectionItems, RIVALS, STORY } f
 // who can say a line: the roles the game fills in, and the people met by name
 const SPEAKERS = [
   ["player", "The player (Guy or Girl)"], ["teammate", "The teammate (the other one)"], ["agent", "Agent"], ["recruit", "A recruit"],
-  ["Punk Guy", "Punk Guy"], ["Punk Girl", "Punk Girl"], ["Aquarium Worker", "Aquarium Worker"], ["Lab Tech", "Lab Tech"]
+  ["Punk Guy", "Punk Guy"], ["Ghost Girl", "Ghost Girl"], ["Aquarium Worker", "Aquarium Worker"], ["Lab Tech", "Lab Tech"]
 ];
 
 // the scenes whose lines each get a camera shot: the bystander intros, the walk-ins, the showdown and the trap

@@ -344,20 +344,27 @@
           "speaker": "teammate",
           "text": "No, don't touch it!",
           "id": "rapidTransit.intro.1"
+        },
+        {
+          "speaker": "Punk Guy",
+          "text": "I do what I want!",
+          "id": "rapidTransit.intro.2",
+          "note": "jamie",
+          "isFlipped": true
         }
       ]
     },
     "rooftop.intro": {
-      "label": "Rooftop: Punk Girl at the graves",
+      "label": "Rooftop: Ghost Girl at the graves",
       "lines": [
         {
-          "speaker": "Punk Girl",
+          "speaker": "Ghost Girl",
           "text": "Is someone there? I can hear them...",
           "isFlipped": false,
           "id": "rooftop.intro.0"
         },
         {
-          "speaker": "Punk Girl",
+          "speaker": "Ghost Girl",
           "text": "It's my ancestors... they're calling to me from the graves.",
           "isFlipped": false,
           "id": "rooftop.intro.1"
@@ -368,7 +375,7 @@
           "id": "rooftop.intro.2"
         },
         {
-          "speaker": "Punk Girl",
+          "speaker": "Ghost Girl",
           "text": "They're so ANGRY. They want me to take it!",
           "isFlipped": false,
           "id": "rooftop.intro.3"
@@ -422,7 +429,7 @@
       "label": "Rooftop: after the touch",
       "lines": [
         {
-          "speaker": "Punk Girl",
+          "speaker": "Ghost Girl",
           "text": "I can feel their power flowing through me!",
           "id": "rooftop.afterTouch.0"
         }
@@ -432,19 +439,19 @@
       "label": "Rooftop: brought to zero, before her scream (one line for each phase)",
       "lines": [
         {
-          "speaker": "Punk Girl",
+          "speaker": "Ghost Girl",
           "text": "Protect me, ancestors!",
           "id": "rooftop.ghostScream.0",
           "note": "jamie"
         },
         {
-          "speaker": "Punk Girl",
+          "speaker": "Ghost Girl",
           "text": "Ancestors, rise again! Guard your blood!",
           "id": "rooftop.ghostScream.1",
           "note": "draft"
         },
         {
-          "speaker": "Punk Girl",
+          "speaker": "Ghost Girl",
           "text": "Every soul in this ground... protect me!",
           "id": "rooftop.ghostScream.2",
           "note": "draft"

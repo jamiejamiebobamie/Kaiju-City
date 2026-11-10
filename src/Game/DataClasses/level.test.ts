@@ -633,13 +633,13 @@ describe('rivals', () => {
       expect(gm.getIsRivalGround({ i: 30, j: 20 })).toBe(false); // the graveyard roof
     });
 
-    it('she never walks off her roof', () => {
+    it('she never walks off her roof while her ghosts are out (after, she roams: Jamie)', () => {
       const { gm, rival } = makeGhostFight(false);
       downHer(gm);
       for (let k = 0; k < 300; k += 1) {
         gm.stepPieces();
         gm.stepTiles();
-        if (rival.isDead || gm.getGameResult() !== null) break;
+        if (rival.isDead || gm.getGameResult() !== null || !gm.ghostRing) break;
         expect(gm.getIsRivalGround(rival.getTileIndex())).toBe(true);
       }
     });
@@ -1012,7 +1012,7 @@ describe('cutscenes', () => {
       gm.stepPieces();
       if (gm.speech && !said.includes(gm.speech.text)) said.push(gm.speech.text);
     }
-    expect(said).toEqual(['Ooo... pretty...', "No, don't touch it!"]);
+    expect(said).toEqual(['Ooo... pretty...', "No, don't touch it!", 'I do what I want!']);
     expect(gm.accTime).toBe(accTime);
     expect(gm.getActivePhases()).toContain('eyeTouched');
     gm.stepPieces();
@@ -2041,7 +2041,7 @@ describe('recruit calls', () => {
 });
 
 describe('recruits', () => {
-  it('the teammate speaks of Punk Girl and the Aquarium Worker as her, and Punk Guy as him', () => {
+  it('the teammate speaks of Ghost Girl and the Aquarium Worker as her, and Punk Guy as him', () => {
     expect(LEVELS.rooftop.rival.pronoun).toBe('her');
     expect(LEVELS.aquarium.rival.pronoun).toBe('her');
     expect(LEVELS.rapidTransit.rival.pronoun).toBe('him');
@@ -2065,7 +2065,7 @@ describe('recruits', () => {
     expect(players.map(({ gender }) => gender)).not.toContain('black_female');
   });
 
-  it('the Aquarium Worker and Punk Girl say more before their fights', () => {
+  it('the Aquarium Worker and Ghost Girl say more before their fights', () => {
     const getText = level => level.rival.intro.lines.map(({ text }) => text).join(' ');
     expect(getText(LEVELS.aquarium)).toMatch(/must've worked here/);
     expect(getText(LEVELS.rooftop)).toMatch(/ancestors/);

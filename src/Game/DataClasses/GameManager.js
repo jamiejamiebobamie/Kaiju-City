@@ -13,6 +13,7 @@ import { GameBoardPieceAgent } from './GameBoard/Pieces/GameBoardPieceAgent';
 import { GameBoardPieceExtra } from './GameBoard/Pieces/GameBoardPieceExtra';
 import { WIDE_SHOT } from './Camera';
 import { addUnlock, getRecruitChoices, getUnlocks } from './Unlocks';
+import { getIsDetourLevel, getIsSameObjective, KAIJU_OBJECTIVE, MAP_OBJECTIVES, OBJECTIVES } from './Objectives';
 import { ROSTER } from './Avatars';
 import { getSpeechMs } from './speechTiming';
 import { getTileCenter, getTileIndexAtLocation } from './GameBoard/hexGrid';
@@ -200,7 +201,11 @@ export class GameManager {
     // 'autoRecruits': the recruits called in at the start of every fight, and walking with the team in the scenes the
     // teammate is in (Jamie: a dev toggle, on by default). Empty: they are called with the buttons, as before.
     // 'recruits': who the player has recruited this playthrough (Game.tsx keeps it in React state). Left out: the saved choices.
-    constructor({ level = PENINSULA, settingsManager, hasArrival = false, killsToWin = undefined, returnSpot = undefined, isRetry = false, autoRecruits = [], recruits = undefined }) {
+    // 'carriedObjective': the objective from before a detour (the walking Lab, off a map walk), which carries over
+    constructor({ level = PENINSULA, settingsManager, hasArrival = false, killsToWin = undefined, returnSpot = undefined, isRetry = false, autoRecruits = [], recruits = undefined, carriedObjective = null }) {
+        this.carriedObjective = carriedObjective;
+        this.objective = null; // what the player is to do now (Objectives.ts)
+        this.objectiveCount = 0; // goes up with each new one: the screen shows each new one as a title
         this.autoRecruits = autoRecruits;
         this.recruits = recruits;
         this.hasAutoSummoned = false;
@@ -646,7 +651,7 @@ export class GameManager {
         return false;
     };
 
-    // the enemy zoom leaves these out: while the ghost boss's ring is up and the player is inside it, Punk Girl (Jamie).
+    // the enemy zoom leaves these out: while the ghost boss's ring is up and the player is inside it, Ghost Girl (Jamie).
     // the ring is the fight then, not her.
     getIsCameraKeptOff = (player, piece) => {
         // the Aquarium: the Mermaid up on the top floor, healing, while the player is down in the water (Jamie). the camera
@@ -2221,11 +2226,50 @@ export class GameManager {
         ]);
     }
 
+    // - - - objectives (Objectives.ts, Jamie 2026-11-10) - - -
+
+    // what the player is to do, as things stand. held while a scene plays (not one mid-fight): a new one shows after it
+    getCurrentObjective() {
+        const level = this.level;
+        if (this.recruitScene) return null;
+        if (level.finalTurn) {
+            if (this.finalTurnState == 'fighting' && this.teammateKaiju && !this.teammateKaiju.isDead) return { text: OBJECTIVES.stopTeammate(this.getTeammateName()) };
+            if (this.finalTurnState) return null;
+            return KAIJU_OBJECTIVE;
+        }
+        if (level.kaijuEntry) return KAIJU_OBJECTIVE;
+        if (level.isMapWalk) return MAP_OBJECTIVES[level.id] ? { text: MAP_OBJECTIVES[level.id] } : null;
+        if (getIsDetourLevel(level.id)) return this.carriedObjective;
+        if (level.greeting) {
+            if (this.activePhases.has(EXIT_OPEN_PHASE)) return { text: OBJECTIVES.street.leave };
+            return this.hasGreeted ? { text: OBJECTIVES.street.talk } : null;
+        }
+        if (level.ghostBoss) {
+            if (this.ghostRing) return { text: OBJECTIVES.ghosts };
+            return { text: this.rivalPiece && this.rivalPiece.isGhostForm ? OBJECTIVES.ghostForm : OBJECTIVES.rivals.black_female };
+        }
+        if (level.aquariumFlood && this.isShattered && this.rivalPiece && this.getIsTopFloor(this.rivalPiece.getTileIndex())) return { text: OBJECTIVES.flood };
+        if (level.rival) return OBJECTIVES.rivals[level.rival.avatar] ? { text: OBJECTIVES.rivals[level.rival.avatar] } : null;
+        if (level.trap) return this.getPieces().some(piece => piece.isChaser) ? { text: OBJECTIVES.escape } : null;
+        if (level.walkIn && level.walkIn.reveal) return this.activePhases.has(level.walkIn.reveal.glowPhase) ? { text: OBJECTIVES.glow } : null;
+        if (level.agentDrops) return { text: OBJECTIVES.agents };
+        return null;
+    }
+
+    updateObjective() {
+        if (this.cutscene && !this.cutscene.isMidFight) return;
+        const objective = this.getCurrentObjective();
+        if (getIsSameObjective(objective, this.objective)) return;
+        this.objective = objective;
+        if (objective) this.objectiveCount += 1;
+    }
+
     // the whole scene, in on the Agent for his call, then back to the team, as at the train.
     // he calls again ('repeatMs' later) until the team is near him: each call takes the camera and the controls for a moment.
     startGreeting(isRepeat = false) {
         const { text, speechSpot, repeatMs } = this.level.greeting;
         const speech = { ...this.getAgentSpeech(text, speechSpot), isShout: true }; // a call across the street: a balloon, not the log
+        this.hasGreeted = true; // from his first call on, the objective is to go and talk to him
         const player = this.gameBoardPiecesManager.getPlayerPiece();
         const { rowStep, scale } = this.level.grid;
         const agentShot = { point: speech.focus || speechSpot, zoomScale: DIALOGUE.speakerZoomScale, isCover: true };
@@ -2828,6 +2872,7 @@ export class GameManager {
 
     stepPieces() {
         if (this.isPaused || this.isEditingTiles) return;
+        this.updateObjective();
         this.updateTalks();
         this.updateWalkers();
         if (this.recruitScene) return;
@@ -2909,6 +2954,10 @@ export class GameManager {
             recruits: this.gameBoardPiecesManager.getRecruitsUiState(),
             kaijuKillCount: this.score,
             kaijuToWin: this.getKillsToWin(),
+            // what the player is to do (Objectives.ts), as plain values: the store merges objects key by key
+            objectiveText: this.objective ? this.objective.text : '',
+            isObjectiveKaijuCount: !!this.objective && !!this.objective.isKaijuCount,
+            objectiveCount: this.objectiveCount,
             isPaused: this.isPaused,
             activePhases: this.getActivePhases(),
             isWideShot: this.getIsWideShot(),

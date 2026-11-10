@@ -9,6 +9,9 @@ export const gameUiStore = proxy({
   recruits: [], // called-in recruits: shown under the teammate's HUD
   kaijuKillCount: 0,
   kaijuToWin: 0,
+  objectiveText: '', // what the player is to do now: '' for nothing (Objectives.ts)
+  isObjectiveKaijuCount: false, // 'Defeat the Kaiju': the display shows the count
+  objectiveCount: 0, // a new objective each time it goes up
   isPaused: false,
   activePhases: [],
   isWideShot: false,

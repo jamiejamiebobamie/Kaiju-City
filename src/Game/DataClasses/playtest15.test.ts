@@ -24,7 +24,7 @@ describe('playtest 15', () => {
     expect(LEVELS.street.unlock.afterMs).toBeUndefined();
   });
 
-  it('the Rooftop: once the ghosts are gone, Punk Girl roams the whole roof again', () => {
+  it('the Rooftop: once the ghosts are gone, Ghost Girl roams the whole roof again', () => {
     const gm = makeGame(LEVELS.rooftop);
     for (let k = 0; k < 3000 && gm.cutscene; k++) gm.stepPieces();
     const rival = gm.rivalPiece;

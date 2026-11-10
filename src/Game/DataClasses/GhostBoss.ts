@@ -1,6 +1,6 @@
 /*
   The ghost boss: the Rooftop fight in phases (Jamie, 2026-11-05).
-  Each time Punk Girl is brought to zero she screams, the team is pulled onto the graveyard roof, and a ring of ghosts
+  Each time Ghost Girl is brought to zero she screams, the team is pulled onto the graveyard roof, and a ring of ghosts
   circles them. One at a time, a ghost shakes (still circling) and launches itself at them. A ghost that touches someone,
   circling or launched, costs them a health point and is gone. Dispel destroys launched ghosts only.
   The ring is spent once every ghost has launched or hit someone.
