@@ -277,6 +277,18 @@ const ghostDrift = keyframes`
   50% { transform: translateY(-3px); opacity: 0.5; }
 `;
 
+// health won sparring (Jamie): a red outline, pulsing, round the body
+const rewardPulse = keyframes`
+  0%, 100% { filter: drop-shadow(0 0 1px #ff2a3c) drop-shadow(0 0 3px #ff2a3c); }
+  50% { filter: drop-shadow(0 0 2px #ff5c6c) drop-shadow(0 0 9px #ff0020) drop-shadow(0 0 14px #ff0020); }
+`;
+
+const RewardPulse = styled.div`
+  position: absolute;
+  inset: 0;
+  ${props => props.$isOn && css`animation: ${rewardPulse} 0.9s ease-in-out infinite;`}
+`;
+
 const GhostForm = styled.div`
   position: absolute;
   inset: 0;
@@ -439,7 +451,8 @@ export const GameBoardPieceComponent = ({
   isSpeaking = false, // their line is up: they jitter as they talk
   isGhostForm = false, // the ghost boss's last phase
   portalMask = undefined, // walking through a portal: { point, behind } in level pixels. the body past that edge isn't drawn
-  isOnBoard = true // not yet on the tiles (a Kaiju still walking in): no numbers
+  isOnBoard = true, // not yet on the tiles (a Kaiju still walking in): no numbers
+  isRewardPulse = false // health just won sparring: a red outline pulses round them
 }) => {
   const numberAnchor = React.useRef(null);
   const [modifierText, setModifierText] = useState([]);
@@ -508,14 +521,14 @@ export const GameBoardPieceComponent = ({
       {!isQuiet && modifierText}
       <HealthBarWrapper lives={lives}>{bars}</HealthBarWrapper>
       <Character isDamaged={isDamaged && !isQuiet} isSpeaking={isSpeaking} style={portalMask ? { clipPath: getPortalClip(portalMask, charLocation, pieceScale) } : undefined}>
-        {isFalling ? <FallingFrame src="/levels/npcs/agentFalling.png" /> : <GhostForm $isGhost={isGhostForm}><SpriteSheet
+        {isFalling ? <FallingFrame src="/levels/npcs/agentFalling.png" /> : <RewardPulse $isOn={isRewardPulse}><GhostForm $isGhost={isGhostForm}><SpriteSheet
           avatar={avatar}
           spriteSheetSrc={spriteSheetSrc}
           isGoingToSpewFire={isGoingToSpewFire} // Kaiju-only
           lives={lives}
           anim={anim}
           color={color}
-        /></GhostForm>}
+        /></GhostForm></RewardPulse>}
       </Character>
     </Wrapper>
   );

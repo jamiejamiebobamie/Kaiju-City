@@ -250,6 +250,18 @@ const ObjectiveNotice = styled.div`
   animation: ${noticeInOut} ${OBJECTIVE_NOTICE_MS}ms ease-out both;
 `;
 
+// health won sparring: the same title, in red, a little lower (an objective may show with it)
+const RewardNotice = styled(ObjectiveNotice)`
+  top: 38%;
+  color: #ff5c6c;
+  -webkit-text-stroke: 0.1cqw #ffd0d6;
+  text-shadow:
+    0 0 0.6cqw #ff5c8a,
+    -0.12cqw 0.12cqw 0 #8a0020, -0.24cqw 0.24cqw 0 #6e0019, -0.36cqw 0.36cqw 0 #520012, -0.48cqw 0.48cqw 0 #3a000c,
+    -0.6cqw 0.6cqw 0 #22000a, -0.72cqw 0.72cqw 0 black, -0.9cqw 0.9cqw 0.6cqw rgba(0, 0, 0, 0.8),
+    0 0 2.5cqw #ff0040;
+`;
+
 const UnlockStack = styled(CardStack)`
   top: 3cqw;
   bottom: auto;
@@ -506,6 +518,9 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   // the bystanders terminated this playthrough (their battlegrounds offer sparring), and the health won sparring
   const [terminatedAvatars, setTerminatedAvatars] = useState<Array<string>>([]);
   const [bonusLives, setBonusLives] = useState(0);
+  const isHealthRewardDue = useRef(false); // won sparring: the next match (the walk, after) shows it
+  const [rewardNotice, setRewardNotice] = useState<{ key: number; text: string } | undefined>(undefined);
+  const rewardText = useRef(undefined); // the reward's title, due once the walk's opening shot is over
   const [sparringTweak, setSparringTweak] = useState({ ...SPARRING }); // the dev panel's copy of SPARRING, to show its values
   const [isAutoRecruits, setIsAutoRecruits] = useState(true); // dev toggle (Jamie): every recruit in every fight, and walking with the team; no call buttons
   const [isTrainedNpcs, setIsTrainedNpcs] = useState(false); // off by default (Jamie, 2026-11-06). NPCs play by the trained model in public/models in fights with no Kaiju; against a Kaiju they hand back to the rules
@@ -590,7 +605,12 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     settingsManager.setIsTeammate(isTeammate && !isSolo);
 
     setIsDialogueLog(isMonitorAlways); // in the monitor, conversations go to the log beside it
-    const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival, killsToWin, returnSpot, isRetry, autoRecruits: isAutoRecruits ? getCallableRecruits() : [], recruits: recruitedAvatars, carriedObjective: lastObjective.current, terminated: terminatedAvatars, bonusLives });
+    const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival, killsToWin, returnSpot, isRetry, autoRecruits: isAutoRecruits ? getCallableRecruits() : [], recruits: recruitedAvatars, carriedObjective: lastObjective.current, terminated: terminatedAvatars, bonusLives, healthReward: isHealthRewardDue.current });
+    // health just won sparring: shown on the walk, once its opening shot is over (the effect below), then done with
+    if (isHealthRewardDue.current) {
+      isHealthRewardDue.current = false;
+      rewardText.current = `${SPARRING.bonusPerWin} health gained!`;
+    }
     gm.initGame();
     gameManager.current = gm;
     if (import.meta.env.DEV) (window as any).__kaijuGame = gm; // dev only: a handle for scripted browser checks
@@ -683,6 +703,15 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   useEffect(() => {
     if (!getIsDetourLevel(level.id)) lastObjective.current = objectiveText ? { text: objectiveText, isKaijuCount: isObjectiveKaijuCount } : null;
   }, [objectiveText, isObjectiveKaijuCount, level.id]);
+
+  // the sparring reward plays out (Jamie): the title, and the HUDs up on the walk while the player and teammate glow
+  const isRewarding = players.some(({ isRewardPulse }) => isRewardPulse);
+  useEffect(() => {
+    if (!isRewarding || isCutscene || !rewardText.current) return;
+    setRewardNotice({ key: Date.now(), text: rewardText.current });
+    rewardText.current = undefined;
+    setTimeout(() => setRewardNotice(undefined), OBJECTIVE_NOTICE_MS); // not cleared when the glow ends: the title always goes
+  }, [isRewarding, isCutscene]);
 
   // only those recruited this playthrough
   const getCallableRecruits = () => recruitedAvatars;
@@ -1043,7 +1072,10 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     if (level.isTraining) {
       const isSparring = !!level.rival.isSparring;
       const skill = isWon && !isSparring ? unlockRecruitSkill(level.rival.avatar) : undefined;
-      if (isWon && isSparring) setBonusLives(bonus => bonus + SPARRING.bonusPerWin);
+      if (isWon && isSparring) {
+        setBonusLives(bonus => bonus + SPARRING.bonusPerWin);
+        isHealthRewardDue.current = true;
+      }
       const backToMap = { text: "Back to map", onClick: () => fadeOutThen(leaveLevel) };
       const wonTitle = isSparring ? "+1 health for both!" : skill ? `${skill.name} unlocked!` : "Training done";
       const timeout = setTimeout(() => setMatchEnd(isWon
@@ -1353,6 +1385,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               )}
               {isWiping && <ScreenClip><BlackWipe /></ScreenClip>}
               {objectiveNotice && <ObjectiveNotice key={objectiveNotice.key}>{objectiveNotice.text}</ObjectiveNotice>}
+              {rewardNotice && <RewardNotice key={rewardNotice.key}>{rewardNotice.text}</RewardNotice>}
               {unlockMessage && <UnlockStack><UnlockCard style={{ position: "static", transform: "none" }}><UnlockPortrait src={unlockImage} />{unlockMessage}</UnlockCard></UnlockStack>}
               {fadeCards && <FadeToBlack><CardStack>{fadeCards.map(({ label, image, power }, index) => (
                 <Toast key={label} style={{ animationDelay: `${0.4 + index * 0.45}s` }}>
@@ -1398,7 +1431,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               kaijuKilledToWin={kaijuToWin}
               isKaijuLevel={!!level.kaijuEntry}
               isCountOnBezel={!isWindowOpen}
-              isShowingHuds={!level.isWalkingLevel && !isCutscene && !recruitScene}
+              isShowingHuds={(!level.isWalkingLevel || isRewarding) && !isCutscene && !recruitScene}
               isShowingTopBar={!isCutscene && !recruitScene}
               isPaused={isPaused}
             />}

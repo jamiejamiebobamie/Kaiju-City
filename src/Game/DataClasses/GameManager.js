@@ -203,7 +203,9 @@ export class GameManager {
     // 'recruits': who the player has recruited this playthrough (Game.tsx keeps it in React state). Left out: the saved choices.
     // 'carriedObjective': the objective from before a detour (the walking Lab, off a map walk), which carries over
     // 'terminated': the bystanders the player chose to terminate (Game.tsx's state). 'bonusLives': health won sparring.
-    constructor({ level = PENINSULA, settingsManager, hasArrival = false, killsToWin = undefined, returnSpot = undefined, isRetry = false, autoRecruits = [], recruits = undefined, carriedObjective = null, terminated = [], bonusLives = 0 }) {
+    // 'healthReward': health was just won sparring: the player and teammate glow red a while (back on the map, Jamie)
+    constructor({ level = PENINSULA, settingsManager, hasArrival = false, killsToWin = undefined, returnSpot = undefined, isRetry = false, autoRecruits = [], recruits = undefined, carriedObjective = null, terminated = [], bonusLives = 0, healthReward = false }) {
+        this.healthReward = healthReward;
         this.terminated = terminated;
         this.bonusLives = bonusLives;
         this.carriedObjective = carriedObjective;
@@ -505,6 +507,7 @@ export class GameManager {
             [player, teammate].filter(piece => !!piece && !piece.isRecruit).forEach(piece => {
                 piece.maxLives = Math.min(piece.maxLives + this.bonusLives, SPARRING.maxPlayerLives);
                 piece.lives = piece.maxLives;
+                if (this.healthReward) piece.rewardPulseUntil = SPARRING.rewardPulseMs; // their clocks start from 0 here
             });
         }
 

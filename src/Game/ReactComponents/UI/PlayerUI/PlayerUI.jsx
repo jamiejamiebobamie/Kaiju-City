@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import styled from "styled-components";
+import styled, { css, keyframes } from "styled-components";
 import { Abilities } from "./Components/Abilities";
 import { HealthBar } from "./Components/HealthBar";
 import { PassiveAbilities } from "./Components/PassiveAbilities";
@@ -43,9 +43,16 @@ const HudPlate = styled.div`
   ${props => props.isBackground && "z-index: -1; filter: brightness(0.5) drop-shadow(-2px 2px 10px black) hue-rotate(275deg);"}
 `;
 
+// health won sparring (Jamie): the portrait's rim pulses red a while
+const portraitReward = keyframes`
+  0%, 100% { box-shadow: 0 0 0 2px #ff2a3c, 0 0 8px 2px #ff2a3c; }
+  50% { box-shadow: 0 0 0 4px #ff5c6c, 0 0 22px 8px #ff0020; }
+`;
+
 const PlayerBorder = styled.div`
   position: absolute;
   right: 20px;
+  ${props => props.$isReward && css`animation: ${portraitReward} 0.9s ease-in-out infinite;`}
 
   ${props => (props.isReversed ? "bottom: 20px;" : "top: 29px;")}
 
@@ -276,7 +283,7 @@ export const PlayerUI = ({
           />
         </>
       )}
-      <PlayerBorder isBlue={gender == "guy" ? true : false} isReversed={isTeammate ? true : false}>
+      <PlayerBorder isBlue={gender == "guy" ? true : false} isReversed={isTeammate ? true : false} $isReward={!!pd.isRewardPulse}>
         <PlayerPicture
           src={gender == "guy" ? "player_avatar.png" : gender == "girl" ? "teammate_avatar.png" : `/levels/portraits/hud-${gender}.png`}
           className="fa fa-user-circle"

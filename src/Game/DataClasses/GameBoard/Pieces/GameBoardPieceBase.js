@@ -860,8 +860,14 @@ export class GameBoardPieceBase {
             moveSpeedModifier,
             numTilesModifier,
             tileCountModifier,
+            isRewardPulse: this.getIsRewardPulse(), // health won sparring: the HUD's portrait glows red a while
             abilities: this.abilities.map(a => a.getUiState(this.isNpc, this.accTime))
         };
+    }
+
+    // health just won sparring (Jamie): a red glow pulses round them, on the board and on their HUD, until then
+    getIsRewardPulse() {
+        return (this.accTime || 0) < (this.rewardPulseUntil || 0);
     }
 
     respawn(accTime) {

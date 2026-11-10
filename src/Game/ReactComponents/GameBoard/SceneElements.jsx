@@ -679,6 +679,19 @@ const HOTSPOT_OUTLINE_Z = 20000;
 export const getActiveHotspots = (level, activePhases) => (level.sceneElements || []).filter(({ type, phase, hidePhase }) =>
   type == "hotspot" && (!phase || activePhases.includes(phase)) && !(hidePhase && activePhases.includes(hidePhase)));
 
+// a map site's one word (MAP_LABELS): small, light, outlined, readable over the map
+const MapLabel = styled.div`
+  position: absolute;
+  transform: translate(-50%, ${props => props.$isOver ? "-100%" : "0"});
+  pointer-events: none;
+  font-family: gameboy;
+  font-size: 11px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #f2f6ff;
+  text-shadow: -1px -1px 0 black, 1px -1px 0 black, -1px 1px 0 black, 1px 1px 0 black, 0 0 4px black;
+`;
+
 const HotspotKey = styled.span`
   display: inline-block;
   margin-right: 8px;
@@ -801,6 +814,8 @@ export const SceneElements = ({ level, activePhases, isPaused, onHotspot, isDial
           </React.Fragment>
         );
       }
+      // a map site's word, under (or over) its icon
+      if (type == "mapLabel") return <MapLabel key={id} $isOver={element.isOver} style={{ left: `${x}px`, top: `${y}px`, zIndex: style.zIndex }}>{element.text}</MapLabel>;
       if (type == "door") {
         // a sign, not a button: the team has to walk there
         return <DoorElement key={id} as="div" style={{ left: `${x}px`, top: `${y}px`, zIndex: style.zIndex }}><DoorIcon className="fa fa-sign-out" />{element.label}</DoorElement>;

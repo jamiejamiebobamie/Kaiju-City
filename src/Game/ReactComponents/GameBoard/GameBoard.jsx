@@ -9,7 +9,7 @@ import { GameBoardPieceComponent } from 'Game/ReactComponents/GameBoard/Pieces/G
 import { getSpeechScreenBox, PagedSpeechBalloon, SpeechBalloon } from 'Game/ReactComponents/GameBoard/SceneElements';
 import { TileCanvas } from 'Game/ReactComponents/GameBoard/Tile/TileCanvas';
 import { SceneElements } from 'Game/ReactComponents/GameBoard/SceneElements';
-import { CHARACTER_FEET, CHARACTER_HEIGHT_PX, EXIT_OPEN_PHASE, getSortZIndex, getTileTone, PENINSULA } from 'Game/DataClasses/Levels/levels';
+import { CHARACTER_FEET, CHARACTER_HEIGHT_PX, EXIT_OPEN_PHASE, getSortZIndex, getTileTone, MAP_LABEL, MAP_LABELS, PENINSULA } from 'Game/DataClasses/Levels/levels';
 import { WakeCanvas } from 'Game/ReactComponents/GameBoard/WakeCanvas';
 import { Camera, CAMERA, getCloseZoom, getFitZoom, WIDE_SHOT } from 'Game/DataClasses/Camera';
 import { CUTSCENE } from 'Game/DataClasses/GameManager';
@@ -241,6 +241,17 @@ const getCoverSights = (level, activePhases) => [
     .map(({ x, y, width, labelY }) => ({ x: x + width / 2, y: labelY ?? y })),
   ...(level.exit && activePhases.includes(EXIT_OPEN_PHASE) ? [level.exit.spot] : [])
 ];
+
+const CaretLabel = styled.div`
+  position: absolute;
+  z-index: 2147483001;
+  pointer-events: none;
+  font-family: gameboy;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #f2f6ff;
+  text-shadow: -1px -1px 0 black, 1px -1px 0 black, -1px 1px 0 black, 1px 1px 0 black, 0 0 4px black;
+`;
 
 const CaretIcon = styled.img`
   position: absolute;
@@ -997,7 +1008,15 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
       <React.Fragment key={key}>
         {icon && (() => {
           const spot = getInward(caret, CARET_INFO.inset);
-          return <CaretIcon src={`/levels/map/${icon}.png`} style={{ left: `${spot.x}px`, top: `${spot.y}px`, height: `${caret.size * CARET_INFO.iconHeight}px`, "--glow": isGlowing ? color : "transparent" }} />;
+          const iconHeight = caret.size * CARET_INFO.iconHeight;
+          const isOver = MAP_LABEL.position == "top";
+          return (
+            <>
+              <CaretIcon src={`/levels/map/${icon}.png`} style={{ left: `${spot.x}px`, top: `${spot.y}px`, height: `${iconHeight}px`, "--glow": isGlowing ? color : "transparent" }} />
+              {/* its word, as on the map (MAP_LABELS) */}
+              <CaretLabel style={{ left: `${spot.x}px`, top: `${spot.y + (isOver ? -1 : 1) * (iconHeight / 2 + 2)}px`, transform: `translate(-50%, ${isOver ? "-100%" : "0"})`, fontSize: `${Math.max(caret.size * 0.45, 9)}px` }}>{MAP_LABELS[icon] || icon}</CaretLabel>
+            </>
+          );
         })()}
         {windowKeys.has(key) && (() => {
           // docked to the caret: a hair's gap after the caret's base, then the badge
@@ -1113,6 +1132,7 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
       isGhostForm={!!p.isGhostForm}
       portalMask={p.portalMask}
       isOnBoard={p.isOnTiles !== false}
+      isRewardPulse={!!p.getIsRewardPulse && p.getIsRewardPulse()}
     />
   );
 

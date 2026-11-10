@@ -54,7 +54,7 @@ export type LevelPhase = {
 */
 export type SceneElement = {
   id: string;
-  type: 'image' | 'sprite' | 'pulse' | 'light' | 'sequence' | 'part' | 'moth' | 'whiteout' | 'npc' | 'speech' | 'walker' | 'door' | 'hotspot';
+  type: 'image' | 'sprite' | 'pulse' | 'light' | 'sequence' | 'part' | 'moth' | 'whiteout' | 'npc' | 'speech' | 'walker' | 'door' | 'hotspot' | 'mapLabel';
   x: number;
   y: number;
   width: number;
@@ -796,12 +796,17 @@ const getSpotDistance = ({ grid }, tile, { x, y }) => {
 // the mist drifting around a site on the map, relative to the site
 const MIST_PUFFS = [[0, 0, 120, 3.1], [-34, 18, 90, 4.3], [36, -14, 100, 5.2], [14, 34, 80, 3.7], [-22, -30, 84, 6.1]];
 
-const MAP_ICONS = {
+export const MAP_ICONS = {
   subway: { width: 74, height: 43 }, // two thirds of the art's size
   rooftop: { width: 62, height: 77 },
   aquarium: { width: 90, height: 72 },
   lab: { width: 104, height: 78 }
 };
+
+// a one-word label for each site, by its icon and by its caret at the screen's edge (Jamie). 'position': under the
+// icon ('bottom') or over it ('top'). 'gapPx': between the icon and the label, in scene pixels.
+export const MAP_LABEL = { position: 'bottom' as 'top' | 'bottom', gapPx: 2 };
+export const MAP_LABELS: Record<string, string> = { lab: 'lab', subway: 'station', rooftop: 'rooftop', aquarium: 'aquarium' };
 
 // the Lab can be visited from the map, and then the walk carries on
 export const LAB_SPOT = { x: 150, y: 680 };
@@ -821,6 +826,12 @@ const getSiteElements = ({ spot, color, icon, isDetour = false, visitLevelId = u
   })),
   {
     id: `${icon}Icon`, type: 'image' as const, src: `/levels/map/${icon}.png`, x: spot.x - MAP_ICONS[icon].width / 2, y: spot.y - MAP_ICONS[icon].height / 2, width: MAP_ICONS[icon].width, height: MAP_ICONS[icon].height, zIndex: 5 // above the tiles
+  },
+  // its word, under (or over) it
+  {
+    id: `${icon}Label`, type: 'mapLabel' as const, text: MAP_LABELS[icon] || icon, isOver: MAP_LABEL.position == 'top',
+    x: spot.x, y: MAP_LABEL.position == 'top' ? spot.y - MAP_ICONS[icon].height / 2 - MAP_LABEL.gapPx : spot.y + MAP_ICONS[icon].height / 2 + MAP_LABEL.gapPx,
+    width: 0, height: 0, zIndex: 6
   }
 ];
 
@@ -871,7 +882,7 @@ export const getVisitLevelId = (levelId: string) => `visit-${levelId}`;
 export const getTrainingLevelId = (levelId: string) => `train-${levelId}`;
 // sparring (Jamie, 2026-11-10): with the bystander there terminated, the teammate offers a 1v1 instead, for health
 export const getSparringLevelId = (levelId: string) => `spar-${levelId}`;
-export const SPARRING = { maxPlayerLives: 20, bonusPerWin: 1 }; // each win, one more health for the player and the teammate both, to this many in all
+export const SPARRING = { maxPlayerLives: 20, bonusPerWin: 1, rewardPulseMs: 4500 }; // each win, one more health for the player and the teammate both, to this many in all
 export const TRAINING_PHASE = 'trainingOpen'; // the visit's "Do Training" spot is open
 const VISIT_LINES = getDialogueTexts('visit');
 
