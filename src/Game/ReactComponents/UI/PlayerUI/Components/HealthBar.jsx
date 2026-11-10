@@ -21,13 +21,26 @@ const Wrapper = styled.div`
   height: 30px;
   justify-content: flex-start;
 `;
+/*
+  How the health shows (Jamie, 2026-11-10): under HEALTH_LOOK.equalFrom capsules, each a set size, with room to spare;
+  from there to HEALTH_LOOK.maxCapsules, all the same size, evenly spaced across the bar; past that, one capsule and
+  "x N" (health can go to 20, sparring with the teammate).
+*/
+export const HEALTH_LOOK = { equalFrom: 4, maxCapsules: 7, shareOfBar: 80 };
+
+const getCapsuleShare = total => total < HEALTH_LOOK.equalFrom ? 100 / (HEALTH_LOOK.equalFrom + 1) : HEALTH_LOOK.shareOfBar / total;
+
+const Count = styled.span`
+  align-self: center;
+  margin-left: 4px;
+  font-family: gameboy;
+  font-size: 15px;
+  color: #ffe0e0;
+  text-shadow: 1px 1px 0 black, 0 0 4px #ff2a3c, 0 0 8px #d22b2b;
+`;
+
 const Bar = styled.div`
-  ${props =>
-    (props.health + props.healthModifier) < 5
-      ? "min-width: 20%; width: 20%;"
-      : `min-width: ${(80/(props.health + props.healthModifier))}%; 
-             width: ${(80/(props.health + props.healthModifier))}%;`
-  };
+  ${props => `min-width: ${getCapsuleShare(props.health + props.healthModifier)}%; width: ${getCapsuleShare(props.health + props.healthModifier)}%;`};
   height: 15px;
   min-height: 10px;
   margin-left: 10px;
@@ -53,7 +66,11 @@ export const HealthBar = ({
   isTeammate = false,
   healthModifier
 }) => {
-  const bars = Array(healthModifier > 0 ? health + healthModifier : health).fill(0).map((_, i) => <Bar key={i} index={i} health={health} healthModifier={healthModifier} isTeammate={isTeammate} />)
+  const shown = healthModifier > 0 ? health + healthModifier : health;
+  const bars = shown > HEALTH_LOOK.maxCapsules
+    // a lot of health: one capsule, and how many
+    ? [<Bar key="one" index={0} health={1} healthModifier={0} isTeammate={isTeammate} />, <Count key="count">x{health + healthModifier}</Count>]
+    : Array(shown).fill(0).map((_, i) => <Bar key={i} index={i} health={health} healthModifier={healthModifier} isTeammate={isTeammate} />);
   return (
     <BlinkFadeEffect>
       <Wrapper

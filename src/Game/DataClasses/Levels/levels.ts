@@ -123,6 +123,7 @@ type Rival = {
   maxLives: number;
   moveSpeed: number;
   isTraining?: boolean; // a recruit training the player, one on one: no intro, no Kaiju part
+  isSparring?: boolean; // the teammate is the one to beat (their look and powers, at the start)
   touchPhase: string; // the phase where they touch the Kaiju part. the fight starts once it plays out.
   spot: { x: number; y: number }; // where the fight starts from, in scene pixels
   recruitSpot: { x: number; y: number }; // where they lie for the player's choice, in scene pixels
@@ -170,7 +171,7 @@ export type LevelConfig = {
   isWalkingLevel: boolean; // a scene to walk through: no powers, and no HUDs
   isDepowered?: boolean; // after the Lab trap: the player's side has no glow
   visitLines?: Array<string>; // a battleground visited again: what the teammate says on arrival
-  training?: { recruit: string; spot: { x: number; y: number }; levelId: string }; // a visit: the recruit's offer of training, and where it starts
+  training?: { recruit: string; spot: { x: number; y: number }; levelId: string; sparringLevelId: string }; // a visit: the recruit's offer of training, and where it starts
   isTraining?: boolean; // a recruit's training fight: one on one, for their power
   greeting?: { text: string; speechSpot: { x: number; y: number }; repeatMs: number; nearRows: number }; // a scene that opens with the Agent calling the team over
   walkers?: Array<{ id: string; avatar: string; route: Array<{ x: number; y: number; isPass: boolean }>; runSpeed: number; idleSeconds: number }>; // people at work in a walking scene
@@ -868,6 +869,9 @@ const MAP_WALKS = [
 export const getVisitLevelId = (levelId: string) => `visit-${levelId}`;
 // recruit training (Jamie, 2026-11-10): a 1v1 with the battleground's recruit, on its ground, for their power
 export const getTrainingLevelId = (levelId: string) => `train-${levelId}`;
+// sparring (Jamie, 2026-11-10): with the bystander there terminated, the teammate offers a 1v1 instead, for health
+export const getSparringLevelId = (levelId: string) => `spar-${levelId}`;
+export const SPARRING = { maxPlayerLives: 20, bonusPerWin: 1 }; // each win, one more health for the player and the teammate both, to this many in all
 export const TRAINING_PHASE = 'trainingOpen'; // the visit's "Do Training" spot is open
 const VISIT_LINES = getDialogueTexts('visit');
 
@@ -949,7 +953,7 @@ Object.keys(BATTLEGROUND_SITES).forEach(levelId => {
     spawnTiles,
     exit: { spot: doorSpot, afterMs: 0 },
     // the recruit's offer: once it is made, the way into the training fight, in the middle of the battlefield
-    training: { recruit: level.rival.avatar, spot: trainingSpot, levelId: getTrainingLevelId(levelId) },
+    training: { recruit: level.rival.avatar, spot: trainingSpot, levelId: getTrainingLevelId(levelId), sparringLevelId: getSparringLevelId(levelId) },
     phases: [...level.phases, { id: TRAINING_PHASE, label: 'Training spot' }],
     sceneElements: [
       ...level.sceneElements,
@@ -971,6 +975,13 @@ Object.keys(BATTLEGROUND_SITES).forEach(levelId => {
     ghostBoss: undefined,
     aquariumFlood: undefined,
     rival: { ...level.rival, isTraining: true }
+  };
+  // the same, against the teammate (their look and powers are filled in when it starts: GameManager.addRival)
+  LEVELS[getSparringLevelId(levelId)] = {
+    ...LEVELS[getTrainingLevelId(levelId)],
+    id: getSparringLevelId(levelId),
+    name: `${level.name} (sparring)`,
+    rival: { ...level.rival, isTraining: true, isSparring: true, maxLives: 4 }
   };
 });
 

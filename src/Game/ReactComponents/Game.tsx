@@ -36,7 +36,7 @@ import { addUnlock, getBattlegroundUnlockId, getRecruitChoices, getWonBattlegrou
 updateMapWalkSites(getWonBattlegrounds());
 import { CAMPAIGN_SECTIONS, getIsLastSection } from '../DataClasses/Campaign';
 import { GameLoop } from '../DataClasses/GameLoop';
-import { applyLevelFile, LAB_TALK_PHASE, LEVEL_FILES, LEVELS, PENINSULA, updateMapWalkSites } from '../DataClasses/Levels/levels';
+import { applyLevelFile, LAB_TALK_PHASE, LEVEL_FILES, LEVELS, PENINSULA, SPARRING, updateMapWalkSites } from '../DataClasses/Levels/levels';
 import { TileEditor } from './Levels/TileEditor';
 import { gameUiStore, publishGameUi, resetGameUi } from '../DataClasses/gameUiStore';
 
@@ -503,6 +503,10 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   // who is recruited this playthrough (Jamie: React state, not saved). The dev panel switches each on or off.
   const [recruitedAvatars, setRecruitedAvatars] = useState<Array<string>>([]);
   const toggleRecruited = avatar => setRecruitedAvatars(list => list.includes(avatar) ? list.filter(id => id != avatar) : [...list, avatar]);
+  // the bystanders terminated this playthrough (their battlegrounds offer sparring), and the health won sparring
+  const [terminatedAvatars, setTerminatedAvatars] = useState<Array<string>>([]);
+  const [bonusLives, setBonusLives] = useState(0);
+  const [sparringTweak, setSparringTweak] = useState({ ...SPARRING }); // the dev panel's copy of SPARRING, to show its values
   const [isAutoRecruits, setIsAutoRecruits] = useState(true); // dev toggle (Jamie): every recruit in every fight, and walking with the team; no call buttons
   const [isTrainedNpcs, setIsTrainedNpcs] = useState(false); // off by default (Jamie, 2026-11-06). NPCs play by the trained model in public/models in fights with no Kaiju; against a Kaiju they hand back to the rules
   const [isDevHidden, setIsDevHidden] = useState(false); // the dev tools tucked away, to see the game as it will ship
@@ -586,7 +590,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     settingsManager.setIsTeammate(isTeammate && !isSolo);
 
     setIsDialogueLog(isMonitorAlways); // in the monitor, conversations go to the log beside it
-    const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival, killsToWin, returnSpot, isRetry, autoRecruits: isAutoRecruits ? getCallableRecruits() : [], recruits: recruitedAvatars, carriedObjective: lastObjective.current });
+    const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival, killsToWin, returnSpot, isRetry, autoRecruits: isAutoRecruits ? getCallableRecruits() : [], recruits: recruitedAvatars, carriedObjective: lastObjective.current, terminated: terminatedAvatars, bonusLives });
     gm.initGame();
     gameManager.current = gm;
     if (import.meta.env.DEV) (window as any).__kaijuGame = gm; // dev only: a handle for scripted browser checks
@@ -898,6 +902,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     setRecruitChoice(choice);
     saveRecruitChoice(level.rival.avatar, choice);
     if (choice == "recruit") setRecruitedAvatars(list => list.includes(level.rival.avatar) ? list : [...list, level.rival.avatar]);
+    if (choice == "terminate") setTerminatedAvatars(list => list.includes(level.rival.avatar) ? list : [...list, level.rival.avatar]);
     addUnlock(level.rival.avatar);
     // Terminate: their power is yours. Recruit: they can be called into fights, and their power stays closed.
     const skill = choice == "terminate" ? unlockRecruitSkill(level.rival.avatar) : undefined;
@@ -1029,15 +1034,20 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     const isWon = winner === GameResult.PlayerWon;
     if (isWon && level.skillOnLeave) unlockSkill(level.skillOnLeave); // the Street's Teleport
     if (level.isWalkingLevel && isWon && gameManager.current && gameManager.current.isTrainingChosen) {
-      leaveWithClouds(() => startTraining(level.training.levelId));
+      const trainingLevelId = gameManager.current.trainingLevelId || level.training.levelId;
+      leaveWithClouds(() => startTraining(trainingLevelId));
       return;
     }
-    // the training's end: won, the recruit's power; lost, another go. either way, back to the map from there
+    // the training's end: won, the recruit's power (or, sparring with the teammate, one more health); lost, another go.
+    // either way, back to the map from there
     if (level.isTraining) {
-      const skill = isWon ? unlockRecruitSkill(level.rival.avatar) : undefined;
+      const isSparring = !!level.rival.isSparring;
+      const skill = isWon && !isSparring ? unlockRecruitSkill(level.rival.avatar) : undefined;
+      if (isWon && isSparring) setBonusLives(bonus => bonus + SPARRING.bonusPerWin);
       const backToMap = { text: "Back to map", onClick: () => fadeOutThen(leaveLevel) };
+      const wonTitle = isSparring ? "+1 health for both!" : skill ? `${skill.name} unlocked!` : "Training done";
       const timeout = setTimeout(() => setMatchEnd(isWon
-        ? { title: skill ? `${skill.name} unlocked!` : "Training done", buttons: [backToMap] }
+        ? { title: wonTitle, buttons: [backToMap] }
         : { title: "You Lost", buttons: [{ text: "Try again", onClick: () => fadeOutThen(() => startTraining(level.id)) }, backToMap] }), MATCH_END_DELAY_MS);
       return () => clearTimeout(timeout);
     }
@@ -1233,6 +1243,16 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               </label>
               <label>
                 <input type="checkbox" checked={isAutoRecruits} onChange={() => setIsAutoRecruits(!isAutoRecruits)} /> Recruits auto-summoned
+              </label>
+              {/* dev: sparring's health (Jamie: to tweak): per win, the cap, and how much has been won this playthrough */}
+              <label>
+                Spar +health/win <input type="number" min={0} max={10} style={{ width: "3.5em" }} value={sparringTweak.bonusPerWin} onChange={e => { SPARRING.bonusPerWin = Number(e.target.value); setSparringTweak({ ...SPARRING }); }} />
+              </label>
+              <label>
+                Max health <input type="number" min={1} max={99} style={{ width: "3.5em" }} value={sparringTweak.maxPlayerLives} onChange={e => { SPARRING.maxPlayerLives = Number(e.target.value); setSparringTweak({ ...SPARRING }); }} />
+              </label>
+              <label>
+                Health won <input type="number" min={0} max={99} style={{ width: "3.5em" }} value={bonusLives} onChange={e => setBonusLives(Number(e.target.value))} />
               </label>
               {/* dev: who is recruited, this playthrough (from the next match on) */}
               {[["punk", "Punk Guy"], ["black_female", "Ghost Girl"], ["mermaid", "Aquarium Worker"]].map(([avatar, name]) => (

@@ -938,6 +938,28 @@
         }
       ]
     },
+    "sparring.offer": {
+      "label": "A battleground visited again, its bystander terminated: the teammate offers to spar, for health",
+      "lines": [
+        {
+          "speaker": "teammate",
+          "text": "We could fight each other. Become tougher...",
+          "id": "sparring.offer.0",
+          "note": "jamie"
+        }
+      ]
+    },
+    "sparring.start": {
+      "label": "Sparring: the teammate, as the one-on-one fight starts",
+      "lines": [
+        {
+          "speaker": "teammate",
+          "text": "Don't hold back. I won't.",
+          "id": "sparring.start.0",
+          "note": "draft"
+        }
+      ]
+    },
     "peninsula.arrival": {
       "label": "Peninsula 1: the teammate runs in",
       "lines": [

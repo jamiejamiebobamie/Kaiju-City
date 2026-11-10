@@ -7,7 +7,7 @@ import { SettingsManager } from './SettingsManager';
 import { GameBoardPiecesManager } from './GameBoard/Pieces/GameBoardPiecesManager';
 import { KaijuManager } from './KaijuManager';
 import { GameBoardManager } from './GameBoard/GameBoardManager';
-import { CHARACTER_FEET, CHARACTER_HEIGHT_PX, EXIT_OPEN_PHASE, getSortZIndex, GIANT_STOMP_PHASE, LEVELS, PENINSULA, RIVAL_IN_PHASE, TRAINING_PHASE } from 'Game/DataClasses/Levels/levels';
+import { CHARACTER_FEET, CHARACTER_HEIGHT_PX, EXIT_OPEN_PHASE, getSortZIndex, GIANT_STOMP_PHASE, LEVELS, PENINSULA, RIVAL_IN_PHASE, SPARRING, TRAINING_PHASE } from 'Game/DataClasses/Levels/levels';
 import { TrainSchedule, TRAIN_HIT } from './TrainSchedule';
 import { GameBoardPieceAgent } from './GameBoard/Pieces/GameBoardPieceAgent';
 import { GameBoardPieceExtra } from './GameBoard/Pieces/GameBoardPieceExtra';
@@ -202,7 +202,10 @@ export class GameManager {
     // teammate is in (Jamie: a dev toggle, on by default). Empty: they are called with the buttons, as before.
     // 'recruits': who the player has recruited this playthrough (Game.tsx keeps it in React state). Left out: the saved choices.
     // 'carriedObjective': the objective from before a detour (the walking Lab, off a map walk), which carries over
-    constructor({ level = PENINSULA, settingsManager, hasArrival = false, killsToWin = undefined, returnSpot = undefined, isRetry = false, autoRecruits = [], recruits = undefined, carriedObjective = null }) {
+    // 'terminated': the bystanders the player chose to terminate (Game.tsx's state). 'bonusLives': health won sparring.
+    constructor({ level = PENINSULA, settingsManager, hasArrival = false, killsToWin = undefined, returnSpot = undefined, isRetry = false, autoRecruits = [], recruits = undefined, carriedObjective = null, terminated = [], bonusLives = 0 }) {
+        this.terminated = terminated;
+        this.bonusLives = bonusLives;
         this.carriedObjective = carriedObjective;
         this.objective = null; // what the player is to do now (Objectives.ts)
         this.objectiveCount = 0; // goes up with each new one: the screen shows each new one as a title
@@ -496,6 +499,15 @@ export class GameManager {
             this.gameBoardPiecesManager.addTeammate({ teammateAvatar, teammateAbilities });
         }
 
+        // health won sparring with the teammate: the player's and the teammate's both, everywhere (SPARRING, Jamie)
+        if (this.bonusLives > 0) {
+            const [player, teammate] = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
+            [player, teammate].filter(piece => !!piece && !piece.isRecruit).forEach(piece => {
+                piece.maxLives = Math.min(piece.maxLives + this.bonusLives, SPARRING.maxPlayerLives);
+                piece.lives = piece.maxLives;
+            });
+        }
+
         // must be set before calling updateBounds
         this.gameBoardManager.setUpdateProxyProps(this.updateProxyProps);
 
@@ -581,16 +593,20 @@ export class GameManager {
 
     // from the start: the bystander in the scene is the piece they fight
     addRival() {
-        const { avatar, abilities, maxLives, moveSpeed, spot, startFacing, introSortY } = this.level.rival;
+        const { abilities, maxLives, moveSpeed, spot, startFacing, introSortY, isSparring } = this.level.rival;
+        // sparring: the teammate, with powers of their own as in any fight
+        const avatar = isSparring ? this.settingsManager.getTeammateAvatar() : this.level.rival.avatar;
         const piece = this.gameBoardPiecesManager.addPiece({
             pieceInfo: {
                 ...PIECES_INFO[avatar],
-                abilities: this.settingsManager.getAbilitiesFromElements(abilities),
-                maxLives,
+                abilities: isSparring ? this.settingsManager.getThreeRandomAbilities() : this.settingsManager.getAbilitiesFromElements(abilities),
+                // the teammate sparring is as tough as they have become (their health won sparring too)
+                maxLives: isSparring ? Math.min(maxLives + this.bonusLives, SPARRING.maxPlayerLives) : maxLives,
                 moveSpeed
             },
             teamIndex: 1
         });
+        if (isSparring) piece.color = getAvatarColor(avatar) || piece.color;
         piece.initCharLocation(true, this.gameBoardManager.getClosestWalkableTileToLocation(spot));
         piece.isPlain = true; // no glow until they touch the part
         piece.canTeleportAcross = !!this.level.rival.canTeleportAcross;
@@ -2251,6 +2267,7 @@ export class GameManager {
             return { text: this.rivalPiece && this.rivalPiece.isGhostForm ? OBJECTIVES.ghostForm : OBJECTIVES.rivals.black_female };
         }
         if (level.aquariumFlood && this.isShattered && this.rivalPiece && this.getIsTopFloor(this.rivalPiece.getTileIndex())) return { text: OBJECTIVES.flood };
+        if (level.rival && level.rival.isSparring) return { text: `Defeat ${this.getTeammateName()}` }; // sparring with the teammate
         if (level.rival) return OBJECTIVES.rivals[level.rival.avatar] ? { text: OBJECTIVES.rivals[level.rival.avatar] } : null;
         if (level.trap) return this.getPieces().some(piece => piece.isChaser) ? { text: OBJECTIVES.escape } : null;
         if (level.walkIn && level.walkIn.reveal) return this.activePhases.has(level.walkIn.reveal.glowPhase) ? { text: OBJECTIVES.glow } : null;
@@ -2324,7 +2341,27 @@ export class GameManager {
         return { recruit, skill };
     }
 
+    /*
+        Sparring (Jamie, 2026-11-10): with the bystander of this battleground terminated, the teammate offers a fight with
+        each other instead: each win is one more health for the player, to SPARRING.maxPlayerLives. As often as they like.
+    */
+    getSparringOffer() {
+        const training = this.level.training;
+        const { teammate, player } = this.getGhostTeam();
+        if (!training || !teammate || !player || !this.terminated.includes(training.recruit)) return undefined;
+        if (player.maxLives >= SPARRING.maxPlayerLives) return undefined;
+        return { teammate };
+    }
+
     getTrainingOfferSteps() {
+        const sparring = this.getSparringOffer();
+        if (sparring) {
+            const { text } = getDialogueLine('sparring.offer');
+            return [
+                { shot: { isWide: true }, ms: getSpeechMs(text), speech: this.getSpeechOver(sparring.teammate, this.getTeammateName(), text) },
+                { shot: { isWide: true }, ms: 0, onStart: () => { this.trainingLevelId = this.level.training.sparringLevelId; this.setPhase(TRAINING_PHASE, true); } }
+            ];
+        }
         const offer = this.getTrainingOffer();
         if (!offer) return [];
         const { recruit } = offer;
@@ -2332,7 +2369,7 @@ export class GameManager {
         const text = getKeyedLines('training.offer')[recruit.avatar];
         return [
             { shot: { isWide: true }, ms: getSpeechMs(text), speech: this.getSpeechOver(recruit, name, text) },
-            { shot: { isWide: true }, ms: 0, onStart: () => this.setPhase(TRAINING_PHASE, true) }
+            { shot: { isWide: true }, ms: 0, onStart: () => { this.trainingLevelId = this.level.training.levelId; this.setPhase(TRAINING_PHASE, true); } }
         ];
     }
 
@@ -2342,8 +2379,9 @@ export class GameManager {
         const rival = this.rivalPiece;
         rival.isPlain = false;
         rival.isTileHidden = false;
-        const name = ROSTER.find(({ id }) => id == rival.avatar).name;
-        const text = getKeyedLines('training.start')[rival.avatar];
+        const isSparring = !!this.level.rival.isSparring;
+        const name = isSparring ? this.getTeammateName() : ROSTER.find(({ id }) => id == rival.avatar).name;
+        const text = isSparring ? getDialogueLine('sparring.start').text : getKeyedLines('training.start')[rival.avatar];
         this.startCutscene([
             { shot: { isWide: true }, ms: CUTSCENE.pullInMs },
             { shot: { isWide: true }, ms: getSpeechMs(text), speech: { ...this.getSpeechOver(rival, name, text), isShout: true } },
