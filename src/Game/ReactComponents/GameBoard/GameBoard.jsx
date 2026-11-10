@@ -1133,6 +1133,9 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
       portalMask={p.portalMask}
       isOnBoard={p.isOnTiles !== false}
       isRewardPulse={!!p.getIsRewardPulse && p.getIsRewardPulse()}
+      statusEffects={p.getStatusEffects && p.isVisible && !p.isDead ? p.getStatusEffects(gameManager.gameBoardPiecesManager.getPlayerTeamIndex()) : []}
+      cleanSlateCount={p.cleanSlateCount || 0}
+      isPlayer={p === gameManager.gameBoardPiecesManager.getPlayerPiece()}
     />
   );
 

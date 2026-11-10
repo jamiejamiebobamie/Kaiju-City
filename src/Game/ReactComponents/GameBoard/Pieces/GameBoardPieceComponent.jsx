@@ -405,6 +405,49 @@ const ModiferText = styled.p`
 `;
 
 // where a number starts: just over the head, in the scene
+/*
+  Effects that change play, over the head (Jamie, 2026-11-10): an icon for each while it lasts, and a word as it starts.
+  The pieces' own effects: GameBoardPieceBase.getStatusEffects.
+*/
+const STATUS_LOOK = {
+  slowed: { icon: "fa-hourglass-half", color: "#5fb4ff", word: "Slowed!" },
+  fast: { icon: "fa-angle-double-right", color: "#6dff6d", word: "Speed up!" },
+  burn: { icon: "fa-fire", color: "#ff8a2a" },
+  builder: { icon: "fa-shield", color: "#d8dde6" },
+  spurned: { icon: "fa-frown-o", color: "#ff4040" },
+  charmed: { icon: "fa-heart", color: "#ff7ad9", word: "Charmed!" }
+};
+const STATUS_WORD_GAP_MS = 450; // two words at once: the second a moment after the first
+
+const StatusRow = styled.div`
+  position: absolute;
+  left: -15px;
+  top: ${props => props.$isAboveBar ? "-84px" : "-70px"};
+  width: 40px;
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+  pointer-events: none;
+  z-index: 2;
+`;
+
+const StatusIcon = styled.span`
+  position: relative;
+  font-size: 10px;
+  line-height: 1;
+  filter: drop-shadow(0 0 1px black) drop-shadow(0 0 2px black) drop-shadow(0 0 3px var(--glow));
+`;
+
+const StatusCount = styled.span`
+  position: absolute;
+  right: -5px;
+  bottom: -4px;
+  font-family: gameboy;
+  font-size: 6px;
+  color: white;
+  text-shadow: 0 0 2px black, 1px 1px 0 black;
+`;
+
 const NumberAnchor = styled.span`
   position: absolute;
   left: 22px;
@@ -452,7 +495,10 @@ export const GameBoardPieceComponent = ({
   isGhostForm = false, // the ghost boss's last phase
   portalMask = undefined, // walking through a portal: { point, behind } in level pixels. the body past that edge isn't drawn
   isOnBoard = true, // not yet on the tiles (a Kaiju still walking in): no numbers
-  isRewardPulse = false // health just won sparring: a red outline pulses round them
+  isRewardPulse = false, // health just won sparring: a red outline pulses round them
+  statusEffects = [], // what is on them that changes play: icons over the head (STATUS_LOOK)
+  cleanSlateCount = 0, // goes up each time their Dispel wipes their other passives
+  isPlayer = false
 }) => {
   const numberAnchor = React.useRef(null);
   const [modifierText, setModifierText] = useState([]);
@@ -467,6 +513,34 @@ export const GameBoardPieceComponent = ({
   };
   const anim = getAnim();
   // a number only for a life lost while still standing: not for the last one, and not when a Kaiju from the pool comes back
+  // a word floats up as an effect starts (Jamie): "Slowed!", "Charmed!", and for the player "Keys scrambled!" too
+  const effectKey = statusEffects.map(({ id }) => id).join(" ");
+  const lastEffects = React.useRef(new Set(statusEffects.map(({ id }) => id)));
+  useEffect(() => {
+    const now = new Set(statusEffects.map(({ id }) => id));
+    const started = [...now].filter(id => !lastEffects.current.has(id));
+    lastEffects.current = now;
+    if (isQuiet || !isOnBoard) return;
+    const words = started.flatMap(id => {
+      const look = STATUS_LOOK[id];
+      if (!look || !look.word) return [];
+      return id == "charmed" && isPlayer ? [look, { word: "Keys scrambled!", color: look.color }] : [look];
+    });
+    words.forEach(({ word, color }, k) => setTimeout(() => setModifierText(previous => [
+      ...previous,
+      <FloatingNumber key={Math.random()} anchorRef={numberAnchor} color={color} text={word} sizeScale={NUMBER_LOOK.zipScale} />
+    ]), k * STATUS_WORD_GAP_MS));
+  }, [effectKey]);
+  const lastCleanSlate = React.useRef(cleanSlateCount);
+  useEffect(() => {
+    const isNew = cleanSlateCount > lastCleanSlate.current;
+    lastCleanSlate.current = cleanSlateCount;
+    if (!isNew || isQuiet || !isOnBoard) return;
+    setModifierText(previous => [
+      ...previous,
+      <FloatingNumber key={Math.random()} anchorRef={numberAnchor} color="#f4f8ff" text="Clean Slate!" sizeScale={NUMBER_LOOK.zipScale} />
+    ]);
+  }, [cleanSlateCount]);
   const lastLives = React.useRef(lives);
   useEffect(() => {
     const isLostWhileStanding = lives < lastLives.current && lives > 0;
@@ -515,11 +589,24 @@ export const GameBoardPieceComponent = ({
   }, [isTeleported]);
 
   const bars = !isShowHealthBarOnComponent ? undefined : Array(lives).fill(0).map((_, i) => <Bar lives={lives} key={i} />)
+  const isBarShown = !!isShowHealthBarOnComponent && lives > 0;
   return (
     <Wrapper zIndex={zIndex} isVisible={isVisible} charLocation={charLocation} pieceScale={pieceScale}>
       <NumberAnchor ref={numberAnchor} />
       {!isQuiet && modifierText}
       <HealthBarWrapper lives={lives}>{bars}</HealthBarWrapper>
+      {/* what is on them that changes play: over the head, above the health bar where there is one */}
+      {statusEffects.length > 0 && !isQuiet && (
+        <StatusRow $isAboveBar={isBarShown}>
+          {statusEffects.map(({ id, count }) => {
+            const look = STATUS_LOOK[id];
+            return look && <StatusIcon key={id} style={{ "--glow": look.color }}>
+              <i className={`fa ${look.icon}`} style={{ color: look.color }} />
+              {count && <StatusCount>{count}</StatusCount>}
+            </StatusIcon>;
+          })}
+        </StatusRow>
+      )}
       <Character isDamaged={isDamaged && !isQuiet} isSpeaking={isSpeaking} style={portalMask ? { clipPath: getPortalClip(portalMask, charLocation, pieceScale) } : undefined}>
         {isFalling ? <FallingFrame src="/levels/npcs/agentFalling.png" /> : <RewardPulse $isOn={isRewardPulse}><GhostForm $isGhost={isGhostForm}><SpriteSheet
           avatar={avatar}

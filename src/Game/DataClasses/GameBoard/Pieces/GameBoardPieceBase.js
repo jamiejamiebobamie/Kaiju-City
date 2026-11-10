@@ -865,6 +865,28 @@ export class GameBoardPieceBase {
         };
     }
 
+    /*
+        What is on this piece that changes play, for the icons over its head (Jamie, 2026-11-10), each { id, count? }:
+        slowed (Ice Slice's passive, or wading in the Aquarium's water: the count is the wading stacks), fast (Discharge's
+        passive), burn (Wildfire's stacks: the player's team only), builder (Aegis's next cast is stronger: the player's
+        team only), spurned (an NPC hunting whoever charmed it), charmed. (No icon for the Mermaid's unhurtable healing: Jamie.)
+    */
+    getStatusEffects(playerTeamIndex) {
+        const passive = element => this.abilities.find(ability => ability.gameBoardPieceAbilityData.element == element && ability.isPassiveApplied);
+        const isTeam = this.homeTeamIndex == playerTeamIndex;
+        const wading = getWaterSlow(this.waterSlowEnds, this.accTime);
+        const effects = [];
+        if (passive('ice') || wading > 0) effects.push({ id: 'slowed', count: wading > 1 ? wading : undefined });
+        if (passive('lightning')) effects.push({ id: 'fast' });
+        const burn = passive('fire');
+        if (isTeam && burn && burn.stacks > 0) effects.push({ id: 'burn', count: burn.stacks });
+        if (isTeam && passive('metal')) effects.push({ id: 'builder' });
+        const charmer = this.isNpc && this.spurnedBy !== undefined && this.spurnedBy >= 0 ? this.gameManagerProxy.getPiece(this.spurnedBy) : undefined;
+        if (charmer && !charmer.getIsDead() && !this.isCharmed) effects.push({ id: 'spurned' });
+        if (this.isCharmed) effects.push({ id: 'charmed' });
+        return effects;
+    }
+
     // health just won sparring (Jamie): a red glow pulses round them, on the board and on their HUD, until then
     getIsRewardPulse() {
         return (this.accTime || 0) < (this.rewardPulseUntil || 0);

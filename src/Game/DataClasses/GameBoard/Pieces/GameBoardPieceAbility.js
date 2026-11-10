@@ -38,7 +38,12 @@ export class GameBoardPieceAbility {
             stackRange: castStack ? this.stacks * castStack.rangePerStack : 0
         });
         // Bubble's Clean Slate: a Dispel ends the caster's other powers' passives
-        if (isCleanSlate) piece.abilities.filter(other => other !== this).forEach(other => other.endAllPassives(piece));
+        if (isCleanSlate) {
+            const others = piece.abilities.filter(other => other !== this);
+            // "Clean Slate!" over them when it wipes something (GameBoardPieceComponent)
+            if (others.some(other => other.isPassiveApplied)) piece.cleanSlateCount = (piece.cleanSlateCount || 0) + 1;
+            others.forEach(other => other.endAllPassives(piece));
+        }
 
         const triggerPassive = () => {
             // a refreshed passive takes over the one that is on, and starts its time again, instead of stacking
