@@ -122,6 +122,7 @@ type Rival = {
   abilities: Array<string>; // ability elements
   maxLives: number;
   moveSpeed: number;
+  isTraining?: boolean; // a recruit training the player, one on one: no intro, no Kaiju part
   touchPhase: string; // the phase where they touch the Kaiju part. the fight starts once it plays out.
   spot: { x: number; y: number }; // where the fight starts from, in scene pixels
   recruitSpot: { x: number; y: number }; // where they lie for the player's choice, in scene pixels
@@ -169,6 +170,8 @@ export type LevelConfig = {
   isWalkingLevel: boolean; // a scene to walk through: no powers, and no HUDs
   isDepowered?: boolean; // after the Lab trap: the player's side has no glow
   visitLines?: Array<string>; // a battleground visited again: what the teammate says on arrival
+  training?: { recruit: string; spot: { x: number; y: number }; levelId: string }; // a visit: the recruit's offer of training, and where it starts
+  isTraining?: boolean; // a recruit's training fight: one on one, for their power
   greeting?: { text: string; speechSpot: { x: number; y: number }; repeatMs: number; nearRows: number }; // a scene that opens with the Agent calling the team over
   walkers?: Array<{ id: string; avatar: string; route: Array<{ x: number; y: number; isPass: boolean }>; runSpeed: number; idleSeconds: number }>; // people at work in a walking scene
   getWalkerHeight?: (y: number) => number; // a walker's height at a y, in scene pixels: they shrink up the scene
@@ -863,6 +866,9 @@ const MAP_WALKS = [
 
 // a battleground the player has won on can be visited again from the map: a walk around it, and back
 export const getVisitLevelId = (levelId: string) => `visit-${levelId}`;
+// recruit training (Jamie, 2026-11-10): a 1v1 with the battleground's recruit, on its ground, for their power
+export const getTrainingLevelId = (levelId: string) => `train-${levelId}`;
+export const TRAINING_PHASE = 'trainingOpen'; // the visit's "Do Training" spot is open
 const VISIT_LINES = getDialogueTexts('visit');
 
 // the map walks show the battlegrounds already won on, as well as where to go next
@@ -925,6 +931,7 @@ Object.keys(BATTLEGROUND_SITES).forEach(levelId => {
   const visitSpots = VISIT_SPOTS[levelId] || {};
   const doorSpot = visitSpots.exit || entrance || level.rival.recruitSpot;
   const getClosest = target => level.walkableTiles.reduce((closest, tile) => getSpotDistance(level, tile, target) < getSpotDistance(level, closest, target) ? tile : closest);
+  const trainingSpot = getTileCenter(level.grid, getClosest({ x: level.world.width / 2, y: level.world.height / 2 })); // the middle of the battlefield
   const spawnTiles = visitSpots.start ? [getClosest(visitSpots.start)]
     : entrance ? [getClosest({ x: entrance.x + entranceExit.walkInPx.x, y: entrance.y + entranceExit.walkInPx.y })] : level.spawnTiles;
   LEVELS[getVisitLevelId(levelId)] = {
@@ -941,10 +948,29 @@ Object.keys(BATTLEGROUND_SITES).forEach(levelId => {
     visitLines: VISIT_LINES,
     spawnTiles,
     exit: { spot: doorSpot, afterMs: 0 },
+    // the recruit's offer: once it is made, the way into the training fight, in the middle of the battlefield
+    training: { recruit: level.rival.avatar, spot: trainingSpot, levelId: getTrainingLevelId(levelId) },
+    phases: [...level.phases, { id: TRAINING_PHASE, label: 'Training spot' }],
     sceneElements: [
       ...level.sceneElements,
-      { id: 'exit', type: 'door' as const, phase: EXIT_OPEN_PHASE, x: doorSpot.x, y: doorSpot.y, width: 0, height: 0, sortY: ABOVE_CHARACTERS, label: 'Back to map' }
+      { id: 'exit', type: 'door' as const, phase: EXIT_OPEN_PHASE, x: doorSpot.x, y: doorSpot.y, width: 0, height: 0, sortY: ABOVE_CHARACTERS, label: 'Back to map' },
+      { id: 'training', type: 'door' as const, phase: TRAINING_PHASE, x: trainingSpot.x, y: trainingSpot.y, width: 0, height: 0, sortY: ABOVE_CHARACTERS, label: 'Do Training' }
     ]
+  };
+  // the training fight: the battleground as it is to fight on, without its Kaiju part, trains or boss phases, and the
+  // recruit as the one to beat, one on one
+  LEVELS[getTrainingLevelId(levelId)] = {
+    ...level,
+    id: getTrainingLevelId(levelId),
+    name: `${level.name} (training)`,
+    isTraining: true,
+    hasTrainSchedule: false,
+    defaultPhases: [],
+    wideShots: {},
+    liveWideShots: {},
+    ghostBoss: undefined,
+    aquariumFlood: undefined,
+    rival: { ...level.rival, isTraining: true }
   };
 });
 

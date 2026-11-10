@@ -578,11 +578,12 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     return () => document.removeEventListener("click", letGo, true);
   }, []);
 
-  const startMatch = (matchLevel = level, hasArrival = false, killsToWin = undefined, { returnSpot = undefined, isRetry = false } = {}) => {
+  // 'isSolo': without the teammate, whatever the settings (a recruit's training, one on one)
+  const startMatch = (matchLevel = level, hasArrival = false, killsToWin = undefined, { returnSpot = undefined, isRetry = false, isSolo = false } = {}) => {
     settingsManager.updatePlayerAvatar(selectedAvatar);
     settingsManager.setTeammateAvatar(selectedTeammate);
     settingsManager.setDifficulty(selectedDifficulty);
-    settingsManager.setIsTeammate(isTeammate);
+    settingsManager.setIsTeammate(isTeammate && !isSolo);
 
     setIsDialogueLog(isMonitorAlways); // in the monitor, conversations go to the log beside it
     const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival, killsToWin, returnSpot, isRetry, autoRecruits: isAutoRecruits ? getCallableRecruits() : [], recruits: recruitedAvatars, carriedObjective: lastObjective.current });
@@ -818,6 +819,14 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     startMatch(LEVELS[visitLevelId]);
   };
 
+  // a recruit's training (Jamie): their battleground, one on one, for their power. back to the map walk after.
+  const startTraining = trainingLevelId => {
+    setLevelId(trainingLevelId);
+    setMatchEnd(undefined);
+    endMatch();
+    startMatch(LEVELS[trainingLevelId], false, undefined, { isSolo: true });
+  };
+
   const openLabScreen = screen => {
     if (screen == "exit") {
       leaveWithClouds(leaveLevel);
@@ -1019,6 +1028,19 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     if (winner === null || !isPlayingGame) return;
     const isWon = winner === GameResult.PlayerWon;
     if (isWon && level.skillOnLeave) unlockSkill(level.skillOnLeave); // the Street's Teleport
+    if (level.isWalkingLevel && isWon && gameManager.current && gameManager.current.isTrainingChosen) {
+      leaveWithClouds(() => startTraining(level.training.levelId));
+      return;
+    }
+    // the training's end: won, the recruit's power; lost, another go. either way, back to the map from there
+    if (level.isTraining) {
+      const skill = isWon ? unlockRecruitSkill(level.rival.avatar) : undefined;
+      const backToMap = { text: "Back to map", onClick: () => fadeOutThen(leaveLevel) };
+      const timeout = setTimeout(() => setMatchEnd(isWon
+        ? { title: skill ? `${skill.name} unlocked!` : "Training done", buttons: [backToMap] }
+        : { title: "You Lost", buttons: [{ text: "Try again", onClick: () => fadeOutThen(() => startTraining(level.id)) }, backToMap] }), MATCH_END_DELAY_MS);
+      return () => clearTimeout(timeout);
+    }
     if (level.isWalkingLevel && isWon) {
       const site = gameManager.current && gameManager.current.reachedSite;
       leaveWithClouds(site && site.isDetour ? () => visitSite(site) : leaveLevel);
@@ -1306,7 +1328,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               {matchEnd && (
                 <EndScreen>
                   {matchEnd.isFinale ? <FinaleCredits title={matchEnd.title} onDone={handleClickHome} /> : <EndTitle>{matchEnd.title}</EndTitle>}
-                  {(!level.rival || winner !== GameResult.PlayerWon) && <EndButtons>{matchEnd.buttons.map(({ text, onClick }, index) => <EndButton key={text} data-enter={index == 0 ? "" : undefined} onClick={onClick}>{text}</EndButton>)}</EndButtons>}
+                  {(!level.rival || level.isTraining || winner !== GameResult.PlayerWon) && <EndButtons>{matchEnd.buttons.map(({ text, onClick }, index) => <EndButton key={text} data-enter={index == 0 ? "" : undefined} onClick={onClick}>{text}</EndButton>)}</EndButtons>}
                 </EndScreen>
               )}
               {isWiping && <ScreenClip><BlackWipe /></ScreenClip>}

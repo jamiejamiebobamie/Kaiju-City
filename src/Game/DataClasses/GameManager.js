@@ -7,14 +7,14 @@ import { SettingsManager } from './SettingsManager';
 import { GameBoardPiecesManager } from './GameBoard/Pieces/GameBoardPiecesManager';
 import { KaijuManager } from './KaijuManager';
 import { GameBoardManager } from './GameBoard/GameBoardManager';
-import { CHARACTER_FEET, CHARACTER_HEIGHT_PX, EXIT_OPEN_PHASE, getSortZIndex, GIANT_STOMP_PHASE, LEVELS, PENINSULA, RIVAL_IN_PHASE } from 'Game/DataClasses/Levels/levels';
+import { CHARACTER_FEET, CHARACTER_HEIGHT_PX, EXIT_OPEN_PHASE, getSortZIndex, GIANT_STOMP_PHASE, LEVELS, PENINSULA, RIVAL_IN_PHASE, TRAINING_PHASE } from 'Game/DataClasses/Levels/levels';
 import { TrainSchedule, TRAIN_HIT } from './TrainSchedule';
 import { GameBoardPieceAgent } from './GameBoard/Pieces/GameBoardPieceAgent';
 import { GameBoardPieceExtra } from './GameBoard/Pieces/GameBoardPieceExtra';
 import { WIDE_SHOT } from './Camera';
 import { addUnlock, getRecruitChoices, getUnlocks } from './Unlocks';
 import { getIsDetourLevel, getIsSameObjective, KAIJU_OBJECTIVE, MAP_OBJECTIVES, OBJECTIVES } from './Objectives';
-import { ROSTER } from './Avatars';
+import { getIsSkillOpen, getSkillUnlock, ROSTER, SKILL_UNLOCKS } from './Avatars';
 import { getSpeechMs } from './speechTiming';
 import { getTileCenter, getTileIndexAtLocation } from './GameBoard/hexGrid';
 import { GHOST_BOSS, GhostRing } from './GhostBoss';
@@ -519,6 +519,7 @@ export class GameManager {
         if (this.level.finalTurn && this.level.finalTurn.isStartTurned) this.startTurnedFight();
         if (this.level.ghostBoss) this.setUpGhostGuardian();
         if (this.hasArrival) this.startArrival();
+        else if (this.level.rival && this.level.rival.isTraining) this.startTrainingFight();
         else if (this.level.rival) this.startRivalIntro();
         else if (this.level.isMapWalk) this.startMapIntro();
         else if (this.level.trap) this.startTrapScene();
@@ -1744,6 +1745,7 @@ export class GameManager {
     // once a fight's opening is over: every recruit in at once (Jamie), but not the one this fight is against
     // 'isOpening': called as the level is set up, before its opening scene (they stand there through it)
     autoSummonRecruits(isOpening = false) {
+        if (this.level.isTraining) return; // one on one
         if (this.hasAutoSummoned || !this.autoRecruits.length || (this.cutscene && !isOpening) || this.level.isWalkingLevel || this.level.hasRecruitFollowers) return;
         if (!isOpening && this.getGameResult() !== null) return;
         this.hasAutoSummoned = true;
@@ -2294,16 +2296,59 @@ export class GameManager {
         if (this.accTime >= this.nextGreetingAtMs) this.startGreeting(true);
     }
 
-    // a battleground won on before, visited from the map: the teammate has a word, then it's a walk
+    // a battleground won on before, visited from the map: the teammate has a word, then it's a walk.
+    // the battleground's recruit, walking with the team, offers to train the player in their power (training below)
     startVisitScene() {
         const [, teammate] = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
         if (!teammate) return;
         // each visit line by whoever the dialogue file says (the teammate, as written)
-        this.startCutscene(getSpokenLines('visit').map(({ speaker, text }) => {
+        const visitSteps = getSpokenLines('visit').map(({ speaker, text }) => {
             const { name, piece } = this.getLineSpeaker(speaker);
             const over = piece || teammate;
             return { shot: { isWide: true }, ms: getSpeechMs(text), speech: over ? this.getSpeechOver(over, name, text) : { name, text } };
-        }));
+        });
+        this.startCutscene([...visitSteps, ...this.getTrainingOfferSteps()]);
+    }
+
+    /*
+        Recruit training (Jamie, 2026-11-10), another way to a recruit's power: on a visit to their battleground, the recruit
+        (if recruited, walking with the team, and their power still closed) offers to train the player, one on one.
+        Then a "Do Training" spot opens in the middle of the battlefield: walking to it starts the fight (Game.tsx).
+    */
+    getTrainingOffer() {
+        const training = this.level.training;
+        if (!training) return undefined;
+        const recruit = this.followers.find(piece => piece.avatar == training.recruit && !piece.isDead);
+        const skill = getSkillUnlock(SKILL_UNLOCKS.find(({ recruit: id }) => id == training.recruit)?.element);
+        if (!recruit || !skill || getIsSkillOpen(skill.element)) return undefined;
+        return { recruit, skill };
+    }
+
+    getTrainingOfferSteps() {
+        const offer = this.getTrainingOffer();
+        if (!offer) return [];
+        const { recruit } = offer;
+        const name = ROSTER.find(({ id }) => id == recruit.avatar).name;
+        const text = getKeyedLines('training.offer')[recruit.avatar];
+        return [
+            { shot: { isWide: true }, ms: getSpeechMs(text), speech: this.getSpeechOver(recruit, name, text) },
+            { shot: { isWide: true }, ms: 0, onStart: () => this.setPhase(TRAINING_PHASE, true) }
+        ];
+    }
+
+    // the training fight: the recruit, with their powers, one on one; a word from them, and it's on
+    startTrainingFight() {
+        this.addRival();
+        const rival = this.rivalPiece;
+        rival.isPlain = false;
+        rival.isTileHidden = false;
+        const name = ROSTER.find(({ id }) => id == rival.avatar).name;
+        const text = getKeyedLines('training.start')[rival.avatar];
+        this.startCutscene([
+            { shot: { isWide: true }, ms: CUTSCENE.pullInMs },
+            { shot: { isWide: true }, ms: getSpeechMs(text), speech: { ...this.getSpeechOver(rival, name, text), isShout: true } },
+            { shot: { isWide: true }, ms: 0, onStart: () => this.updateRival() }
+        ]);
     }
 
     // the whole map, to show where to go, then in on the player as in a battle
@@ -2812,6 +2857,11 @@ export class GameManager {
             return true;
         }
         if (exit && this.activePhases.has(EXIT_OPEN_PHASE) && this.getIsPlayerNear(exit.spot, exit.nearRows)) return true;
+        // the recruit's training, once offered: its spot starts it (Game.tsx)
+        if (this.level.training && this.activePhases.has(TRAINING_PHASE) && this.getIsPlayerNear(this.level.training.spot)) {
+            this.isTrainingChosen = true;
+            return true;
+        }
         const piece = this.gameBoardPiecesManager.getPlayerPiece();
         const { i, j } = piece.getTileIndex();
         return piece.isThere && goalTiles.some(tile => tile.i == i && tile.j == j);

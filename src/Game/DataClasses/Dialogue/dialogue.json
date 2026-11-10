@@ -886,6 +886,58 @@
         }
       ]
     },
+    "training.offer": {
+      "label": "A battleground visited again: the recruit offers to train the player in their power (Recruit training)",
+      "lines": [
+        {
+          "speaker": "Punk Guy",
+          "key": "punk",
+          "text": "Want Overgrowth? Take me on, one on one. Win, and it's yours.",
+          "id": "training.offer.0",
+          "note": "draft"
+        },
+        {
+          "speaker": "Ghost Girl",
+          "key": "black_female",
+          "text": "My ancestors taught me Haunt. Face me alone, and I'll teach you.",
+          "id": "training.offer.1",
+          "note": "draft"
+        },
+        {
+          "speaker": "Aquarium Worker",
+          "key": "mermaid",
+          "text": "Charm is more than a pretty smile. Beat me one on one, and I'll show you.",
+          "id": "training.offer.2",
+          "note": "draft"
+        }
+      ]
+    },
+    "training.start": {
+      "label": "Recruit training: the recruit, as the one-on-one fight starts",
+      "lines": [
+        {
+          "speaker": "Punk Guy",
+          "key": "punk",
+          "text": "No holding back!",
+          "id": "training.start.0",
+          "note": "draft"
+        },
+        {
+          "speaker": "Ghost Girl",
+          "key": "black_female",
+          "text": "Show me what you've got.",
+          "id": "training.start.1",
+          "note": "draft"
+        },
+        {
+          "speaker": "Aquarium Worker",
+          "key": "mermaid",
+          "text": "Don't go easy on me!",
+          "id": "training.start.2",
+          "note": "draft"
+        }
+      ]
+    },
     "peninsula.arrival": {
       "label": "Peninsula 1: the teammate runs in",
       "lines": [
