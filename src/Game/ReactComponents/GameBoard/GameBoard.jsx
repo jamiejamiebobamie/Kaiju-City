@@ -148,7 +148,11 @@ const CARET_INFO = {
   inset: 1.3, // how far in from the caret, past it, in caret sizes
   nearTiles: 12, // an incoming enemy this close gets a window even with others on the board: about as far as the tiles show
   maxWindows: 2,
-  green: "#6dffa0"
+  green: "#6dffa0",
+  // a site's caret icon and word shrink with distance (Jamie, playtest 18): the nearest is the usual size, and each one
+  // further off is smaller by this much a tile, down to 'minSiteScale'
+  siteScalePerTile: 0.012,
+  minSiteScale: 0.55
 };
 
 // the Subway's warning: while its lights flash and both are out of shot, two comic-book panels at the top show them
@@ -943,7 +947,8 @@ export const GameBoard = ({ speakingLineLength = 0, isSwirling = false, speaking
           getWorldLocation(player.charLocation),
           isLooking ? mouseAim.current : { x: 0, y: 0 },
           closestEnemy ? getWorldLocation(closestEnemy.charLocation) : undefined,
-          !!closestEnemy && !!closestEnemy.isTense // a sea creature after the player: in tighter and quicker
+          !!closestEnemy && !!closestEnemy.isTense, // a sea creature after the player: in tighter and quicker
+          gameManager.getPlayZoomShare ? gameManager.getPlayZoomShare() : 1
         );
       }
       worldRef.current.style.transform = (isWide ? wideCamera : closeCamera).getTransform();
@@ -1024,20 +1029,23 @@ export const GameBoard = ({ speakingLineLength = 0, isSwirling = false, speaking
     x: left - Math.cos(degrees * Math.PI / 180) * size * distance,
     y: top - Math.sin(degrees * Math.PI / 180) * size * distance
   });
+  const nearestSiteTiles = Math.min(...caretTargets.filter(({ icon, caret }) => icon && caret).map(({ tiles }) => tiles));
+  const getSiteScale = tiles => Math.max(1 - (tiles - nearestSiteTiles) * CARET_INFO.siteScalePerTile, CARET_INFO.minSiteScale);
   const edgeCarets = caretTargets
     .filter(({ caret }) => !!caret)
-    .map(({ key, color, icon, piece, caret, isGlowing }) => (
+    .map(({ key, color, icon, piece, caret, isGlowing, tiles }) => (
       <React.Fragment key={key}>
         {icon && (() => {
+          const siteScale = getSiteScale(tiles);
           const spot = getInward(caret, CARET_INFO.inset);
-          const iconHeight = caret.size * CARET_INFO.iconHeight;
+          const iconHeight = caret.size * CARET_INFO.iconHeight * siteScale;
           // over the icon in the screen's lower half, where a word under it would be off the screen (Jamie, playtest 18)
           const isOver = MAP_LABEL.position == "top" || spot.y > (boardRef.current ? boardRef.current.clientHeight : 0) / 2;
           return (
             <>
               <CaretIcon src={`/levels/map/${icon}.png`} style={{ left: `${spot.x}px`, top: `${spot.y}px`, height: `${iconHeight}px`, "--glow": isGlowing ? color : "transparent" }} />
               {/* its word, as on the map (MAP_LABELS) */}
-              <CaretLabel style={{ left: `${spot.x}px`, top: `${spot.y + (isOver ? -1 : 1) * (iconHeight / 2 + 2)}px`, transform: `translate(-50%, ${isOver ? "-100%" : "0"})`, fontSize: `${Math.max(caret.size * 0.45, 9)}px` }}>{MAP_LABELS[icon] || icon}</CaretLabel>
+              <CaretLabel style={{ left: `${spot.x}px`, top: `${spot.y + (isOver ? -1 : 1) * (iconHeight / 2 + 2)}px`, transform: `translate(-50%, ${isOver ? "-100%" : "0"})`, fontSize: `${Math.max(caret.size * 0.45 * siteScale, 7)}px` }}>{MAP_LABELS[icon] || icon}</CaretLabel>
             </>
           );
         })()}

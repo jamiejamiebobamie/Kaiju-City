@@ -48,12 +48,14 @@ export const FINAL_TURN = {
   playerKaijuHoldMs: 2600 // on their Kaiju a while, before the end
 };
 
-// the Hazmat Worker, once unlocked, walks and fights with the team like a recruit (Jamie): his powers, a white outline
 // back in the battleground from a training fight won: the card shows this long before anyone speaks (Jamie)
 export const TRAINING_RETURN = { cardMs: 2600 };
 
 // the Hazmat Worker, once unlocked, walks and fights with the team like a recruit (Jamie): his powers, a white outline.
 // Aegis (shield), Heal and Dispel (bubble): no attack power (Jamie, playtest 18)
+// the Aquarium: within this many rows of the stairs, the player is going up for the Mermaid (getIsAtAquariumStairs)
+const AQUARIUM_STAIRS_NEAR_ROWS = 2.5;
+
 export const HAZMAT_RECRUIT = { abilities: ['metal', 'love', 'bubble'], color: '#ffffff' };
 
 export const PORTAL_WALK = {
@@ -124,7 +126,10 @@ export const GHOST_SCREAM = {
   besideCols: 1, // the two of them land this many columns either side of the ring's middle
   ringShotZoom: 1.1, // the whole ring, while no ghost is coming for the player: a share of the whole scene's zoom
   ringShotPanMs: 700, // the camera's move out to it, and back
-  ringShotRelaxedPanMs: 4000 // after the first time out and back in on a ghost: the slow, relaxed move out
+  ringShotRelaxedPanMs: 4000, // after the first time out and back in on a ghost: the slow, relaxed move out
+  // after the scream's pull out to the whole ring, the camera stays on the player at a medium zoom, this share of the
+  // usual one, instead of on the whole ring (Jamie, playtest 18: with a big team the ghosts rarely come for the player)
+  ringMediumZoomShare: 0.7
 };
 
 export const CUTSCENE = {
@@ -229,6 +234,8 @@ export class GameManager {
         this.carriedObjective = carriedObjective;
         this.objective = null; // what the player is to do now (Objectives.ts)
         this.objectiveCount = 0; // goes up with each new one: the screen shows each new one as a title
+        // back from training: the objective carried back isn't new, so no title for it over the reward's card (Jamie, playtest 18)
+        if (trainingOutcome && carriedObjective) this.objective = carriedObjective;
         this.autoRecruits = autoRecruits;
         this.recruits = recruits;
         this.hasAutoSummoned = false;
@@ -553,6 +560,7 @@ export class GameManager {
         this.gameBoardManager.initTiles();
 
         this.gameBoardPiecesManager.initPlayerLocationsOnBoard(this.returnSpot ? this.getReturnTiles(this.returnSpot) : this.getTrainingReturnTiles() || this.level.spawnTiles);
+        if (this.level.isMapWalk && this.level.sites) this.moveTeamClearOfSites();
 
         // the recruits walk with the team wherever the teammate is: the walking Lab, the Street, the map walks too (Jamie)
         const isTeammateScene = this.level.isWalkingLevel && this.settingsManager.getIsTeammate && this.settingsManager.getIsTeammate();
@@ -586,6 +594,35 @@ export class GameManager {
         const outcome = this.trainingOutcome;
         if (!outcome || outcome.isSparring || !this.level.training) return undefined;
         return [this.gameBoardManager.getClosestWalkableTileToLocation(this.level.training.spot)];
+    }
+
+    /*
+        A map walk (Jamie, playtest 18): the team never starts by a site's icon. one there can't be gone into until the player
+        has walked off and back (armedSites), and it looks odd. the player and the teammate move to the nearest tiles clear
+        of every site.
+    */
+    moveTeamClearOfSites() {
+        const board = this.gameBoardManager;
+        const { rowStep, scale } = this.level.grid;
+        const clearPx = (SITE_ROWS + 1.2) * rowStep * scale; // past where a site is armed (SITE_ROWS + 1)
+        const getIsClear = tile => {
+            const { x, y } = getTileCenter(this.level.grid, tile);
+            return this.level.sites.every(({ spot }) => Math.hypot(x - spot.x, y - spot.y) > clearPx);
+        };
+        const [player, teammate] = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
+        if (!player || getIsClear(player.getTileIndex())) return;
+        const here = getTileCenter(this.level.grid, player.getTileIndex());
+        const byDistance = board.walkableTiles.filter(getIsClear).map(tile => {
+            const { x, y } = getTileCenter(this.level.grid, tile);
+            return { tile, distance: Math.hypot(x - here.x, y - here.y) };
+        }).sort((a, b) => a.distance - b.distance);
+        if (!byDistance.length) return;
+        const [{ tile }] = byDistance;
+        player.initCharLocation(true, tile);
+        if (teammate) {
+            const besideTile = board.getAdjacentTileIndices(tile).filter(board.getIsInBounds).find(next => board.walkableTiles.some(({ i, j }) => i == next.i && j == next.j) && getIsClear(next));
+            teammate.initCharLocation(true, besideTile || tile);
+        }
     }
 
     getReturnTiles(spot) {
@@ -707,11 +744,22 @@ export class GameManager {
         The ghost boss's ring, while the player is inside it and no launched ghost is coming for them: the camera pulls back
         to the whole ring (Jamie). A ghost coming for them takes the camera back (the enemy zoom follows it).
     */
-    getGhostRingShot() {
+    getIsGhostRingCameraOn() {
         const ring = this.ghostRing;
         const player = this.gameBoardPiecesManager.getPlayerPiece();
-        const isOn = !!ring && ring.getIsFormed() && !!player && !player.isDead && !this.cutscene && this.getIsCameraKeptOff(player, this.rivalPiece)
+        return !!ring && ring.getIsFormed() && !!player && !player.isDead && !this.cutscene && this.getIsCameraKeptOff(player, this.rivalPiece)
             && !this.getCameraThreats(player).some(({ key }) => key.startsWith('phaseGhost'));
+    }
+
+    // the play camera's zoom, as a share of the usual: a medium shot inside the ghost ring (Jamie, playtest 18)
+    getPlayZoomShare() {
+        return GHOST_SCREAM.ringMediumZoomShare && this.getIsGhostRingCameraOn() ? GHOST_SCREAM.ringMediumZoomShare : 1;
+    }
+
+    getGhostRingShot() {
+        const ring = this.ghostRing;
+        // the medium zoom instead (getPlayZoomShare): the whole ring was seen as the scream's scene ended
+        const isOn = !GHOST_SCREAM.ringMediumZoomShare && this.getIsGhostRingCameraOn();
         if (!isOn) {
             if (this.ghostRingShot) this.ghostRingShotsSeen = (this.ghostRingShotsSeen || 0) + 1;
             this.ghostRingShot = undefined;
@@ -754,7 +802,7 @@ export class GameManager {
         // the Aquarium: the Mermaid up on the top floor, healing, while the player is down in the water (Jamie). the camera
         // stays the usual one, on the water and the creatures; her caret still shows where she is.
         if (this.level.aquariumFlood && this.isShattered && piece == this.rivalPiece && !!player) {
-            return this.getIsTopFloor(piece.getTileIndex()) && !this.getIsTopFloor(player.getTileIndex());
+            return this.getIsTopFloor(piece.getTileIndex()) && !this.getIsTopFloor(player.getTileIndex()) && !this.getIsAtAquariumStairs(player);
         }
         const ring = this.ghostRing;
         if (!ring || piece != this.rivalPiece || !player) return false;
@@ -763,16 +811,30 @@ export class GameManager {
         return Math.hypot(dx, dy) <= ring.radiusPx;
     };
 
+    // the Aquarium's flood (Jamie, playtest 18): the player at the stairs (a link's tile, or a couple of rows from one) or up
+    // on the top floor is going for the Mermaid: the usual camera, on her, not in close on the sea creatures
+    getIsAtAquariumStairs = player => {
+        if (!this.level.aquariumFlood || !this.isShattered || !player || !player.getTileIndex()) return false;
+        if (this.getIsTopFloor(player.getTileIndex())) return true;
+        const near = AQUARIUM_STAIRS_NEAR_ROWS * this.getGhostRowPx();
+        return (this.level.tileLinks || []).flat().some(tile => {
+            const spot = this.gameBoardManager.getCharXAndYFromTileIndex(tile);
+            return Math.hypot(spot.x - player.charLocation.x, spot.y - player.charLocation.y) <= near;
+        });
+    };
+
     getCameraThreats = player => {
         if (!player || player.isDead) return [];
         const board = this.gameBoardManager;
         const threats = [];
+        const isAtStairs = this.getIsAtAquariumStairs(player);
         // one per cast: its tile closest to the player
         const byCast = new Map();
         board.getActiveTiles().forEach(tile => {
             const status = tile.getTileStatus();
             if (!status || !CAMERA_THREATS.statuses.includes(status.getAppliedStatus())) return;
             if (tile.targetIndex != player.pieceIndex || tile.teamIndex == player.getTeamIndex() || tile.getCurrCount() <= 0) return;
+            if (isAtStairs && status.getAppliedStatus() == 'isSeaGhost') return;
             const key = `status ${status.getAppliedStatus()} ${tile.cast.casterIndex} ${tile.cast.seaIcon || ''}`;
             const charLocation = board.getCharXAndYFromTileIndex(tile.tileIndex);
             const distance = Math.hypot(charLocation.x - player.charLocation.x, charLocation.y - player.charLocation.y);
@@ -2444,7 +2506,8 @@ export class GameManager {
     }
 
     updateObjective() {
-        if (this.cutscene && !this.cutscene.isMidFight) return;
+        // only once the player can act again: not over a scene's words, even one in mid-fight (Jamie, playtest 18)
+        if (this.cutscene || this.recruitScene) return;
         const objective = this.getCurrentObjective();
         if (getIsSameObjective(objective, this.objective)) return;
         this.objective = objective;
@@ -2892,7 +2955,7 @@ export class GameManager {
     // the Agents burst in from below, in slow motion at first. the powers are gone, so the only way out is the door.
     // the recruits still have theirs: they stay and hold the Agents off while the player and teammate run.
     startChase = () => {
-        const { chasers: { xs, startY, landingY, moveSpeed, abilities }, chaseLines } = this.level.trap;
+        const { chasers: { xs, startY, landingY, moveSpeed, abilities, dropFrom }, chaseLines } = this.level.trap;
         const team = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
         const runners = team.filter(piece => !this.followers.includes(piece));
         runners.forEach(piece => { piece.abilities = []; });
@@ -2907,14 +2970,18 @@ export class GameManager {
         const exitTile = this.gameBoardManager.getClosestWalkableTileToLocation(this.level.exit.spot);
         runners.filter(piece => piece.isNpc).forEach(piece => { piece.escapeTile = exitTile; });
         if (chaseLines) this.sayDuringChase(chaseLines);
-        xs.forEach(x => {
+        // from the catwalk: the clones there are the ones who come (their sprites go as they drop); else from below
+        const clones = dropFrom ? this.level.sceneElements.filter(({ id }) => dropFrom.cloneIds.includes(id)) : [];
+        const starts = clones.length ? clones.map(({ x }) => ({ x, y: dropFrom.y })) : xs.map(x => ({ x, y: startY }));
+        if (clones.length) this.setPhase(dropFrom.phase, true);
+        starts.forEach(start => {
             const piece = this.gameBoardPiecesManager.addPiece({
                 pieceClass: GameBoardPieceAgent,
                 pieceInfo: { ...PIECES_INFO.agent, abilities: this.settingsManager.getAbilitiesFromElements(abilities), maxLives: 4, moveSpeed },
                 teamIndex: 1
             });
             piece.color = PIECES_INFO.kaiju.color; // a sinister purple glow, like the Kaiju's (Jamie)
-            piece.startChase({ startLocation: { x, y: startY }, landingTile: this.gameBoardManager.getClosestWalkableTileToLocation({ x, y: landingY }) });
+            piece.startChase({ startLocation: start, landingTile: this.gameBoardManager.getClosestWalkableTileToLocation({ x: start.x, y: landingY }) });
         });
         this.gameBoardManager.moveSpeedScale *= CUTSCENE.chaseSlowSpeed;
         this.isChaseSlowed = true;

@@ -107,6 +107,8 @@ const cardFade = keyframes`
 // notices sit a quarter of the way down: high enough to clear the titles in the middle, low enough to be seen
 const NOTICE_TOP = "25%";
 
+const UNLOCK_CARD_MS = 5000; // as long as its fade (cardFade)
+
 // a notice that comes and goes on its own, in the style of the speech bubbles
 const UnlockCard = styled.div`
   position: absolute;
@@ -511,6 +513,8 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const isPausedForControls = useRef(false);
   const [kaijuSpeedMode, setKaijuSpeedModeState] = useState(getKaijuSpeedMode); // dev playtest
   const [isChoosingAvatar, setIsChoosingAvatar] = useState(!startingLevelId); // a new campaign starts with the guy or the girl
+  // a first play goes from the avatar choice straight into the game: the power picker isn't shown on the way (Jamie, playtest 18)
+  const [isSkippingPicker, setIsSkippingPicker] = useState(false);
   const isPickingPowersInLab = useRef(false);
   const [isLabPicker, setIsLabPicker] = useState(false);
   const [isLogClosing, setIsLogClosing] = useState(false); // the HUDs wait for the log to come apart
@@ -530,7 +534,8 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const pendingRewardText = useRef(undefined); // its card: shown once back in the battleground
   const [isSwirling, setIsSwirling] = useState(false); // the Peninsula's first fight swirls away into the Street (A2)
   const isHealthRewardDue = useRef(false); // won sparring: the next match (the walk, after) shows it
-  const [rewardNotice, setRewardNotice] = useState<{ key: number; text: string } | undefined>(undefined);
+  // 'power': a power won (its element): shown as its card, with its tile, as Terminate's is (Jamie, playtest 18)
+  const [rewardNotice, setRewardNotice] = useState<{ key: number; text: string; power?: string } | undefined>(undefined);
   const rewardText = useRef(undefined); // the reward's title, due once the walk's opening shot is over
   const [sparringTweak, setSparringTweak] = useState({ ...SPARRING }); // the dev panel's copy of SPARRING, to show its values
   const [isAutoRecruits, setIsAutoRecruits] = useState(true); // dev toggle (Jamie): every recruit in every fight, and walking with the team; no call buttons
@@ -558,6 +563,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const [matchCount, setMatchCount] = useState(0); // the board starts fresh with each match
   const [pickedAbilities, setPickedAbilities] = useState([]);
   const [isPlayingGame, setIsPlayingGame] = useState(false);
+  useEffect(() => { if (isPlayingGame) setIsSkippingPicker(false); }, [isPlayingGame]);
   const [fullScreenPageData, setFullScreenPageData] = useState(undefined);
   const [radioLines, setRadioLines] = useState(undefined);
   const [matchEnd, setMatchEnd] = useState(undefined); // the title over the board once a match is decided
@@ -720,9 +726,10 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const isRewarding = players.some(({ isRewardPulse }) => isRewardPulse);
   useEffect(() => {
     if (!isPlayingGame || isCutscene || !rewardText.current) return;
-    setRewardNotice({ key: Date.now(), text: rewardText.current });
+    const { text, power } = rewardText.current;
+    setRewardNotice({ key: Date.now(), text, power });
     rewardText.current = undefined;
-    setTimeout(() => setRewardNotice(undefined), OBJECTIVE_NOTICE_MS); // not cleared when the glow ends: the title always goes
+    setTimeout(() => setRewardNotice(undefined), power ? UNLOCK_CARD_MS : OBJECTIVE_NOTICE_MS); // not cleared when the glow ends: the title always goes
   }, [isRewarding, isCutscene, matchCount, isPlayingGame]);
 
   // a new playthrough: nothing chosen in the last one carries over (Jamie): who was recruited or terminated, health won
@@ -1128,7 +1135,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
           isHealthRewardDue.current = true;
         }
         trainingOutcome.current = { isSparring, avatar: level.rival.avatar };
-        pendingRewardText.current = isSparring ? "Gained +1 temporary health point" : skill ? `${skill.name} unlocked!` : undefined;
+        pendingRewardText.current = isSparring ? { text: "Gained +1 temporary health point" } : skill ? { text: `${skill.name} power unlocked!`, power: skill.element } : undefined;
         const timeout = setTimeout(backToBattleground, MATCH_END_DELAY_MS);
         return () => clearTimeout(timeout);
       }
@@ -1187,12 +1194,14 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
         if (getIsFirstPlay()) {
           settingsManager.setSortedPlayerChosenAbilityElementsString(FIRST_PLAY_POWERS);
           setPickedAbilities(FIRST_PLAY_POWERS);
+          setIsSkippingPicker(true);
           setIsChoosingAvatar(false);
           handleClickPlay();
           return;
         }
         triggerTransition(() => setIsChoosingAvatar(false));
       }} />
+    : !isPlayingGame && isSkippingPicker ? null
     : !isPlayingGame ?
       <>
       {import.meta.env.DEV && !isDevHidden && (
@@ -1454,7 +1463,11 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               {isWiping && <ScreenClip><BlackWipe /></ScreenClip>}
               {/* inside the Kaiju-Vision screen itself (Jamie), not over the casing */}
               {objectiveNotice && createPortal(<ObjectiveNotice key={objectiveNotice.key}>{objectiveNotice.text}</ObjectiveNotice>, document.querySelector("[data-play-screen]") || document.body)}
-              {rewardNotice && createPortal(<RewardNotice key={rewardNotice.key}>{rewardNotice.text}</RewardNotice>, document.querySelector("[data-play-screen]") || document.body)}
+              {rewardNotice && !rewardNotice.power && createPortal(<RewardNotice key={rewardNotice.key}>{rewardNotice.text}</RewardNotice>, document.querySelector("[data-play-screen]") || document.body)}
+              {rewardNotice && rewardNotice.power && (() => {
+                const look = getPowerLook(rewardNotice.power);
+                return <UnlockCard key={rewardNotice.key}>{look && <PowerTile style={{ background: look.color }}><i className={`fa ${look.activeIcon}`} /></PowerTile>}{rewardNotice.text}</UnlockCard>;
+              })()}
               {unlockMessage && <UnlockStack><UnlockCard style={{ position: "static", transform: "none" }}><UnlockPortrait src={unlockImage} />{unlockMessage}</UnlockCard></UnlockStack>}
               {fadeCards && <FadeToBlack><CardStack>{fadeCards.map(({ label, image, power }, index) => (
                 <Toast key={label} style={{ animationDelay: `${0.4 + index * 0.45}s` }}>

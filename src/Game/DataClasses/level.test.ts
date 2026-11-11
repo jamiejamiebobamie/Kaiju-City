@@ -608,21 +608,17 @@ describe('rivals', () => {
       expect(gm.getIsCameraKeptOff(player, rival)).toBe(false);
     });
 
-    it('inside the ring, with no ghost coming for the player, the camera holds the whole ring', () => {
+    it('inside the ring, with no ghost coming for the player, the camera stays on them at a medium zoom (playtest 18)', () => {
       const { gm } = makeGhostFight();
       const player = gm.getPieces()[0];
       downHer(gm);
       for (let k = 0; k < 40 && !gm.ghostRing.getIsFormed(); k += 1) gm.stepPieces();
-      const shot = gm.getCameraShot();
-      expect(shot && shot.point).toEqual(LEVELS.rooftop.ghostBoss.ringCenter);
-      expect(gm.getCameraShot()).toBe(shot); // the same shot while it lasts
-      // out of the ring, the camera is the player's again
-      player.charLocation = { ...gm.rivalPiece.charLocation };
+      // the whole ring was seen as the scream's scene ended: now no shot of it, the play camera pulled back a little
       expect(gm.getCameraShot()).toBeUndefined();
-      // and back in: this time the camera pulls out slowly (Jamie)
-      player.charLocation = { ...LEVELS.rooftop.ghostBoss.ringCenter };
-      expect(shot.panMs).toBeLessThan(1000);
-      expect(gm.getCameraShot().panMs).toBeGreaterThan(shot.panMs * 3);
+      expect(gm.getPlayZoomShare()).toBeLessThan(1);
+      // out of the ring, the usual zoom again
+      player.charLocation = { ...gm.rivalPiece.charLocation };
+      expect(gm.getPlayZoomShare()).toBe(1);
     });
 
     it('her own roof is the left building, without the crane beam', () => {

@@ -241,7 +241,7 @@ export type LevelConfig = {
     lineUp: { y: number; spacing: number };
     ray: { from: { x: number; y: number }; color: string; ms: number };
     chaseLines: { agent: string; teammate: string; teammateWithRecruits: string };
-    chasers: { xs: Array<number>; startY: number; landingY: number; moveSpeed: number; abilities: Array<string> };
+    chasers: { xs: Array<number>; startY: number; landingY: number; moveSpeed: number; abilities: Array<string>; dropFrom?: { y: number; cloneIds: Array<string>; phase: string } };
   };
   hasRecruitFollowers?: boolean; // recruited characters walk with the team
   sites?: Array<MapSite>; // places on the map to walk to
@@ -685,6 +685,9 @@ const STREET_SCENE = {
   ]
 };
 
+// the Kaiju's glow (PIECES_INFO.kaiju.color): Agents empowered as the Kaiju are
+const KAIJU_GLOW = '#bf40bf';
+
 // the Agent's clones, stepped out of the tanks behind them
 const agentClone = (id, x) => ({ ...npc(id, 'agent', x, 170, 95), phase: 'clones' });
 
@@ -952,12 +955,17 @@ LEVELS.labTrap = {
     // said as the chase starts, while everyone runs. draft words.
     chaseLines: getKeyedLines('labTrap.chase') as { agent: string; teammate: string; teammateWithRecruits: string },
     ray: { from: { x: 700, y: 440 }, color: '#7dffef', ms: 2200 },
-    chasers: { xs: [480, 700, 920], startY: 830, landingY: 640, moveSpeed: 5, abilities: [] }
+    // they drop from the catwalk (Jamie, playtest 18): three of the clones up there jump down, and those clones are gone
+    chasers: { xs: [480, 700, 920], startY: 830, landingY: 640, moveSpeed: 5, abilities: [], dropFrom: { y: 170, cloneIds: ['clone2', 'clone3', 'clone4'], phase: 'clonesDropped' } }
   },
   extras: [standingAgent(700, 480)],
   phases: [{ id: 'clones', label: 'Agent clones' }],
   sceneElements: [
-    ...LAB_SCENE.sceneElements.filter(({ phase }) => phase == 'clones'),
+    // the clones on the catwalk glow the Kaiju's sinister purple, as the Agents who chase do (Jamie, playtest 18)
+    ...LAB_SCENE.sceneElements.filter(({ phase }) => phase == 'clones').map(element => ({
+      ...element, glowPhase: 'clones', glowColor: KAIJU_GLOW,
+      ...(['clone2', 'clone3', 'clone4'].includes(element.id) ? { hidePhase: 'clonesDropped' } : {}) // gone when they drop
+    })),
     { id: 'exit', type: 'door' as const, phase: EXIT_OPEN_PHASE, x: 1290, y: 470, width: 0, height: 0, sortY: ABOVE_CHARACTERS, label: 'Escape!' }
   ]
 };

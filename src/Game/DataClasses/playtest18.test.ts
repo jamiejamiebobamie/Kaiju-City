@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { LEVELS } from './Levels/levels';
+import { LEVELS, updateMapWalkSites } from './Levels/levels';
+import { getTileCenter } from './GameBoard/hexGrid';
 import { GameManager, HAZMAT_RECRUIT } from './GameManager';
 import { SettingsManager } from './SettingsManager';
 import { WORMHOLE_USED_MS } from './GameBoard/GameBoardManager';
@@ -48,6 +49,32 @@ describe('playtest 18', () => {
     [first, again].forEach(gm => { gm.talks = []; gm.addSceneTalks(); });
     expect(first.talks.length).toBeGreaterThan(0);
     expect(again.talks.length).toBeLessThan(first.talks.length);
+  });
+
+  it('B7: a map walk never starts by a site, even one won before (the Transit Station after the Rooftop)', () => {
+    updateMapWalkSites(['rapidTransit', 'rooftop']);
+    ['mapRooftop', 'mapAquarium'].forEach(id => {
+      const gm = makeGame(LEVELS[id]);
+      const player = gm.gameBoardPiecesManager.getPlayerPiece();
+      const { x, y } = getTileCenter(LEVELS[id].grid, player.getTileIndex());
+      const { rowStep, scale } = LEVELS[id].grid;
+      LEVELS[id].sites.forEach(({ spot }) => expect(Math.hypot(x - spot.x, y - spot.y)).toBeGreaterThan(4 * rowStep * scale));
+    });
+    updateMapWalkSites([]);
+  });
+
+  it('A11: a new objective waits till a scene is over, even one in mid-fight', () => {
+    const gm = makeGame(LEVELS.rapidTransit);
+    for (let k = 0; k < 4000 && gm.cutscene; k++) gm.stepPieces();
+    gm.stepPieces();
+    const before = gm.objectiveCount;
+    gm.startCutscene([{ shot: { isWide: true }, ms: 1000 }], { isMidFight: true });
+    gm.getCurrentObjective = () => ({ text: 'Something new' });
+    gm.updateObjective();
+    expect(gm.objectiveCount).toBe(before);
+    gm.cutscene = undefined;
+    gm.updateObjective();
+    expect(gm.objectiveCount).toBe(before + 1);
   });
 
   it('B1: the Street Agent is drawn behind the team', () => {

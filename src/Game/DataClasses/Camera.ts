@@ -114,12 +114,14 @@ export class Camera {
   // 'aim' is where the mouse is in the view: from -1 to 1 across, and down, with 0 in the middle
   // 'enemy' is the closest enemy, if there is one
   // 'isTense': in closer and quicker (CAMERA.tense)
-  lookToward(player: Point, aim: Point, enemy?: Point, isTense = false) {
+  // 'zoomShare': the zoom as a share of the usual one (the Rooftop's ghost ring: a medium shot, Jamie, playtest 18)
+  lookToward(player: Point, aim: Point, enemy?: Point, isTense = false, zoomShare = 1) {
     const reach = Math.min(Math.max(Math.abs(aim.x), Math.abs(aim.y)), 1);
     const easeOut = Math.max((reach - CAMERA.lookZoomStart) / (1 - CAMERA.lookZoomStart), 0);
-    const topZoom = this.baseZoom * (isTense ? CAMERA.tense.zoomIn : 1);
+    const baseZoom = this.baseZoom * zoomShare;
+    const topZoom = baseZoom * (isTense ? CAMERA.tense.zoomIn : 1);
     const lookZoom = topZoom * (1 - CAMERA.lookZoomOut * easeOut);
-    const enemyZoom = enemy && isTense ? topZoom : enemy ? this.getZoomToShow(player, enemy, topZoom) : this.baseZoom;
+    const enemyZoom = enemy && isTense ? topZoom : enemy ? this.getZoomToShow(player, enemy, topZoom) : baseZoom;
     const targetZoom = Math.max(Math.min(lookZoom, enemyZoom), this.minZoom);
     const maxStep = this.zoom * (isTense ? CAMERA.tense.maxZoomStep : CAMERA.maxZoomStep);
     this.setZoom(this.zoom + Math.max(Math.min(targetZoom - this.zoom, maxStep), -maxStep));

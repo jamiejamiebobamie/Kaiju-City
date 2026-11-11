@@ -256,46 +256,50 @@ export const BezelDisplay = styled.div`
   box-shadow: inset 0 0.12cqw 0.3cqw black, 0 0.08cqw 0 ${TV_LOOK.casingLight};
 `;
 
-const countPop = keyframes`
-  0% { opacity: 0; transform: translate(-50%, 0) scale(0.3); }
-  12% { opacity: 1; transform: translate(-50%, -0.6cqw) scale(1.5); }
-  24% { transform: translate(-50%, -0.9cqw) scale(1); }
-  70% { opacity: 1; transform: translate(-50%, -1.8cqw) scale(1.05); }
-  100% { opacity: 0; transform: translate(-50%, -2.8cqw) scale(1.15); }
+// a Kaiju down (Jamie, playtest 18): a green glow pulses round the count's display for a moment, as the red one does
+// round the screen while they come (not a +1 rising from it any more)
+const KILL_GLOW = { seconds: 2, pulses: 3 };
+
+const killPulse = keyframes`
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
 `;
 
-// a purple +1 that pops up from the count each time a Kaiju falls
-const CountPop = styled.span`
+const KillGlow = styled.span`
   position: absolute;
-  left: 50%;
-  top: -0.6cqw;
-  font-family: gameboy;
-  font-size: 1.3cqw;
+  inset: -0.12cqw;
   pointer-events: none;
-  background: linear-gradient(to bottom, #ffffff, #c06bff 55%, #9b30ff);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  -webkit-text-stroke: 0.08cqw #12001f;
-  filter: drop-shadow(0.1cqw 0.12cqw 0 black) drop-shadow(0 0 0.35cqw #9b30ff);
-  animation: ${countPop} 1.8s ease-out forwards;
+  border-radius: 0.35cqw;
+  box-shadow: 0 0 0.9cqw 0.25cqw rgba(60, 255, 90, 0.85), inset 0 0 0.5cqw 0.1cqw rgba(60, 255, 90, 0.7), 0 0 0 0.1cqw #3cff5a;
+  animation: ${killPulse} ${KILL_GLOW.seconds / KILL_GLOW.pulses}s ease-in-out ${KILL_GLOW.pulses} forwards;
 `;
+
+// a new key each time the count goes up, so the glow plays again; it goes once it has played
+const useKillGlow = (count, isOn = true) => {
+  const [glowKey, setGlowKey] = useState(undefined);
+  const lastCount = useRef(count);
+  useEffect(() => {
+    if (isOn && count > lastCount.current) setGlowKey(count);
+    lastCount.current = count;
+  }, [count, isOn]);
+  useEffect(() => {
+    if (glowKey === undefined) return;
+    const timeout = setTimeout(() => setGlowKey(undefined), KILL_GLOW.seconds * 1000);
+    return () => clearTimeout(timeout);
+  }, [glowKey]);
+  return glowKey;
+};
 
 const CounterHolder = styled.div`
   position: relative;
 `;
 
 export const KaijuCounter = ({ count, toWin, style = undefined }) => {
-  const [pops, setPops] = useState([]);
-  const lastCount = useRef(count);
-  useEffect(() => {
-    if (count > lastCount.current) setPops(previous => [...previous.slice(-3), { key: count }]);
-    lastCount.current = count;
-  }, [count]);
+  const glowKey = useKillGlow(count);
   return (
     <CounterHolder style={style}>
       <BezelDisplay>{`KAIJU ${String(count).padStart(2, "0")}/${toWin}`}</BezelDisplay>
-      {pops.map(({ key }) => <CountPop key={key}>+1</CountPop>)}
+      {glowKey !== undefined && <KillGlow key={glowKey} />}
     </CounterHolder>
   );
 };
@@ -323,12 +327,7 @@ const TickerText = styled.span`
 
 // 'text': the objective ('' for none: the display stays, empty). 'isKaijuCount': the Kaiju count, as before.
 export const ObjectiveTicker = ({ text, isKaijuCount, count, toWin }) => {
-  const [pops, setPops] = useState([]);
-  const lastCount = useRef(count);
-  useEffect(() => {
-    if (isKaijuCount && count > lastCount.current) setPops(previous => [...previous.slice(-3), { key: count }]);
-    lastCount.current = count;
-  }, [count, isKaijuCount]);
+  const glowKey = useKillGlow(count, isKaijuCount);
   // from just past the right edge to just past the left one: the run's length, in cqw (gameboy letters are about 0.85cqw)
   const textCqw = text.length * 0.85 + 2;
   const seconds = (16 + textCqw) / OBJECTIVE_TICKER.pxPerSecond;
@@ -339,7 +338,7 @@ export const ObjectiveTicker = ({ text, isKaijuCount, count, toWin }) => {
           ? `KAIJU ${String(count).padStart(2, "0")}/${toWin}`
           : text && <TickerText key={text} style={{ "--from": OBJECTIVE_TICKER.width, "--to": `-${textCqw}cqw`, animationDuration: `${seconds}s` }}>{text.toUpperCase()}</TickerText>}
       </TickerDisplay>
-      {isKaijuCount && pops.map(({ key }) => <CountPop key={key}>+1</CountPop>)}
+      {isKaijuCount && glowKey !== undefined && <KillGlow key={glowKey} />}
     </CounterHolder>
   );
 };
