@@ -1153,6 +1153,12 @@ export class GameManager {
     */
     startFinalTurn() {
         const { player, teammate } = this.getGhostTeam();
+        // the player fell, and the one they played on as finished it (the teammate or a recruit): no one turns, the city
+        // is saved (Jamie, playtest 19)
+        if (!player || player.isDead) {
+            this.finalTurnState = 'saved';
+            return;
+        }
         // no teammate to turn (they fell, or there never was one): the player turns instead (Jamie)
         if (!teammate || teammate.isDead) {
             this.startPlayerTurn(player);
@@ -2593,7 +2599,9 @@ export class GameManager {
             const recruit = this.followers.find(piece => piece.avatar == outcome.avatar && !piece.isDead);
             const text = getKeyedLines('training.won')[outcome.avatar];
             const name = (ROSTER.find(({ id }) => id == outcome.avatar) || {}).name;
-            this.startCutscene(recruit && text ? [{ shot: { isWide: true }, ms: getSpeechMs(text), speech: this.getSpeechOver(recruit, name, text) }] : [teammateSays(nothingHere)]);
+            // then the teammate: the new power is theirs to pick at the Lab (Jamie, playtest 19)
+            const labNote = getDialogueLine('training.labNote').text;
+            this.startCutscene(recruit && text ? [{ shot: { isWide: true }, ms: getSpeechMs(text), speech: this.getSpeechOver(recruit, name, text) }, teammateSays(labNote)] : [teammateSays(nothingHere)]);
             return;
         }
         if (sparring && this.sparredHere) {
@@ -3389,7 +3397,7 @@ export class GameManager {
         // the last fight: won when the teammate, turned Kaiju, is down. until then, its Kaiju beaten is not the end.
         if (this.level.finalTurn) {
             if (this.gameBoardPiecesManager.getIsPlayerTeamDead()) return GameResult.PlayerLost; // the 30 beaten don't make it a win
-            if (this.finalTurnState == 'destroyed') return GameResult.PlayerWon; // the ending where the player turned
+            if (this.finalTurnState == 'destroyed' || this.finalTurnState == 'saved') return GameResult.PlayerWon; // the player turned, or fell before the end
             if (this.finalTurnState == 'fighting') return this.teammateKaiju.isDead ? GameResult.PlayerWon : null;
             if (this.score >= this.getKillsToWin()) return null;
         }

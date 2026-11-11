@@ -63,10 +63,13 @@ export class GameBoardPieceAgent extends GameBoardPieceBase {
         this.setDir('idle');
     }
 
+    // facing the way they go: up from below the screen, or down, dropping from the catwalk (they looked to run
+    // backwards: Jamie, playtest 19)
     startChase({ startLocation, landingTile }) {
         this.isChaser = true;
         this.dealsContactDmg = true;
-        this.startEntrance({ startLocation, dropTile: landingTile, landingTile, walkDir: 'up' });
+        const landing = this.gameManagerProxy.getCharXAndYFromTileIndex(landingTile);
+        this.startEntrance({ startLocation, dropTile: landingTile, landingTile, walkDir: startLocation.y > landing.y ? 'up' : 'down' });
     }
 
     startEntrance({ startLocation, dropTile, landingTile, walkDir }) {

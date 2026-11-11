@@ -285,13 +285,23 @@ const Footer = styled.div`
   padding: 0.6cqw 1.4cqw 1.2cqw;
 `;
 
-const TypedText = ({ text, isTyping, onType }) => {
+// 'isRushed': Continue was pressed mid-line: the rest comes in a quick burst (RUSH_STEPS ticks), so it's seen to finish.
+// no longer the newest line: it shows whole at once (Jamie, playtest 19: lines kept typing under the next ones)
+const RUSH_STEPS = 5;
+const TypedText = ({ text, isTyping, isRushed = false, onType, onDone }) => {
   const [letters, setLetters] = useState(isTyping ? 0 : text.length);
   useEffect(() => {
-    if (letters >= text.length) return;
-    const timeoutRef = setTimeout(() => setLetters(letters + 1), DIALOGUE.letterMs);
+    if (!isTyping && letters < text.length) setLetters(text.length);
+  }, [isTyping]);
+  useEffect(() => {
+    if (letters >= text.length) {
+      onDone && onDone();
+      return;
+    }
+    const step = isRushed ? Math.ceil((text.length - letters) / RUSH_STEPS) : 1;
+    const timeoutRef = setTimeout(() => setLetters(Math.min(letters + step, text.length)), DIALOGUE.letterMs);
     return () => clearTimeout(timeoutRef);
-  }, [letters, text]);
+  }, [letters, text, isRushed]);
   useLayoutEffect(() => { onType && onType(); }, [letters]);
   return <>{text.slice(0, letters)}</>;
 };
@@ -305,6 +315,18 @@ const TypedText = ({ text, isTyping, onType }) => {
 // 'onClosing': told when it starts and stops coming apart, so the HUDs can wait for it
 export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, actions = [], footer = null, onClosing = undefined, onBuilt = undefined }) => {
   const scrollRef = useRef(null);
+  // Continue (Enter, 1, a click) while the newest line still types: it finishes the line first; the next press goes on
+  // (Jamie, playtest 19)
+  const newestKey = entries.length ? entries[entries.length - 1].key : undefined;
+  const [doneKey, setDoneKey] = useState(undefined);
+  const [rushedKey, setRushedKey] = useState(undefined);
+  const handleContinue = () => {
+    if (newestKey !== undefined && doneKey !== newestKey) {
+      setRushedKey(newestKey);
+      return;
+    }
+    onContinue();
+  };
   // it keeps to the bottom as lines come and type out, unless the player has scrolled up to read back
   const isAtBottom = useRef(true);
   const keepAtBottom = () => {
@@ -343,7 +365,7 @@ export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, ac
   return (
     <>
     <BuildEffect />
-    <Panel onClick={() => isWaiting && onContinue()}>
+    <Panel onClick={() => isWaiting && handleContinue()}>
       <Scroll ref={scrollRef} onScroll={({ currentTarget: scroll }) => { isAtBottom.current = scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight < 8; }}>
         {isBuilt && entries.map(({ key, who, name, text, avatar, chain }, index) => {
           const last = entries[index - 1];
@@ -357,13 +379,13 @@ export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, ac
                 </Speaker>
               )}
               <Words>
-                <TypedText text={text} isTyping={index == entries.length - 1} onType={keepAtBottom} />
+                <TypedText text={text} isTyping={index == entries.length - 1} isRushed={rushedKey === key} onType={keepAtBottom} onDone={() => setDoneKey(key)} />
               </Words>
             </Chunk>
           );
         })}
       </Scroll>
-      {isBuilt && isWaiting && !actions.length && <ContinueBar data-enter data-choice-key={1} onClick={event => { event.stopPropagation(); onContinue(); }}><span>Continue &#9654;</span><KeyNumber><EnterKey /></KeyNumber></ContinueBar>}
+      {isBuilt && isWaiting && !actions.length && <ContinueBar data-enter data-log-continue data-choice-key={1} onClick={event => { event.stopPropagation(); handleContinue(); }}><span>Continue &#9654;</span><KeyNumber><EnterKey /></KeyNumber></ContinueBar>}
       {isBuilt && actions.map(({ text, onClick, isEnter }, index) => (
         <ContinueBar key={text} data-enter={isEnter ? "" : undefined} data-choice-key={index + 1} onClick={event => { event.stopPropagation(); onClick(); }}><span>{text} &#9654;</span><KeyNumber>{actions.length == 1 ? <EnterKey /> : index + 1}</KeyNumber></ContinueBar>
       ))}

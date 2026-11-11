@@ -1068,8 +1068,13 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   useEffect(() => {
     const handleKeyDown = ({ code, repeat }) => {
       const gm = gameManager.current;
-      if (repeat || !gm || !gm.cutscene || ["Enter", "NumpadEnter", "Escape"].includes(code)) return;
-      if (gm.getIsDialogueWaiting()) gm.advanceDialogue();
+      // (1 is handled with the number keys, below: it pressed twice before)
+      if (repeat || !gm || !gm.cutscene || ["Enter", "NumpadEnter", "Escape", "Digit1", "Numpad1"].includes(code)) return;
+      if (!gm.getIsDialogueWaiting()) return;
+      // through the log's Continue bar where it shows: a line still typing finishes first (Jamie, playtest 19)
+      const button = document.querySelector<HTMLElement>("[data-log-continue]");
+      if (button) button.click();
+      else gm.advanceDialogue();
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);

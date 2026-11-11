@@ -999,6 +999,17 @@
         }
       ]
     },
+    "training.labNote": {
+      "label": "After the recruit's word on a power won in training: the teammate on where to use it",
+      "lines": [
+        {
+          "speaker": "teammate",
+          "text": "You can add it to your powers at the Lab, or swap the ones you have.",
+          "id": "training.labNote.0",
+          "note": "draft"
+        }
+      ]
+    },
     "sparring.offer": {
       "label": "A battleground visited again, its bystander terminated: the teammate offers to spar, for health",
       "lines": [

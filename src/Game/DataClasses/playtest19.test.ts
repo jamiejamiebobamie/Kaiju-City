@@ -34,3 +34,14 @@ describe('playtest 19', () => {
     expect((LEVELS.street.unlock as any).isRecruit).toBe(true);
   });
 });
+
+describe('playtest 19, the final battle', () => {
+  it('H19: the player down when the last Kaiju falls: no one turns, the fight is won', () => {
+    const gm = makeGame(LEVELS.finalPeninsula);
+    for (let k = 0; k < 6000 && gm.cutscene; k++) gm.stepPieces();
+    gm.getPieces()[0].isDead = true;
+    gm.startFinalTurn();
+    expect(gm.finalTurnState).toBe('saved');
+    expect(gm.getGameResult()).toBe(0);
+  });
+});
