@@ -53,6 +53,10 @@ export const TRAINING_RETURN = { cardMs: 2600 };
 
 // the Hazmat Worker, once unlocked, walks and fights with the team like a recruit (Jamie): his powers, an orange outline.
 // Aegis (shield), Heal and Dispel (bubble): no attack power (Jamie, playtest 18)
+// the Lab trap's sweep along the clones (getClonesSweepSteps): its zoom, pan speeds (scene px a ms) slow within a group
+// and quick across the gap between the groups (a step longer than 'gapPx'), the move in, and the holds at either end
+const CLONES_SWEEP = { zoomScale: 2.2, pxPerMs: 0.18, gapPxPerMs: 1.4, gapPx: 400, zoomInMs: 800, holdMs: 500 };
+
 // taking over an ally (updateTakeOver): the camera's move in on them, and how long the fight holds there
 const TAKE_OVER = { panMs: 600, holdMs: 1800 };
 
@@ -2823,6 +2827,26 @@ export class GameManager {
         return this.rayBeam;
     }
 
+    /*
+        The Lab trap's clones (Jamie, playtest 19): after the whole lab, in close on the far right one, then a slow pan left
+        along the right group, a quick one across the gap, and slow again along the left group. then the scene's own shot.
+    */
+    getClonesSweepSteps() {
+        const { zoomScale, pxPerMs, gapPxPerMs, gapPx, zoomInMs, holdMs } = CLONES_SWEEP;
+        const clones = this.level.sceneElements.filter(({ phase, type }) => phase == 'clones' && type == 'npc').sort((a, b) => b.x - a.x);
+        if (!clones.length) return [];
+        const pointOf = ({ x, y, height }) => ({ x, y: y - height / 2 });
+        const ease = 'linear';
+        const steps = [{ shot: { point: pointOf(clones[0]), zoomScale, panMs: zoomInMs }, ms: zoomInMs + holdMs }];
+        clones.slice(1).forEach((clone, k) => {
+            const distance = clones[k].x - clone.x;
+            const panMs = Math.round(distance / (distance > gapPx ? gapPxPerMs : pxPerMs));
+            steps.push({ shot: { point: pointOf(clone), zoomScale, panMs, ease }, ms: panMs });
+        });
+        steps[steps.length - 1].ms += holdMs;
+        return steps;
+    }
+
     startTrapScene() {
         const { script, speechSpot, lineUp, ray } = this.level.trap;
         this.extras.forEach(extra => { if (extra.avatar == 'agent') extra.color = PIECES_INFO.kaiju.color; }); // the Agent glows purple (Jamie)
@@ -2847,7 +2871,7 @@ export class GameManager {
             // once the beam has done its work, the glow is gone
             const step = { shot: getLineShot(line, { ...shot }), ms: getSpeechMs(text), phase, speech, onStart: () => { if (this.rayBeam) this.endRay(); lastShot = step.shot; } };
             // the clones step out: the camera goes up to them before anyone remarks on it
-            return phase == 'clones' && getIsDialogueLog() ? [step, { shot: clonesShot, ms: CUTSCENE.clonesLookMs }] : [step];
+            return phase == 'clones' && getIsDialogueLog() ? [step, { shot: clonesShot, ms: CUTSCENE.clonesLookMs }, ...this.getClonesSweepSteps()] : [step];
         };
         this.startCutscene([
             ...script.filter(({ who, ifRecruits }) => (who != 'teammate' || !!teammate) && (!ifRecruits || !!recruit)).flatMap(getStep),
@@ -2880,7 +2904,7 @@ export class GameManager {
 
     // the teammate may have gone on ahead. after a beat the recruits catch up, the script plays, and it may end with the team walking on.
     startWalkInScene() {
-        const { teammateSpot, doorTile, standSpots, frontSpots, script, ending, reveal, talkBeatMs = 0, isWaitingToBePassed = false, isTeamInPlace = false, playerSpot } = this.level.walkIn;
+        const { introSweep, teammateSpot, doorTile, standSpots, frontSpots, script, ending, reveal, talkBeatMs = 0, isWaitingToBePassed = false, isTeamInPlace = false, playerSpot } = this.level.walkIn;
         const [player, teammate] = this.getPieces();
         const hasTeammate = !!teammate && !this.followers.includes(teammate);
         const getTile = spot => this.gameBoardManager.getClosestWalkableTileToLocation(spot);
@@ -2965,7 +2989,11 @@ export class GameManager {
             ...arrivals,
             ...playerWalkIn,
             ...frontSteps,
-            ...(talkBeatMs ? [{ shot, ms: talkBeatMs }] : []), // a quiet moment, all in, before anyone speaks
+            // a quiet moment, all in, before anyone speaks: the whole scene, or in close and along the resting recruits
+            ...(introSweep ? [
+                { shot: { point: introSweep.from, zoomScale: introSweep.zoomScale, panMs: introSweep.moveInMs }, ms: introSweep.moveInMs },
+                { shot: { point: introSweep.to, zoomScale: introSweep.zoomScale, panMs: introSweep.panMs, ease: 'linear' }, ms: introSweep.panMs + introSweep.holdMs }
+            ] : talkBeatMs ? [{ shot, ms: talkBeatMs }] : []),
             ...script
                 .filter(({ who, ifRecruits }) => (who != 'teammate' || hasTeammate) && (!ifRecruits || this.followers.length > 0))
                 .map(line => ({ shot: getLineShot(line, shot), ms: getSpeechMs(line.text), speech: () => getSpeech(line) })),

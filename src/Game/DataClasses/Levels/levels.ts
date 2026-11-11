@@ -583,6 +583,8 @@ const SEWER1_WALK_IN = {
   standSpots: [{ x: 1180, y: 540 }, { x: 960, y: 610 }, { x: 820, y: 470 }],
   isTeamInPlace: true, // all in their places as the player walks in, the whole sewer in view; then in close for the words (Jamie)
   talkBeatMs: 3000, // the whole sewer a moment, before the words (Jamie)
+  // instead of that (Jamie, playtest 19, to try): in close, then a slow pan right along the recruits resting
+  introSweep: { from: { x: 760, y: 470 }, to: { x: 1150, y: 520 }, zoomScale: 1.8, moveInMs: 900, panMs: 3200, holdMs: 600 },
   playerSpot: { x: 1150, y: 610 },
   hazmatSpot: { x: 1075, y: 470 }, // the Hazmat Worker: up and left of the player, the scene's upper right (Jamie, playtest 18)
   isWaitingToBePassed: true, // the recruits and the teammate wait where they rest until the player goes by, heading left
