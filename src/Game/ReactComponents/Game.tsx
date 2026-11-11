@@ -616,7 +616,8 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     settingsManager.setIsTeammate(isTeammate && !isSolo);
 
     setIsDialogueLog(isMonitorAlways); // in the monitor, conversations go to the log beside it
-    const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival, killsToWin, returnSpot, isRetry, autoRecruits: isAutoRecruits ? getCallableRecruits() : [], recruits: getCallableRecruits(), carriedObjective: lastObjective.current, terminated: terminatedAvatars, trainingPoints, healthReward: isHealthRewardDue.current, trainingOutcome: trainingOutcome.current, sparredHere: sparredLevelIds.includes(matchLevel.id) });
+    const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival, killsToWin, returnSpot, isRetry, autoRecruits: isAutoRecruits ? getCallableRecruits() : [], recruits: getCallableRecruits(), carriedObjective: lastObjective.current, terminated: terminatedAvatars, trainingPoints, healthReward: isHealthRewardDue.current, trainingOutcome: trainingOutcome.current, sparredHere: sparredLevelIds.includes(matchLevel.id), isRevisit: matchLevel.id == 'labIntro' && labVisits.current > 0 && !returnSpot });
+    if (matchLevel.id == 'labIntro' && !returnSpot) labVisits.current += 1;
     isHealthRewardDue.current = false;
     trainingOutcome.current = undefined;
     rewardText.current = pendingRewardText.current;
@@ -711,7 +712,8 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   // the objective before a detour (the walking Lab off a map walk): it carries over there
   const lastObjective = useRef(null);
   useEffect(() => {
-    if (!getIsDetourLevel(level.id)) lastObjective.current = objectiveText ? { text: objectiveText, isKaijuCount: isObjectiveKaijuCount } : null;
+    // a training fight is a detour too: after it, the objective from before it again (Jamie, playtest 18)
+    if (!getIsDetourLevel(level.id) && !level.isTraining) lastObjective.current = objectiveText ? { text: objectiveText, isKaijuCount: isObjectiveKaijuCount } : null;
   }, [objectiveText, isObjectiveKaijuCount, level.id]);
 
   // a training's reward plays out back in the battleground (Jamie): the card at once, and the HUDs up while they glow
@@ -724,11 +726,14 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   }, [isRewarding, isCutscene, matchCount, isPlayingGame]);
 
   // a new playthrough: nothing chosen in the last one carries over (Jamie): who was recruited or terminated, health won
+  // times in the walking Lab this playthrough: after the first, the Agent doesn't greet the team again (Jamie, playtest 18)
+  const labVisits = useRef(0);
   const startNewPlaythrough = () => {
     setRecruitedAvatars([]);
     setTerminatedAvatars([]);
     setTrainingPoints({ player: 0, teammate: 0 });
     setSparredLevelIds([]);
+    labVisits.current = 0;
     clearRecruitChoices();
   };
 

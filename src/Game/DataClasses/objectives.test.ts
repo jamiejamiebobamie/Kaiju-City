@@ -95,10 +95,10 @@ describe('objectives', () => {
     expect(text(two)).toBeFalsy();
   });
 
-  it('the Lab fight: Defeat Agents', () => {
+  it('the Lab fight: Defeat the Agents', () => {
     const gm = makeGame(LEVELS.lab);
     skip(gm);
-    expect(text(gm)).toBe('Defeat Agents');
+    expect(text(gm)).toBe('Defeat the Agents');
   });
 
   it('the last fight: Defeat the Kaiju, then Stop [the teammate]', () => {

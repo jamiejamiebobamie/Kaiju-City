@@ -52,7 +52,9 @@ export const FINAL_TURN = {
 // back in the battleground from a training fight won: the card shows this long before anyone speaks (Jamie)
 export const TRAINING_RETURN = { cardMs: 2600 };
 
-export const HAZMAT_RECRUIT = { abilities: ['love', 'ice', 'bubble'], color: '#ffffff' };
+// the Hazmat Worker, once unlocked, walks and fights with the team like a recruit (Jamie): his powers, a white outline.
+// Aegis (shield), Heal and Dispel (bubble): no attack power (Jamie, playtest 18)
+export const HAZMAT_RECRUIT = { abilities: ['metal', 'love', 'bubble'], color: '#ffffff' };
 
 export const PORTAL_WALK = {
   // all half what they were (Jamie, 2026-11-06)
@@ -217,12 +219,13 @@ export class GameManager {
     // 'healthReward': health was just won sparring: the player and teammate glow red a while, back in the battleground
     // 'trainingOutcome': just back from a training fight won ({ isSparring, avatar }): what's said is about it.
     // 'sparredHere': sparring has been done in this battleground before: the teammate asks to go again
-    constructor({ level = PENINSULA, settingsManager, hasArrival = false, killsToWin = undefined, returnSpot = undefined, isRetry = false, autoRecruits = [], recruits = undefined, carriedObjective = null, terminated = [], trainingPoints = { player: 0, teammate: 0 }, healthReward = false, trainingOutcome = undefined, sparredHere = false }) {
+    constructor({ level = PENINSULA, settingsManager, hasArrival = false, killsToWin = undefined, returnSpot = undefined, isRetry = false, autoRecruits = [], recruits = undefined, carriedObjective = null, terminated = [], trainingPoints = { player: 0, teammate: 0 }, healthReward = false, trainingOutcome = undefined, sparredHere = false, isRevisit = false }) {
         this.healthReward = healthReward;
         this.terminated = terminated;
         this.trainingPoints = trainingPoints;
         this.trainingOutcome = trainingOutcome;
         this.sparredHere = sparredHere;
+        this.isRevisit = isRevisit; // a scene been to before (the walking Lab): its opening words aren't said again (Jamie, playtest 18)
         this.carriedObjective = carriedObjective;
         this.objective = null; // what the player is to do now (Objectives.ts)
         this.objectiveCount = 0; // goes up with each new one: the screen shows each new one as a title
@@ -549,7 +552,7 @@ export class GameManager {
 
         this.gameBoardManager.initTiles();
 
-        this.gameBoardPiecesManager.initPlayerLocationsOnBoard(this.returnSpot ? this.getReturnTiles(this.returnSpot) : this.level.spawnTiles);
+        this.gameBoardPiecesManager.initPlayerLocationsOnBoard(this.returnSpot ? this.getReturnTiles(this.returnSpot) : this.getTrainingReturnTiles() || this.level.spawnTiles);
 
         // the recruits walk with the team wherever the teammate is: the walking Lab, the Street, the map walks too (Jamie)
         const isTeammateScene = this.level.isWalkingLevel && this.settingsManager.getIsTeammate && this.settingsManager.getIsTeammate();
@@ -577,6 +580,14 @@ export class GameManager {
     }
 
     // just outside a site's reach, toward the middle of the map, so the walk carries on from beside it
+    // back from a recruit's training, won (Jamie, playtest 18): the team is where the "Do Training" sign was.
+    // (not after sparring: the sign opens there again, and they'd be standing on it)
+    getTrainingReturnTiles() {
+        const outcome = this.trainingOutcome;
+        if (!outcome || outcome.isSparring || !this.level.training) return undefined;
+        return [this.gameBoardManager.getClosestWalkableTileToLocation(this.level.training.spot)];
+    }
+
     getReturnTiles(spot) {
         const { rowStep, scale } = this.level.grid;
         const { width, height } = this.level.world;
@@ -676,6 +687,8 @@ export class GameManager {
         piece.initCharLocation(true, this.gameBoardManager.getClosestWalkableTileToLocation(spot));
         piece.isPlain = true; // no glow until they touch the part
         piece.canTeleportAcross = !!this.level.rival.canTeleportAcross;
+        const { cooldownScales } = this.level.rival; // e.g. Punk Guy's Teleport, twice as often in his fight (Jamie, playtest 18)
+        if (cooldownScales) piece.abilities.forEach(ability => { ability.cooldownScale = cooldownScales[ability.gameBoardPieceAbilityData.element]; });
         piece.linkRestMs = this.level.rival.linkRestMs; // each stairway rests this long after she takes it (the Mermaid)
         piece.isTileHidden = true;
         piece.facingDir = startFacing;
@@ -1861,16 +1874,35 @@ export class GameManager {
         const piece = this.gameBoardPiecesManager.addRecruit(avatar, this.settingsManager.getAbilitiesFromElements(elements));
         if (avatar == 'hazmat') piece.color = HAZMAT_RECRUIT.color;
         const player = this.gameBoardPiecesManager.getPlayerPiece();
-        // beside the player, on a tile no one else is on (several come in at once)
-        const taken = new Set(this.getPieces().filter(other => other != piece && !other.isDead && other.isOnTiles).map(other => `${other.getTileIndex().i} ${other.getTileIndex().j}`));
-        const beside = this.gameBoardManager.getAdjacentTileIndices(player.getTileIndex()).filter(this.gameBoardManager.getIsInBounds);
-        const free = beside.find(({ i, j }) => !taken.has(`${i} ${j}`));
-        piece.initCharLocation(true, free || beside[0] || player.getTileIndex());
+        // beside the player, on a tile no one else is on (several come in at once).
+        // the Hazmat Worker: on the right of the group (Jamie, playtest 18)
+        const tile = this.getFreeTileNear(player.getTileIndex(), { except: piece, isRightmost: avatar == 'hazmat' });
+        piece.initCharLocation(true, tile || player.getTileIndex());
         return true;
     }
 
+    // a free tile beside 'tile' (or one further out, if those are all taken). 'isRightmost': the one furthest right, near its row
+    getFreeTileNear(tile, { except = undefined, isRightmost = false } = {}) {
+        const board = this.gameBoardManager;
+        const key = ({ i, j }) => `${i} ${j}`;
+        const taken = new Set(this.getPieces().filter(other => other != except && !other.isDead && other.isOnTiles && other.getTileIndex()).map(other => key(other.getTileIndex())));
+        taken.add(key(tile));
+        const near = board.getAdjacentTileIndices(tile).filter(board.getIsInBounds);
+        const far = near.flatMap(next => board.getAdjacentTileIndices(next).filter(board.getIsInBounds));
+        const seen = new Set();
+        const rings = [near, far].map(ring => ring.filter(next => !taken.has(key(next)) && !seen.has(key(next)) && seen.add(key(next))));
+        if (isRightmost) {
+            const { rowStep, scale } = this.level.grid;
+            const here = board.getCharXAndYFromTileIndex(tile);
+            const level = [...rings[0], ...rings[1]].filter(next => Math.abs(board.getCharXAndYFromTileIndex(next).y - here.y) <= rowStep * scale);
+            return level.sort((a, b) => board.getCharXAndYFromTileIndex(b).x - board.getCharXAndYFromTileIndex(a).x)[0] || rings[0][0] || rings[1][0];
+        }
+        return rings[0][0] || rings[1][0];
+    }
+
     // placed by their feet, wherever they stand, tile or no tile
-    addExtra({ avatar, spot, facingDir }) {
+    // 'rowsBack': sorted as if this many rows further back, so the team is drawn over them (the Street's Agent, Jamie, playtest 18)
+    addExtra({ avatar, spot, facingDir, rowsBack = 0 }) {
         const piece = this.gameBoardPiecesManager.addPiece({
             pieceClass: GameBoardPieceExtra,
             pieceInfo: { ...PIECES_INFO[avatar], abilities: [] },
@@ -1880,6 +1912,7 @@ export class GameManager {
         const center = getTileCenter(this.level.grid, tileIndex);
         const { x, y } = this.gameBoardManager.getCharXAndYFromTileIndex(tileIndex);
         piece.place({ charLocation: { x: x + spot.x - center.x, y: y + spot.y - center.y }, tileIndex, facingDir });
+        piece.zIndexOffset = -rowsBack * this.gameBoardManager.numTileColumns;
         this.extras.push(piece);
     }
 
@@ -1946,7 +1979,8 @@ export class GameManager {
     addRecruitFollowers() {
         const playerTile = this.gameBoardPiecesManager.getPlayerPiece().getTileIndex();
         this.getRecruitedAvatars().forEach(avatar => {
-            const piece = this.gameBoardPiecesManager.addFollower(avatar, playerTile);
+            // each on a free tile near the player, not on theirs: one would hide the other (Jamie, playtest 18)
+            const piece = this.gameBoardPiecesManager.addFollower(avatar, this.getFreeTileNear(playerTile) || playerTile);
             if (avatar == 'hazmat') piece.color = HAZMAT_RECRUIT.color; // a white outline (Jamie)
             this.followers.push(piece);
         });
@@ -2238,7 +2272,7 @@ export class GameManager {
     // a scene's speech elements go to the log, while their phase is on (and before their 'hidePhase')
     addSceneTalks() {
         // back in a scene from one of its screens (the Lab's power picker), what was said on the way in isn't said again
-        this.level.sceneElements.filter(({ type, phase }) => type == 'speech' && !(this.returnSpot && !phase)).forEach(({ name = 'Agent', lines, phase, hidePhase, dialogue }) => {
+        this.level.sceneElements.filter(({ type, phase }) => type == 'speech' && !((this.returnSpot || this.isRevisit) && !phase)).forEach(({ name = 'Agent', lines, phase, hidePhase, dialogue }) => {
             // a scene that opens with a call waits for the team to come over
             const isActive = () => !this.cutscene && (!this.level.greeting || this.isGreetingAnswered) && (!phase || this.activePhases.has(phase)) && !(hidePhase && this.activePhases.has(hidePhase));
             // from the dialogue file, each line by whoever says it; otherwise all of them by the element's speaker
@@ -2781,8 +2815,14 @@ export class GameManager {
             piece.isTileHidden = true;
             return { shot, arrivals: [{ piece, startTile: doorTile, dir: 'downLeft' }] };
         });
-        if (isTeamInPlace) this.followers.forEach((piece, index) => {
+        const { hazmatSpot } = this.level.walkIn;
+        if (isTeamInPlace) this.followers.filter(piece => !(hazmatSpot && piece.avatar == 'hazmat')).forEach((piece, index) => {
             piece.initCharLocation(true, getTile(standSpots[index % standSpots.length]));
+            piece.facingDir = 'downLeft';
+        });
+        // the Hazmat Worker's own spot, where the scene has one (Sewer 1: up the scene from the player, Jamie, playtest 18)
+        if (isTeamInPlace && hazmatSpot) this.followers.filter(piece => piece.avatar == 'hazmat').forEach(piece => {
+            piece.initCharLocation(true, getTile(hazmatSpot));
             piece.facingDir = 'downLeft';
         });
         // the player walks in at the door, the whole scene in view, before the words

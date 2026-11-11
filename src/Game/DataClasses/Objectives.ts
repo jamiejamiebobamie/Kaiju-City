@@ -24,7 +24,7 @@ export const OBJECTIVES = {
   flood: 'Survive the Flood',
   escape: 'Escape the Lab',
   glow: 'Investigate the Glow',
-  agents: 'Defeat Agents',
+  agents: 'Defeat the Agents', // (Jamie, playtest 18)
   stopTeammate: (name: string) => `Stop ${name}`
 };
 

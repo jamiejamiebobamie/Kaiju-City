@@ -132,6 +132,7 @@ type Rival = {
   screamFlashColor?: string; // her scream's screen flash, when the team is teleported (the Rooftop's red if not given)
   linkRestMs?: number; // each link rests this long for her after she takes it, so she takes the other
   canTeleportAcross?: boolean; // a Teleport may land on tiles it can't walk to, like the other platforms // for the choice, the team stands either side of them (the Rooftop, below the RIP stone)
+  cooldownScales?: Record<string, number>; // by element: this rival's cooldowns times this (the fight only, not training)
   pronoun: string;
   intro: {
     focus: { x: number; y: number }; // what the camera pulls in on, in scene pixels
@@ -251,6 +252,7 @@ export type LevelConfig = {
   liveWideShots?: Record<string, number>; // the same, for phases the game keeps running through
   skillOnLeave?: string; // a power (its element) that opens once the player leaves the level
   coverPanLeftX?: number; // a walking scene: with the player left of this, the view goes all the way to the scene's left edge
+  coverPanRightX?: number; // the same, right of this, to its right edge
   unlock?: { id: string; label: string; image?: string; spot: { x: number; y: number }; afterMs?: number }; // a hidden tile, in scene pixels. 'afterMs': it only unlocks after this long
   wideShots?: Record<string, number>; // phases the camera pulls out to show, and how long it holds there in ms
   tileTone: TileTone;
@@ -371,6 +373,7 @@ const RAPID_TRANSIT_SCENE = {
     avatar: 'punk',
     abilities: ['wood', 'glass', 'metal'], touchPhase: 'eyeTouched', spot: { x: 1213, y: 530 }, recruitSpot: { x: 690, y: 560 }, pronoun: 'him',
     canTeleportAcross: true, // his Teleport takes him over the tracks to another platform, away from the team
+    cooldownScales: { glass: 0.5 }, // he teleports twice as often, in this fight only: 8 s, not 16 (Jamie, playtest 18)
     startFacing: 'up',
     introSortY: 640, // stands in front of the eye
     intro: {
@@ -579,6 +582,7 @@ const SEWER1_WALK_IN = {
   isTeamInPlace: true, // all in their places as the player walks in, the whole sewer in view; then in close for the words (Jamie)
   talkBeatMs: 3000, // the whole sewer a moment, before the words (Jamie)
   playerSpot: { x: 1150, y: 610 },
+  hazmatSpot: { x: 1075, y: 470 }, // the Hazmat Worker: up and left of the player, the scene's upper right (Jamie, playtest 18)
   isWaitingToBePassed: true, // the recruits and the teammate wait where they rest until the player goes by, heading left
   script: getDialogueScript('sewer1.walkIn'),
   // then the doorway lights up, someone sees it, and after a beat the way on shows. draft words.
@@ -661,7 +665,7 @@ const STREET_SCENE = {
   // the whole street, then in on the Agent as he calls the team over, then back to them. his words follow in the log.
   // he calls again every so often, until the team walks over to him. then the rest of his words follow.
   greeting: { text: getDialogueTexts('street.greeting')[0], speechSpot: { x: 335, y: 372 }, repeatMs: 12000, nearRows: 3 }, // calls every 12 s (Jamie)
-  extras: [standingAgent(335, 682)],
+  extras: [{ ...standingAgent(335, 682), rowsBack: 4 }], // always drawn behind the player and the teammate (Jamie, playtest 18)
   sceneElements: [
     hazmatSweeper('hazmat1', 'hazmatBroomLeft', 740, 600),
     hazmatSweeper('hazmat3', 'hazmatBroomRight', 1005, 372),
@@ -777,7 +781,7 @@ const LEVEL_BUILDERS: Record<string, (file) => LevelConfig> = {
     ...AQUARIUM_SCENE
   }),
   // past the girl at the desk's column, the view goes all the way left, "Change powers" and all (Jamie)
-  labIntro: file => ({ ...buildLevel(file, 'Lab', '#4a8fb0', [], true), ...LAB_INTRO_SCENE, coverPanLeftX: 450 }),
+  labIntro: file => ({ ...buildLevel(file, 'Lab', '#4a8fb0', [], true), ...LAB_INTRO_SCENE, coverPanLeftX: 450, coverPanRightX: 950 }),
   lab: file => ({
     // the catwalk's front railing, cut from the scene: whoever is up there is behind it (Jamie)
     ...buildLevel(file, 'Lab Window', '#4a8fb0', [{ src: '/levels/lab-catwalk-railing.png', x: 0, y: 124, width: 1408, height: 48, sortY: 200 }]),
@@ -821,6 +825,8 @@ export const MAP_ICONS = {
 // icon ('bottom') or over it ('top'). 'gapPx': between the icon and the label, in scene pixels.
 export const MAP_LABEL = { position: 'bottom' as 'top' | 'bottom', gapPx: 2 };
 export const MAP_LABELS: Record<string, string> = { lab: 'lab', subway: 'station', rooftop: 'rooftop', aquarium: 'aquarium' };
+// these words go over their icon whatever MAP_LABEL says: the Lab's, under it, is off the screen (Jamie, playtest 18)
+export const MAP_LABELS_OVER = ['lab'];
 
 // the Lab can be visited from the map, and then the walk carries on
 export const LAB_SPOT = { x: 150, y: 680 };
@@ -843,8 +849,8 @@ const getSiteElements = ({ spot, color, icon, isDetour = false, visitLevelId = u
   },
   // its word, under (or over) it
   {
-    id: `${icon}Label`, type: 'mapLabel' as const, text: MAP_LABELS[icon] || icon, isOver: MAP_LABEL.position == 'top',
-    x: spot.x, y: MAP_LABEL.position == 'top' ? spot.y - MAP_ICONS[icon].height / 2 - MAP_LABEL.gapPx : spot.y + MAP_ICONS[icon].height / 2 + MAP_LABEL.gapPx,
+    id: `${icon}Label`, type: 'mapLabel' as const, text: MAP_LABELS[icon] || icon, isOver: MAP_LABEL.position == 'top' || MAP_LABELS_OVER.includes(icon),
+    x: spot.x, y: MAP_LABEL.position == 'top' || MAP_LABELS_OVER.includes(icon) ? spot.y - MAP_ICONS[icon].height / 2 - MAP_LABEL.gapPx : spot.y + MAP_ICONS[icon].height / 2 + MAP_LABEL.gapPx,
     width: 0, height: 0, zIndex: 6
   }
 ];
@@ -964,7 +970,7 @@ const VISIT_ENTRANCE_EXITS = {
 
 // where a visit's way out is, and where the team starts, when not the fight's own spots
 const VISIT_SPOTS = {
-  rooftop: { exit: { x: 958, y: 338 }, exitLabelDrop: 60 }, // the stairwell door at the back, on the right; its sign below the door (Jamie)
+  rooftop: { exit: { x: 958, y: 338 }, exitLabelDrop: 130 }, // lower, clear of the door so it shows (Jamie, playtest 18) // the stairwell door at the back, on the right; its sign below the door (Jamie)
   aquarium: { exit: { x: 270, y: 715 }, start: { x: 470, y: 605 } } // out at the bottom left; the team starts up by the tank
 };
 
@@ -1014,7 +1020,7 @@ Object.keys(BATTLEGROUND_SITES).forEach(levelId => {
     liveWideShots: {},
     ghostBoss: undefined,
     aquariumFlood: undefined,
-    rival: { ...level.rival, isTraining: true },
+    rival: { ...level.rival, isTraining: true, cooldownScales: undefined },
     visitLevelId: getVisitLevelId(levelId) // back here after (Jamie): the walking battleground, not the map
   };
   // the same, against the teammate (their look and powers are filled in when it starts: GameManager.addRival)

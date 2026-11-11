@@ -18,7 +18,7 @@ import { getCharXAndY, getTileCenter, getTileIndexAtLocation, getTileXAndY } fro
 export const AIM_ENTERING_TILES = 2;
 
 // a used wormhole stays in sight this long after its link has gone, for the walk through it
-export const WORMHOLE_USED_MS = 2500;
+export const WORMHOLE_USED_MS = 1250; // half what it was (Jamie, playtest 18)
 
 // how much pathing avoids the tiles around enemies, in tiles
 const ENEMY_NEARBY_TILE_COST = 4;

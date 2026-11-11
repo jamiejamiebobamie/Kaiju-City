@@ -120,7 +120,7 @@ export class GameBoardPieceBase {
         // walking in (a scene's arrival): it already holds its end tile, so it sorts by where it is now (Jamie: Sewer 2's
         // walkers were drawn over or under the others wrongly)
         if (this.arrivalEnd && this.isVisible) return this.gameManagerProxy.getZIndexAtLocation(this.charLocation);
-        return this.gameManagerProxy.getFlattenedArrayIndex(this.tileIndex);
+        return this.gameManagerProxy.getFlattenedArrayIndex(this.tileIndex) + (this.zIndexOffset || 0);
     }
 
     initCharLocation(isOnTiles = false, spawnTile = undefined) {

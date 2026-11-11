@@ -8,7 +8,7 @@ import { getIsDialogueLog } from "Game/DataClasses/DialogueLog";
 import { GameBoardPieceComponent } from 'Game/ReactComponents/GameBoard/Pieces/GameBoardPieceComponent'
 import { getSpeechScreenBox, PagedSpeechBalloon, SpeechBalloon } from 'Game/ReactComponents/GameBoard/SceneElements';
 import { TileCanvas } from 'Game/ReactComponents/GameBoard/Tile/TileCanvas';
-import { SceneElements } from 'Game/ReactComponents/GameBoard/SceneElements';
+import { SceneElements, getActiveHotspots } from 'Game/ReactComponents/GameBoard/SceneElements';
 import { CHARACTER_FEET, CHARACTER_HEIGHT_PX, EXIT_OPEN_PHASE, getSortZIndex, getTileTone, MAP_LABEL, MAP_LABELS, PENINSULA } from 'Game/DataClasses/Levels/levels';
 import { WakeCanvas } from 'Game/ReactComponents/GameBoard/WakeCanvas';
 import { Camera, CAMERA, getCloseZoom, getFitZoom, WIDE_SHOT } from 'Game/DataClasses/Camera';
@@ -858,6 +858,7 @@ export const GameBoard = ({ speakingLineLength = 0, isSwirling = false, speaking
     let isCutting = false; // the camera is already there when the shot starts
     const pickEnemy = makeEnemyFocus();
     let leftPanShare = 0; // the walking scene's pan to its left edge (level.coverPanLeftX), eased in and out
+    let rightPanShare = 0; // the same to its right edge (level.coverPanRightX)
     const moveCamera = () => {
       const player = gameManager.getFocusPiece();
       if (!player || !worldRef.current) return;
@@ -921,6 +922,13 @@ export const GameBoard = ({ speakingLineLength = 0, isSwirling = false, speaking
           leftPanShare = Math.min(Math.max(leftPanShare + (isLeft ? 1 : -1) * COVER_LOOK.edgePanStep, 0), 1);
           const eased = leftPanShare * leftPanShare * (3 - 2 * leftPanShare);
           center = { ...center, x: center.x + (viewWidth / 2 - center.x) * eased };
+        }
+        // and to the right edge past 'coverPanRightX' (Jamie, playtest 18: the Lab's "Choose color" label whole)
+        if (level.coverPanRightX !== undefined) {
+          const isRight = x >= level.coverPanRightX;
+          rightPanShare = Math.min(Math.max(rightPanShare + (isRight ? 1 : -1) * COVER_LOOK.edgePanStep, 0), 1);
+          const eased = rightPanShare * rightPanShare * (3 - 2 * rightPanShare);
+          center = { ...center, x: center.x + (world.width - viewWidth / 2 - center.x) * eased };
         }
         const keepIn = (value, size, view) => view >= size ? size / 2 : Math.min(Math.max(value, view / 2), size - view / 2);
         coverCamera.centerOn({ x: keepIn(center.x, world.width, viewWidth), y: keepIn(center.y, world.height, viewHeight) });
@@ -1023,7 +1031,8 @@ export const GameBoard = ({ speakingLineLength = 0, isSwirling = false, speaking
         {icon && (() => {
           const spot = getInward(caret, CARET_INFO.inset);
           const iconHeight = caret.size * CARET_INFO.iconHeight;
-          const isOver = MAP_LABEL.position == "top";
+          // over the icon in the screen's lower half, where a word under it would be off the screen (Jamie, playtest 18)
+          const isOver = MAP_LABEL.position == "top" || spot.y > (boardRef.current ? boardRef.current.clientHeight : 0) / 2;
           return (
             <>
               <CaretIcon src={`/levels/map/${icon}.png`} style={{ left: `${spot.x}px`, top: `${spot.y}px`, height: `${iconHeight}px`, "--glow": isGlowing ? color : "transparent" }} />
@@ -1098,15 +1107,24 @@ export const GameBoard = ({ speakingLineLength = 0, isSwirling = false, speaking
   // the mouse counts everywhere on the page, so the empty area around a small play window still aims
   const isChoosingRef = useRef(false);
   isChoosingRef.current = !!recruitScene;
+  // the pointer stays over the screen while paused, and in a scene with things to click (the walking Lab) (Jamie, playtest 18)
+  const isCursorKept = !!isPaused || getActiveHotspots(level, activePhases).length > 0;
+  const isCursorKeptRef = useRef(false);
+  isCursorKeptRef.current = isCursorKept;
+  const getBoardCursor = () => isChoosingRef.current ? "pointer" : isCursorKeptRef.current ? "default" : "";
+  useEffect(() => {
+    if (boardRef.current) boardRef.current.style.cursor = getBoardCursor();
+    if (isCursorKept) document.body.style.cursor = "";
+  }, [isCursorKept]);
   useEffect(() => {
     const move = e => {
       document.body.style.cursor = "";
-      if (boardRef.current) boardRef.current.style.cursor = isChoosingRef.current ? "pointer" : "";
+      if (boardRef.current) boardRef.current.style.cursor = getBoardCursor();
       mouseHandlers.current.handleMouseMove(e);
     };
     // browsers can't move the cursor, so it hides while the keys are in charge. not at the Recruit or Terminate choice: the hand stays there.
     const hideCursor = ({ code }) => {
-      if (!MOVEMENT_KEYS.includes(code) || isChoosingRef.current) return;
+      if (!MOVEMENT_KEYS.includes(code) || isChoosingRef.current || isCursorKeptRef.current) return;
       document.body.style.cursor = "none";
       if (boardRef.current) boardRef.current.style.cursor = "none";
     };

@@ -674,6 +674,8 @@ const getLabelX = (x, label = "", worldWidth) => {
 
 // the pieces start at 20001 (GameBoardPieceComponent): just under them
 const HOTSPOT_OUTLINE_Z = 20000;
+// the signs to walk to ("Exit", "Do Training") and the hotspots' labels: under everyone, so the player shows over them (Jamie, playtest 18)
+const SIGN_Z = 20000;
 
 // a walking scene's hotspots in view, in order: each has a number, and its number key clicks it (Jamie)
 export const getActiveHotspots = (level, activePhases) => (level.sceneElements || []).filter(({ type, phase, hidePhase }) =>
@@ -692,13 +694,17 @@ const MapLabel = styled.div`
   text-shadow: -1px -1px 0 black, 1px -1px 0 black, -1px 1px 0 black, 1px 1px 0 black, 0 0 4px black;
 `;
 
+// the number: bigger, black on yellow with a white edge round the digit, so it reads (Jamie, playtest 18)
 const HotspotKey = styled.span`
   display: inline-block;
-  margin-right: 8px;
-  padding: 0 5px;
+  margin-right: 10px;
+  padding: 1px 7px;
+  font-size: 26px;
+  vertical-align: middle;
   color: #101018;
   background: #ffd23f;
   box-shadow: 1px 1px 0 black;
+  text-shadow: -1px -1px 0 white, 1px -1px 0 white, -1px 1px 0 white, 1px 1px 0 white;
 `;
 
 const HotspotLabel = styled.div`
@@ -710,7 +716,7 @@ const HotspotLabel = styled.div`
   font-family: gameboy;
   font-size: 18px;
   white-space: nowrap;
-  pointer-events: none;
+  cursor: pointer; /* the label clicks too, as its area does (Jamie, playtest 18) */
   z-index: 1;
   color: white;
   /* on a dark plate, so it reads over the bright lab */
@@ -801,7 +807,7 @@ export const SceneElements = ({ level, activePhases, isPaused, onHotspot, isDial
           <React.Fragment key={id}>
             {/* the outline is under everyone standing in the scene; its label stays over them */}
             <HotspotOutline src={element.outline} style={{ zIndex: HOTSPOT_OUTLINE_Z }} />
-            <HotspotLabel style={{ left: `${getLabelX(x + width / 2, element.label, level.world.width)}px`, top: `${element.labelY || y - 14}px`, zIndex: style.zIndex }}>
+            <HotspotLabel data-scene-button onClick={() => onHotspot(element.action)} style={{ left: `${getLabelX(x + width / 2, element.label, level.world.width)}px`, top: `${element.labelY || y - 14}px`, zIndex: SIGN_Z }}>
               <span><HotspotKey>{getActiveHotspots(level, activePhases).indexOf(element) + 1}</HotspotKey>{element.label}</span>
               <i className="fa fa-caret-down" />
             </HotspotLabel>
@@ -818,7 +824,7 @@ export const SceneElements = ({ level, activePhases, isPaused, onHotspot, isDial
       if (type == "mapLabel") return <MapLabel key={id} $isOver={element.isOver} style={{ left: `${x}px`, top: `${y}px`, zIndex: style.zIndex }}>{element.text}</MapLabel>;
       if (type == "door") {
         // a sign, not a button: the team has to walk there
-        return <DoorElement key={id} as="div" style={{ left: `${x}px`, top: `${y}px`, zIndex: style.zIndex }}><DoorIcon className="fa fa-sign-out" />{element.label}</DoorElement>;
+        return <DoorElement key={id} as="div" style={{ left: `${x}px`, top: `${y}px`, zIndex: SIGN_Z }}><DoorIcon className="fa fa-sign-out" />{element.label}</DoorElement>;
       }
       if (type == "speech") return isDialogueLog ? null : <SpeechBubble key={id} element={element} style={style} />;
       if (type == "part") {

@@ -327,9 +327,7 @@ export const AbilityPicker = ({
       <Description>{getDescription()}</Description>
       <Footer>
         <span>{pickedAbilities.length} of {PICK_COUNT} picked</span>
-        <TeammateToggle>
-          <input type="checkbox" checked={isTeammate} onChange={() => setIsTeammate(value => !value)} /> Teammate
-        </TeammateToggle>
+        {/* the old Teammate checkbox is hidden (Jamie, playtest 18): there's always a teammate now */}
         <Buttons>
           <MetalButton disabled={!isReady} onClick={handleClickPlay}>{playLabel || "Play!"}</MetalButton>
           {!onBack && <MetalButton onClick={handleClickHome}>Back</MetalButton>}

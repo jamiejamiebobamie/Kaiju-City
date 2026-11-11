@@ -94,7 +94,7 @@ export class GameBoardPieceAbility {
         if (!this.accTime) return false; // never used
         const { cooldownTimeAI, cooldownTimePlayer } = this.gameBoardPieceAbilityData;
         const cooldown = isNpc ? cooldownTimeAI + AI_COOLDOWN_DELAY : cooldownTimePlayer;
-        return (accTime - this.accTime) < cooldown;
+        return (accTime - this.accTime) < cooldown * (this.cooldownScale || 1); // 'cooldownScale': a rival's own (levels.ts)
     }
 
     getType() {
@@ -116,7 +116,7 @@ export class GameBoardPieceAbility {
             passiveName,
             accTime: this.accTime,
             isPassiveApplied: this.isPassiveApplied,
-            cooldownTime: isNpc ? cooldownTimeAI + AI_COOLDOWN_DELAY : cooldownTimePlayer
+            cooldownTime: (isNpc ? cooldownTimeAI + AI_COOLDOWN_DELAY : cooldownTimePlayer) * (this.cooldownScale || 1)
         };
     }
 }

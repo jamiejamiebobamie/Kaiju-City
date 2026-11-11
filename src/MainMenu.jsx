@@ -20,7 +20,8 @@ export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
 
   // the rest are tools found in the Lab
   const toolButtons = [
-    { tool: "colors", label: "Colors", onClick: () => setToolScreen("colors") },
+    // "Colors" is hidden for now (Jamie, playtest 18)
+    // { tool: "colors", label: "Colors", onClick: () => setToolScreen("colors") },
     // "Powers" opens Settings, which returns later with the ability editor
     // { tool: "abilityEditor", label: "Powers", onClick: handleClickSettings }
   ].filter(({ tool }) => getIsToolOpen(tool));
