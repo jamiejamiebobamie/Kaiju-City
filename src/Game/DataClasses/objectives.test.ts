@@ -68,9 +68,14 @@ describe('objectives', () => {
     skip(gm);
     expect(text(gm)).toBe('Defeat Aquarium Worker');
     gm.isShattered = true;
+    gm.aquariumFlood = gm.aquariumFlood || {}; // the water running
     gm.rivalPiece.setTileIndex(gm.gameBoardManager.walkableTiles.find(tile => gm.getIsTopFloor(tile)));
     gm.updateObjective();
     expect(text(gm)).toBe('Survive the Flood');
+    // the water gone, up top again: not the flood again (Jamie, playtest 19)
+    gm.aquariumFlood = undefined;
+    gm.updateObjective();
+    expect(text(gm)).toBe('Defeat Aquarium Worker');
   });
 
   it('the Lab trap: nothing while the Agent talks, then Escape the Lab', () => {

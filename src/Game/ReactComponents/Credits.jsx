@@ -7,7 +7,7 @@ import styled, { keyframes } from "styled-components";
   DRAFT credits (Jamie to review): names and wording are placeholders where marked.
 */
 export const CREDITS = [
-  { heading: "Kaiju City" },
+  { heading: "Kaiju City", isTitle: true }, // bigger, with room after it (Jamie, playtest 19)
   { heading: "Created by", lines: ["Jamie McCrory"] },
   { heading: "Game design, story and direction", lines: ["Jamie McCrory"] },
   { heading: "Programming", lines: ["Jamie McCrory", "with Claude Code (Anthropic)"] },
@@ -101,9 +101,9 @@ export const Credits = ({ onDone }) => {
     <Cover>
       {!isThanks && (
         <Roll>
-          {CREDITS.map(({ heading, lines = [] }) => (
-            <div key={heading}>
-              <Heading>{heading}</Heading>
+          {CREDITS.map(({ heading, lines = [], isTitle = false }) => (
+            <div key={heading} style={isTitle ? { marginBottom: "6cqw" } : undefined}>
+              <Heading style={isTitle ? { fontSize: "3.4cqw" } : undefined}>{heading}</Heading>
               {lines.map(line => <Line key={line}>{line}</Line>)}
             </div>
           ))}

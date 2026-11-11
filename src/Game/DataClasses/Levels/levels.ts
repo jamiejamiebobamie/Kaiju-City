@@ -90,6 +90,7 @@ export type SceneElement = {
   outline?: string; // hotspot: its shape, drawn over the whole scene
   action?: string; // hotspot: what clicking it opens
   labelY?: number; // hotspot: where its label sits, if not just above it
+  labelX?: number; // hotspot: its label's middle, if not over its middle
   rotate?: number; // hotspot: in degrees
   walkSeconds?: number;
   idleSeconds?: number;
@@ -254,7 +255,7 @@ export type LevelConfig = {
   skillOnLeave?: string; // a power (its element) that opens once the player leaves the level
   coverPanLeftX?: number; // a walking scene: with the player left of this, the view goes all the way to the scene's left edge
   coverPanRightX?: number; // the same, right of this, to its right edge
-  unlock?: { id: string; label: string; image?: string; spot: { x: number; y: number }; afterMs?: number }; // a hidden tile, in scene pixels. 'afterMs': it only unlocks after this long
+  unlock?: { id: string; label: string; image?: string; spot: { x: number; y: number }; afterMs?: number; isRecruit?: boolean }; // a hidden tile, in scene pixels. 'afterMs': it only unlocks after this long
   wideShots?: Record<string, number>; // phases the camera pulls out to show, and how long it holds there in ms
   tileTone: TileTone;
   phaseTileTones?: Record<string, TileTone>; // phases that change the floor enough to need another tone
@@ -711,7 +712,7 @@ const LAB_INTRO_SCENE = {
     },
     { id: 'avatarTank', type: 'hotspot' as const, action: 'powers', label: 'Change powers', labelY: 345, outline: '/levels/lab-outline-avatars.png', x: 62, y: 235, width: 175, height: 440, rotate: -24, sortY: ABOVE_CHARACTERS },
     { id: 'specimenTank', type: 'hotspot' as const, action: 'agentTalk', label: 'What is this?', labelY: 300, outline: '/levels/lab-outline-specimen.png', x: 290, y: 310, width: 170, height: 300, rotate: -24, sortY: ABOVE_CHARACTERS, hidePhase: LAB_TALK_PHASE },
-    { id: 'colorTank', type: 'hotspot' as const, action: 'colors', label: 'Choose color', labelY: 330, outline: '/levels/lab-outline-colors.png', x: 1225, y: 370, width: 170, height: 340, rotate: 34, sortY: ABOVE_CHARACTERS },
+    { id: 'colorTank', type: 'hotspot' as const, action: 'colors', label: 'Choose color', labelY: 330, labelX: 1215, outline: '/levels/lab-outline-colors.png', x: 1225, y: 370, width: 170, height: 340, rotate: 34, sortY: ABOVE_CHARACTERS }, // labelX: in shot, the art ends at the right (Jamie, playtest 19)
     { id: 'exit', type: 'door' as const, phase: EXIT_OPEN_PHASE, x: 1090, y: 530, width: 0, height: 0, sortY: ABOVE_CHARACTERS, label: 'Exit' }
   ]
 };
@@ -805,7 +806,7 @@ const LEVEL_BUILDERS: Record<string, (file) => LevelConfig> = {
     ...buildLevel(file, 'Street', '#7a8a3a', [], true),
     ...STREET_SCENE,
     // on the tile of the hazmat worker sweeping by the van: there to be found from the start, before the Agent's words too (Jamie)
-    unlock: { id: 'hazmat', label: 'Hazmat worker', image: '/levels/portraits/hazmat.png', spot: { x: 740, y: 600 } },
+    unlock: { id: 'hazmat', label: 'Hazmat Worker', image: '/levels/portraits/hazmat.png', spot: { x: 740, y: 600 }, isRecruit: true }, // "recruited!", as the other recruits' cards (Jamie, playtest 19)
     exit: { spot: { x: 112, y: 690 }, afterMs: STREET_TALK_MS, isShownWhenOpen: true }, // after the Agent's words, and the camera shows it
     skillOnLeave: 'glass' // the scientists' new power, Teleport, from the Agent's words: it opens as the team leaves (picked up at the Lab)
   })
@@ -980,7 +981,8 @@ const VISIT_ENTRANCE_EXITS = {
 
 // where a visit's way out is, and where the team starts, when not the fight's own spots
 const VISIT_SPOTS = {
-  rooftop: { exit: { x: 958, y: 338 }, exitLabelDrop: 130 }, // lower, clear of the door so it shows (Jamie, playtest 18) // the stairwell door at the back, on the right; its sign below the door (Jamie)
+  // the card below the door, clear of it (playtest 18); the way out under the card itself, not at the door (playtest 19)
+  rooftop: { exit: { x: 958, y: 440 }, exitLabelDrop: 28 }, // the stairwell door at the back, on the right; its sign below the door (Jamie)
   aquarium: { exit: { x: 270, y: 715 }, start: { x: 470, y: 605 } } // out at the bottom left; the team starts up by the tank
 };
 
@@ -1024,7 +1026,7 @@ Object.keys(BATTLEGROUND_SITES).forEach(levelId => {
     id: getTrainingLevelId(levelId),
     name: `${level.name} (training)`,
     isTraining: true,
-    hasTrainSchedule: false,
+    hasTrainSchedule: level.hasTrainSchedule, // the Subway's trains, as often as in the Punk Guy fight (Jamie, playtest 19)
     defaultPhases: [],
     wideShots: {},
     liveWideShots: {},

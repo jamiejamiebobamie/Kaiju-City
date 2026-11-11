@@ -58,7 +58,7 @@ describe('playtest 18', () => {
       const player = gm.gameBoardPiecesManager.getPlayerPiece();
       const { x, y } = getTileCenter(LEVELS[id].grid, player.getTileIndex());
       const { rowStep, scale } = LEVELS[id].grid;
-      LEVELS[id].sites.forEach(({ spot }) => expect(Math.hypot(x - spot.x, y - spot.y)).toBeGreaterThan(4 * rowStep * scale));
+      LEVELS[id].sites.forEach(({ spot }) => expect(Math.hypot(x - spot.x, y - spot.y)).toBeGreaterThan(2.5 * rowStep * scale));
     });
     updateMapWalkSites([]);
   });

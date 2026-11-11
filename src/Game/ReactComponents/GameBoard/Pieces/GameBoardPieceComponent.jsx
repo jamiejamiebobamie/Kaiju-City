@@ -296,7 +296,10 @@ const GhostForm = styled.div`
   position: absolute;
   inset: 0;
   ${props => props.$isGhost && css`
-    filter: grayscale(1) contrast(0.4) brightness(3.2) drop-shadow(0 0 4px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 10px rgba(220, 230, 255, 0.8));
+    /* an off-black outline round the white, so her edges show (Jamie, playtest 19), then the glow */
+    filter: grayscale(1) contrast(0.4) brightness(3.2)
+      drop-shadow(1px 0 0 #14141c) drop-shadow(-1px 0 0 #14141c) drop-shadow(0 1px 0 #14141c) drop-shadow(0 -1px 0 #14141c)
+      drop-shadow(0 0 4px rgba(255, 255, 255, 0.8)) drop-shadow(0 0 10px rgba(220, 230, 255, 0.7));
     animation: ${ghostDrift} 2.4s ease-in-out infinite;
   `}
 `;

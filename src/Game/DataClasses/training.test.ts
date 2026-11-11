@@ -46,11 +46,11 @@ describe('recruit training', () => {
     storage.clear();
   });
 
-  it('the training fight: the recruit one on one, no Kaiju part, trains or boss phases; beating them wins', () => {
+  it('the training fight: the recruit one on one, no Kaiju part or boss phases (the Subway keeps its trains); beating them wins', () => {
     ['rapidTransit', 'rooftop', 'aquarium'].forEach(levelId => {
       const level = LEVELS[getTrainingLevelId(levelId)];
       expect(level.isTraining).toBe(true);
-      expect(level.hasTrainSchedule).toBe(false);
+      expect(!!level.hasTrainSchedule).toBe(levelId == 'rapidTransit'); // as often as the Punk Guy fight (Jamie, playtest 19)
       expect(level.ghostBoss).toBeUndefined();
       expect(level.aquariumFlood).toBeUndefined();
       const gm = makeGame(level, { isTeammate: false, recruits: ['punk', 'black_female', 'mermaid'] });

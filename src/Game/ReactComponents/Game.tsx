@@ -440,6 +440,7 @@ export const FloatingEffect = styled.div<{ styles?: string; duration?: string }>
 }`;
 
 const MATCH_END_DELAY_MS = 700;
+const TRAINING_WIN_HOLD_MS = 2500; // a training won: the last blow's ragdoll in slow motion a while before the walk (Jamie, playtest 19)
 const SCENE_SLIDE_MS = 900;
 
 // a rising pair of notes, for finding something
@@ -714,8 +715,16 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
 
   // a new objective: its title on the screen a while (Jamie: in the style of "Kaiju Terminated", in green)
   const [objectiveNotice, setObjectiveNotice] = useState<{ key: number; text: string } | undefined>(undefined);
+  // only when it changes (Jamie, playtest 19): not the same one again on a new level (the carried "Go to the Lab"),
+  // and not one already shown in this fight (the Aquarium's "Survive the Flood" coming back)
+  const lastNoticeText = useRef("");
+  const noticedThisMatch = useRef(new Set<string>());
+  useEffect(() => { noticedThisMatch.current = new Set(); }, [matchCount]);
   useEffect(() => {
     if (!objectiveCount || !objectiveText) return;
+    if (objectiveText == lastNoticeText.current || noticedThisMatch.current.has(objectiveText)) return;
+    lastNoticeText.current = objectiveText;
+    noticedThisMatch.current.add(objectiveText);
     setObjectiveNotice({ key: objectiveCount, text: objectiveText });
     const timeout = setTimeout(() => setObjectiveNotice(undefined), OBJECTIVE_NOTICE_MS);
     return () => clearTimeout(timeout);
@@ -1146,7 +1155,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
         }
         trainingOutcome.current = { isSparring, avatar: level.rival.avatar };
         pendingRewardText.current = isSparring ? { text: "Gained +1 temporary health point" } : skill ? { text: `${skill.name} power unlocked!`, power: skill.element } : undefined;
-        const timeout = setTimeout(backToBattleground, MATCH_END_DELAY_MS);
+        const timeout = setTimeout(backToBattleground, TRAINING_WIN_HOLD_MS);
         return () => clearTimeout(timeout);
       }
       const timeout = setTimeout(() => setMatchEnd({ title: "You Lost", buttons: [

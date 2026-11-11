@@ -396,7 +396,7 @@ describe('levels', () => {
     const gm = new GameManager({ level: LEVELS.rooftop, settingsManager });
     gm.initGame();
     expect(gm.getPieces()[0].getTileIndex()).toEqual(LEVELS.rooftop.spawnTiles[0]);
-    expect(gm.getPieces()[1].getTileIndex()).toEqual(LEVELS.rooftop.spawnTiles[1]);
+    // (the teammate: beside the player where there's room, playtest19.test.ts H3)
   });
 });
 
@@ -1584,7 +1584,7 @@ describe('playtest fixes', () => {
     const { gm, player } = makeGame(LEVELS.mapRooftop);
     expect(gm.getGameResult()).toBe(null);
     const [site] = LEVELS.mapRooftop.sites;
-    player.initCharLocation(true, gm.gameBoardManager.getClosestWalkableTileToLocation({ x: site.spot.x + 30, y: site.spot.y }));
+    player.initCharLocation(true, gm.gameBoardManager.getClosestWalkableTileToLocation({ x: site.spot.x + 10, y: site.spot.y })); // over the icon (playtest 19)
     expect(gm.getGameResult()).toBe(GameResult.PlayerWon);
     expect(gm.reachedSite).toBe(site);
   });

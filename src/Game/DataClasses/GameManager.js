@@ -35,7 +35,7 @@ export const GameResult = Object.freeze({
 
 // timing of the moments the game holds still for
 const TRIGGER_ROWS = 2; // how close a door or a walk-here spot has to be
-const SITE_ROWS = 3; // how close a site on the map has to be
+const SITE_ROWS = 1.5; // how close a site on the map has to be: the player over its icon (Jamie, playtest 19; was 3)
 
 // the player walking through a portal (startPortalWalk), in milliseconds
 // two coming in at one door (Sewer 2's walk-in)
@@ -51,12 +51,12 @@ export const FINAL_TURN = {
 // back in the battleground from a training fight won: the card shows this long before anyone speaks (Jamie)
 export const TRAINING_RETURN = { cardMs: 2600 };
 
-// the Hazmat Worker, once unlocked, walks and fights with the team like a recruit (Jamie): his powers, a white outline.
+// the Hazmat Worker, once unlocked, walks and fights with the team like a recruit (Jamie): his powers, an orange outline.
 // Aegis (shield), Heal and Dispel (bubble): no attack power (Jamie, playtest 18)
 // the Aquarium: within this many rows of the stairs, the player is going up for the Mermaid (getIsAtAquariumStairs)
 const AQUARIUM_STAIRS_NEAR_ROWS = 2.5;
 
-export const HAZMAT_RECRUIT = { abilities: ['metal', 'love', 'bubble'], color: '#ffffff' };
+export const HAZMAT_RECRUIT = { abilities: ['metal', 'love', 'bubble'], color: '#ff8a1f' }; // orange glow (Jamie, playtest 19; was white)
 
 export const PORTAL_WALK = {
   // all half what they were (Jamie, 2026-11-06)
@@ -534,17 +534,6 @@ export class GameManager {
             this.gameBoardPiecesManager.addTeammate({ teammateAvatar, teammateAbilities });
         }
 
-        // a fight: the teammate starts beside the player, on a tile no one else is on, as the recruits do (Jamie)
-        if (!this.level.isWalkingLevel) {
-            const [player, teammate] = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
-            if (player && teammate && !teammate.isRecruit) {
-                const beside = this.gameBoardManager.getAdjacentTileIndices(player.getTileIndex()).filter(this.gameBoardManager.getIsInBounds);
-                const taken = new Set(this.getPieces().filter(piece => piece !== teammate && piece.isOnTiles).map(piece => `${piece.getTileIndex().i} ${piece.getTileIndex().j}`));
-                const free = beside.find(tile => !taken.has(`${tile.i} ${tile.j}`));
-                if (free) teammate.initCharLocation(true, free);
-            }
-        }
-
         // training points won sparring (Jamie): the player's and the teammate's each, on top of their health, everywhere.
         // they go first when hit, for good (decrementHealth); a fight starts back at the base health, plus what's left
         this.getTrainingPieces().forEach(([piece, who]) => {
@@ -562,6 +551,17 @@ export class GameManager {
         this.gameBoardManager.initTiles();
 
         this.gameBoardPiecesManager.initPlayerLocationsOnBoard(this.returnSpot ? this.getReturnTiles(this.returnSpot) : this.getTrainingReturnTiles() || this.level.spawnTiles);
+
+        // a fight: the teammate starts beside the player, on a tile no one else is on, as the recruits do (Jamie). after the spawn, which used to undo it (playtest 19)
+        if (!this.level.isWalkingLevel) {
+            const [player, teammate] = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
+            if (player && teammate && !teammate.isRecruit) {
+                const beside = this.gameBoardManager.getAdjacentTileIndices(player.getTileIndex()).filter(this.gameBoardManager.getIsInBounds);
+                const taken = new Set(this.getPieces().filter(piece => piece !== teammate && piece.isOnTiles).map(piece => `${piece.getTileIndex().i} ${piece.getTileIndex().j}`));
+                const free = beside.find(tile => !taken.has(`${tile.i} ${tile.j}`));
+                if (free) teammate.initCharLocation(true, free);
+            }
+        }
         if (this.level.isMapWalk && this.level.sites) this.moveTeamClearOfSites();
 
         // the recruits walk with the team wherever the teammate is: the walking Lab, the Street, the map walks too (Jamie)
@@ -2048,7 +2048,7 @@ export class GameManager {
         this.getRecruitedAvatars().forEach(avatar => {
             // each on a free tile near the player, not on theirs: one would hide the other (Jamie, playtest 18)
             const piece = this.gameBoardPiecesManager.addFollower(avatar, this.getFreeTileNear(playerTile) || playerTile);
-            if (avatar == 'hazmat') piece.color = HAZMAT_RECRUIT.color; // a white outline (Jamie)
+            if (avatar == 'hazmat') piece.color = HAZMAT_RECRUIT.color; // his outline (orange: Jamie, playtest 19)
             this.followers.push(piece);
         });
     }
@@ -2501,7 +2501,8 @@ export class GameManager {
             if (this.ghostRing || this.isGhostPhase) return { text: OBJECTIVES.ghosts };
             return { text: this.rivalPiece && this.rivalPiece.isGhostForm ? OBJECTIVES.ghostForm : OBJECTIVES.rivals.black_female };
         }
-        if (level.aquariumFlood && this.isShattered && this.rivalPiece && this.getIsTopFloor(this.rivalPiece.getTileIndex())) return { text: OBJECTIVES.flood };
+        // while the water runs only: not when she climbs back up after it (Jamie, playtest 19)
+        if (level.aquariumFlood && this.isShattered && this.aquariumFlood && this.rivalPiece && this.getIsTopFloor(this.rivalPiece.getTileIndex())) return { text: OBJECTIVES.flood };
         if (level.rival && level.rival.isSparring) return { text: `Defeat ${this.getTeammateName()}` }; // sparring with the teammate
         if (level.rival) return OBJECTIVES.rivals[level.rival.avatar] ? { text: OBJECTIVES.rivals[level.rival.avatar] } : null;
         if (level.trap) return this.getPieces().some(piece => piece.isChaser) ? { text: OBJECTIVES.escape } : null;
@@ -3144,13 +3145,13 @@ export class GameManager {
 
     // stepping on a level's hidden tile unlocks a character
     updateUnlock() {
-        const { id, label, image, spot, afterMs = 0 } = this.level.unlock;
+        const { id, label, image, spot, afterMs = 0, isRecruit = false } = this.level.unlock;
         if (getUnlocks().includes(id) || !this.getIsTalkOver(afterMs)) return;
         const { i, j } = this.gameBoardManager.getClosestWalkableTileToLocation(spot);
         const tile = this.gameBoardPiecesManager.getPlayerPiece().getTileIndex();
         if (tile.i != i || tile.j != j) return;
         addUnlock(id);
-        this.unlockMessage = `${label} unlocked!`;
+        this.unlockMessage = isRecruit ? `${label} recruited!` : `${label} unlocked!`;
         this.unlockImage = image;
     }
 
