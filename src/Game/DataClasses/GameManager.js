@@ -48,6 +48,9 @@ export const FINAL_TURN = {
   playerKaijuHoldMs: 2600 // on their Kaiju a while, before the end
 };
 
+// the Hazmat Worker, once unlocked, walks and fights with the team like a recruit (Jamie): his powers, a white outline
+export const HAZMAT_RECRUIT = { abilities: ['love', 'ice', 'bubble'], color: '#ffffff' };
+
 export const PORTAL_WALK = {
   // all half what they were (Jamie, 2026-11-06)
   zoomInMs: 275, // the camera in close on the way in, or the way out
@@ -153,6 +156,9 @@ export const CUTSCENE = {
   speechLinePx: 40, // each line past that sits it this much lower, in scene pixels
   shotHeadRows: 1.5,
   recruitStandRows: 2, // how far north of the beaten bystander they stand
+  // the recruits at the choice, round the body (columns, rows from it), clear of the player, the teammate and the body
+  recruitSpots: [[3, -2], [-6, -1], [6, -1], [-3, 1.5], [3, 1.5]],
+  recruitSpotsBeside: [[-6, 0], [6, 0], [0, -2], [-3, 1.5], [3, 1.5]],
   recruitShotRows: 3, // how far north of the bystander the camera looks
   recruitButtonRows: 3.6 // how far above the player the buttons sit
 };
@@ -508,6 +514,17 @@ export class GameManager {
             this.gameBoardPiecesManager.addTeammate({ teammateAvatar, teammateAbilities });
         }
 
+        // a fight: the teammate starts beside the player, on a tile no one else is on, as the recruits do (Jamie)
+        if (!this.level.isWalkingLevel) {
+            const [player, teammate] = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
+            if (player && teammate && !teammate.isRecruit) {
+                const beside = this.gameBoardManager.getAdjacentTileIndices(player.getTileIndex()).filter(this.gameBoardManager.getIsInBounds);
+                const taken = new Set(this.getPieces().filter(piece => piece !== teammate && piece.isOnTiles).map(piece => `${piece.getTileIndex().i} ${piece.getTileIndex().j}`));
+                const free = beside.find(tile => !taken.has(`${tile.i} ${tile.j}`));
+                if (free) teammate.initCharLocation(true, free);
+            }
+        }
+
         // health won sparring with the teammate: the player's and the teammate's both, everywhere (SPARRING, Jamie)
         if (this.bonusLives > 0) {
             const [player, teammate] = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
@@ -602,6 +619,22 @@ export class GameManager {
     }
 
     // from the start: the bystander in the scene is the piece they fight
+    // the Aquarium's Mermaid (Jamie): she goes all over the hall, and each stairway rests a while once she has used it
+    // (so she runs to the other one), the rests staggered by when she used each
+    updateRoamingRival() {
+        const rival = this.rivalPiece;
+        const roam = this.level.rival && this.level.rival.roam;
+        if (!roam || !rival || rival.isDead || !rival.isOnTiles || this.cutscene || rival.walkToTile || this.isShattered) return;
+        if (this.accTime < (this.nextRoamAt || roam.everyMs)) return;
+        this.nextRoamAt = this.accTime + roam.everyMs;
+        const here = this.gameBoardManager.getCharXAndYFromTileIndex(rival.getTileIndex());
+        const far = this.gameBoardManager.walkableTiles.filter(tile => {
+            const spot = this.gameBoardManager.getCharXAndYFromTileIndex(tile);
+            return Math.hypot(spot.x - here.x, spot.y - here.y) > roam.minRows * this.getGhostRowPx() && !this.gameBoardManager.getLinkedTile(tile);
+        });
+        if (far.length) rival.walkToTile = far[Math.floor(Math.random() * far.length)];
+    }
+
     addRival() {
         const { abilities, maxLives, moveSpeed, spot, startFacing, introSortY, isSparring } = this.level.rival;
         // sparring: the teammate, with powers of their own as in any fight
@@ -620,6 +653,7 @@ export class GameManager {
         piece.initCharLocation(true, this.gameBoardManager.getClosestWalkableTileToLocation(spot));
         piece.isPlain = true; // no glow until they touch the part
         piece.canTeleportAcross = !!this.level.rival.canTeleportAcross;
+        piece.linkRestMs = this.level.rival.linkRestMs; // each stairway rests this long after she takes it (the Mermaid)
         piece.isTileHidden = true;
         piece.facingDir = startFacing;
         piece.introZIndex = getSortZIndex(this.level, introSortY);
@@ -1784,12 +1818,25 @@ export class GameManager {
         this.autoRecruits.filter(avatar => avatar != rivalAvatar && !onBoard.has(avatar)).forEach(avatar => this.callRecruit(avatar, isOpening));
     }
 
+    // a recruit's powers: the ones they had as a rival; the Hazmat Worker's own (Heal, Ice Slice, Dispel: Jamie)
+    getRecruitAbilityElements(avatar) {
+        if (avatar == 'hazmat') return HAZMAT_RECRUIT.abilities;
+        const rivalLevel = Object.values(LEVELS).find(({ rival }) => rival && rival.avatar == avatar);
+        return rivalLevel ? rivalLevel.rival.abilities : undefined;
+    }
+
+    // the recruits who have lines in scenes: not the Hazmat Worker, who never speaks (Jamie)
+    getSpeakingFollowers() {
+        return this.followers.filter(piece => piece.avatar != 'hazmat');
+    }
+
     // a recruit called in to help: they fight beside the team with the powers they had as a rival
     callRecruit = (avatar, isOpening = false) => {
         if (!isOpening && (this.isPaused || this.cutscene || this.recruitScene || this.getGameResult() !== null)) return false;
-        const rivalLevel = Object.values(LEVELS).find(({ rival }) => rival && rival.avatar == avatar);
-        if (!rivalLevel) return false;
-        const piece = this.gameBoardPiecesManager.addRecruit(avatar, this.settingsManager.getAbilitiesFromElements(rivalLevel.rival.abilities));
+        const elements = this.getRecruitAbilityElements(avatar);
+        if (!elements) return false;
+        const piece = this.gameBoardPiecesManager.addRecruit(avatar, this.settingsManager.getAbilitiesFromElements(elements));
+        if (avatar == 'hazmat') piece.color = HAZMAT_RECRUIT.color;
         const player = this.gameBoardPiecesManager.getPlayerPiece();
         // beside the player, on a tile no one else is on (several come in at once)
         const taken = new Set(this.getPieces().filter(other => other != piece && !other.isDead && other.isOnTiles).map(other => `${other.getTileIndex().i} ${other.getTileIndex().j}`));
@@ -1875,7 +1922,11 @@ export class GameManager {
 
     addRecruitFollowers() {
         const playerTile = this.gameBoardPiecesManager.getPlayerPiece().getTileIndex();
-        this.getRecruitedAvatars().forEach(avatar => this.followers.push(this.gameBoardPiecesManager.addFollower(avatar, playerTile)));
+        this.getRecruitedAvatars().forEach(avatar => {
+            const piece = this.gameBoardPiecesManager.addFollower(avatar, playerTile);
+            if (avatar == 'hazmat') piece.color = HAZMAT_RECRUIT.color; // a white outline (Jamie)
+            this.followers.push(piece);
+        });
     }
 
     getCameraShot() {
@@ -2284,6 +2335,25 @@ export class GameManager {
         ]);
     }
 
+    /*
+        The Subway (Jamie): a train in, and Punk Guy on a platform with the player or the teammate, he's trapped there:
+        he uses his Teleport to get to a platform with none of them on it, when it's ready.
+    */
+    updateTrappedRival() {
+        const rival = this.rivalPiece;
+        if (!this.level.hasTrainSchedule || !this.activePhases.has('train') || this.cutscene || !rival || rival.isDead || !rival.isOnTiles || rival.shouldTeleport) return;
+        const teleport = rival.abilities.find(ability => ability.gameBoardPieceAbilityData.element == 'glass');
+        if (!teleport || teleport.getIsOnCooldown(this.accTime, true)) return;
+        const team = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex()).filter(piece => !piece.isDead && piece.isOnTiles);
+        const region = this.getTeleportRegion(rival.getTileIndex());
+        if (!team.some(piece => this.getTeleportRegion(piece.getTileIndex()) == region)) return;
+        const teamRegions = new Set(team.map(piece => this.getTeleportRegion(piece.getTileIndex())));
+        const clear = this.gameBoardManager.walkableTiles.filter(tile => !teamRegions.has(this.getTeleportRegion(tile)));
+        if (!clear.length) return;
+        rival.teleportTarget = clear[Math.floor(Math.random() * clear.length)];
+        teleport.useAbility({ accTime: this.accTime, piece: rival, registerTimeout: this.gameManagerProxy.registerTimeout, updateTileWithAbilityStatus: this.gameManagerProxy.updateTileWithAbilityStatus });
+    }
+
     // - - - objectives (Objectives.ts, Jamie 2026-11-10) - - -
 
     // what the player is to do, as things stand. held while a scene plays (not one mid-fight): a new one shows after it
@@ -2567,7 +2637,7 @@ export class GameManager {
         this.extras.forEach(extra => { if (extra.avatar == 'agent') extra.color = PIECES_INFO.kaiju.color; }); // the Agent glows purple (Jamie)
         this.lineUpTeam(lineUp);
         const [player, teammate] = this.getPieces();
-        const [recruit] = this.followers;
+        const [recruit] = this.getSpeakingFollowers();
         const shot = { isWide: true };
         const getName = ({ avatar }) => ROSTER.find(({ id }) => id == avatar).name;
         const getSpeaker = who => ({ player, teammate, recruit })[who];
@@ -2647,7 +2717,7 @@ export class GameManager {
         const playerWalkIn = isTeamInPlace && playerSpot ? [{ shot, arrivals: [{ piece: player, startTile: doorTile, toTile: getTile(playerSpot), dir: 'downLeft' }] }] : [];
 
         // recruits take turns. with no recruits, their lines are the player's.
-        const speakers = this.followers.length ? this.followers : [player];
+        const speakers = this.getSpeakingFollowers().length ? this.getSpeakingFollowers() : [player];
         let recruitLines = 0;
         const getSpeech = ({ who, text }) => {
             if (who == 'teammate') return this.getSpeechOver(teammate, this.getTeammateName(), text);
@@ -2715,8 +2785,8 @@ export class GameManager {
         const runners = team.filter(piece => !this.followers.includes(piece));
         runners.forEach(piece => { piece.abilities = []; });
         this.followers.forEach(piece => {
-            const rivalLevel = Object.values(LEVELS).find(({ rival }) => rival && rival.avatar == piece.avatar);
-            piece.abilities = rivalLevel ? this.settingsManager.getAbilitiesFromElements(rivalLevel.rival.abilities) : [];
+            const elements = this.getRecruitAbilityElements(piece.avatar);
+            piece.abilities = elements ? this.settingsManager.getAbilitiesFromElements(elements) : [];
             piece.isRecruit = true;
             piece.isShowHealthBarOnComponent = false; // on the player's side, with HUDs of their own: no bar over their heads (Jamie)
         });
@@ -2843,6 +2913,18 @@ export class GameManager {
             stand(player, getTileNear(0, -CUTSCENE.recruitStandRows));
             if (teammate) stand(teammate, getTileNear(-3, -CUTSCENE.recruitStandRows));
         }
+        // the recruits (Jamie): round the body too, each on a tile of their own, not over it
+        const recruits = this.getPieces().filter(piece => piece.isRecruit && !piece.isDead);
+        const bodyTile = this.gameBoardManager.getClosestWalkableTileToLocation({ x, y });
+        const taken = new Set([player, teammate].filter(Boolean).map(piece => `${piece.getTileIndex().i} ${piece.getTileIndex().j}`).concat(`${bodyTile.i} ${bodyTile.j}`));
+        const spots = isStandingBeside ? CUTSCENE.recruitSpotsBeside : CUTSCENE.recruitSpots;
+        recruits.forEach((piece, k) => {
+            const [columns, rows] = spots[k % spots.length];
+            let tile = getTileNear(columns, rows);
+            if (taken.has(`${tile.i} ${tile.j}`)) tile = this.gameBoardManager.getAdjacentTileIndices(tile).filter(this.gameBoardManager.getIsInBounds).find(next => !taken.has(`${next.i} ${next.j}`)) || tile;
+            taken.add(`${tile.i} ${tile.j}`);
+            stand(piece, tile, columns < 0 ? 'downRight' : 'downLeft');
+        });
         // a clean field for the choice: no powers left on the tiles, and no portals
         this.gameBoardManager.getTilesInFlatArray().forEach(tile => tile.clearTileStatus());
         this.gameBoardManager.updateWormholes(Infinity);
@@ -3013,6 +3095,8 @@ export class GameManager {
     stepPieces() {
         if (this.isPaused || this.isEditingTiles) return;
         this.updateObjective();
+        this.updateTrappedRival();
+        this.updateRoamingRival();
         this.updateTalks();
         this.updateWalkers();
         if (this.recruitScene) return;

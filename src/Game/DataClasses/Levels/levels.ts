@@ -128,6 +128,9 @@ type Rival = {
   spot: { x: number; y: number }; // where the fight starts from, in scene pixels
   recruitSpot: { x: number; y: number }; // where they lie for the player's choice, in scene pixels
   isStandingBeside?: boolean;
+  roam?: { everyMs: number; minRows: number }; // she heads somewhere far off this often (the Mermaid, Jamie)
+  screamFlashColor?: string; // her scream's screen flash, when the team is teleported (the Rooftop's red if not given)
+  linkRestMs?: number; // each link rests this long for her after she takes it, so she takes the other
   canTeleportAcross?: boolean; // a Teleport may land on tiles it can't walk to, like the other platforms // for the choice, the team stands either side of them (the Rooftop, below the RIP stone)
   pronoun: string;
   intro: {
@@ -509,6 +512,9 @@ const AQUARIUM_SCENE = {
     ...RIVAL_LOOK,
     avatar: 'mermaid',
     abilities: ['love', 'bubble', 'wink'], touchPhase: 'tongueTouched', spot: { x: 872, y: 655 }, recruitSpot: { x: 430, y: 700 }, pronoun: 'her',
+    roam: { everyMs: 6000, minRows: 8 }, // all over the hall (Jamie)
+    linkRestMs: 15000, // a stairway she took rests: she runs to the other one
+    screamFlashColor: '#ff7ad9', // her teleport flash: pink, as her Charm's, not the Rooftop's red (Jamie)
     startFacing: 'down',
     introSortY: 655,
     intro: {

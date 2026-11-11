@@ -1269,7 +1269,7 @@ export const GameBoard = ({ speakingLineLength = 0, isSwirling = false, speaking
       {splitCameras && <ViewPane style={{ left: "50%", width: "50%" }}>{renderWorld(false)}</ViewPane>}
       {splitCameras && <SplitBar />}
       </SceneShake>
-      {gameManager.ghostFlashCount > 0 && createPortal(<ScreamFlash key={gameManager.ghostFlashCount} />, document.querySelector("[data-play-screen]") || document.body)}
+      {gameManager.ghostFlashCount > 0 && createPortal(<ScreamFlash key={gameManager.ghostFlashCount} style={{ background: (level && level.rival && level.rival.screamFlashColor) || SCREAM_FLASH.color }} />, document.querySelector("[data-play-screen]") || document.body)}
       {recruitScene && recruitChoice && <ChoiceConfirm choice={recruitChoice} from={choiceFrom.current} board={boardRef.current} />}
       {!isPaused && edgeCarets}
       {!isPaused && <GiantMeters gameManager={gameManager} />}

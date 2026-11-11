@@ -466,10 +466,20 @@ export class GameBoardPieceBase {
         return this.isNpc && (this.accTime || 0) < this.portalRestUntil;
     }
 
+    // a link (by either end) resting for this piece: its own rest after taking it (the Mermaid's stairways: linkRestMs)
+    getIsLinkResting(tile) {
+        return !!this.linkRests && (this.accTime || 0) < (this.linkRests[`${tile.i} ${tile.j}`] || 0);
+    }
+
     jumpToLinkedTile(linkedTile) {
         if (!this.getIsAllowedTile(linkedTile)) return;
-        if (this.getIsPortalResting()) return;
+        if (this.getIsPortalResting() || this.getIsLinkResting(this.tileIndex)) return;
         if (this.isNpc) this.portalRestUntil = (this.accTime || 0) + PORTAL_REST_MS;
+        // this link rests a good while for this piece, both its ends: it'll take another next time (the Mermaid, Jamie)
+        if (this.linkRestMs) {
+            this.linkRests = this.linkRests || {};
+            [this.tileIndex, linkedTile].forEach(({ i, j }) => { this.linkRests[`${i} ${j}`] = (this.accTime || 0) + this.linkRestMs; });
+        }
         this.gameManagerProxy.useWormhole(this.tileIndex, this.accTime || 0); // a Teleport's wormhole: one trip, then it shuts
         // the player walks through it, in a little scene of its own (GameManager.startPortalWalk)
         if (!this.isNpc && this.gameManagerProxy.startPortalWalk(this, linkedTile)) return;
@@ -580,7 +590,9 @@ export class GameBoardPieceBase {
         // updates useEffect to trigger floating text 'Zip!'
         this.isTeleported = !this.isTeleported;
 
-        const pickedTileIndex = this.isNpc ? this.gameManagerProxy.getSafeTileIndex(this.pieceIndex, true) : this.moveToTiles[this.moveToTiles.length - 1];
+        // an NPC's own target, when the game gives it one (Punk Guy, trapped by the train: a clear platform)
+        const pickedTileIndex = this.isNpc ? (this.teleportTarget || this.gameManagerProxy.getSafeTileIndex(this.pieceIndex, true)) : this.moveToTiles[this.moveToTiles.length - 1];
+        this.teleportTarget = undefined;
         const teleportTileIndex = this.getIsAllowedTile(pickedTileIndex) ? pickedTileIndex : undefined;
         if (!teleportTileIndex) this.shouldTeleport = false; // nowhere it may go: the Teleport is spent
 

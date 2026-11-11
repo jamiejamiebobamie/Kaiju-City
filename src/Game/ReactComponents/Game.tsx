@@ -31,7 +31,7 @@ import { GameManager, GameResult } from '../DataClasses/GameManager';
 import { getActiveHotspots } from "./GameBoard/SceneElements";
 import { getIsDetourLevel } from "../DataClasses/Objectives";
 import { FIRST_PLAY_POWERS, getIsFirstPlay } from "../DataClasses/Avatars";
-import { addUnlock, clearRecruitChoices, getBattlegroundUnlockId, getRecruitChoices, getWonBattlegrounds, resetUnlocks, saveRecruitChoice } from '../DataClasses/Unlocks';
+import { addUnlock, clearRecruitChoices, getBattlegroundUnlockId, getRecruitChoices, getUnlocks, getWonBattlegrounds, resetUnlocks, saveRecruitChoice } from '../DataClasses/Unlocks';
 
 // the map walks show the battlegrounds already won on, from whatever was saved
 updateMapWalkSites(getWonBattlegrounds());
@@ -614,7 +614,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     settingsManager.setIsTeammate(isTeammate && !isSolo);
 
     setIsDialogueLog(isMonitorAlways); // in the monitor, conversations go to the log beside it
-    const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival, killsToWin, returnSpot, isRetry, autoRecruits: isAutoRecruits ? getCallableRecruits() : [], recruits: recruitedAvatars, carriedObjective: lastObjective.current, terminated: terminatedAvatars, bonusLives, healthReward: isHealthRewardDue.current });
+    const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival, killsToWin, returnSpot, isRetry, autoRecruits: isAutoRecruits ? getCallableRecruits() : [], recruits: getCallableRecruits(), carriedObjective: lastObjective.current, terminated: terminatedAvatars, bonusLives, healthReward: isHealthRewardDue.current });
     // health just won sparring: shown on the walk, once its opening shot is over (the effect below), then done with
     if (isHealthRewardDue.current) {
       isHealthRewardDue.current = false;
@@ -732,7 +732,8 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   };
 
   // only those recruited this playthrough
-  const getCallableRecruits = () => recruitedAvatars;
+  // the Hazmat Worker, once unlocked, is with the team too: he walks, fights and has his HUD like a recruit (E3, Jamie)
+  const getCallableRecruits = () => getUnlocks().includes('hazmat') && !recruitedAvatars.includes('hazmat') ? [...recruitedAvatars, 'hazmat'] : recruitedAvatars;
 
   const levelOptions = Object.values(LEVELS).map(({ id, name }) => <option key={id} value={id}>{name}</option>);
 

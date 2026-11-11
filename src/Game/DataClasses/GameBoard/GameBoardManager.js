@@ -509,11 +509,13 @@ export class GameBoardManager {
     }
 
     // a piece standing on a closed tile can still walk across closed tiles, to get off of them
-    getPathStepsFrom(startTile, isWithoutLinks = false) {
+    // 'getIsLinkOpen': a link (by the tile it leaves from) a piece may take now (the Mermaid's resting stairways)
+    getPathStepsFrom(startTile, isWithoutLinks = false, getIsLinkOpen = undefined) {
         const isLeavingClosedTiles = this.getIsClosedTile(startTile);
         return tile => {
             const closedSteps = isLeavingClosedTiles ? this.getNeighborTiles(tile).filter(this.getIsClosedTile) : [];
-            return [...this.getAdjacentTileIndices(tile), ...closedSteps, ...(isWithoutLinks ? [] : this.getLinkedTiles(tile))];
+            const links = isWithoutLinks || (getIsLinkOpen && !getIsLinkOpen(tile)) ? [] : this.getLinkedTiles(tile);
+            return [...this.getAdjacentTileIndices(tile), ...closedSteps, ...links];
         };
     }
 
@@ -540,7 +542,7 @@ export class GameBoardManager {
         const piece = crowdPieceIndex === undefined ? undefined : this.gameManagerProxy.getPiece(crowdPieceIndex);
         const isWithoutLinks = !!piece && !!piece.getIsPortalResting && piece.getIsPortalResting();
         // and keeps to the tiles it may go on (the ghost boss's roof, the Lab's floor for the player's NPCs)
-        const getSteps = this.getPathStepsFrom(startIndex, isWithoutLinks);
+        const getSteps = this.getPathStepsFrom(startIndex, isWithoutLinks, piece && piece.linkRestMs ? tile => !piece.getIsLinkResting(tile) : undefined);
         const getAllowedSteps = piece && piece.getIsAllowedTile ? tile => getSteps(tile).filter(next => piece.getIsAllowedTile(next)) : getSteps;
         const avoidedPath = findPath({
             start: startIndex,
