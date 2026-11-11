@@ -137,10 +137,11 @@ export class PlayerInputHandler {
     }
 
     usePlayerAbilityFromIndex(i, accTime) {
-        if (i < 0) return;
+        // only 1 to 3, and only for the one the player plays as: no more commanding the teammate with 4 to 6 (Jamie, playtest 18)
+        if (i < 0 || i >= 3) return;
         // playing on as another of the team (the player down, GameManager.updateTakeOver): 1 to 3 are that one's powers
         const controlled = this.gameManagerProxy.getControlledPiece();
-        if (i < 3 && controlled && controlled.pieceIndex != 0) {
+        if (controlled && controlled.pieceIndex != 0) {
             this.useControlledAbility(controlled, i, accTime);
             return;
         }

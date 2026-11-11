@@ -252,7 +252,7 @@ export const PlayerUI = ({
             abilities={pd.abilities}
             setDisplayString={setDisplayString}
             isReversed={true}
-            isWithoutKeys={isRecruit}
+            isWithoutKeys={!pd.isControlled}
             playerIndex={playerIndex}
             isCharacterAlive={!pd.isDead}
             isPaused={isPaused}
@@ -275,6 +275,7 @@ export const PlayerUI = ({
           />
           <Abilities
             isLarge={true}
+            isWithoutKeys={pd.isControlled === false}
             abilities={pd.abilities}
             setDisplayString={setDisplayString}
             playerIndex={playerIndex}
