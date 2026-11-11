@@ -539,6 +539,11 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const rewardText = useRef(undefined); // the reward's title, due once the walk's opening shot is over
   const [sparringTweak, setSparringTweak] = useState({ ...SPARRING }); // the dev panel's copy of SPARRING, to show its values
   const [isAutoRecruits, setIsAutoRecruits] = useState(true); // dev toggle (Jamie): every recruit in every fight, and walking with the team; no call buttons
+  // dev toggles (Jamie, playtest 18), on for now: the player down, they play on as the next of the team; a recruit who dies
+  // in a fight is gone for good (no HUD, not in the next fight)
+  const [isTakeOverOnDeath, setIsTakeOverOnDeath] = useState(true);
+  const [isPermadeath, setIsPermadeath] = useState(true);
+  const [fallenRecruits, setFallenRecruits] = useState<Array<string>>([]);
   const [isTrainedNpcs, setIsTrainedNpcs] = useState(false); // off by default (Jamie, 2026-11-06). NPCs play by the trained model in public/models in fights with no Kaiju; against a Kaiju they hand back to the rules
   const [isDevHidden, setIsDevHidden] = useState(false); // the dev tools tucked away, to see the game as it will ship
   const [npcAggression, setNpcAggression] = useState(DEFAULT_AGGRESSION); // the trained NPCs', 0 careful to 1 reckless
@@ -622,7 +627,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     settingsManager.setIsTeammate(isTeammate && !isSolo);
 
     setIsDialogueLog(isMonitorAlways); // in the monitor, conversations go to the log beside it
-    const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival, killsToWin, returnSpot, isRetry, autoRecruits: isAutoRecruits ? getCallableRecruits() : [], recruits: getCallableRecruits(), carriedObjective: lastObjective.current, terminated: terminatedAvatars, trainingPoints, healthReward: isHealthRewardDue.current, trainingOutcome: trainingOutcome.current, sparredHere: sparredLevelIds.includes(matchLevel.id), isRevisit: matchLevel.id == 'labIntro' && labVisits.current > 0 && !returnSpot });
+    const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival, killsToWin, returnSpot, isRetry, autoRecruits: isAutoRecruits ? getCallableRecruits() : [], recruits: getCallableRecruits(), carriedObjective: lastObjective.current, terminated: terminatedAvatars, trainingPoints, healthReward: isHealthRewardDue.current, trainingOutcome: trainingOutcome.current, sparredHere: sparredLevelIds.includes(matchLevel.id), isRevisit: matchLevel.id == 'labIntro' && labVisits.current > 0 && !returnSpot, isTakeOverOnDeath });
     if (matchLevel.id == 'labIntro' && !returnSpot) labVisits.current += 1;
     isHealthRewardDue.current = false;
     trainingOutcome.current = undefined;
@@ -740,13 +745,15 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     setTerminatedAvatars([]);
     setTrainingPoints({ player: 0, teammate: 0 });
     setSparredLevelIds([]);
+    setFallenRecruits([]);
     labVisits.current = 0;
     clearRecruitChoices();
   };
 
   // only those recruited this playthrough
   // the Hazmat Worker, once unlocked, is with the team too: he walks, fights and has his HUD like a recruit (E3, Jamie)
-  const getCallableRecruits = () => getUnlocks().includes('hazmat') && !recruitedAvatars.includes('hazmat') ? [...recruitedAvatars, 'hazmat'] : recruitedAvatars;
+  const getCallableRecruits = () => (getUnlocks().includes('hazmat') && !recruitedAvatars.includes('hazmat') ? [...recruitedAvatars, 'hazmat'] : recruitedAvatars)
+    .filter(avatar => !(isPermadeath && fallenRecruits.includes(avatar)));
 
   const levelOptions = Object.values(LEVELS).map(({ id, name }) => <option key={id} value={id}>{name}</option>);
 
@@ -1115,6 +1122,9 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     // the training points left: lost when hit, for good (F7)
     const pointsLeft = gameManager.current ? gameManager.current.getTrainingPoints() : trainingPoints;
     setTrainingPoints(pointsLeft);
+    // recruits who died in this fight are gone for good (the permadeath dev option)
+    const fallen = isPermadeath && gameManager.current ? gameManager.current.getFallenRecruits() : [];
+    if (fallen.length) setFallenRecruits(list => [...list, ...fallen.filter(avatar => !list.includes(avatar))]);
     if (level.isWalkingLevel && isWon && gameManager.current && gameManager.current.isTrainingChosen) {
       const trainingLevelId = gameManager.current.trainingLevelId || level.training.levelId;
       leaveWithClouds(() => startTraining(trainingLevelId));
@@ -1348,6 +1358,12 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               </label>
               <label>
                 <input type="checkbox" checked={isAutoRecruits} onChange={() => setIsAutoRecruits(!isAutoRecruits)} /> Recruits auto-summoned
+              </label>
+              <label>
+                <input type="checkbox" checked={isTakeOverOnDeath} onChange={() => setIsTakeOverOnDeath(!isTakeOverOnDeath)} /> Take over on death
+              </label>
+              <label>
+                <input type="checkbox" checked={isPermadeath} onChange={() => setIsPermadeath(!isPermadeath)} /> Recruit permadeath{fallenRecruits.length ? ` (gone: ${fallenRecruits.length})` : ""}
               </label>
               {/* dev: sparring's health (Jamie: to tweak): per win, the cap, and how much has been won this playthrough */}
               <label>

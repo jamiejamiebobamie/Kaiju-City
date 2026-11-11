@@ -138,6 +138,12 @@ export class PlayerInputHandler {
 
     usePlayerAbilityFromIndex(i, accTime) {
         if (i < 0) return;
+        // playing on as another of the team (the player down, GameManager.updateTakeOver): 1 to 3 are that one's powers
+        const controlled = this.gameManagerProxy.getControlledPiece();
+        if (i < 3 && controlled && controlled.pieceIndex != 0) {
+            this.useControlledAbility(controlled, i, accTime);
+            return;
+        }
         const pieceIndex = Math.floor(i / 3); // each player-team piece gets 3 abilities
         const piece = this.gameManagerProxy.getPiece(pieceIndex);
         // charmed, the piece's keys are scrambled: the player can't know which power a key will give (Jamie)
@@ -147,6 +153,19 @@ export class PlayerInputHandler {
 
         if (piece.getIsDead() || piece.knockedUntil > accTime || a.getIsOnCooldown(accTime, piece.isNpc)) return;
 
+        const passiveAbility = a.useAbility({
+            accTime,
+            piece,
+            registerTimeout: this.gameManagerProxy.registerTimeout,
+            updateTileWithAbilityStatus: this.gameManagerProxy.updateTileWithAbilityStatus
+        });
+        piece.storePassive(passiveAbility);
+    }
+
+    useControlledAbility(piece, i, accTime) {
+        const slot = piece.isCharmed && piece.abilityScramble ? piece.abilityScramble[i] : i;
+        const a = piece.abilities[slot];
+        if (!a || this.gameManagerProxy.getIsPowersOff() || piece.getIsDead() || piece.knockedUntil > accTime || a.getIsOnCooldown(accTime, false)) return;
         const passiveAbility = a.useAbility({
             accTime,
             piece,

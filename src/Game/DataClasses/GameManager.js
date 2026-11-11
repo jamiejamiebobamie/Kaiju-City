@@ -224,12 +224,14 @@ export class GameManager {
     // 'healthReward': health was just won sparring: the player and teammate glow red a while, back in the battleground
     // 'trainingOutcome': just back from a training fight won ({ isSparring, avatar }): what's said is about it.
     // 'sparredHere': sparring has been done in this battleground before: the teammate asks to go again
-    constructor({ level = PENINSULA, settingsManager, hasArrival = false, killsToWin = undefined, returnSpot = undefined, isRetry = false, autoRecruits = [], recruits = undefined, carriedObjective = null, terminated = [], trainingPoints = { player: 0, teammate: 0 }, healthReward = false, trainingOutcome = undefined, sparredHere = false, isRevisit = false }) {
+    constructor({ level = PENINSULA, settingsManager, hasArrival = false, killsToWin = undefined, returnSpot = undefined, isRetry = false, autoRecruits = [], recruits = undefined, carriedObjective = null, terminated = [], trainingPoints = { player: 0, teammate: 0 }, healthReward = false, trainingOutcome = undefined, sparredHere = false, isRevisit = false, isTakeOverOnDeath = false }) {
         this.healthReward = healthReward;
         this.terminated = terminated;
         this.trainingPoints = trainingPoints;
         this.trainingOutcome = trainingOutcome;
         this.sparredHere = sparredHere;
+        this.isTakeOverOnDeath = isTakeOverOnDeath; // dev option (Jamie, playtest 18): the player down, they play on as the next of the team
+        this.controlledPiece = undefined; // who the player plays as, once taken over (else the player's own piece)
         this.isRevisit = isRevisit; // a scene been to before (the walking Lab): its opening words aren't said again (Jamie, playtest 18)
         this.carriedObjective = carriedObjective;
         this.objective = null; // what the player is to do now (Objectives.ts)
@@ -3186,11 +3188,54 @@ export class GameManager {
         return Math.hypot(x - spot.x, y - spot.y) <= rows * rowStep * scale;
     }
 
+    // who the player plays as: their own piece, or the one they took over when it went down (updateTakeOver)
+    getControlledPiece() {
+        return this.controlledPiece || this.gameBoardPiecesManager.getPlayerPiece();
+    }
+
+    /*
+        Dev option, on by default (Jamie, playtest 18): when the one the player plays as goes down, once the camera has held on
+        their death, the player plays on as the next of the team still fighting, in the HUDs' order: the teammate, then
+        the recruits as they came, the Hazmat Worker last. the keys 1 to 3 are that one's powers then.
+    */
+    updateTakeOver() {
+        if (!this.isTakeOverOnDeath || this.level.isWalkingLevel || this.cutscene) return;
+        const current = this.getControlledPiece();
+        if (!current || !current.getIsDead()) return;
+        if (this.takeOverAtMs === undefined) this.takeOverAtMs = Date.now() + CAMERA_THREATS.deathHoldMs;
+        if (Date.now() < this.takeOverAtMs) return;
+        this.takeOverAtMs = undefined;
+        const next = this.getTakeOverOrder().find(piece => !piece.getIsDead() && piece.isOnTiles);
+        if (!next) return;
+        next.isNpc = false;
+        next.moveToTiles = [];
+        next.walkToTile = undefined;
+        next.escapeTile = undefined;
+        next.brainAction = undefined;
+        this.controlledPiece = next;
+    }
+
+    // the recruits who died in this fight (the permadeath dev option: gone for good)
+    getFallenRecruits() {
+        return this.getPieces().filter(piece => piece.isRecruit && piece.getIsDead()).map(({ avatar }) => avatar);
+    }
+
+    getTakeOverOrder() {
+        const team = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
+        const recruits = team.filter(piece => piece.isRecruit);
+        return [
+            ...team.filter(piece => !piece.isRecruit),
+            ...recruits.filter(piece => piece.avatar != 'hazmat'),
+            ...recruits.filter(piece => piece.avatar == 'hazmat')
+        ];
+    }
+
     // who the camera stays with: the player, then their teammate once the player is down
     getFocusPiece() {
         const team = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
+        const controlled = this.controlledPiece && !this.controlledPiece.getIsDead() ? this.controlledPiece : undefined;
         // then a recruit still fighting (Jamie): the camera stays with the fight
-        const next = team.find(piece => !piece.getIsDead() && !piece.isRecruit) || team.find(piece => !piece.getIsDead() && piece.isOnTiles) || this.getPieces()[0];
+        const next = controlled || team.find(piece => !piece.getIsDead() && !piece.isRecruit) || team.find(piece => !piece.getIsDead() && piece.isOnTiles) || this.getPieces()[0];
         // the one it was on has just died: it holds on them a while, for their death, before it moves on (Jamie)
         const last = this.lastFocusPiece;
         if (last && last !== next && last.getIsDead()) {
@@ -3279,6 +3324,7 @@ export class GameManager {
     stepPieces() {
         if (this.isPaused || this.isEditingTiles) return;
         this.updateObjective();
+        this.updateTakeOver();
         this.updateTrappedRival();
         this.updateRoamingRival();
         this.updateQueuedVisitScene();
@@ -3381,7 +3427,7 @@ export class GameManager {
             isRecruitTalkDone: this.getIsRecruitTalkDone(),
             speakingPieceIndex: this.getSpeakingPieceIndex(),
             winner: this.getGameResult(),
-            isPlayerDead: this.gameBoardPiecesManager.getPlayerPiece().getIsDead()
+            isPlayerDead: this.getControlledPiece().getIsDead()
         };
     }
 
@@ -3468,6 +3514,7 @@ export class GameManager {
             getIsPieceOnTile: this.gameBoardPiecesManager.getIsPieceOnTile,
             getIsContactDmg: this.gameBoardPiecesManager.getIsContactDmg,
             getPlayerPiece: this.gameBoardPiecesManager.getPlayerPiece,
+            getControlledPiece: () => this.getControlledPiece(),
             findPathFromTo: this.gameBoardManager.findPathFromTo,
             getPathToSafeTileAndAvoidEnemies: this.gameBoardManager.getPathToSafeTileAndAvoidEnemies,
             getPathToSafeTile: this.gameBoardManager.getPathToSafeTile,

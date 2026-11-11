@@ -308,6 +308,11 @@ export class GameManagerProxy {
         return this.props.getPlayerPiece();
     }
 
+    // who the player plays as (GameManager.updateTakeOver)
+    getControlledPiece() {
+        return this.props.getControlledPiece ? this.props.getControlledPiece() : this.props.getPlayerPiece();
+    }
+
     getClickedTileIndex() {
         return this.props.getClickedTileIndex();
     }

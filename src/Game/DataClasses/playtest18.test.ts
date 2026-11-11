@@ -92,6 +92,31 @@ describe('playtest 18', () => {
     expect(rival.moveToTiles).toEqual([]);
   });
 
+  it('F1: the player down, they play on as the teammate, then the recruits, the Hazmat Worker last', () => {
+    const gm = makeGame(LEVELS.peninsula, { isTakeOverOnDeath: true, autoRecruits: ['hazmat', 'punk'], recruits: ['hazmat', 'punk'] });
+    for (let k = 0; k < 4000 && gm.cutscene; k++) gm.stepPieces();
+    const order = gm.getTakeOverOrder().map(({ avatar, isRecruit }) => isRecruit ? avatar : 'team');
+    expect(order.slice(-2)).toEqual(['punk', 'hazmat']);
+    const [player, teammate] = gm.getPieces();
+    player.isDead = true;
+    player.getIsDead = () => true;
+    gm.updateTakeOver();
+    expect(gm.getControlledPiece()).toBe(player); // the camera holds on the death first
+    gm.takeOverAtMs = 0;
+    gm.updateTakeOver();
+    expect(gm.getControlledPiece()).toBe(teammate);
+    expect(teammate.isNpc).toBe(false);
+  });
+
+  it('F2: the recruits who died in a fight are listed as fallen', () => {
+    const gm = makeGame(LEVELS.peninsula, { autoRecruits: ['punk'], recruits: ['punk'] });
+    for (let k = 0; k < 4000 && gm.cutscene; k++) gm.stepPieces();
+    expect(gm.getFallenRecruits()).toEqual([]);
+    const recruit = gm.getPieces().find(piece => piece.isRecruit);
+    recruit.getIsDead = () => true;
+    expect(gm.getFallenRecruits()).toEqual(['punk']);
+  });
+
   it('B1: the Street Agent is drawn behind the team', () => {
     const gm = makeGame(LEVELS.street);
     const [agent] = gm.extras;
