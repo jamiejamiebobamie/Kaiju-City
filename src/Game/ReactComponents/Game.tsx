@@ -18,6 +18,7 @@ import { ControlsOverlay } from "./UI/ControlsOverlay";
 import { NpcModelDriver } from "Game/DataClasses/npcBrain/npcModel";
 import { getIsClickThrough, setIsClickThrough, setIsDialogueLog } from "Game/DataClasses/DialogueLog";
 import { getIsSpacing, setIsSpacing } from "Game/DataClasses/SpacingTest";
+import { CONTROL_MARKERS } from "./GameBoard/Pieces/GameBoardPieceComponent";
 import { BREAK_TOTAL_MS, DialogueLogPanel } from "./DialogueLogPanel";
 import { ChoiceButton } from "./GameBoard/GameBoard";
 import { DEFAULT_AGGRESSION } from "Game/DataClasses/npcBrain/brain";
@@ -556,6 +557,8 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   // in a fight is gone for good (no HUD, not in the next fight)
   const [isTakeOverOnDeath, setIsTakeOverOnDeath] = useState(true);
   const [isPermadeath, setIsPermadeath] = useState(true);
+  // dev (Jamie, playtest 19, to pick one): the marker on the one the player plays as
+  const [controlMarker, setControlMarker] = useState("caret");
   const [fallenRecruits, setFallenRecruits] = useState<Array<string>>([]);
   const [isTrainedNpcs, setIsTrainedNpcs] = useState(false); // off by default (Jamie, 2026-11-06). NPCs play by the trained model in public/models in fights with no Kaiju; against a Kaiju they hand back to the rules
   const [isDevHidden, setIsDevHidden] = useState(false); // the dev tools tucked away, to see the game as it will ship
@@ -1398,6 +1401,11 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 <input type="checkbox" checked={isTakeOverOnDeath} onChange={() => setIsTakeOverOnDeath(!isTakeOverOnDeath)} /> Take over on death
               </label>
               <label>
+                Marker <select value={controlMarker} onChange={e => { setControlMarker(e.target.value); e.target.blur(); }}>
+                  {CONTROL_MARKERS.map(kind => <option key={kind} value={kind}>{kind}</option>)}
+                </select>
+              </label>
+              <label>
                 <input type="checkbox" checked={isPermadeath} onChange={() => setIsPermadeath(!isPermadeath)} /> Recruit permadeath{fallenRecruits.length ? ` (gone: ${fallenRecruits.length})` : ""}
               </label>
               {/* dev: sparring's health (Jamie: to tweak): per win, the cap, and how much has been won this playthrough */}
@@ -1497,6 +1505,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 isMouseLook={isMouseLook}
                 isEnemyZoom={isEnemyZoom}
                 isTeamColors={isTeamColors}
+                controlMarker={controlMarker}
                 isSlowMotion={winner !== null && !level.isWalkingLevel}
                 speech={speech}
                 recruitScene={recruitScene}

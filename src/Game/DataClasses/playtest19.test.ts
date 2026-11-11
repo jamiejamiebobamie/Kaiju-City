@@ -45,3 +45,16 @@ describe('playtest 19, the final battle', () => {
     expect(gm.getGameResult()).toBe(0);
   });
 });
+
+describe('playtest 19, permadeath where it counts', () => {
+  it('a recruit down in the Lab trap or in training is not gone; in the Peninsula, Agent and rival fights they are', () => {
+    const fallen = level => {
+      const gm = makeGame(level, { autoRecruits: ['punk'], recruits: ['punk'] });
+      gm.getPieces = () => [{ isRecruit: true, getIsDead: () => true, avatar: 'punk' }];
+      return gm.getFallenRecruits();
+    };
+    expect(fallen(LEVELS.labTrap)).toEqual([]);
+    expect(fallen(LEVELS[getTrainingLevelId('rooftop')])).toEqual([]);
+    ['peninsula', 'lab', 'rooftop', 'finalPeninsula'].forEach(id => expect(fallen(LEVELS[id])).toEqual(['punk']));
+  });
+});

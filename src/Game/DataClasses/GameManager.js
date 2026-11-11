@@ -3267,7 +3267,13 @@ export class GameManager {
     }
 
     // the recruits who died in this fight (the permadeath dev option: gone for good)
+    // only in the fights where it counts (Jamie, playtest 19): the Peninsula's (the final one, and the teammate's Kaiju, too),
+    // the Agents' fight, and the rivals' fights before they are recruited. not the Lab trap's hold-off, not training.
     getFallenRecruits() {
+        const level = this.level;
+        const isPermadeathFight = !level.isWalkingLevel && !level.trap && !level.isTraining
+            && (!!level.kaijuEntry || !!level.finalTurn || !!level.giantKaiju || !!level.agentDrops || !!level.rival);
+        if (!isPermadeathFight) return [];
         return this.getPieces().filter(piece => piece.isRecruit && piece.getIsDead()).map(({ avatar }) => avatar);
     }
 

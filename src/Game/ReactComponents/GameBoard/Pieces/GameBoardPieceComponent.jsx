@@ -427,6 +427,75 @@ const STATUS_WORD_GAP_MS = 450;
 // a speaker's shake: as long as the line (per letter, within bounds), then a rest, and again (Jamie)
 const SPEAK_SHAKE = { msPerChar: 45, minMs: 600, maxMs: 3000, restMs: 4000 }; // two words at once: the second a moment after the first
 
+/*
+  Who the player plays as (Jamie, playtest 19, to pick one; CONTROL_MARKERS): a caret over the head, a ring at the feet,
+  a hex at the feet, or "P1" over the head. the character's middle is x 5; the feet are about y 28.
+*/
+export const CONTROL_MARKERS = ["caret", "ring", "hex", "p1", "none"];
+const CONTROL_MARKER_COLOR = "#ffe14a";
+const markerBob = keyframes`
+  0%, 100% { transform: translate(-50%, 0); }
+  50% { transform: translate(-50%, -4px); }
+`;
+const markerPulse = keyframes`
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+`;
+const OverHead = styled.div`
+  position: absolute;
+  left: 5px;
+  top: ${props => props.$isHigh ? "-104px" : "-88px"};
+  z-index: 3;
+  pointer-events: none;
+  transform: translate(-50%, 0);
+  animation: ${markerBob} 0.9s ease-in-out infinite;
+  color: ${props => props.$color};
+  filter: drop-shadow(0 0 1px black) drop-shadow(0 0 2px black) drop-shadow(0 0 4px ${props => props.$color});
+`;
+const CaretMark = styled(OverHead)`
+  font-size: 18px;
+  line-height: 1;
+`;
+const P1Mark = styled(OverHead)`
+  font-family: gameboy;
+  font-size: 9px;
+  font-style: normal;
+  padding: 1px 3px;
+  color: white;
+  background: ${props => props.$color};
+  border: 1px solid black;
+  border-radius: 2px;
+`;
+const FeetMark = styled.div`
+  position: absolute;
+  left: 5px;
+  top: 28px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 0;
+  animation: ${markerPulse} 1.2s ease-in-out infinite;
+`;
+const RingMark = styled(FeetMark)`
+  width: 38px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid ${props => props.$color};
+  box-shadow: 0 0 6px ${props => props.$color}, inset 0 0 4px ${props => props.$color};
+`;
+const ControlMarker = ({ kind, color, isHigh }) => {
+  if (kind == "caret") return <CaretMark $color={color} $isHigh={isHigh}><i className="fa fa-caret-down" /></CaretMark>;
+  if (kind == "p1") return <P1Mark $color={color} $isHigh={isHigh}>P1</P1Mark>;
+  if (kind == "ring") return <RingMark $color={color} />;
+  if (kind == "hex") return (
+    <FeetMark>
+      <svg width="44" height="26" viewBox="0 0 44 26" style={{ display: "block", overflow: "visible", filter: `drop-shadow(0 0 4px ${color})` }}>
+        <polygon points="11,1 33,1 43,13 33,25 11,25 1,13" fill="none" stroke={color} strokeWidth="2.5" />
+      </svg>
+    </FeetMark>
+  );
+  return null;
+};
+
 const StatusRow = styled.div`
   position: absolute;
   left: -15px;
@@ -508,6 +577,7 @@ export const GameBoardPieceComponent = ({
   statusEffects = [], // what is on them that changes play: icons over the head (STATUS_LOOK)
   cleanSlateCount = 0, // goes up each time their Dispel wipes their other passives
   isPlayer = false,
+  controlMarker = undefined, // the one the player plays as: which marker shows on them (CONTROL_MARKERS)
   hitLives = undefined, // health without the passives' (Haunt's Lichdom): what the "-1" and the shake follow
   isFaded = false,
   speakingLineLength = 0
@@ -627,6 +697,7 @@ export const GameBoardPieceComponent = ({
       <NumberAnchor ref={numberAnchor} />
       {!isQuiet && modifierText}
       <HealthBarWrapper lives={lives}>{bars}</HealthBarWrapper>
+      {controlMarker && !isQuiet && <ControlMarker kind={controlMarker} color={CONTROL_MARKER_COLOR} isHigh={statusEffects.length > 0 || isBarShown} />}
       {/* what is on them that changes play: over the head, above the health bar where there is one */}
       {statusEffects.length > 0 && !isQuiet && (
         <StatusRow $isAboveBar={isBarShown}>
