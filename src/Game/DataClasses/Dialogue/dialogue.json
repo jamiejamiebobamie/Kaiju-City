@@ -720,6 +720,29 @@
         }
       ]
     },
+    "lab.beforeTrap": {
+      "label": "The Lab, before the trap: the Agent isn't there",
+      "lines": [
+        {
+          "speaker": "teammate",
+          "text": "The Agent's not here...",
+          "id": "lab.beforeTrap.0",
+          "note": "draft"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Let's look around the Lab for him.",
+          "id": "lab.beforeTrap.1",
+          "note": "draft"
+        },
+        {
+          "speaker": "teammate",
+          "text": "And choose our powers before we go. Who knows when we'll get the chance again.",
+          "id": "lab.beforeTrap.2",
+          "note": "draft"
+        }
+      ]
+    },
     "lab.showdown": {
       "label": "Lab fight: the Agent's reveal",
       "lines": [

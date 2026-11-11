@@ -377,7 +377,7 @@ describe('levels', () => {
 
   it('walking levels are the street, sewers and the first Lab visit', () => {
     const walking = Object.values(LEVELS).filter(level => level.isWalkingLevel).map(({ id }) => id).sort();
-    expect(walking).toEqual(['labIntro', 'labTrap', 'mapAquarium', 'mapLab', 'mapRooftop', 'mapSubway', 'sewer1', 'sewer2', 'street', 'visit-aquarium', 'visit-rapidTransit', 'visit-rooftop']);
+    expect(walking).toEqual(['labBeforeTrap', 'labIntro', 'labTrap', 'mapAquarium', 'mapLab', 'mapRooftop', 'mapSubway', 'sewer1', 'sewer2', 'street', 'visit-aquarium', 'visit-rapidTransit', 'visit-rooftop']);
   });
 
   it('no level has goal tiles: map walks have sites instead', () => {
@@ -972,7 +972,7 @@ describe('campaign', () => {
   });
 
   it('the battleground Lab comes before the Sewers, which lead to the Lab fight', () => {
-    expect(levelIds.slice(levelIds.indexOf('mapLab'), levelIds.indexOf('lab') + 1)).toEqual(['mapLab', 'labTrap', 'sewer1', 'sewer2', 'lab']);
+    expect(levelIds.slice(levelIds.indexOf('mapLab'), levelIds.indexOf('lab') + 1)).toEqual(['mapLab', 'labBeforeTrap', 'labTrap', 'sewer1', 'sewer2', 'lab']);
   });
 
   it('the walking Lab is an optional stop on the earlier map walks', () => {

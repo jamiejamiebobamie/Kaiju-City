@@ -30,7 +30,8 @@ import { FullscreenPage } from "Components/FullscreenPage.jsx";
 import { GameManager, GameResult } from '../DataClasses/GameManager';
 import { getActiveHotspots } from "./GameBoard/SceneElements";
 import { getIsDetourLevel } from "../DataClasses/Objectives";
-import { addUnlock, getBattlegroundUnlockId, getRecruitChoices, getWonBattlegrounds, resetUnlocks, saveRecruitChoice } from '../DataClasses/Unlocks';
+import { FIRST_PLAY_POWERS, getIsFirstPlay } from "../DataClasses/Avatars";
+import { addUnlock, clearRecruitChoices, getBattlegroundUnlockId, getRecruitChoices, getWonBattlegrounds, resetUnlocks, saveRecruitChoice } from '../DataClasses/Unlocks';
 
 // the map walks show the battlegrounds already won on, from whatever was saved
 updateMapWalkSites(getWonBattlegrounds());
@@ -263,6 +264,10 @@ const RewardNotice = styled(ObjectiveNotice)`
     -0.6cqw 0.6cqw 0 #22000a, -0.72cqw 0.72cqw 0 black, -0.9cqw 0.9cqw 0.6cqw rgba(0, 0, 0, 0.8),
     0 0 2.5cqw #ff0040;
 `;
+
+// the first fight's swirl into the Street (A2): the city at the Peninsula's north end, and the times
+const CITY_SPOT = { x: 210, y: 70 };
+const SWIRL = { panMs: 1100, swirlMs: 1300 };
 
 const UnlockStack = styled(CardStack)`
   top: 3cqw;
@@ -520,6 +525,8 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   // the bystanders terminated this playthrough (their battlegrounds offer sparring), and the health won sparring
   const [terminatedAvatars, setTerminatedAvatars] = useState<Array<string>>([]);
   const [bonusLives, setBonusLives] = useState(0);
+  const [trainingPoints, setTrainingPoints] = useState({ player: 0, teammate: 0 }); // health won sparring, each their own (F7)
+  const [isSwirling, setIsSwirling] = useState(false); // the Peninsula's first fight swirls away into the Street (A2)
   const isHealthRewardDue = useRef(false); // won sparring: the next match (the walk, after) shows it
   const [rewardNotice, setRewardNotice] = useState<{ key: number; text: string } | undefined>(undefined);
   const rewardText = useRef(undefined); // the reward's title, due once the walk's opening shot is over
@@ -715,6 +722,15 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     setTimeout(() => setRewardNotice(undefined), OBJECTIVE_NOTICE_MS); // not cleared when the glow ends: the title always goes
   }, [isRewarding, isCutscene]);
 
+  // a new playthrough: nothing chosen in the last one carries over (Jamie): who was recruited or terminated, health won
+  const startNewPlaythrough = () => {
+    setRecruitedAvatars([]);
+    setTerminatedAvatars([]);
+    setBonusLives(0);
+    setTrainingPoints({ player: 0, teammate: 0 });
+    clearRecruitChoices();
+  };
+
   // only those recruited this playthrough
   const getCallableRecruits = () => recruitedAvatars;
 
@@ -841,7 +857,17 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     if (getIsLastSection(campaignIndex)) {
       return { title: "You saved the city!", buttons: [{ text: "Play again", onClick: () => { setCampaignIndex(0); triggerTransition(resetMatch); } }, { text: "Leave", onClick: handleClickHome }] };
     }
+    // the first fight to the Street: in on the city, then the map swirls away (Jamie)
+    if (campaignIndex === 0) return { title, buttons: [{ text: "Continue", onClick: () => swirlToSection(campaignIndex + 1) }] };
     return { title, buttons: [{ text: "Continue", onClick: () => fadeOutThen(() => showSection(campaignIndex + 1)) }] };
+  };
+
+  // the camera pans to the city at the Peninsula's north end, the map spins and blurs into the dark, and the next section
+  const swirlToSection = index => {
+    setMatchEnd(undefined);
+    if (gameManager.current) gameManager.current.outcomeShot = { point: { ...CITY_SPOT }, zoomScale: PENINSULA.cameraZoom * 1.6, isPeninsulaSized: true, panMs: SWIRL.panMs };
+    setTimeout(() => setIsSwirling(true), SWIRL.panMs);
+    setTimeout(() => fadeOutThen(() => { setIsSwirling(false); showSection(index); }), SWIRL.panMs + SWIRL.swirlMs);
   };
 
   // a stop off a map walk: the Lab, or a battleground won on before. the walk carries on after.
@@ -1129,6 +1155,15 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     !isPlayingGame && isChoosingAvatar ?
       <AvatarChoice onChoose={(player, teammate) => {
         chooseTeam(player, teammate);
+        startNewPlaythrough();
+        // a first play skips the power picker: Discharge, Wildfire and Dispel to start (Jamie)
+        if (getIsFirstPlay()) {
+          settingsManager.setSortedPlayerChosenAbilityElementsString(FIRST_PLAY_POWERS);
+          setPickedAbilities(FIRST_PLAY_POWERS);
+          setIsChoosingAvatar(false);
+          handleClickPlay();
+          return;
+        }
         triggerTransition(() => setIsChoosingAvatar(false));
       }} />
     : !isPlayingGame ?
@@ -1359,6 +1394,9 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 choiceFromRef={recruitChoiceFrom}
                 // a line in the log: they shake once it shows there. a balloon (a shout across the street) shows at once
                 speakingPieceIndex={isMonitorAlways && !isLogBuilt && !(speech && speech.isShout) ? undefined : speakingPieceIndex}
+                // how long their line is: their shake lasts in step with it (B1)
+                speakingLineLength={((speech && speech.text) || (dialogueLog.length ? dialogueLog[dialogueLog.length - 1].text : "") || "").length}
+                isSwirling={isSwirling}
                 isWindowOpen={isWindowOpen}
                 isPaused={isPaused}
                 gameManager={gameManager.current}

@@ -74,6 +74,7 @@ export const CAMPAIGN_SECTIONS: Array<CampaignSection> = [
     levelId: 'mapLab',
     radio: radioCall('radio.mapLab')
   },
+  { label: 'Lab', levelId: 'labBeforeTrap' }, // the walking Lab first, a must: the powers chosen there are the ones to the end
   { label: 'Lab trap', levelId: 'labTrap' },
   { label: 'Sewer 1', levelId: 'sewer1' },
   { label: 'Sewer 2', levelId: 'sewer2' },

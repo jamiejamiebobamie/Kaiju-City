@@ -21,12 +21,13 @@ export const STORY: Array<StorySection> = [
   { label: 'Aquarium', scenes: ['aquarium.intro', 'aquarium.stopScream', 'aquarium.toCreatures', 'recruit.choice'], rival: 'mermaid' },
   { label: 'Peninsula 4', scenes: ['radio.peninsula4'] },
   { label: 'Map to Lab', scenes: ['radio.mapLab'] },
+  { label: 'Lab (before the trap, no Agent)', scenes: ['lab.beforeTrap'] },
   { label: 'Lab trap', scenes: ['labTrap.trap', 'labTrap.chase'] },
   { label: 'Sewer 1', scenes: ['sewer1.walkIn', 'sewer1.reveal'] },
   { label: 'Sewer 2', scenes: ['sewer2.walkIn'] },
   { label: 'Lab fight', scenes: ['lab.showdown', 'lab.transformation'] },
   { label: 'Final battle', scenes: ['radio.final', 'peninsula.finalTurn', 'peninsula.finalTurnAlone'] }, // (the giant's lines, finalBattle.*, are kept for GIANT_KAIJU.isFinalBattle)
-  { label: 'Visiting a battleground (any map walk, after its fight)', scenes: ['visit'] }
+  { label: 'Visiting a battleground (any map walk, after its fight)', scenes: ['visit', 'training.offer', 'training.start', 'sparring.offer', 'sparring.start'] }
 ];
 
 // the bystanders, in the order they are met, and how they are spoken of

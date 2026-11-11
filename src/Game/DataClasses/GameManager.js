@@ -1984,11 +1984,37 @@ export class GameManager {
     // but the HUDs stay up and the log stays closed
     startCutscene(steps, { isMidFight = false, isPortalWalk = false } = {}) {
         if (!isPortalWalk) this.endTravelForScene();
+        if (!isMidFight && !isPortalWalk) this.spreadOutForScene();
         // in the log, a conversation in a wide shot cuts to each speaker: first it holds on the whole scene
         const [first] = steps;
         if (getIsDialogueLog() && first && first.speech && first.shot && first.shot.isWide) steps = [{ shot: { isWide: true }, ms: DIALOGUE.establishMs }, ...steps];
         this.cutscene = { steps, index: -1, msLeft: 0, isMidFight };
         this.nextCutsceneStep();
+    }
+
+    /*
+        A scene starting (Jamie): two people standing one over the other (the same tile, or just above or below each other)
+        would hide one behind the other as they talk. the later one steps to a free tile beside.
+    */
+    spreadOutForScene() {
+        const board = this.gameBoardManager;
+        const { colStep, rowStep, scale } = this.level.grid;
+        const people = this.getPieces().filter(piece => piece.isOnTiles && piece.isVisible !== false && !piece.isDead && !piece.isGiant && piece.avatar != 'kaiju');
+        const taken = new Set(people.map(piece => `${piece.getTileIndex().i} ${piece.getTileIndex().j}`));
+        const getIsOver = (a, b) => Math.abs(a.charLocation.x - b.charLocation.x) < colStep * scale * 0.9 && Math.abs(a.charLocation.y - b.charLocation.y) < rowStep * scale * 1.2;
+        people.forEach((piece, k) => {
+            if (!people.slice(0, k).some(other => getIsOver(piece, other))) return;
+            const here = piece.getTileIndex();
+            const beside = board.getAdjacentTileIndices(here).filter(board.getIsInBounds)
+                .filter(tile => !taken.has(`${tile.i} ${tile.j}`) && tile.i != here.i) // to the side, not just up or down
+                .find(tile => {
+                    const spot = board.getCharXAndYFromTileIndex(tile);
+                    return !people.some(other => other !== piece && getIsOver({ charLocation: spot }, other));
+                });
+            if (!beside) return;
+            taken.add(`${beside.i} ${beside.j}`);
+            piece.initCharLocation(true, beside);
+        });
     }
 
     nextCutsceneStep() {
@@ -2334,7 +2360,7 @@ export class GameManager {
         const [, teammate] = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
         if (!teammate) return;
         // each visit line by whoever the dialogue file says (the teammate, as written)
-        const visitSteps = getSpokenLines('visit').map(({ speaker, text }) => {
+        const visitSteps = getSpokenLines(this.level.visitScene || 'visit').map(({ speaker, text }) => {
             const { name, piece } = this.getLineSpeaker(speaker);
             const over = piece || teammate;
             return { shot: { isWide: true }, ms: getSpeechMs(text), speech: over ? this.getSpeechOver(over, name, text) : { name, text } };

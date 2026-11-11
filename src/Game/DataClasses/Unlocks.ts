@@ -38,3 +38,6 @@ export const resetUnlocks = () => {
 export const getRecruitChoices = (): Record<string, string> => load(CHOICES_KEY, '{}');
 
 export const saveRecruitChoice = (id: string, choice: string) => save(CHOICES_KEY, { ...getRecruitChoices(), [id]: choice });
+
+// a new playthrough: the last one's choices are gone (Jamie)
+export const clearRecruitChoices = () => save(CHOICES_KEY, {});

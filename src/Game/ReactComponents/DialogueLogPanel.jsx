@@ -267,6 +267,13 @@ const ContinueBar = styled.button`
 `;
 
 // the key that presses a log button: orange, a color no speaker's name uses
+// one option: [ENTER] rather than 1 (Jamie). gameboy has no brackets: these are a monospace's
+const Bracket = styled.span`
+  font-family: "Courier New", Courier, monospace;
+  font-weight: bold;
+`;
+const EnterKey = () => <><Bracket>[</Bracket>ENTER<Bracket>]</Bracket></>;
+
 const KeyNumber = styled.span`
   color: #c24f00;
 `;
@@ -356,9 +363,9 @@ export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, ac
           );
         })}
       </Scroll>
-      {isBuilt && isWaiting && !actions.length && <ContinueBar data-enter data-choice-key={1} onClick={event => { event.stopPropagation(); onContinue(); }}><span>Continue &#9654;</span><KeyNumber>1</KeyNumber></ContinueBar>}
+      {isBuilt && isWaiting && !actions.length && <ContinueBar data-enter data-choice-key={1} onClick={event => { event.stopPropagation(); onContinue(); }}><span>Continue &#9654;</span><KeyNumber><EnterKey /></KeyNumber></ContinueBar>}
       {isBuilt && actions.map(({ text, onClick, isEnter }, index) => (
-        <ContinueBar key={text} data-enter={isEnter ? "" : undefined} data-choice-key={index + 1} onClick={event => { event.stopPropagation(); onClick(); }}><span>{text} &#9654;</span><KeyNumber>{index + 1}</KeyNumber></ContinueBar>
+        <ContinueBar key={text} data-enter={isEnter ? "" : undefined} data-choice-key={index + 1} onClick={event => { event.stopPropagation(); onClick(); }}><span>{text} &#9654;</span><KeyNumber>{actions.length == 1 ? <EnterKey /> : index + 1}</KeyNumber></ContinueBar>
       ))}
       {isBuilt && footer && <Footer onClick={event => event.stopPropagation()}>{footer}</Footer>}
     </Panel>

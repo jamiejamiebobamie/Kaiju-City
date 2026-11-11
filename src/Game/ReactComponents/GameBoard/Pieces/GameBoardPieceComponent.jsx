@@ -420,7 +420,9 @@ const STATUS_LOOK = {
   spurned: { icon: "fa-frown-o", color: "#ff4040" },
   charmed: { icon: "fa-heart", color: "#ff7ad9", word: "Charmed!" }
 };
-const STATUS_WORD_GAP_MS = 450; // two words at once: the second a moment after the first
+const STATUS_WORD_GAP_MS = 450;
+// a speaker's shake: as long as the line (per letter, within bounds), then a rest, and again (Jamie)
+const SPEAK_SHAKE = { msPerChar: 45, minMs: 600, maxMs: 3000, restMs: 4000 }; // two words at once: the second a moment after the first
 
 const StatusRow = styled.div`
   position: absolute;
@@ -503,8 +505,28 @@ export const GameBoardPieceComponent = ({
   cleanSlateCount = 0, // goes up each time their Dispel wipes their other passives
   isPlayer = false,
   hitLives = undefined, // health without the passives' (Haunt's Lichdom): what the "-1" and the shake follow
-  isFaded = false
+  isFaded = false,
+  speakingLineLength = 0
 }) => {
+  // talking: they shake as long as their line takes, then rest a moment, and again (Jamie)
+  const [isShaking, setIsShaking] = useState(false);
+  useEffect(() => {
+    if (!isSpeaking) {
+      setIsShaking(false);
+      return;
+    }
+    const shakeMs = Math.min(Math.max(speakingLineLength * SPEAK_SHAKE.msPerChar, SPEAK_SHAKE.minMs), SPEAK_SHAKE.maxMs);
+    let timeout;
+    const shake = () => {
+      setIsShaking(true);
+      timeout = setTimeout(() => {
+        setIsShaking(false);
+        timeout = setTimeout(shake, SPEAK_SHAKE.restMs);
+      }, shakeMs);
+    };
+    shake();
+    return () => clearTimeout(timeout);
+  }, [isSpeaking, speakingLineLength]);
   const numberAnchor = React.useRef(null);
   const [modifierText, setModifierText] = useState([]);
   const [isDamaged, setIsDamaged] = useState(null);
@@ -613,7 +635,7 @@ export const GameBoardPieceComponent = ({
           })}
         </StatusRow>
       )}
-      <Character isDamaged={isDamaged && !isQuiet} isSpeaking={isSpeaking} style={portalMask ? { clipPath: getPortalClip(portalMask, charLocation, pieceScale) } : undefined}>
+      <Character isDamaged={isDamaged && !isQuiet} isSpeaking={isSpeaking && isShaking} style={portalMask ? { clipPath: getPortalClip(portalMask, charLocation, pieceScale) } : undefined}>
         {isFalling ? <FallingFrame src="/levels/npcs/agentFalling.png" /> : <RewardPulse $isOn={isRewardPulse}><GhostForm $isGhost={isGhostForm}><SpriteSheet
           avatar={avatar}
           spriteSheetSrc={spriteSheetSrc}

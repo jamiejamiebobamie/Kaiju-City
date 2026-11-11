@@ -26,12 +26,21 @@ const getRestingBody = ({ x, y }, pieceScale, rowPx) => ({
   vx: 0, vy: 0, vHeight: 0, spin: 0, angle: 90, isResting: true
 });
 
+// the first fight swirling away into the Street (Jamie): the map spins, zooms and blurs into the dark
+const boardSwirl = keyframes`
+  from { transform: rotate(0deg) scale(1); filter: blur(0); opacity: 1; }
+  to { transform: rotate(540deg) scale(2.6); filter: blur(12px); opacity: 0; }
+`;
+
 const Board = styled.div`
   position: absolute;
   inset: 0;
   overflow: hidden;
-  cursor: default;
+  /* no pointer over the play, where nothing can be clicked (Jamie); the scene's buttons and hotspots set their own */
+  cursor: none;
   touch-action: manipulation;
+  & button, & [data-scene-button] { cursor: pointer; }
+  ${props => props.$isSwirling && css`animation: ${boardSwirl} 1.3s ease-in forwards;`}
 `;
 
 // a train rattling through. sized a little over the view, so its edges never show.
@@ -694,7 +703,7 @@ const MOVEMENT_KEYS = ["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowLeft", "
 
 const getIsTouchScreen = () => window.matchMedia("(pointer: coarse)").matches;
 
-export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = undefined, isWindowOpen = true, isPaused, gameManager, level, activePhases, isWholeScene, playWindow, isShowingWindowSize, isEditingTiles, isMouseLook, isEnemyZoom, isSlowMotion, isTeamColors, speech, recruitScene, recruitChoice, onChooseRecruit, onHotspot }) => {
+export const GameBoard = ({ speakingLineLength = 0, isSwirling = false, speakingPieceIndex = undefined, choiceFromRef = undefined, isWindowOpen = true, isPaused, gameManager, level, activePhases, isWholeScene, playWindow, isShowingWindowSize, isEditingTiles, isMouseLook, isEnemyZoom, isSlowMotion, isTeamColors, speech, recruitScene, recruitChoice, onChooseRecruit, onHotspot }) => {
   // redraws the pieces when the game updates. the tiles draw themselves.
   useSyncExternalStore(gameManager.subscribeToBoard, gameManager.getBoardRevision);
   const pieces = gameManager.getPieces();
@@ -1135,6 +1144,7 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
       isShowHealthBarOnComponent={p.isShowHealthBarOnComponent}
       isQuiet={!!recruitScene}
       isSpeaking={p.pieceIndex === speakingPieceIndex}
+      speakingLineLength={speakingLineLength}
       isGhostForm={!!p.isGhostForm}
       portalMask={p.portalMask}
       isOnBoard={p.isOnTiles !== false}
@@ -1248,6 +1258,7 @@ export const GameBoard = ({ speakingPieceIndex = undefined, choiceFromRef = unde
   return (
     <Board
       ref={boardRef}
+      $isSwirling={isSwirling}
       style={recruitScene ? { cursor: "pointer" } : undefined}>
       {isPaused && <PauseModal />}
       <SceneShake $isShaking={!isPaused && level.shakePhases.some(id => activePhases.includes(id))}>

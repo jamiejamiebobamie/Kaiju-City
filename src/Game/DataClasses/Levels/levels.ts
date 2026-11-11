@@ -171,6 +171,7 @@ export type LevelConfig = {
   isWalkingLevel: boolean; // a scene to walk through: no powers, and no HUDs
   isDepowered?: boolean; // after the Lab trap: the player's side has no glow
   visitLines?: Array<string>; // a battleground visited again: what the teammate says on arrival
+  visitScene?: string; // the dialogue scene of those words ('visit' if not given)
   training?: { recruit: string; spot: { x: number; y: number }; levelId: string; sparringLevelId: string }; // a visit: the recruit's offer of training, and where it starts
   isTraining?: boolean; // a recruit's training fight: one on one, for their power
   greeting?: { text: string; speechSpot: { x: number; y: number }; repeatMs: number; nearRows: number }; // a scene that opens with the Agent calling the team over
@@ -903,6 +904,18 @@ export const updateMapWalkSites = (visitedIds: Array<string>) => {
 updateMapWalkSites([]);
 
 // the Lab's fight scene, before the fight: where the Agent takes the player's powers back
+// the Lab before the trap (Jamie, 2026-11-10): the walking Lab, a must on the way, the Agent not there. the teammate says
+// to look for him, and to choose powers now: who knows when there'll be another chance. the way out leads to the trap.
+LEVELS.labBeforeTrap = {
+  ...LEVELS.labIntro,
+  id: 'labBeforeTrap',
+  name: 'Lab (before the trap)',
+  extras: [],
+  visitScene: 'lab.beforeTrap',
+  visitLines: getDialogueTexts('lab.beforeTrap'),
+  sceneElements: LEVELS.labIntro.sceneElements.filter(({ id }) => !['agentWelcome', 'agentNervous', 'specimenTank'].includes(id))
+};
+
 LEVELS.labTrap = {
   ...LEVELS.lab,
   id: 'labTrap',

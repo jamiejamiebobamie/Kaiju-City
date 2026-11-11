@@ -33,6 +33,10 @@ export const getSkillUnlock = (element: string) => SKILL_UNLOCKS.find(skill => s
 
 export const getIsSkillOpen = (element: string) => !getSkillUnlock(element) || getUnlocks().includes(getSkillId(element));
 
+// a first play (Jamie): no power opened in any play before. it skips the picker, with these to start
+export const FIRST_PLAY_POWERS = ['Bubble', 'Fire', 'Lightning'];
+export const getIsFirstPlay = () => !SKILL_UNLOCKS.some(({ element }) => getUnlocks().includes(getSkillId(element)));
+
 // a power opened by the story itself (the Street's Teleport)
 export const unlockSkill = (element: string) => addUnlock(getSkillId(element));
 
