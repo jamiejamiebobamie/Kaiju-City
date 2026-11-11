@@ -171,6 +171,7 @@ export type LevelConfig = {
   grid: HexGrid;
   walkableTiles: Array<TileIndex>;
   tileSets?: Record<string, Array<TileIndex>>; // the level's walkable tiles for each phase
+  radarTiles?: Array<TileIndex>; // the Peninsula: land beyond the map, for the radar's outline (Jamie, G13)
   isWalkingLevel: boolean; // a scene to walk through: no powers, and no HUDs
   isDepowered?: boolean; // after the Lab trap: the player's side has no glow
   visitLines?: Array<string>; // a battleground visited again: what the teammate says on arrival
@@ -280,7 +281,8 @@ export const CHARACTER_HEIGHT_PX = CHARACTER_HEIGHT;
 // the files made by the level editor: /level-editor can import these to change them
 const buildLevel = (editorFile, name, accentColor, foregroundLayers = [], isWalkingLevel = false): LevelConfig => {
   const { id, sceneWidth, sceneHeight, grid, tileLinks = [], cameraZoom = 1 } = editorFile;
-  const { spawn = [], goal = [], kaijuEntry, ...tileSets } = editorFile.tileSets;
+  // 'radar': the Peninsula's land on the radar beyond the map (bridges, the Bay), painted in Edit tiles: not walked on
+  const { spawn = [], goal = [], kaijuEntry, radar = [], ...tileSets } = editorFile.tileSets;
   const pieceScale = (grid.rowStep * CHARACTER_HEIGHT_IN_ROWS) / CHARACTER_HEIGHT;
   return {
     id,
@@ -298,6 +300,7 @@ const buildLevel = (editorFile, name, accentColor, foregroundLayers = [], isWalk
     },
     walkableTiles: Object.values(tileSets)[0] as Array<TileIndex>,
     tileSets,
+    radarTiles: radar,
     isWalkingLevel,
     tileLinks,
     spawnTiles: spawn,

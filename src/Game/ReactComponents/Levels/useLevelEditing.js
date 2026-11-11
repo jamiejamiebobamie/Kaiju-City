@@ -155,6 +155,18 @@ export const useLevelEditing = getStartingLevel => {
     }
   };
 
+  // painting from a tile worked out elsewhere (the radar's own view, G13)
+  const startPaintingAt = tile => {
+    if (!tile) return;
+    isPainting.current = true;
+    isRemoving.current = tiles.some(t => getKey(t) == getKey(tile));
+    setTile(tile);
+  };
+
+  const continuePaintingAt = tile => {
+    if (isPainting.current && tile && getKey(tile) != lastTileKey.current) setTile(tile);
+  };
+
   const startPainting = e => {
     const tile = getTileFromEvent(e, e.currentTarget);
     if (!tile) return;
@@ -202,6 +214,8 @@ export const useLevelEditing = getStartingLevel => {
     addTileSet,
     startPainting,
     continuePainting,
+    startPaintingAt,
+    continuePaintingAt,
     stopPainting,
     statusText
   };

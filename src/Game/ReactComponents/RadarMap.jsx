@@ -38,13 +38,36 @@ const Canvas = styled.canvas`
   background: radial-gradient(circle at 50% 50%, #071a0e 0%, #020805 75%);
 `;
 
+// where the Peninsula sits on a radar screen this size: its scale, and its top left corner
+export const getRadarPlacement = (width, height) => {
+  const { width: mapWidth, height: mapHeight } = PENINSULA.world;
+  const scale = (height * RADAR.mapShare) / mapHeight;
+  return { scale, left: width / 2 - (mapWidth * scale) / 2, top: height / 2 - (mapHeight * scale) / 2 };
+};
+
 /*
-  The Peninsula's outline, from its land tiles' outer edges, in the Peninsula's own pixels. It is open where the land
-  goes on out of the shot: along the bottom of its foot, and at the ends of the bridges. 'runs' carry those on:
-  a corner, and the way it goes.
+  The Peninsula's outline, from its land tiles' outer edges, in the Peninsula's own pixels.
+  With radar tiles (Jamie, G13: painted in Edit tiles, beyond the map), the land is the map's tiles and those, and the
+  outline is all of their outer edges, hex by hex. Without: it is open where the land goes on out of the shot, along the
+  bottom of its foot and at the ends of the bridges, and 'runs' carry those on: a corner, and the way it goes.
 */
-const getOutline = () => {
+const getOutline = (radarTiles = PENINSULA.radarTiles || []) => {
   const { grid, walkableTiles } = PENINSULA;
+  if (radarTiles.length) {
+    const halfWidth = (grid.colStep * grid.scale * 2) / 3;
+    const halfHeight = (grid.rowStep * grid.scale) / 2;
+    const getCorners = ({ x, y }) => [
+      { x: x + halfWidth, y }, { x: x + halfWidth / 2, y: y + halfHeight }, { x: x - halfWidth / 2, y: y + halfHeight },
+      { x: x - halfWidth, y }, { x: x - halfWidth / 2, y: y - halfHeight }, { x: x + halfWidth / 2, y: y - halfHeight }
+    ];
+    const keys = new Set(walkableTiles.map(({ i, j }) => `${i} ${j}`));
+    const land = [...walkableTiles, ...radarTiles.filter(({ i, j }) => !keys.has(`${i} ${j}`))];
+    const edges = getPerimeterEdges(land).map(({ tile, edge }) => {
+      const corners = getCorners(getTileCenter(grid, tile));
+      return [corners[edge], corners[(edge + 1) % 6]];
+    });
+    return { edges, runs: [] };
+  }
   const halfWidth = (grid.colStep * grid.scale * 2) / 3;
   const halfHeight = (grid.rowStep * grid.scale) / 2;
   // clockwise from the right-hand corner: edge n runs from corner n to corner n + 1
@@ -115,7 +138,8 @@ const makeGrain = () => {
 };
 
 // 'dotCount': Kaiju in the coming fight. 'alarmAtMs': when the siren began (no dots before it, or without one)
-export const RadarMap = ({ dotCount = 0, alarmAtMs = undefined }) => {
+// 'radarTiles': the land beyond the map as it is being painted (Edit tiles); else the Peninsula's own
+export const RadarMap = ({ dotCount = 0, alarmAtMs = undefined, radarTiles = undefined, className = undefined }) => {
   const canvasRef = useRef(null);
   const alarmRef = useRef(alarmAtMs);
   alarmRef.current = alarmAtMs;
@@ -124,7 +148,7 @@ export const RadarMap = ({ dotCount = 0, alarmAtMs = undefined }) => {
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
-    const outline = getOutline();
+    const outline = getOutline(radarTiles);
     const grain = makeGrain();
     const grainPattern = ctx.createPattern(grain, "repeat");
     const { width: mapWidth, height: mapHeight } = PENINSULA.world;
@@ -141,9 +165,7 @@ export const RadarMap = ({ dotCount = 0, alarmAtMs = undefined }) => {
       }
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
       ctx.clearRect(0, 0, width, height);
-      const scale = (height * RADAR.mapShare) / mapHeight;
-      const left = width / 2 - (mapWidth * scale) / 2;
-      const top = height / 2 - (mapHeight * scale) / 2;
+      const { scale, left, top } = getRadarPlacement(width, height);
       const toScreen = ({ x, y }) => ({ x: left + x * scale, y: top + y * scale });
       const lab = toScreen(LAB_SPOT);
       const reach = Math.hypot(width, height);
@@ -260,7 +282,7 @@ export const RadarMap = ({ dotCount = 0, alarmAtMs = undefined }) => {
     };
     frame = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(frame);
-  }, [dotCount]);
+  }, [dotCount, radarTiles]);
 
-  return <Canvas ref={canvasRef} />;
+  return <Canvas ref={canvasRef} className={className} />;
 };

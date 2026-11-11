@@ -26,7 +26,7 @@ export const rescaleLevelTiles = (level, factor: number) => {
     for (let j = 0; j < grid.rows; j++) allTiles.push({ i, j });
   }
 
-  const { spawn = [], goal = [], kaijuEntry, ...walkableSets } = level.tileSets;
+  const { spawn = [], goal = [], kaijuEntry, radar, ...walkableSets } = level.tileSets;
   const tileSets = Object.fromEntries(Object.entries(walkableSets).map(([name, tiles]: [string, Array<TileIndex>]) => {
     const oldKeys = new Set(tiles.map(getKey));
     return [name, allTiles.filter(tile => {
@@ -49,7 +49,8 @@ export const rescaleLevelTiles = (level, factor: number) => {
   return {
     ...level,
     grid,
-    tileSets: { ...tileSets, ...(kaijuEntry ? { kaijuEntry: snapAll(kaijuEntry) } : {}), spawn: snapAll(spawn), goal: snapAll(goal) },
+    // the radar's tiles (beyond the map) are kept as they are
+    tileSets: { ...tileSets, ...(kaijuEntry ? { kaijuEntry: snapAll(kaijuEntry) } : {}), ...(radar ? { radar } : {}), spawn: snapAll(spawn), goal: snapAll(goal) },
     tileLinks: (level.tileLinks || []).map(([a, b]) => [snap(a), snap(b)])
   };
 };
