@@ -53,6 +53,9 @@ export const TRAINING_RETURN = { cardMs: 2600 };
 
 // the Hazmat Worker, once unlocked, walks and fights with the team like a recruit (Jamie): his powers, an orange outline.
 // Aegis (shield), Heal and Dispel (bubble): no attack power (Jamie, playtest 18)
+// taking over an ally (updateTakeOver): the camera's move in on them, and how long the fight holds there
+const TAKE_OVER = { panMs: 600, holdMs: 1800 };
+
 // the Aquarium: within this many rows of the stairs, the player is going up for the Mermaid (getIsAtAquariumStairs)
 const AQUARIUM_STAIRS_NEAR_ROWS = 2.5;
 
@@ -3225,6 +3228,14 @@ export class GameManager {
         next.escapeTile = undefined;
         next.brainAction = undefined;
         this.controlledPiece = next;
+        // a close-up on them, the fight held a moment, and its notice (Jamie, playtest 19)
+        const name = next == this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex())[1] && !next.isRecruit
+            ? this.getTeammateName() : ((ROSTER.find(({ id }) => id == next.avatar) || {}).name || (next.avatar == 'hazmat' ? 'Hazmat Worker' : next.avatar));
+        this.takeOverText = `Now playing as ${name}`;
+        this.takeOverCount = (this.takeOverCount || 0) + 1;
+        const rowPx = this.getGhostRowPx();
+        const closeOn = { point: { x: next.charLocation.x, y: next.charLocation.y - CUTSCENE.shotHeadRows * rowPx * 0.5 }, zoomScale: PENINSULA.cameraZoom * CUTSCENE.outcomeZoomScale * 0.8, isPeninsulaSized: true, panMs: TAKE_OVER.panMs };
+        this.startCutscene([{ shot: closeOn, ms: TAKE_OVER.holdMs }], { isMidFight: true });
     }
 
     // the recruits who died in this fight (the permadeath dev option: gone for good)
@@ -3425,6 +3436,8 @@ export class GameManager {
             objectiveText: this.objective ? this.objective.text : '',
             isObjectiveKaijuCount: !!this.objective && !!this.objective.isKaijuCount,
             objectiveCount: this.objectiveCount,
+            takeOverCount: this.takeOverCount || 0,
+            takeOverText: this.takeOverText || '',
             isPaused: this.isPaused,
             activePhases: this.getActivePhases(),
             isWideShot: this.getIsWideShot(),

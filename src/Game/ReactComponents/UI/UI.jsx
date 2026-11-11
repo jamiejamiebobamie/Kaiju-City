@@ -43,6 +43,16 @@ export const UI = ({
   isPaused
 }) => {
   const hudsRef = useRef(null);
+  const getHudOrder = (players, recruits) => {
+    const all = [
+      ...players.map((pd, i) => ({ pd, playerIndex: i, isRecruit: false })),
+      ...(recruits || []).map((pd, i) => ({ pd, playerIndex: players.length + i, isRecruit: true }))
+    ];
+    const alive = all.filter(({ pd }) => !pd.isDead);
+    if (!alive.length) return all.slice(0, 1); // the fight is lost: the player's, as it ended
+    const controlled = alive.find(({ pd }) => pd.isControlled);
+    return controlled ? [controlled, ...alive.filter(hud => hud !== controlled)] : alive;
+  };
   const [hudScale, setHudScale] = useState(1);
   const [, setDisplayString] = useState(null);
 
@@ -62,22 +72,15 @@ export const UI = ({
       </TopBar>
       {/* paused: everything fades, and only the word "Paused" shows */}
       <Huds ref={hudsRef} style={{ transform: `scale(${hudScale})` }}>
-        {isShowingHuds && players.map((pd, i) => <PlayerUI
-          key={i}
+        {/* the dead's HUDs go, and the rest move up; the one the player plays as is first, at the player's HUD size
+            (Jamie, playtest 19; the HUDs breaking apart and falling like drones is for the UI epic) */}
+        {isShowingHuds && getHudOrder(players, recruits).map(({ pd, playerIndex, isRecruit }, k) => <PlayerUI
+          key={isRecruit ? `recruit ${playerIndex}` : playerIndex}
           pd={pd}
           setDisplayString={setDisplayString}
-          playerIndex={i}
-          isTeammate={i > 0}
-          isPaused={isPaused}
-        />)}
-        {/* recruits fight on their own: their HUDs are teammate-sized, without keys */}
-        {isShowingHuds && (recruits || []).map((pd, i) => <PlayerUI
-          key={`recruit ${i}`}
-          pd={pd}
-          setDisplayString={setDisplayString}
-          playerIndex={players.length + i}
-          isTeammate={true}
-          isRecruit={true}
+          playerIndex={playerIndex}
+          isTeammate={k > 0}
+          isRecruit={isRecruit}
           isPaused={isPaused}
         />)}
       </Huds>

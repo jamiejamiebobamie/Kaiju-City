@@ -267,6 +267,17 @@ const RewardNotice = styled(ObjectiveNotice)`
     0 0 2.5cqw #ff0040;
 `;
 
+// playing on as an ally (the take-over dev option): the objective's title, in blue
+const TakeOverNotice = styled(ObjectiveNotice)`
+  top: 38%;
+  color: #6fd0ff;
+  text-shadow:
+    0.18cqw 0 0 black, -0.18cqw 0 0 black, 0 0.18cqw 0 black, 0 -0.18cqw 0 black,
+    -0.24cqw 0.24cqw 0 #0a4a7a, -0.36cqw 0.36cqw 0 #083a60, -0.48cqw 0.48cqw 0 #062a46,
+    -0.6cqw 0.6cqw 0 #041c30, -0.72cqw 0.72cqw 0 black, -0.9cqw 0.9cqw 0.6cqw rgba(0, 0, 0, 0.8),
+    0 0 1.6cqw rgba(64, 180, 255, 0.6);
+`;
+
 // the first fight's swirl into the Street (A2): the city at the Peninsula's north end, and the times
 const CITY_SPOT = { x: 210, y: 70 };
 const SWIRL = { panMs: 1100, swirlMs: 1300 };
@@ -486,6 +497,7 @@ const FinaleCredits = ({ title, onDone }) => {
 export const Game = ({ handleClickHome, triggerTransition }) => {
   const { selectedAvatar, setSelectedAvatar, selectedTeammate, setSelectedTeammate, selectedDifficulty, settingsManager } = useContext(GlobalSettingsContext);
   const { objectiveText, isObjectiveKaijuCount, objectiveCount } = useSnapshot(gameUiStore);
+  const { takeOverCount, takeOverText } = useSnapshot(gameUiStore);
   const { isPaused, winner, isPlayerDead, players, recruits, kaijuKillCount, kaijuToWin, activePhases, isWideShot, isCutscene, unlockMessage, unlockImage, speech, recruitScene, dialogueLog, isDialogueWaiting, isTalking, isRecruitTalkDone, speakingPieceIndex } = useSnapshot(gameUiStore);
   const [isRadioAlarm, setIsRadioAlarm] = useState(false); // the radio call has told of Kaiju coming: the siren glows
   const recruitChoiceFrom = useRef(undefined); // where the pressed Recruit or Terminate button was, for its word to fly from
@@ -715,6 +727,15 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
 
   // a new objective: its title on the screen a while (Jamie: in the style of "Kaiju Terminated", in green)
   const [objectiveNotice, setObjectiveNotice] = useState<{ key: number; text: string } | undefined>(undefined);
+  // the player down, they play on as an ally (dev option): its notice, in blue (Jamie, playtest 19)
+  const [takeOverNotice, setTakeOverNotice] = useState<{ key: number; text: string } | undefined>(undefined);
+  useEffect(() => {
+    if (!takeOverCount) return;
+    setTakeOverNotice({ key: takeOverCount, text: takeOverText });
+    const timeout = setTimeout(() => setTakeOverNotice(undefined), OBJECTIVE_NOTICE_MS);
+    return () => clearTimeout(timeout);
+  }, [takeOverCount]);
+
   // only when it changes (Jamie, playtest 19): not the same one again on a new level (the carried "Go to the Lab"),
   // and not one already shown in this fight (the Aquarium's "Survive the Flood" coming back)
   const lastNoticeText = useRef("");
@@ -1493,6 +1514,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               {isWiping && <ScreenClip><BlackWipe /></ScreenClip>}
               {/* inside the Kaiju-Vision screen itself (Jamie), not over the casing */}
               {objectiveNotice && createPortal(<ObjectiveNotice key={objectiveNotice.key}>{objectiveNotice.text}</ObjectiveNotice>, document.querySelector("[data-play-screen]") || document.body)}
+              {takeOverNotice && createPortal(<TakeOverNotice key={takeOverNotice.key}>{takeOverNotice.text}</TakeOverNotice>, document.querySelector("[data-play-screen]") || document.body)}
               {rewardNotice && !rewardNotice.power && createPortal(<RewardNotice key={rewardNotice.key}>{rewardNotice.text}</RewardNotice>, document.querySelector("[data-play-screen]") || document.body)}
               {rewardNotice && rewardNotice.power && (() => {
                 const look = getPowerLook(rewardNotice.power);

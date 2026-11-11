@@ -430,7 +430,8 @@ const SPEAK_SHAKE = { msPerChar: 45, minMs: 600, maxMs: 3000, restMs: 4000 }; //
 const StatusRow = styled.div`
   position: absolute;
   left: -15px;
-  top: ${props => props.$isAboveBar ? "-84px" : "-70px"};
+  /* lower, nearer the head (Jamie, playtest 19); over a health bar, right on top of it */
+  top: ${props => props.$isAboveBar ? "-80px" : "-60px"};
   width: 40px;
   display: flex;
   justify-content: center;

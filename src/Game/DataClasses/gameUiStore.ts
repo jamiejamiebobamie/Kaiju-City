@@ -12,6 +12,8 @@ export const gameUiStore = proxy({
   objectiveText: '', // what the player is to do now: '' for nothing (Objectives.ts)
   isObjectiveKaijuCount: false, // 'Defeat the Kaiju': the display shows the count
   objectiveCount: 0, // a new objective each time it goes up
+  takeOverCount: 0, // the player plays on as an ally: each time it goes up, its notice shows (takeOverText)
+  takeOverText: '',
   isPaused: false,
   activePhases: [],
   isWideShot: false,
