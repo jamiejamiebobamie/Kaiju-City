@@ -36,6 +36,8 @@ export class PlayerInputHandler {
 
     // the pressed direction, eg. 'up', 'up right', 'left'. 'idle' if no keys are pressed.
     getPressedDir() {
+        const piece = this.gameManagerProxy.getPlayerPiece();
+        if (piece && (piece.isHeld || piece.getIsRewardPulse())) return 'idle'; // still through a reward's glow (Jamie)
         const pressedDir = this.getHeldDir();
         return this.gameManagerProxy.getPlayerPiece().isCharmed ? REVERSED_DIRS[pressedDir] : pressedDir;
     }

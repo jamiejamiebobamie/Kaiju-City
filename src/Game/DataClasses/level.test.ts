@@ -2136,9 +2136,10 @@ describe('visiting battlegrounds from the map', () => {
     gm.initGame();
     expect(gm.rivalPiece).toBeUndefined();
     expect(gm.trainSchedule).toBeUndefined();
+    // nothing to train here (no recruit, no sparring): only "Not much to do here..." (playtest 17, F4)
     expect(gm.speech.text).toMatch(/Not much to do here/);
-    while (gm.cutscene && gm.speech.text.startsWith('Not')) gm.stepPieces();
-    expect(gm.speech.text).toMatch(/good place to train/);
+    while (gm.cutscene && gm.speech && gm.speech.text.startsWith('Not')) gm.stepPieces();
+    expect((gm.speech && gm.speech.text) || '').not.toMatch(/good place to train/);
     expect(LEVELS['visit-rapidTransit'].exit).toBeDefined();
   });
 

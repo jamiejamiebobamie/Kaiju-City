@@ -775,6 +775,10 @@ export class GameBoardPieceBase {
             const livesNewVal = this.lives - remainingDmg;
             // constrain health to [0, this.maxLives]
             this.lives = Math.max(Math.min(this.maxLives, livesNewVal), 0);
+            // training points (sparring's temporary health, on top) go first, and for good: no healing back (Jamie)
+            if (!isHeal && this.trainingBase !== undefined && this.maxLives > this.trainingBase) {
+                this.maxLives = Math.max(this.trainingBase, Math.min(this.maxLives, this.lives));
+            }
 
             if (isHeal) {
                 // triggers useEffect to show

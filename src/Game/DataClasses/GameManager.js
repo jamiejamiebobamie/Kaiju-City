@@ -49,6 +49,9 @@ export const FINAL_TURN = {
 };
 
 // the Hazmat Worker, once unlocked, walks and fights with the team like a recruit (Jamie): his powers, a white outline
+// back in the battleground from a training fight won: the card shows this long before anyone speaks (Jamie)
+export const TRAINING_RETURN = { cardMs: 2600 };
+
 export const HAZMAT_RECRUIT = { abilities: ['love', 'ice', 'bubble'], color: '#ffffff' };
 
 export const PORTAL_WALK = {
@@ -209,12 +212,17 @@ export class GameManager {
     // teammate is in (Jamie: a dev toggle, on by default). Empty: they are called with the buttons, as before.
     // 'recruits': who the player has recruited this playthrough (Game.tsx keeps it in React state). Left out: the saved choices.
     // 'carriedObjective': the objective from before a detour (the walking Lab, off a map walk), which carries over
-    // 'terminated': the bystanders the player chose to terminate (Game.tsx's state). 'bonusLives': health won sparring.
-    // 'healthReward': health was just won sparring: the player and teammate glow red a while (back on the map, Jamie)
-    constructor({ level = PENINSULA, settingsManager, hasArrival = false, killsToWin = undefined, returnSpot = undefined, isRetry = false, autoRecruits = [], recruits = undefined, carriedObjective = null, terminated = [], bonusLives = 0, healthReward = false }) {
+    // 'terminated': the bystanders the player chose to terminate (Game.tsx's state). 'trainingPoints': the temporary health
+    // won sparring, the player's and the teammate's each ({ player, teammate }).
+    // 'healthReward': health was just won sparring: the player and teammate glow red a while, back in the battleground
+    // 'trainingOutcome': just back from a training fight won ({ isSparring, avatar }): what's said is about it.
+    // 'sparredHere': sparring has been done in this battleground before: the teammate asks to go again
+    constructor({ level = PENINSULA, settingsManager, hasArrival = false, killsToWin = undefined, returnSpot = undefined, isRetry = false, autoRecruits = [], recruits = undefined, carriedObjective = null, terminated = [], trainingPoints = { player: 0, teammate: 0 }, healthReward = false, trainingOutcome = undefined, sparredHere = false }) {
         this.healthReward = healthReward;
         this.terminated = terminated;
-        this.bonusLives = bonusLives;
+        this.trainingPoints = trainingPoints;
+        this.trainingOutcome = trainingOutcome;
+        this.sparredHere = sparredHere;
         this.carriedObjective = carriedObjective;
         this.objective = null; // what the player is to do now (Objectives.ts)
         this.objectiveCount = 0; // goes up with each new one: the screen shows each new one as a title
@@ -525,15 +533,14 @@ export class GameManager {
             }
         }
 
-        // health won sparring with the teammate: the player's and the teammate's both, everywhere (SPARRING, Jamie)
-        if (this.bonusLives > 0) {
-            const [player, teammate] = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
-            [player, teammate].filter(piece => !!piece && !piece.isRecruit).forEach(piece => {
-                piece.maxLives = Math.min(piece.maxLives + this.bonusLives, SPARRING.maxPlayerLives);
-                piece.lives = piece.maxLives;
-                if (this.healthReward) piece.rewardPulseUntil = SPARRING.rewardPulseMs; // their clocks start from 0 here
-            });
-        }
+        // training points won sparring (Jamie): the player's and the teammate's each, on top of their health, everywhere.
+        // they go first when hit, for good (decrementHealth); a fight starts back at the base health, plus what's left
+        this.getTrainingPieces().forEach(([piece, who]) => {
+            piece.trainingBase = piece.maxLives;
+            piece.maxLives = piece.trainingBase + Math.min(this.trainingPoints[who] || 0, SPARRING.maxPoints);
+            piece.lives = piece.maxLives;
+            if (this.healthReward) piece.rewardPulseUntil = SPARRING.rewardPulseMs; // their clocks start from 0 here
+        });
 
         // must be set before calling updateBounds
         this.gameBoardManager.setUpdateProxyProps(this.updateProxyProps);
@@ -564,7 +571,7 @@ export class GameManager {
         else if (this.level.trap) this.startTrapScene();
         else if (this.level.showdown) this.startShowdown();
         else if (this.level.walkIn) this.startWalkInScene();
-        else if (this.level.visitLines) this.startVisitScene();
+        else if (this.level.visitLines) this.queueVisitScene();
         else if (this.level.greeting) this.startGreeting();
         if (this.isRetry && this.cutscene) this.skipCutscene();
     }
@@ -635,6 +642,22 @@ export class GameManager {
         if (far.length) rival.walkToTile = far[Math.floor(Math.random() * far.length)];
     }
 
+    // the player and the teammate (not a recruit), with which of the training points are theirs
+    getTrainingPieces() {
+        const [player, teammate] = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
+        const isOwn = piece => !!piece && !piece.isRecruit && !this.followers.includes(piece);
+        return [[player, 'player'], [teammate, 'teammate']].filter(([piece]) => isOwn(piece));
+    }
+
+    // the training points left now, for Game.tsx to keep (one not here, like the teammate in a training fight, keeps theirs)
+    getTrainingPoints() {
+        const points = { ...this.trainingPoints };
+        this.getTrainingPieces().forEach(([piece, who]) => {
+            if (piece.trainingBase !== undefined) points[who] = Math.max(0, piece.maxLives - piece.trainingBase);
+        });
+        return points;
+    }
+
     addRival() {
         const { abilities, maxLives, moveSpeed, spot, startFacing, introSortY, isSparring } = this.level.rival;
         // sparring: the teammate, with powers of their own as in any fight
@@ -644,7 +667,7 @@ export class GameManager {
                 ...PIECES_INFO[avatar],
                 abilities: isSparring ? this.settingsManager.getThreeRandomAbilities() : this.settingsManager.getAbilitiesFromElements(abilities),
                 // the teammate sparring is as tough as they have become (their health won sparring too)
-                maxLives: isSparring ? Math.min(maxLives + this.bonusLives, SPARRING.maxPlayerLives) : maxLives,
+                maxLives: isSparring ? maxLives + Math.min(this.trainingPoints.teammate || 0, SPARRING.maxPoints) : maxLives,
                 moveSpeed
             },
             teamIndex: 1
@@ -2424,11 +2447,60 @@ export class GameManager {
         if (this.accTime >= this.nextGreetingAtMs) this.startGreeting(true);
     }
 
-    // a battleground won on before, visited from the map: the teammate has a word, then it's a walk.
-    // the battleground's recruit, walking with the team, offers to train the player in their power (training below)
+    // back from a training fight won (Jamie): the card first, and the glow if it was health; the player holds still,
+    // then the words. any other visit: the words at once
+    queueVisitScene() {
+        if (!this.trainingOutcome) {
+            this.startVisitScene();
+            return;
+        }
+        this.visitSceneAt = TRAINING_RETURN.cardMs;
+        const [player] = this.getTrainingPieces().map(([piece]) => piece);
+        if (player) player.isHeld = true;
+    }
+
+    updateQueuedVisitScene() {
+        if (this.visitSceneAt === undefined || this.accTime < this.visitSceneAt) return;
+        this.visitSceneAt = undefined;
+        this.getPieces().forEach(piece => { piece.isHeld = false; });
+        this.startVisitScene();
+    }
+
+    /*
+        A battleground won on before, visited from the map: the teammate has a word, then it's a walk (Jamie, 2026-11-10):
+        - back from sparring won: "Good job..." and Do Training again, if there's more to win; else "Not much to do here..."
+        - back from a recruit's training won: the recruit's word on the power; nothing more to do here
+        - sparred here before: "Want to go again?" and Do Training
+        - nothing to train: "Not much to do here..." only
+        - else the visit lines, and the recruit's (or the teammate's) offer
+    */
     startVisitScene() {
         const [, teammate] = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
         if (!teammate) return;
+        const teammateSays = text => ({ shot: { isWide: true }, ms: getSpeechMs(text), speech: this.getSpeechOver(teammate, this.getTeammateName(), text) });
+        const outcome = this.trainingOutcome;
+        const sparring = this.getSparringOffer();
+        const openSparring = { shot: { isWide: true }, ms: 0, onStart: () => { this.trainingLevelId = this.level.training.sparringLevelId; this.setPhase(TRAINING_PHASE, true); } };
+        const nothingHere = getDialogueLine(this.level.visitScene || 'visit').text;
+        if (outcome && outcome.isSparring) {
+            this.startCutscene(sparring ? [teammateSays(getDialogueLine('sparring.again').text), openSparring] : [teammateSays(nothingHere)]);
+            return;
+        }
+        if (outcome) {
+            const recruit = this.followers.find(piece => piece.avatar == outcome.avatar && !piece.isDead);
+            const text = getKeyedLines('training.won')[outcome.avatar];
+            const name = (ROSTER.find(({ id }) => id == outcome.avatar) || {}).name;
+            this.startCutscene(recruit && text ? [{ shot: { isWide: true }, ms: getSpeechMs(text), speech: this.getSpeechOver(recruit, name, text) }] : [teammateSays(nothingHere)]);
+            return;
+        }
+        if (sparring && this.sparredHere) {
+            this.startCutscene([teammateSays(getDialogueLine('sparring.goAgain').text), openSparring]);
+            return;
+        }
+        if (this.level.training && !sparring && !this.getTrainingOffer()) {
+            this.startCutscene([teammateSays(nothingHere)]);
+            return;
+        }
         // each visit line by whoever the dialogue file says (the teammate, as written)
         const visitSteps = getSpokenLines(this.level.visitScene || 'visit').map(({ speaker, text }) => {
             const { name, piece } = this.getLineSpeaker(speaker);
@@ -3097,6 +3169,7 @@ export class GameManager {
         this.updateObjective();
         this.updateTrappedRival();
         this.updateRoamingRival();
+        this.updateQueuedVisitScene();
         this.updateTalks();
         this.updateWalkers();
         if (this.recruitScene) return;

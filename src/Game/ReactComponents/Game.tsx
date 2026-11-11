@@ -524,8 +524,10 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const toggleRecruited = avatar => setRecruitedAvatars(list => list.includes(avatar) ? list.filter(id => id != avatar) : [...list, avatar]);
   // the bystanders terminated this playthrough (their battlegrounds offer sparring), and the health won sparring
   const [terminatedAvatars, setTerminatedAvatars] = useState<Array<string>>([]);
-  const [bonusLives, setBonusLives] = useState(0);
   const [trainingPoints, setTrainingPoints] = useState({ player: 0, teammate: 0 }); // health won sparring, each their own (F7)
+  const [sparredLevelIds, setSparredLevelIds] = useState<Array<string>>([]); // the battlegrounds sparred in (F5)
+  const trainingOutcome = useRef(undefined); // a training fight just won: the battleground, back from it, speaks of it
+  const pendingRewardText = useRef(undefined); // its card: shown once back in the battleground
   const [isSwirling, setIsSwirling] = useState(false); // the Peninsula's first fight swirls away into the Street (A2)
   const isHealthRewardDue = useRef(false); // won sparring: the next match (the walk, after) shows it
   const [rewardNotice, setRewardNotice] = useState<{ key: number; text: string } | undefined>(undefined);
@@ -614,12 +616,11 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     settingsManager.setIsTeammate(isTeammate && !isSolo);
 
     setIsDialogueLog(isMonitorAlways); // in the monitor, conversations go to the log beside it
-    const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival, killsToWin, returnSpot, isRetry, autoRecruits: isAutoRecruits ? getCallableRecruits() : [], recruits: getCallableRecruits(), carriedObjective: lastObjective.current, terminated: terminatedAvatars, bonusLives, healthReward: isHealthRewardDue.current });
-    // health just won sparring: shown on the walk, once its opening shot is over (the effect below), then done with
-    if (isHealthRewardDue.current) {
-      isHealthRewardDue.current = false;
-      rewardText.current = `${SPARRING.bonusPerWin} health gained!`;
-    }
+    const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival, killsToWin, returnSpot, isRetry, autoRecruits: isAutoRecruits ? getCallableRecruits() : [], recruits: getCallableRecruits(), carriedObjective: lastObjective.current, terminated: terminatedAvatars, trainingPoints, healthReward: isHealthRewardDue.current, trainingOutcome: trainingOutcome.current, sparredHere: sparredLevelIds.includes(matchLevel.id) });
+    isHealthRewardDue.current = false;
+    trainingOutcome.current = undefined;
+    rewardText.current = pendingRewardText.current;
+    pendingRewardText.current = undefined;
     gm.initGame();
     gameManager.current = gm;
     if (import.meta.env.DEV) (window as any).__kaijuGame = gm; // dev only: a handle for scripted browser checks
@@ -713,21 +714,21 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     if (!getIsDetourLevel(level.id)) lastObjective.current = objectiveText ? { text: objectiveText, isKaijuCount: isObjectiveKaijuCount } : null;
   }, [objectiveText, isObjectiveKaijuCount, level.id]);
 
-  // the sparring reward plays out (Jamie): the title, and the HUDs up on the walk while the player and teammate glow
+  // a training's reward plays out back in the battleground (Jamie): the card at once, and the HUDs up while they glow
   const isRewarding = players.some(({ isRewardPulse }) => isRewardPulse);
   useEffect(() => {
-    if (!isRewarding || isCutscene || !rewardText.current) return;
+    if (!isPlayingGame || isCutscene || !rewardText.current) return;
     setRewardNotice({ key: Date.now(), text: rewardText.current });
     rewardText.current = undefined;
     setTimeout(() => setRewardNotice(undefined), OBJECTIVE_NOTICE_MS); // not cleared when the glow ends: the title always goes
-  }, [isRewarding, isCutscene]);
+  }, [isRewarding, isCutscene, matchCount, isPlayingGame]);
 
   // a new playthrough: nothing chosen in the last one carries over (Jamie): who was recruited or terminated, health won
   const startNewPlaythrough = () => {
     setRecruitedAvatars([]);
     setTerminatedAvatars([]);
-    setBonusLives(0);
     setTrainingPoints({ player: 0, teammate: 0 });
+    setSparredLevelIds([]);
     clearRecruitChoices();
   };
 
@@ -887,6 +888,14 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     setMatchEnd(undefined);
     endMatch();
     startMatch(LEVELS[trainingLevelId], false, undefined, { isSolo: true });
+  };
+
+  // back from a training fight to its walking battleground (the map walk carries on after, as from any visit)
+  const returnFromTraining = visitLevelId => {
+    setLevelId(visitLevelId);
+    setMatchEnd(undefined);
+    endMatch();
+    startMatch(LEVELS[visitLevelId]);
   };
 
   const openLabScreen = screen => {
@@ -1091,25 +1100,37 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     if (winner === null || !isPlayingGame) return;
     const isWon = winner === GameResult.PlayerWon;
     if (isWon && level.skillOnLeave) unlockSkill(level.skillOnLeave); // the Street's Teleport
+    // the training points left: lost when hit, for good (F7)
+    const pointsLeft = gameManager.current ? gameManager.current.getTrainingPoints() : trainingPoints;
+    setTrainingPoints(pointsLeft);
     if (level.isWalkingLevel && isWon && gameManager.current && gameManager.current.isTrainingChosen) {
       const trainingLevelId = gameManager.current.trainingLevelId || level.training.levelId;
       leaveWithClouds(() => startTraining(trainingLevelId));
       return;
     }
-    // the training's end: won, the recruit's power (or, sparring with the teammate, one more health); lost, another go.
-    // either way, back to the map from there
+    // the training's end (Jamie): won, the recruit's power (or, sparring, a training point each for the player and the
+    // teammate), and back to the walking battleground, its card shown there; lost, another go, or back to the battleground
     if (level.isTraining) {
       const isSparring = !!level.rival.isSparring;
       const skill = isWon && !isSparring ? unlockRecruitSkill(level.rival.avatar) : undefined;
-      if (isWon && isSparring) {
-        setBonusLives(bonus => bonus + SPARRING.bonusPerWin);
-        isHealthRewardDue.current = true;
+      const visitLevelId = level.visitLevelId;
+      const backToBattleground = () => fadeOutThen(() => returnFromTraining(visitLevelId));
+      if (isWon) {
+        if (isSparring) {
+          const gain = point => Math.min(point + SPARRING.bonusPerWin, SPARRING.maxPoints);
+          setTrainingPoints({ player: gain(pointsLeft.player), teammate: gain(pointsLeft.teammate) });
+          setSparredLevelIds(ids => ids.includes(visitLevelId) ? ids : [...ids, visitLevelId]);
+          isHealthRewardDue.current = true;
+        }
+        trainingOutcome.current = { isSparring, avatar: level.rival.avatar };
+        pendingRewardText.current = isSparring ? "Gained +1 temporary health point" : skill ? `${skill.name} unlocked!` : undefined;
+        const timeout = setTimeout(backToBattleground, MATCH_END_DELAY_MS);
+        return () => clearTimeout(timeout);
       }
-      const backToMap = { text: "Back to map", onClick: () => fadeOutThen(leaveLevel) };
-      const wonTitle = isSparring ? "+1 health for both!" : skill ? `${skill.name} unlocked!` : "Training done";
-      const timeout = setTimeout(() => setMatchEnd(isWon
-        ? { title: wonTitle, buttons: [backToMap] }
-        : { title: "You Lost", buttons: [{ text: "Try again", onClick: () => fadeOutThen(() => startTraining(level.id)) }, backToMap] }), MATCH_END_DELAY_MS);
+      const timeout = setTimeout(() => setMatchEnd({ title: "You Lost", buttons: [
+        { text: "Try again", onClick: () => fadeOutThen(() => startTraining(level.id)) },
+        { text: "Leave", onClick: backToBattleground }
+      ] }), MATCH_END_DELAY_MS);
       return () => clearTimeout(timeout);
     }
     if (level.isWalkingLevel && isWon) {
@@ -1322,7 +1343,8 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 Max health <input type="number" min={1} max={99} style={{ width: "3.5em" }} value={sparringTweak.maxPlayerLives} onChange={e => { SPARRING.maxPlayerLives = Number(e.target.value); setSparringTweak({ ...SPARRING }); }} />
               </label>
               <label>
-                Health won <input type="number" min={0} max={99} style={{ width: "3.5em" }} value={bonusLives} onChange={e => setBonusLives(Number(e.target.value))} />
+                Points: player <input type="number" min={0} max={99} style={{ width: "3.5em" }} value={trainingPoints.player} onChange={e => setTrainingPoints(points => ({ ...points, player: Number(e.target.value) }))} />
+                {" "}teammate <input type="number" min={0} max={99} style={{ width: "3.5em" }} value={trainingPoints.teammate} onChange={e => setTrainingPoints(points => ({ ...points, teammate: Number(e.target.value) }))} />
               </label>
               {/* dev: who is recruited, this playthrough (from the next match on) */}
               {[["punk", "Punk Guy"], ["black_female", "Ghost Girl"], ["mermaid", "Aquarium Worker"]].map(([avatar, name]) => (

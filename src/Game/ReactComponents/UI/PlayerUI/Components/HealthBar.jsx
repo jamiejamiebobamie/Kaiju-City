@@ -24,9 +24,9 @@ const Wrapper = styled.div`
 /*
   How the health shows (Jamie, 2026-11-10): under HEALTH_LOOK.equalFrom capsules, each a set size, with room to spare;
   from there to HEALTH_LOOK.maxCapsules, all the same size, evenly spaced across the bar; past that, one capsule and
-  "x N" (health can go to 20, sparring with the teammate).
+  "x N". every capsule shows now (Jamie, G2): health goes to 10 with training, more with Lichdom.
 */
-export const HEALTH_LOOK = { equalFrom: 4, maxCapsules: 7, shareOfBar: 80 };
+export const HEALTH_LOOK = { equalFrom: 4, maxCapsules: 16, shareOfBar: 80 };
 
 const getCapsuleShare = total => total < HEALTH_LOOK.equalFrom ? 100 / (HEALTH_LOOK.equalFrom + 1) : HEALTH_LOOK.shareOfBar / total;
 

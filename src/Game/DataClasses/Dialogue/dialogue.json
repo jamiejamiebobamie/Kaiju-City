@@ -973,6 +973,32 @@
         }
       ]
     },
+    "training.won": {
+      "label": "Back in the battleground after their training is won: the recruit, on the power the player has now",
+      "lines": [
+        {
+          "speaker": "Punk Guy",
+          "key": "punk",
+          "text": "Overgrowth's yours now. Don't let it go to your head.",
+          "id": "training.won.0",
+          "note": "draft"
+        },
+        {
+          "speaker": "Ghost Girl",
+          "key": "black_female",
+          "text": "Haunt is yours. My ancestors would be proud.",
+          "id": "training.won.1",
+          "note": "draft"
+        },
+        {
+          "speaker": "Aquarium Worker",
+          "key": "mermaid",
+          "text": "Now you can Charm them too. Use it wisely.",
+          "id": "training.won.2",
+          "note": "draft"
+        }
+      ]
+    },
     "sparring.offer": {
       "label": "A battleground visited again, its bystander terminated: the teammate offers to spar, for health",
       "lines": [
@@ -992,6 +1018,28 @@
           "text": "Don't hold back. I won't.",
           "id": "sparring.start.0",
           "note": "draft"
+        }
+      ]
+    },
+    "sparring.again": {
+      "label": "Back in the battleground after sparring is won, with more to win: the teammate",
+      "lines": [
+        {
+          "speaker": "teammate",
+          "text": "Good job. You didn't hold back. I'm ready to go again. Just say the word.",
+          "id": "sparring.again.0",
+          "note": "jamie"
+        }
+      ]
+    },
+    "sparring.goAgain": {
+      "label": "A battleground sparred in before, visited again: the teammate",
+      "lines": [
+        {
+          "speaker": "teammate",
+          "text": "Want to go again?",
+          "id": "sparring.goAgain.0",
+          "note": "jamie"
         }
       ]
     },

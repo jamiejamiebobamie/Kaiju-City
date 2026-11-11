@@ -177,6 +177,7 @@ export type LevelConfig = {
   visitScene?: string; // the dialogue scene of those words ('visit' if not given)
   training?: { recruit: string; spot: { x: number; y: number }; levelId: string; sparringLevelId: string }; // a visit: the recruit's offer of training, and where it starts
   isTraining?: boolean; // a recruit's training fight: one on one, for their power
+  visitLevelId?: string; // a training fight: the walking battleground it goes back to
   greeting?: { text: string; speechSpot: { x: number; y: number }; repeatMs: number; nearRows: number }; // a scene that opens with the Agent calling the team over
   walkers?: Array<{ id: string; avatar: string; route: Array<{ x: number; y: number; isPass: boolean }>; runSpeed: number; idleSeconds: number }>; // people at work in a walking scene
   getWalkerHeight?: (y: number) => number; // a walker's height at a y, in scene pixels: they shrink up the scene
@@ -892,7 +893,10 @@ export const getVisitLevelId = (levelId: string) => `visit-${levelId}`;
 export const getTrainingLevelId = (levelId: string) => `train-${levelId}`;
 // sparring (Jamie, 2026-11-10): with the bystander there terminated, the teammate offers a 1v1 instead, for health
 export const getSparringLevelId = (levelId: string) => `spar-${levelId}`;
-export const SPARRING = { maxPlayerLives: 20, bonusPerWin: 1, rewardPulseMs: 4500 }; // each win, one more health for the player and the teammate both, to this many in all
+// each win, one more training point (temporary health) for the player and the teammate both, to maxPoints each (Jamie):
+// 4 health and 6 points, 10 in all. points go first when hit, and are lost for good. the glow is shorter, and the player
+// stands still through it
+export const SPARRING = { maxPlayerLives: 10, maxPoints: 6, bonusPerWin: 1, rewardPulseMs: 2200 };
 export const TRAINING_PHASE = 'trainingOpen'; // the visit's "Do Training" spot is open
 const VISIT_LINES = getDialogueTexts('visit');
 
@@ -1007,7 +1011,8 @@ Object.keys(BATTLEGROUND_SITES).forEach(levelId => {
     liveWideShots: {},
     ghostBoss: undefined,
     aquariumFlood: undefined,
-    rival: { ...level.rival, isTraining: true }
+    rival: { ...level.rival, isTraining: true },
+    visitLevelId: getVisitLevelId(levelId) // back here after (Jamie): the walking battleground, not the map
   };
   // the same, against the teammate (their look and powers are filled in when it starts: GameManager.addRival)
   LEVELS[getSparringLevelId(levelId)] = {
