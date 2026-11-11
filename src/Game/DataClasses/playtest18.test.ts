@@ -117,6 +117,24 @@ describe('playtest 18', () => {
     expect(gm.getFallenRecruits()).toEqual(['punk']);
   });
 
+  it('E8: the talking Agent drops from the catwalk after his clones, and never goes back up through the portal', () => {
+    const gm = makeGame(LEVELS.lab);
+    for (let k = 0; k < 6000 && gm.cutscene; k++) gm.stepPieces();
+    gm.getPieces().filter(piece => piece.getTeamIndex() == 0).forEach(piece => { piece.decrementHealth = () => {}; });
+    let hasDropped = false;
+    let downSince = 0;
+    for (let k = 0; k < 900 && gm.getGameResult() === null && !(downSince && k - downSince > 250); k++) {
+      gm.stepPieces();
+      const agent = gm.catwalkAgent;
+      if (!agent.isHeldOnCatwalk && agent.isOnTiles && !agent.isDead) {
+        hasDropped = true;
+        downSince = downSince || k;
+        expect(gm.getIsOnCatwalk(agent.getTileIndex())).toBe(false);
+      }
+    }
+    expect(hasDropped).toBe(true);
+  }, 30000);
+
   it('B1: the Street Agent is drawn behind the team', () => {
     const gm = makeGame(LEVELS.street);
     const [agent] = gm.extras;

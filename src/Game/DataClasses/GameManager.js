@@ -2766,6 +2766,9 @@ export class GameManager {
         const isAllDown = this.agentsDropped >= drops.length && this.getPieces().every(piece => !piece.isEntering || piece.isDead);
         if (!isAllDown || agent.isDead) return;
         agent.isHeldOnCatwalk = false;
+        // down for good (Jamie, playtest 18): the portal stays open for the team, but he never goes back up through it.
+        // before, his paths took it, and he went up and down between the floor and the catwalk all fight
+        agent.allowedTile = tile => !this.getIsOnCatwalk(tile);
         agent.dropDown(this.gameBoardManager.getClosestWalkableTileToLocation({ x: agent.charLocation.x, y: floorY }));
     }
 
@@ -3488,7 +3491,8 @@ export class GameManager {
                 // the talker, held up there, can't escape down before his clones
                 if (piece == this.catwalkAgent && piece.isHeldOnCatwalk) return !this.getIsOnCatwalk(tileIndex);
                 if (!this.getIsOnCatwalk(tileIndex)) return false;
-                return !!piece && piece.teamIndex == this.catwalkAgent.teamIndex && piece != this.catwalkAgent;
+                // the Agents keep off it; the talker too, once he has come down
+                return !!piece && piece.teamIndex == this.catwalkAgent.teamIndex && !(piece == this.catwalkAgent && piece.isHeldOnCatwalk);
             },
             getGhostRingMove: this.getGhostRingMove,
             startPortalWalk: this.startPortalWalk,
