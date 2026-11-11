@@ -104,17 +104,19 @@ describe('open items', () => {
     expect(gm.getGameResult()).toBe(GameResult.PlayerWon);
   });
 
-  it('7. the Lab fight: the player’s NPCs (recruits too) never plan or step up onto the catwalk', () => {
+  it('7. the Lab fight: the NPCs never walk up to the catwalk through the air (playtest 18: only by the portal)', () => {
     const gm = makeGame(LEVELS.lab, { recruits: ['punk'] });
     skip(gm);
     const board = gm.gameBoardManager;
     const catwalk = board.walkableTiles.find(tile => gm.getIsOnCatwalk(tile));
     const recruit = gm.getPieces().find(piece => piece.isRecruit);
     expect(recruit).toBeDefined();
-    expect(recruit.getIsAllowedTile(catwalk)).toBe(false);
-    const path = board.findPathFromTo(recruit.getTileIndex(), catwalk, undefined, false, recruit.pieceIndex);
-    expect(path.some(tile => gm.getIsOnCatwalk(tile))).toBe(false);
-    // the player still can
-    expect(gm.getPieces()[0].getIsAllowedTile(catwalk)).toBe(true);
+    expect(recruit.getIsAllowedTile(catwalk)).toBe(true); // open to them now (isCatwalkOpenToTeam)
+    // a path planned through the portal, which then shuts: they stop, not glide up to the catwalk
+    const floor = recruit.getTileIndex();
+    recruit.moveToTiles = [catwalk];
+    recruit.getNextDestination();
+    expect(recruit.getTileIndex()).toEqual(floor);
+    expect(recruit.moveToTiles).toEqual([]);
   });
 });

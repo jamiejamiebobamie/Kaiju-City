@@ -372,8 +372,19 @@ export class GameBoardPieceBase {
                 this.stopMoving();
                 return;
             }
+            // the link wouldn't take them (resting, or not theirs): the path ends here. it used to carry on to the far end's
+            // next tile, and they walked straight there through the floor (the Mermaid's stairs, Jamie, playtest 18)
             this.moveToTiles = tileIndices;
-            this.jumpToLinkedTile(linkedTile);
+            if (!this.jumpToLinkedTile(linkedTile)) this.stopMoving();
+            return;
+        }
+
+        // an NPC's path planned through a link or a portal that has since gone (a Teleport's wormhole shuts after one
+        // trip): the next tile isn't beside them. they stop and find a new way, instead of gliding over to it through the
+        // air (up to the Lab's catwalk, Jamie, playtest 18)
+        if (this.isNpc && !this.gameManagerProxy.getAreTilesAdjacent(this.tileIndex, nextTileIndex)) {
+            this.moveToTiles = [];
+            this.stopMoving();
             return;
         }
 
@@ -471,9 +482,10 @@ export class GameBoardPieceBase {
         return !!this.linkRests && (this.accTime || 0) < (this.linkRests[`${tile.i} ${tile.j}`] || 0);
     }
 
+    // false: the link didn't take them
     jumpToLinkedTile(linkedTile) {
-        if (!this.getIsAllowedTile(linkedTile)) return;
-        if (this.getIsPortalResting() || this.getIsLinkResting(this.tileIndex)) return;
+        if (!this.getIsAllowedTile(linkedTile)) return false;
+        if (this.getIsPortalResting() || this.getIsLinkResting(this.tileIndex)) return false;
         if (this.isNpc) this.portalRestUntil = (this.accTime || 0) + PORTAL_REST_MS;
         // this link rests a good while for this piece, both its ends: it'll take another next time (the Mermaid, Jamie)
         if (this.linkRestMs) {
@@ -482,7 +494,7 @@ export class GameBoardPieceBase {
         }
         this.gameManagerProxy.useWormhole(this.tileIndex, this.accTime || 0); // a Teleport's wormhole: one trip, then it shuts
         // the player walks through it, in a little scene of its own (GameManager.startPortalWalk)
-        if (!this.isNpc && this.gameManagerProxy.startPortalWalk(this, linkedTile)) return;
+        if (!this.isNpc && this.gameManagerProxy.startPortalWalk(this, linkedTile)) return true;
         const location = this.gameManagerProxy.getCharXAndYFromTileIndex(linkedTile);
         this.setTileIndex(linkedTile);
         this.linkArrivalTile = linkedTile;
@@ -490,6 +502,7 @@ export class GameBoardPieceBase {
         this.moveFromLocation = location;
         this.moveToLocation = location;
         this.isThere = true;
+        return true;
     }
 
     move() {

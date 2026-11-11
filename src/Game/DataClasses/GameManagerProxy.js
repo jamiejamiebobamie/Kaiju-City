@@ -261,6 +261,10 @@ export class GameManagerProxy {
         return this.props.spawnDeathPieceAtLocation(charLocation, avatar, tileIndex, color, pieceIndex, throwVec, spriteSheetSrc);
     }
 
+    getAreTilesAdjacent(a, b) {
+        return this.props.getAreTilesAdjacent ? this.props.getAreTilesAdjacent(a, b) : true;
+    }
+
     getDirFromTiles(fromTile, toTile) {
         return this.props.getDirFromTiles(fromTile, toTile)
     }

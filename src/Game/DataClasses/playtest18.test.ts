@@ -77,6 +77,21 @@ describe('playtest 18', () => {
     expect(gm.objectiveCount).toBe(before + 1);
   });
 
+  it('E6: a resting stairway ends the Mermaid’s path there; she never walks to the other floor through the floor', () => {
+    const gm = makeGame(LEVELS.aquarium);
+    for (let k = 0; k < 4000 && gm.cutscene; k++) gm.stepPieces();
+    const rival = gm.rivalPiece;
+    const [from, to] = LEVELS.aquarium.tileLinks[0];
+    const beyond = gm.gameBoardManager.getAdjacentTileIndices(to)[0];
+    rival.initCharLocation(true, from);
+    rival.accTime = 1000;
+    rival.linkRests = { [key(from)]: 99999 };
+    rival.moveToTiles = [to, beyond];
+    rival.getNextDestination();
+    expect(key(rival.getTileIndex())).toBe(key(from));
+    expect(rival.moveToTiles).toEqual([]);
+  });
+
   it('B1: the Street Agent is drawn behind the team', () => {
     const gm = makeGame(LEVELS.street);
     const [agent] = gm.extras;

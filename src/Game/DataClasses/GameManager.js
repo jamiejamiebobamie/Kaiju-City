@@ -679,13 +679,16 @@ export class GameManager {
     updateRoamingRival() {
         const rival = this.rivalPiece;
         const roam = this.level.rival && this.level.rival.roam;
-        if (!roam || !rival || rival.isDead || !rival.isOnTiles || this.cutscene || rival.walkToTile || this.isShattered) return;
+        if (!roam || !rival || rival.isDead || !rival.isOnTiles || this.cutscene || rival.walkToTile) return;
         if (this.accTime < (this.nextRoamAt || roam.everyMs)) return;
         this.nextRoamAt = this.accTime + roam.everyMs;
+        // the flood: she roams the top floor, where she's kept (allowedTile), not standing still (Jamie, playtest 18)
+        const minRows = this.isShattered && roam.topFloorMinRows ? roam.topFloorMinRows : roam.minRows;
         const here = this.gameBoardManager.getCharXAndYFromTileIndex(rival.getTileIndex());
         const far = this.gameBoardManager.walkableTiles.filter(tile => {
             const spot = this.gameBoardManager.getCharXAndYFromTileIndex(tile);
-            return Math.hypot(spot.x - here.x, spot.y - here.y) > roam.minRows * this.getGhostRowPx() && !this.gameBoardManager.getLinkedTile(tile);
+            return Math.hypot(spot.x - here.x, spot.y - here.y) > minRows * this.getGhostRowPx() && !this.gameBoardManager.getLinkedTile(tile)
+                && rival.getIsAllowedTile(tile);
         });
         if (far.length) rival.walkToTile = far[Math.floor(Math.random() * far.length)];
     }
@@ -2735,8 +2738,10 @@ export class GameManager {
 
     // the Lab fight (Jamie): the player's NPCs (teammate, recruits) stay down on the floor. the portal up is the player's,
     // to follow the Agent; the clones come down from the catwalk on their own.
+    // (playtest 18: the walk up through the air was a path through a portal that had shut, now fixed in getNextDestination.
+    // with 'isCatwalkOpenToTeam', the team's NPCs may go up through the portal too)
     getIsTileOpenTo = (piece, tileIndex) => {
-        if (!this.level.agentDrops || !piece.isNpc || piece.getTeamIndex() != this.gameBoardPiecesManager.getPlayerTeamIndex()) return true;
+        if (!this.level.agentDrops || this.level.agentDrops.isCatwalkOpenToTeam || !piece.isNpc || piece.getTeamIndex() != this.gameBoardPiecesManager.getPlayerTeamIndex()) return true;
         return !this.getIsOnCatwalk(tileIndex);
     };
 
@@ -3475,6 +3480,7 @@ export class GameManager {
             addWormhole: this.gameBoardManager.addWormhole,
             useWormhole: this.gameBoardManager.useWormhole,
             getDirFromTiles: this.gameBoardManager.getDirFromTiles,
+            getAreTilesAdjacent: (a, b) => this.gameBoardManager.getAreTilesAdjacent(a, b),
             updateTileWithAbilityStatus: this.gameBoardManager.updateTileWithAbilityStatus,
             getPieceTileIndex: this.gameBoardPiecesManager.getPieceTileIndex,
             getMostDmgedTeammate: this.gameBoardPiecesManager.getMostDmgedTeammate,
