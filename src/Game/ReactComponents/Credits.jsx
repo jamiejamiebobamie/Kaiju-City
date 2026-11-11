@@ -11,7 +11,9 @@ export const CREDITS = [
   { heading: "Created by", lines: ["Jamie McCrory"] },
   { heading: "Game design, story and direction", lines: ["Jamie McCrory"] },
   { heading: "Programming", lines: ["Jamie McCrory", "with Claude Code (Anthropic)"] },
+  // art by people, and art made with AI, each its own section (Jamie)
   { heading: "Peninsula map art", lines: ["Ash (ae1996 on Fiverr)", "fiverr.com/ae1996"] },
+  { heading: "AI-generated art", lines: ["Sprite sheets and level art made with Google Gemini (Nano Banana)"] },
   { heading: "Sea creature icons", lines: ["Game Icons, game-icons.net", "CC BY 3.0, creativecommons.org/licenses/by/3.0"] },
   { heading: "Icons", lines: ["Font Awesome"] },
   { heading: "Thanks to", lines: ["everyone who playtested"] }

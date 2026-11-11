@@ -354,6 +354,17 @@
         }
       ]
     },
+    "rapidTransit.afterTouch": {
+      "label": "Subway: Punk Guy, the eye's power in him",
+      "lines": [
+        {
+          "speaker": "Punk Guy",
+          "text": "Whoa... I'm a superhero now!",
+          "id": "rapidTransit.afterTouch.0",
+          "note": "draft"
+        }
+      ]
+    },
     "rooftop.intro": {
       "label": "Rooftop: Ghost Girl at the graves",
       "lines": [
@@ -641,8 +652,9 @@
         },
         {
           "speaker": "agent",
-          "text": "Oh, and if you need to: stop by the Lab on your way.",
-          "id": "street.talk.5"
+          "text": "If you want to change your powers, stop by the Lab.",
+          "id": "street.talk.5",
+          "note": "draft"
         },
         {
           "speaker": "agent",

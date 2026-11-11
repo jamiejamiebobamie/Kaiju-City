@@ -368,7 +368,8 @@ const RAPID_TRANSIT_SCENE = {
     intro: {
       focus: { x: 1090, y: 430 },
       zoomScale: 1.6,
-      lines: getIntroLines('rapidTransit.intro')
+      lines: getIntroLines('rapidTransit.intro'),
+      afterTouch: getDialogueLine('rapidTransit.afterTouch') // he knows what he is now (Jamie)
     }
   },
   shakePhases: ['train'],
@@ -565,6 +566,7 @@ const SEWER1_WALK_IN = {
   // the recruits spread out to rest around the sewer, away from the door
   standSpots: [{ x: 1180, y: 540 }, { x: 960, y: 610 }, { x: 820, y: 470 }],
   isTeamInPlace: true, // all in their places as the player walks in, the whole sewer in view; then in close for the words (Jamie)
+  talkBeatMs: 3000, // the whole sewer a moment, before the words (Jamie)
   playerSpot: { x: 1150, y: 610 },
   isWaitingToBePassed: true, // the recruits and the teammate wait where they rest until the player goes by, heading left
   script: getDialogueScript('sewer1.walkIn'),
@@ -582,8 +584,8 @@ const SEWER1_SCENE = {
   phases: [{ id: 'glow', label: 'Glow' }],
   sceneElements: [
     // two smooth fades on different beats drift in and out of step, so it never settles into a pattern
-    { id: 'glow', type: 'pulse' as const, phase: 'glow', src: '/levels/sewer1/glow.png', x: 193, y: 274, width: 244, height: 176, zIndex: -3, seconds: 3.7, lowOpacity: 0.1, highOpacity: 0.7 },
-    { id: 'glowEcho', type: 'pulse' as const, phase: 'glow', src: '/levels/sewer1/glow.png', x: 193, y: 274, width: 244, height: 176, zIndex: -3, seconds: 5.9, delaySeconds: 1.3, lowOpacity: 0, highOpacity: 0.6 },
+    { id: 'glow', type: 'pulse' as const, phase: 'glow', src: '/levels/sewer1/glow.png', x: 193, y: 274, width: 244, height: 176, zIndex: -3, seconds: 1.6, lowOpacity: 0.05, highOpacity: 0.85 }, // quicker, so it's plain to see (Jamie)
+    { id: 'glowEcho', type: 'pulse' as const, phase: 'glow', src: '/levels/sewer1/glow.png', x: 193, y: 274, width: 244, height: 176, zIndex: -3, seconds: 2.5, delaySeconds: 0.6, lowOpacity: 0, highOpacity: 0.7 },
     sewerLight('lightGreen', '#3dffa0', 235, 320, 170, 4.3, 0, 0.4),
     sewerLight('lightBlue', '#3f7dff', 300, 300, 190, 6.1, -1.7, 0.45),
     sewerLight('lightPink', '#ff3dc8', 250, 375, 160, 5.3, -3.1, 0.35),
@@ -647,7 +649,7 @@ const STREET_SCENE = {
   getWalkerHeight: getWorkerHeight, // how tall a worker stands at a spot's y, in scene pixels
   // the whole street, then in on the Agent as he calls the team over, then back to them. his words follow in the log.
   // he calls again every so often, until the team walks over to him. then the rest of his words follow.
-  greeting: { text: getDialogueTexts('street.greeting')[0], speechSpot: { x: 335, y: 372 }, repeatMs: 7000, nearRows: 3 },
+  greeting: { text: getDialogueTexts('street.greeting')[0], speechSpot: { x: 335, y: 372 }, repeatMs: 12000, nearRows: 3 }, // calls every 12 s (Jamie)
   extras: [standingAgent(335, 682)],
   sceneElements: [
     hazmatSweeper('hazmat1', 'hazmatBroomLeft', 740, 600),

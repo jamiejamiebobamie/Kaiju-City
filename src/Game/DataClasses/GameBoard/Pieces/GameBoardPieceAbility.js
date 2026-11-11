@@ -1,5 +1,7 @@
 
 // the extra wait before an NPC can use an ability again, in milliseconds
+// the passives Clean Slate leaves be: the ones that cost (Lichdom's health, Inclement Weather's speed)
+export const CLEAN_SLATE_KEEPS = ['death', 'ice'];
 const AI_COOLDOWN_DELAY = 750;
 
 export class GameBoardPieceAbility {
@@ -39,7 +41,8 @@ export class GameBoardPieceAbility {
         });
         // Bubble's Clean Slate: a Dispel ends the caster's other powers' passives
         if (isCleanSlate) {
-            const others = piece.abilities.filter(other => other !== this);
+            // only the buffs: Haunt's Lichdom and Ice Slice's Inclement Weather (the costs) stay (Jamie)
+            const others = piece.abilities.filter(other => other !== this && !CLEAN_SLATE_KEEPS.includes(other.gameBoardPieceAbilityData.element));
             // "Clean Slate!" over them when it wipes something (GameBoardPieceComponent)
             if (others.some(other => other.isPassiveApplied)) piece.cleanSlateCount = (piece.cleanSlateCount || 0) + 1;
             others.forEach(other => other.endAllPassives(piece));

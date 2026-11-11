@@ -10,14 +10,14 @@ export const KAIJU_OBJECTIVE = { text: 'Defeat the Kaiju', isKaijuCount: true };
 
 // the map walks: where they lead
 export const MAP_OBJECTIVES: Record<string, string> = {
-  mapSubway: 'Go to Transit Station',
-  mapRooftop: 'Go to Rooftop',
-  mapAquarium: 'Go to Aquarium',
+  mapSubway: 'Go to the Transit Station',
+  mapRooftop: 'Go to the Rooftop',
+  mapAquarium: 'Go to the Aquarium',
   mapLab: 'Go to the Lab'
 };
 
 export const OBJECTIVES = {
-  street: { talk: 'Talk to Agent', leave: 'Go to Transit Station' },
+  street: { talk: 'Talk to Agent', leave: 'Go to the Transit Station' },
   rivals: { punk: 'Defeat Punk Guy', black_female: 'Defeat Ghost Girl', mermaid: 'Defeat Aquarium Worker' } as Record<string, string>,
   ghosts: 'Survive the Ghosts',
   ghostForm: 'Defeat Ghostly Ghost Girl', // (Jamie: with "Punk Girl" now "Ghost Girl")

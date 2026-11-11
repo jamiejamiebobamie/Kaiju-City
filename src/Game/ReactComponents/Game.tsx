@@ -935,7 +935,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     addUnlock(level.rival.avatar);
     // Terminate: their power is yours. Recruit: they can be called into fights, and their power stays closed.
     const skill = choice == "terminate" ? unlockRecruitSkill(level.rival.avatar) : undefined;
-    const choiceLabel = skill ? `${skill.name} power unlocked!` : `${label} recruited! Call them in during fights.`;
+    const choiceLabel = skill ? `${skill.name} power unlocked!` : `${label} recruited!`;
     // the fight's battleground opens for versus, whichever way the player chose
     addUnlock(getBattlegroundUnlockId(level.id));
     updateMapWalkSites(getWonBattlegrounds());

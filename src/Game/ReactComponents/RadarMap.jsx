@@ -17,8 +17,8 @@ export const RADAR = {
   sweepSeconds: 4, // one turn
   sweepTrail: 0.9, // the fading light behind the sweep, in radians
   rings: 4, // range rings round the Lab
-  dotColor: "#b08cff", // a soft purple, not at full strength, that glows (Jamie)
-  dotGlow: "#8f5cff",
+  dotColor: "#ff4a4a", // red, glowing (Jamie, 2026-11-10; was a soft purple)
+  dotGlow: "#ff1a1a",
   dotRadius: 5,
   dotDecaySeconds: 3, // how fast they slow: after 15 s (five of these) they have almost stopped
   dotStops: [0.75, 1.5], // where each one stops, as multiples of the Peninsula's half height from the middle: each its own, so they don't close in as a ring

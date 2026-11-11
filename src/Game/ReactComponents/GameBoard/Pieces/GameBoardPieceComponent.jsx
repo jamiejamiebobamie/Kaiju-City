@@ -538,7 +538,7 @@ export const GameBoardPieceComponent = ({
     if (!isNew || isQuiet || !isOnBoard) return;
     setModifierText(previous => [
       ...previous,
-      <FloatingNumber key={Math.random()} anchorRef={numberAnchor} color="#f4f8ff" text="Clean Slate!" sizeScale={NUMBER_LOOK.zipScale} />
+      <FloatingNumber key={Math.random()} anchorRef={numberAnchor} color="#f4f8ff" text="Buffs Removed!" sizeScale={NUMBER_LOOK.zipScale} />
     ]);
   }, [cleanSlateCount]);
   const lastLives = React.useRef(lives);

@@ -1012,7 +1012,7 @@ describe('cutscenes', () => {
       gm.stepPieces();
       if (gm.speech && !said.includes(gm.speech.text)) said.push(gm.speech.text);
     }
-    expect(said).toEqual(['Ooo... pretty...', "No, don't touch it!", 'I do what I want!']);
+    expect(said).toEqual(['Ooo... pretty...', "No, don't touch it!", 'I do what I want!', "Whoa... I'm a superhero now!"]);
     expect(gm.accTime).toBe(accTime);
     expect(gm.getActivePhases()).toContain('eyeTouched');
     gm.stepPieces();
@@ -1421,7 +1421,8 @@ describe('fourth playtest', () => {
       if (point && seen[seen.length - 1] != point) seen.push(point);
       gm.stepPieces();
     }
-    expect(seen.length).toBe(3);
+    // then in close on him for his line once the power is in him
+    expect(seen.length).toBe(5); // (in close on him, and on his face for the words)
     expect(seen[0]).toBe(focus);
     expect(seen[1].x).toBeLessThan(focus.x / 2);
     expect(seen[2]).toBe(focus);

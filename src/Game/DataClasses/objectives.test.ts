@@ -31,11 +31,11 @@ describe('objectives', () => {
     expect(text(gm)).toBe('Talk to Agent');
     gm.setPhase(EXIT_OPEN_PHASE, true);
     gm.stepPieces();
-    expect(text(gm)).toBe('Go to Transit Station');
+    expect(text(gm)).toBe('Go to the Transit Station');
   });
 
   it('the map walks lead somewhere each', () => {
-    [['mapSubway', 'Go to Transit Station'], ['mapRooftop', 'Go to Rooftop'], ['mapAquarium', 'Go to Aquarium'], ['mapLab', 'Go to the Lab']].forEach(([id, objective]) => {
+    [['mapSubway', 'Go to the Transit Station'], ['mapRooftop', 'Go to the Rooftop'], ['mapAquarium', 'Go to the Aquarium'], ['mapLab', 'Go to the Lab']].forEach(([id, objective]) => {
       const gm = makeGame(LEVELS[id]);
       skip(gm);
       expect(text(gm)).toBe(objective);

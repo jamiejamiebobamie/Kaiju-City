@@ -568,15 +568,20 @@ describe('NPC paths and crowding', () => {
 });
 
 describe("Bubble's Clean Slate", () => {
-  it("a Dispel ends the other powers' passives", () => {
-    const game = makeGame({ abilities: ['Bubble', 'Ice', 'Water'] });
+  it("a Dispel ends the other powers' passives: the buffs only, not the costs (Jamie)", () => {
+    const game = makeGame({ abilities: ['Bubble', 'Lightning', 'Ice'] });
     const bubble = game.player.abilities.find(a => a.gameBoardPieceAbilityData.element == 'bubble');
+    const lightning = game.player.abilities.find(a => a.gameBoardPieceAbilityData.element == 'lightning');
     const ice = game.player.abilities.find(a => a.gameBoardPieceAbilityData.element == 'ice');
-    useAbility(game, game.player.abilities.indexOf(ice));
-    expect(game.player.moveSpeedModifier).toBe(-1);
+    useAbility(game, game.player.abilities.indexOf(lightning));
+    expect(game.player.moveSpeedModifier).toBe(2);
     game.gm.accTime = 1500;
-    bubble.useAbility({ accTime: 1500, piece: game.player, registerTimeout: game.gm.gameManagerProxy.registerTimeout, updateTileWithAbilityStatus: game.gm.gameManagerProxy.updateTileWithAbilityStatus });
-    expect(game.player.moveSpeedModifier).toBe(0);
+    useAbility(game, game.player.abilities.indexOf(ice));
+    expect(game.player.moveSpeedModifier).toBe(1);
+    game.gm.accTime = 3000;
+    bubble.useAbility({ accTime: 3000, piece: game.player, registerTimeout: game.gm.gameManagerProxy.registerTimeout, updateTileWithAbilityStatus: game.gm.gameManagerProxy.updateTileWithAbilityStatus });
+    expect(game.player.moveSpeedModifier).toBe(-1); // Discharge's speed gone; Ice Slice's slow stays
+    expect(ice.isPassiveApplied).toBe(true);
     game.gm.timeoutHandler.update(20000); // the ended passive's own timer does nothing now
     expect(game.player.moveSpeedModifier).toBe(0);
   });
