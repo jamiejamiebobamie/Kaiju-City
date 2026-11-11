@@ -12,7 +12,7 @@ export const turnToward = (from, to, steps) => {
 import { getRandomIntInRange, getDistanceToFrom, getNormVecFromDestAndOrigin } from 'Game/utils'
 import { GameBoardTile } from 'Game/DataClasses/GameBoard/Tile/GameBoardTile'
 import { findPath } from 'Game/DataClasses/GameBoard/findPath'
-import { getCharXAndY, getTileCenter, getTileXAndY } from 'Game/DataClasses/GameBoard/hexGrid'
+import { getCharXAndY, getTileCenter, getTileIndexAtLocation, getTileXAndY } from 'Game/DataClasses/GameBoard/hexGrid'
 
 // powers aim at a Kaiju walking in, ahead of the closest enemy on the tiles, once it is this many tiles from stepping on (Jamie)
 export const AIM_ENTERING_TILES = 2;
@@ -401,6 +401,13 @@ export class GameBoardManager {
         const ticksMoving = tick - wall.startTick;
         return halfRows >= ticksMoving - WALL_TOLERANCE && halfRows <= ticksMoving + 1 + WALL_TOLERANCE;
     }
+
+    // the sort order of a piece standing at a spot (by its feet), rather than by the tile it is assigned
+    getZIndexAtLocation = ({ x, y }) => {
+        const { charOffsetX, charOffsetY, scale } = this.grid;
+        const tile = getTileIndexAtLocation(this.grid, { x: x - charOffsetX * scale, y: y - charOffsetY * scale });
+        return tile ? this.getFlattenedArrayIndex(tile) : 0;
+    };
 
     getFlattenedArrayIndex = (tileIndex) => {
         const { i, j } = tileIndex;

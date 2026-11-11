@@ -232,21 +232,24 @@ const ObjectiveNotice = styled.div`
   position: absolute;
   top: 22%;
   left: 50%;
+  width: 88%; /* inside the screen: a long one wraps (Jamie) */
   z-index: 2147483600;
   pointer-events: none;
   font-family: gameboy;
   font-size: min(3.6cqw, 3vw);
+  line-height: 1.25;
   text-transform: uppercase;
   text-align: center;
-  white-space: nowrap;
+  white-space: normal;
   color: #4dff6a;
-  -webkit-text-stroke: 0.1cqw #c8ffd1;
-  /* "Kaiju Terminated"'s stepped block shadow, in green */
+  /* a black outline all round, then the stepped block shadow: readable on the bright scenes too (the Street) */
+  -webkit-text-stroke: 0.14cqw black;
+  paint-order: stroke fill;
   text-shadow:
-    0 0 0.6cqw #5cff8a,
-    -0.12cqw 0.12cqw 0 #00701a, -0.24cqw 0.24cqw 0 #005a15, -0.36cqw 0.36cqw 0 #004410, -0.48cqw 0.48cqw 0 #00300b,
+    0.18cqw 0 0 black, -0.18cqw 0 0 black, 0 0.18cqw 0 black, 0 -0.18cqw 0 black,
+    -0.24cqw 0.24cqw 0 #005a15, -0.36cqw 0.36cqw 0 #004410, -0.48cqw 0.48cqw 0 #00300b,
     -0.6cqw 0.6cqw 0 #001f07, -0.72cqw 0.72cqw 0 black, -0.9cqw 0.9cqw 0.6cqw rgba(0, 0, 0, 0.8),
-    0 0 2.5cqw #00ff40;
+    0 0 1.6cqw rgba(0, 255, 64, 0.6);
   animation: ${noticeInOut} ${OBJECTIVE_NOTICE_MS}ms ease-out both;
 `;
 
@@ -254,9 +257,8 @@ const ObjectiveNotice = styled.div`
 const RewardNotice = styled(ObjectiveNotice)`
   top: 38%;
   color: #ff5c6c;
-  -webkit-text-stroke: 0.1cqw #ffd0d6;
   text-shadow:
-    0 0 0.6cqw #ff5c8a,
+    0.18cqw 0 0 black, -0.18cqw 0 0 black, 0 0.18cqw 0 black, 0 -0.18cqw 0 black,
     -0.12cqw 0.12cqw 0 #8a0020, -0.24cqw 0.24cqw 0 #6e0019, -0.36cqw 0.36cqw 0 #520012, -0.48cqw 0.48cqw 0 #3a000c,
     -0.6cqw 0.6cqw 0 #22000a, -0.72cqw 0.72cqw 0 black, -0.9cqw 0.9cqw 0.6cqw rgba(0, 0, 0, 0.8),
     0 0 2.5cqw #ff0040;
@@ -1384,8 +1386,9 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 </EndScreen>
               )}
               {isWiping && <ScreenClip><BlackWipe /></ScreenClip>}
-              {objectiveNotice && <ObjectiveNotice key={objectiveNotice.key}>{objectiveNotice.text}</ObjectiveNotice>}
-              {rewardNotice && <RewardNotice key={rewardNotice.key}>{rewardNotice.text}</RewardNotice>}
+              {/* inside the Kaiju-Vision screen itself (Jamie), not over the casing */}
+              {objectiveNotice && createPortal(<ObjectiveNotice key={objectiveNotice.key}>{objectiveNotice.text}</ObjectiveNotice>, document.querySelector("[data-play-screen]") || document.body)}
+              {rewardNotice && createPortal(<RewardNotice key={rewardNotice.key}>{rewardNotice.text}</RewardNotice>, document.querySelector("[data-play-screen]") || document.body)}
               {unlockMessage && <UnlockStack><UnlockCard style={{ position: "static", transform: "none" }}><UnlockPortrait src={unlockImage} />{unlockMessage}</UnlockCard></UnlockStack>}
               {fadeCards && <FadeToBlack><CardStack>{fadeCards.map(({ label, image, power }, index) => (
                 <Toast key={label} style={{ animationDelay: `${0.4 + index * 0.45}s` }}>

@@ -768,7 +768,8 @@ const LEVEL_BUILDERS: Record<string, (file) => LevelConfig> = {
   // past the girl at the desk's column, the view goes all the way left, "Change powers" and all (Jamie)
   labIntro: file => ({ ...buildLevel(file, 'Lab', '#4a8fb0', [], true), ...LAB_INTRO_SCENE, coverPanLeftX: 450 }),
   lab: file => ({
-    ...buildLevel(file, 'Lab Window', '#4a8fb0'),
+    // the catwalk's front railing, cut from the scene: whoever is up there is behind it (Jamie)
+    ...buildLevel(file, 'Lab Window', '#4a8fb0', [{ src: '/levels/lab-catwalk-railing.png', x: 0, y: 124, width: 1408, height: 48, sortY: 200 }]),
     ...LAB_SCENE,
     layers: [
       { src: '/levels/lab-window.png', zIndex: -5 }, // seen through the window. a placeholder until there is landscape art.
@@ -937,7 +938,7 @@ const VISIT_ENTRANCE_EXITS = {
 
 // where a visit's way out is, and where the team starts, when not the fight's own spots
 const VISIT_SPOTS = {
-  rooftop: { exit: { x: 958, y: 338 } }, // the stairwell door at the back, on the right
+  rooftop: { exit: { x: 958, y: 338 }, exitLabelDrop: 60 }, // the stairwell door at the back, on the right; its sign below the door (Jamie)
   aquarium: { exit: { x: 270, y: 715 }, start: { x: 470, y: 605 } } // out at the bottom left; the team starts up by the tank
 };
 
@@ -970,7 +971,7 @@ Object.keys(BATTLEGROUND_SITES).forEach(levelId => {
     phases: [...level.phases, { id: TRAINING_PHASE, label: 'Training spot' }],
     sceneElements: [
       ...level.sceneElements,
-      { id: 'exit', type: 'door' as const, phase: EXIT_OPEN_PHASE, x: doorSpot.x, y: doorSpot.y, width: 0, height: 0, sortY: ABOVE_CHARACTERS, label: 'Back to map' },
+      { id: 'exit', type: 'door' as const, phase: EXIT_OPEN_PHASE, x: doorSpot.x, y: doorSpot.y + (visitSpots.exitLabelDrop || 0), width: 0, height: 0, sortY: ABOVE_CHARACTERS, label: 'Back to map' },
       { id: 'training', type: 'door' as const, phase: TRAINING_PHASE, x: trainingSpot.x, y: trainingSpot.y, width: 0, height: 0, sortY: ABOVE_CHARACTERS, label: 'Do Training' }
     ]
   };

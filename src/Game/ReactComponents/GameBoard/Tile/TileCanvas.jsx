@@ -343,7 +343,7 @@ const drawSeaIcon = (ctx, name, color, center, radius, lineScale, redraw, { rota
   ctx.restore();
 };
 
-export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamColors = false }) => {
+export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamColors = false, fadeSeconds = undefined }) => {
   const canvasRef = useRef(null);
   const { grid, world, contentOffset } = level;
   const width = world.width - contentOffset.x;
@@ -595,7 +595,8 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
           ctx.lineWidth = TILE_LOOK.lineWidth / zoom;
           ctx.stroke();
         }
-        drawSprite(ctx, getStatusSprite(TILE_LOOK.phaseGhostColor), center, pixelRatio);
+        // in her color, as her side's powers are, with team colors on (Jamie); white otherwise
+        drawSprite(ctx, getStatusSprite(isTeamColors && gameManager.getEnemyLeaderColor ? gameManager.getEnemyLeaderColor() : TILE_LOOK.phaseGhostColor), center, pixelRatio);
         // the next to launch shakes
         const shake = isShaking ? (Math.random() - 0.5) * TILE_LOOK.phaseGhostShake : 0;
         drawIcon(ctx, { iconClass: "fa-snapchat-ghost", rotation: rotation + shake * 12 }, { x: center.x + shake, y: center.y }, radius, TILE_LOOK.phaseGhostColor, lineScale);
@@ -624,7 +625,7 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
   return (
     <StyledCanvas
       ref={canvasRef}
-      style={{ width: `${width}px`, height: `${height}px`, opacity: isVisible ? 1 : 0 }}
+      style={{ width: `${width}px`, height: `${height}px`, opacity: isVisible ? 1 : 0, ...(fadeSeconds ? { transition: `opacity ${fadeSeconds}s ease-in` } : {}) }}
     />
   );
 };

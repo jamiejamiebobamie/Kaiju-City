@@ -1574,11 +1574,13 @@ describe('playtest fixes', () => {
     expect(gm.getIsWideShot()).toBe(false);
   });
 
-  it('the camera moves to the teammate when the player is down', () => {
+  it('the camera holds on the player as they go down, then moves to the teammate (Jamie)', () => {
     const { gm, player } = makeGame(LEVELS.rooftop, true);
     expect(gm.getFocusPiece()).toBe(player);
     gm.accTime += 5000;
     player.decrementHealth(gm.accTime, player.maxLives);
+    expect(gm.getFocusPiece()).toBe(player); // their death first
+    gm.focusHeldSinceMs -= 4000;
     expect(gm.getFocusPiece()).toBe(gm.getPieces()[1]);
   });
 

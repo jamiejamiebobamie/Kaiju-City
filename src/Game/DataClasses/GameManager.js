@@ -77,7 +77,8 @@ const getDirName = ({ x, y }) => {
 export const CAMERA_THREATS = {
   statuses: ['isGhosted', 'isWooded', 'isCold', 'isCharming', 'isSeaGhost'], // powers that chase their target. not Heal.
   kaijuNearRows: 16, // a Kaiju still walking in counts once it is this close to the player, in tile rows
-  ghostDangerRows: 4 // an NPC's defensive powers answer a launched ghost this close (getIsBossThreatNear)
+  ghostDangerRows: 4, // an NPC's defensive powers answer a launched ghost this close (getIsBossThreatNear)
+  deathHoldMs: 3500 // whoever the camera follows dies: it stays on them this long (wall time) before it moves on
 };
 
 // the final battle's end (onGiantDrained), in milliseconds
@@ -424,7 +425,13 @@ export class GameManager {
     // undefined for a status no one is known to have cast: it keeps its power's color
     getStatusTeamColor = (casterIndex, teamIndex) => {
         if (!this.getPieces()[casterIndex]) return undefined;
-        return teamIndex == this.gameBoardPiecesManager.getPlayerTeamIndex() ? this.getPlayerColor() : TEAM_COLORS.enemies;
+        if (teamIndex == this.gameBoardPiecesManager.getPlayerTeamIndex()) return this.getPlayerColor();
+        // the enemies' side takes its leader's color: the bystander they fight (Ghost Girl's red); else the Kaiju's (Jamie)
+        return this.getEnemyLeaderColor();
+    }
+
+    getEnemyLeaderColor() {
+        return this.rivalPiece && this.rivalPiece.color ? this.rivalPiece.color : TEAM_COLORS.enemies;
     }
 
     getWormholes() {
@@ -1320,7 +1327,7 @@ export class GameManager {
         });
         this.startCutscene([
             { shot: herShot, ms: CUTSCENE.outcomePullMs },
-            { shot: herShot, ms: getSpeechMs(scream.text) + SHATTER_SCREAM.screamMs, speech: { ...this.getSpeechOver(rival, scream.name, scream.text), isShout: true } },
+            { shot: herShot, ms: getSpeechMs(scream.text) + SHATTER_SCREAM.screamMs, speech: { ...this.getSpeechOver(rival, scream.name, scream.text, { isAboveHead: true }), isShout: true } },
             // the scream pulls the team to the bottom of the hall, below the tank, as the Rooftop's does
             ...this.getTeamTeleportSteps(this.level.aquariumFlood.teamSpot, team => this.placeTeam(team, recruits, this.level.aquariumFlood.teamSpot)),
             // then (Jamie): the camera on her; her portal up to the top floor; her words up there; and only then the glass
@@ -1526,6 +1533,7 @@ export class GameManager {
     // the keys are off only for this.
     startGhostScream() {
         this.isGhostScreamPending = false;
+        this.isGhostPhase = true; // until the ring is spent
         const rival = this.rivalPiece;
         const { player, teammate, recruits } = this.getGhostTeam();
         const rowPx = this.getGhostRowPx();
@@ -1630,7 +1638,10 @@ export class GameManager {
             piece.lastHitBy = this.rivalPiece.pieceIndex;
             piece.decrementHealth(this.accTime, 1);
         });
-        if (ring.getIsSpent()) this.endGhostRing();
+        if (ring.getIsSpent()) {
+            this.isGhostPhase = false;
+            this.endGhostRing();
+        }
         else this.syncPhaseGhostTiles();
     }
 
@@ -2266,7 +2277,8 @@ export class GameManager {
             return this.hasGreeted ? { text: OBJECTIVES.street.talk } : null;
         }
         if (level.ghostBoss) {
-            if (this.ghostRing) return { text: OBJECTIVES.ghosts };
+            // from her scream on, till the ring is spent: not her ghost form's objective before the ghosts (Jamie)
+            if (this.ghostRing || this.isGhostPhase) return { text: OBJECTIVES.ghosts };
             return { text: this.rivalPiece && this.rivalPiece.isGhostForm ? OBJECTIVES.ghostForm : OBJECTIVES.rivals.black_female };
         }
         if (level.aquariumFlood && this.isShattered && this.rivalPiece && this.getIsTopFloor(this.rivalPiece.getTileIndex())) return { text: OBJECTIVES.flood };
@@ -2526,6 +2538,7 @@ export class GameManager {
 
     startTrapScene() {
         const { script, speechSpot, lineUp, ray } = this.level.trap;
+        this.extras.forEach(extra => { if (extra.avatar == 'agent') extra.color = PIECES_INFO.kaiju.color; }); // the Agent glows purple (Jamie)
         this.lineUpTeam(lineUp);
         const [player, teammate] = this.getPieces();
         const [recruit] = this.followers;
@@ -2692,6 +2705,7 @@ export class GameManager {
                 pieceInfo: { ...PIECES_INFO.agent, abilities: this.settingsManager.getAbilitiesFromElements(abilities), maxLives: 4, moveSpeed },
                 teamIndex: 1
             });
+            piece.color = PIECES_INFO.kaiju.color; // a sinister purple glow, like the Kaiju's (Jamie)
             piece.startChase({ startLocation: { x, y: startY }, landingTile: this.gameBoardManager.getClosestWalkableTileToLocation({ x, y: landingY }) });
         });
         this.gameBoardManager.moveSpeedScale *= CUTSCENE.chaseSlowSpeed;
@@ -2884,7 +2898,16 @@ export class GameManager {
     getFocusPiece() {
         const team = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
         // then a recruit still fighting (Jamie): the camera stays with the fight
-        return team.find(piece => !piece.getIsDead() && !piece.isRecruit) || team.find(piece => !piece.getIsDead() && piece.isOnTiles) || this.getPieces()[0];
+        const next = team.find(piece => !piece.getIsDead() && !piece.isRecruit) || team.find(piece => !piece.getIsDead() && piece.isOnTiles) || this.getPieces()[0];
+        // the one it was on has just died: it holds on them a while, for their death, before it moves on (Jamie)
+        const last = this.lastFocusPiece;
+        if (last && last !== next && last.getIsDead()) {
+            if (this.focusHeldSinceMs === undefined) this.focusHeldSinceMs = Date.now();
+            if (Date.now() - this.focusHeldSinceMs < CAMERA_THREATS.deathHoldMs) return last;
+        }
+        this.focusHeldSinceMs = undefined;
+        this.lastFocusPiece = next;
+        return next;
     }
 
     getIsAtGoal() {
@@ -3130,6 +3153,7 @@ export class GameManager {
             startPortalWalk: this.startPortalWalk,
             getTeleportAcross: this.getTeleportAcross,
             getClosestWalkableTile: tile => this.gameBoardManager.getClosestWalkableTile(tile),
+            getZIndexAtLocation: this.gameBoardManager.getZIndexAtLocation,
             getIsBossThreatNear: this.getIsBossThreatNear,
             getIsTileOpenTo: this.getIsTileOpenTo,
             // the Aquarium's sea creatures keep to the flooded floor

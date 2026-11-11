@@ -117,6 +117,9 @@ export class GameBoardPieceBase {
     }
 
     getZIndex() {
+        // walking in (a scene's arrival): it already holds its end tile, so it sorts by where it is now (Jamie: Sewer 2's
+        // walkers were drawn over or under the others wrongly)
+        if (this.arrivalEnd && this.isVisible) return this.gameManagerProxy.getZIndexAtLocation(this.charLocation);
         return this.gameManagerProxy.getFlattenedArrayIndex(this.tileIndex);
     }
 
@@ -432,6 +435,7 @@ export class GameBoardPieceBase {
         }
         this.setDir(this.arrivalDir || 'idle');
         this.setDir('idle');
+        this.arrivalEnd = undefined; // there: it sorts by its tile again
         return true;
     }
 

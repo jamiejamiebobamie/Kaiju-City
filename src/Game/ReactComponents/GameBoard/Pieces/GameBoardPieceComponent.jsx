@@ -2,14 +2,17 @@ import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import styled, { css, keyframes } from "styled-components";
 
-const Wrapper = styled.i.attrs(({ zIndex, charLocation, isVisible, pieceScale }) => ({
+const Wrapper = styled.i.attrs(({ zIndex, charLocation, isVisible, pieceScale, $isFaded }) => ({
   style: {
     transform: `scale(${pieceScale})`,
     transformOrigin: "0 0",
     zIndex: (zIndex || 0) + 20001,
     left: `${charLocation.x + 3.5}px`,
     top: `${charLocation.y}px`,
-    display: isVisible ? "flex" : "none"
+    display: isVisible ? "flex" : "none",
+    // Sewer 2's climax: they fade back into the parts' light
+    opacity: $isFaded ? 0 : 1,
+    transition: $isFaded ? "opacity 2.5s ease-in" : undefined
   }
 }))`
   position: absolute;
@@ -498,7 +501,9 @@ export const GameBoardPieceComponent = ({
   isRewardPulse = false, // health just won sparring: a red outline pulses round them
   statusEffects = [], // what is on them that changes play: icons over the head (STATUS_LOOK)
   cleanSlateCount = 0, // goes up each time their Dispel wipes their other passives
-  isPlayer = false
+  isPlayer = false,
+  hitLives = undefined, // health without the passives' (Haunt's Lichdom): what the "-1" and the shake follow
+  isFaded = false
 }) => {
   const numberAnchor = React.useRef(null);
   const [modifierText, setModifierText] = useState([]);
@@ -541,10 +546,11 @@ export const GameBoardPieceComponent = ({
       <FloatingNumber key={Math.random()} anchorRef={numberAnchor} color="#f4f8ff" text="Buffs Removed!" sizeScale={NUMBER_LOOK.zipScale} />
     ]);
   }, [cleanSlateCount]);
-  const lastLives = React.useRef(lives);
+  const shownHealth = hitLives === undefined ? lives : hitLives;
+  const lastLives = React.useRef(shownHealth);
   useEffect(() => {
-    const isLostWhileStanding = lives < lastLives.current && lives > 0;
-    lastLives.current = lives;
+    const isLostWhileStanding = shownHealth < lastLives.current && shownHealth > 0;
+    lastLives.current = shownHealth;
     if (isFirstLoad) {
       setIsFirstLoad(false);
     } else {
@@ -557,7 +563,7 @@ export const GameBoardPieceComponent = ({
         setTimeout(() => setIsDamaged(null), 2000);
       }
     }
-  }, [lives]);
+  }, [shownHealth]);
   useEffect(() => {
     if (isFirstLoad) {
       setIsFirstLoad(false);
@@ -591,7 +597,7 @@ export const GameBoardPieceComponent = ({
   const bars = !isShowHealthBarOnComponent ? undefined : Array(lives).fill(0).map((_, i) => <Bar lives={lives} key={i} />)
   const isBarShown = !!isShowHealthBarOnComponent && lives > 0;
   return (
-    <Wrapper zIndex={zIndex} isVisible={isVisible} charLocation={charLocation} pieceScale={pieceScale}>
+    <Wrapper zIndex={zIndex} isVisible={isVisible} charLocation={charLocation} pieceScale={pieceScale} $isFaded={isFaded}>
       <NumberAnchor ref={numberAnchor} />
       {!isQuiet && modifierText}
       <HealthBarWrapper lives={lives}>{bars}</HealthBarWrapper>
