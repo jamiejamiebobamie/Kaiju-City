@@ -185,7 +185,7 @@ const BREATH_EMBERS = BREATH.stepsAt.flatMap((at, step) => Array.from({ length: 
     // left behind as it walks on, and (a middle way back to the first version: Jamie) drifting apart as they go: each its
     // own extra way back, some rising and some sinking
     bx: cx + push - BREATH.walkPerSecond * hangSeconds * 0.85 - random(8) * 26, // spread wider as they go (Jamie)
-    by: cy + (random(9) - 0.6) * 28,
+    by: cy + (random(9) - 0.6) * 10, // only a little up or down: they spread mostly back (Jamie; was 28)
     size: 1 + random(4) * 1.2,
     color: ["#d47bff", "#b04cff", "#f0c4ff"][Math.floor(random(5) * 3)]
   };
