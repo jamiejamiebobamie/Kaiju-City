@@ -1,5 +1,5 @@
 import React from "react";
-import styled from "styled-components";
+import styled, { keyframes } from "styled-components";
 
 const LogoGif = styled.img`
   position: absolute;
@@ -10,12 +10,13 @@ const LogoGif = styled.img`
 
   display: flex;
   align-self: center;
-  
+
   width: 700px;
   height: 350px;
 
   pointer-events: none;
-  filter: drop-shadow(0 0 45px rgba(150, 60, 255, 0.9)) drop-shadow(0 0 110px rgba(130, 40, 255, 0.75));
+  /* a tighter glow: the wide one ran past the top of the window (Jamie, 2026-11-12) */
+  filter: drop-shadow(0 0 14px rgba(150, 60, 255, 0.85)) drop-shadow(0 0 32px rgba(130, 40, 255, 0.6));
 
   -webkit-animation-name: fadeInLogo;
   animation-name: fadeInLogo;
@@ -35,5 +36,36 @@ const LogoGif = styled.img`
   }
 `;
 
+// "Loading" with its dots coming one by one, then gone, and again (Jamie, 2026-11-12)
+const dots = keyframes`
+  0%, 20% { content: ""; }
+  25%, 45% { content: "."; }
+  50%, 70% { content: ".."; }
+  75%, 100% { content: "..."; }
+`;
 
-export const SplashScreen = () => <LogoGif src={"./Logo.gif"} />;
+const Loading = styled.div`
+  position: absolute;
+  z-index: 9;
+  top: calc(20% + 380px);
+  align-self: center;
+  font-family: gameboy;
+  font-size: 20px;
+  letter-spacing: 3px;
+  color: #c9a6ff;
+  text-shadow: 0 0 6px rgba(150, 60, 255, 0.8);
+  pointer-events: none;
+  /* the dots don't push the word over: it stays put as they come and go */
+  &::after {
+    content: "";
+    display: inline-block;
+    width: 3ch;
+    text-align: left;
+    animation: ${dots} 1.6s steps(1) infinite;
+  }
+`;
+
+export const SplashScreen = () => <>
+  <LogoGif src={"./Logo.gif"} />
+  <Loading>Loading</Loading>
+</>;
