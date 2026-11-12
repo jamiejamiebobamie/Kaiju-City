@@ -21,6 +21,7 @@ const CLOUD_LOOK = {
   puffStep: 165,
   puffJitter: 0.4, // how far off its spot in the grid a puff may sit, as a share of a step
   puffSizeRange: [0.32, 0.85], // a puff's radius, as shares of puffSize
+  puffStretchRange: [1.6, 2.6], // and how much wider than tall each one is: long ovals, like abstracted Kirby or Mario clouds (Jamie)
   strips: 60,
   minSeconds: 2.6, // close together, so the strips meet at nearly the same moment
   maxSeconds: 3,
@@ -105,7 +106,8 @@ export const CloudTransition = ({ isPlaying }) => {
       for (let x = (row % 2) * puffStep * scale / 2 - puffSize; x < width + puffSize; x += puffStep * scale) {
         const [low, high] = CLOUD_LOOK.puffSizeRange;
         const jitter = CLOUD_LOOK.puffJitter * puffStep * scale;
-        puffs.push({ x: x + (Math.random() - 0.5) * 2 * jitter, y: y + (Math.random() - 0.5) * jitter, radius: puffSize * scale * (low + Math.random() * (high - low)) });
+        const [least, most] = CLOUD_LOOK.puffStretchRange;
+        puffs.push({ x: x + (Math.random() - 0.5) * 2 * jitter, y: y + (Math.random() - 0.5) * jitter, radius: puffSize * scale * (low + Math.random() * (high - low)), stretch: least + Math.random() * (most - least) });
       }
     }
 
@@ -121,9 +123,9 @@ export const CloudTransition = ({ isPlaying }) => {
         // the puffs fill the screen between them, under their outlines
         ctx.globalAlpha = bankOpacity;
         ctx.fillRect(0, 0, width, height);
-        puffs.forEach(({ x, y, radius }) => {
+        puffs.forEach(({ x, y, radius, stretch }) => {
           ctx.beginPath();
-          ctx.arc(x, y, radius, 0, Math.PI * 2);
+          ctx.ellipse(x, y, radius * stretch, radius, 0, 0, Math.PI * 2);
           ctx.fill();
           ctx.stroke();
         });
