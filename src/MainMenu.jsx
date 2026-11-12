@@ -39,7 +39,7 @@ const EMBER_LIST = Array.from({ length: EMBERS.count }, (_, k) => {
     delay: -random(5) * 13, // already blowing when the page opens
     sway: `${(random(6) - 0.5) * 70}px`,
     drift: `${-(55 + random(8) * 45)}vw`, // how far left the wind takes it on the way down
-    rise: `${random(9) < 0.35 ? 8 + random(10) * 22 : 0}vh` // a third of them lifted by the gusts, each its own amount (Jamie)
+    rise: `${random(9) < 0.35 ? 8 + random(10) * 22 : 0}vh`, // a third of them lifted by the gusts, each its own amount (Jamie)
     flicker: 0.8 + random(7) * 1.6
   };
 });
@@ -146,7 +146,7 @@ const KeyText = styled.div`
   white-space: nowrap;
   color: ${PRESS_KEY.color};
   text-shadow: 0 0 8px ${PRESS_KEY.color};
-  ${props => !props.$isLeaving && css`animation: ${blink} 0.9s steps(1) infinite;`}
+  ${props => !props.$isLeaving && css`animation: ${blink} 1.8s steps(1) infinite; /* half as often (Jamie) */`}
 `;
 
 // a ghost of the words, sliding off behind them and fading into the background: up right, up left, down left, down
