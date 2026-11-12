@@ -106,6 +106,100 @@ const SideRow = styled.button`
   background: ${props => props.$isCurrent ? LOOK.line : "none"};
 `;
 
+/*
+  The second pass (Jamie, playtest 21), once every combo is confirmed: all the classes in one list, each name and
+  description free to edit, and a tick for each that passes the second pass ("confirmed confirmed"). Nothing is saved
+  until Save, and Save first checks every name and every description is used once only.
+*/
+const PassTable = styled.div`
+  display: grid;
+  grid-template-columns: 220px 220px 1fr 90px;
+  gap: 6px 12px;
+  align-items: center;
+  font-size: 14px;
+  & input[type="text"] {
+    font: inherit;
+    padding: 6px 8px;
+    color: ${LOOK.text};
+    background: ${LOOK.panel};
+    border: 1px solid ${props => LOOK.line};
+    border-radius: 4px;
+  }
+  & .bad { border-color: #f85149 !important; }
+`;
+
+const PassBar = styled.div`
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 10px 0;
+  margin-bottom: 10px;
+  background: ${LOOK.bg};
+  & button { font: inherit; padding: 6px 14px; border-radius: 6px; cursor: pointer; }
+`;
+
+const SecondPass = ({ options, onSaved, save }) => {
+  const [draft, setDraft] = useState(() => structuredClone(options));
+  const [problems, setProblems] = useState([]);
+  const keys = Object.keys(draft.combos).filter(key => draft.combos[key].confirmed);
+  const isChanged = JSON.stringify(draft) != JSON.stringify(options);
+  const passedCount = keys.filter(key => draft.combos[key].confirmed.secondPass).length;
+  const edit = (key, field, value) => setDraft(previous => {
+    const next = structuredClone(previous);
+    next.combos[key].confirmed[field] = value;
+    return next;
+  });
+  // the names and descriptions used more than once (or left empty)
+  const getDuplicates = field => {
+    const byValue = new Map();
+    keys.forEach(key => {
+      const value = draft.combos[key].confirmed[field].trim().toLowerCase();
+      byValue.set(value, [...(byValue.get(value) || []), key]);
+    });
+    return new Set([...byValue.entries()].filter(([value, list]) => !value || list.length > 1).flatMap(([, list]) => list));
+  };
+  const badNames = getDuplicates("name");
+  const badDescriptions = getDuplicates("description");
+  const onSave = async () => {
+    const found = [
+      ...[...badNames].map(key => `name "${draft.combos[key].confirmed.name}" (${key}) is empty or used twice`),
+      ...[...badDescriptions].map(key => `description of ${key} is empty or used twice`)
+    ];
+    setProblems(found);
+    if (found.length) return;
+    await save(draft);
+    onSaved(draft);
+  };
+  return (
+    <>
+      <PassBar>
+        <b>Second pass</b>
+        <span style={{ color: LOOK.dim }}>{passedCount} of {keys.length} confirmed confirmed{isChanged ? " · unsaved changes" : ""}</span>
+        <button disabled={!isChanged} onClick={onSave}>Save</button>
+        <button disabled={!isChanged} onClick={() => { setDraft(structuredClone(options)); setProblems([]); }}>Undo changes</button>
+      </PassBar>
+      {problems.length > 0 && <div style={{ color: "#f85149", marginBottom: 10 }}>Not saved: {problems.slice(0, 6).join("; ")}{problems.length > 6 ? ` (and ${problems.length - 6} more)` : ""}</div>}
+      <PassTable>
+        <b>Powers</b><b>Class name</b><b>Description</b><b>Passes</b>
+        {keys.map(key => {
+          const { name, description, secondPass } = draft.combos[key].confirmed;
+          return (
+            <React.Fragment key={key}>
+              <span style={{ color: LOOK.dim }}>{key.replace(/,/g, " · ")}</span>
+              <input type="text" className={badNames.has(key) ? "bad" : ""} value={name} onChange={event => edit(key, "name", event.target.value)} />
+              <input type="text" className={badDescriptions.has(key) ? "bad" : ""} value={description} onChange={event => edit(key, "description", event.target.value)} />
+              <label><input type="checkbox" checked={!!secondPass} onChange={() => edit(key, "secondPass", !secondPass)} /> ✓✓</label>
+            </React.Fragment>
+          );
+        })}
+      </PassTable>
+    </>
+  );
+};
+
 // a combo's powers are named like 'Bubble' or 'Glass': each power's look, by that name
 const POWER_LOOKS = Object.fromEntries(TILE_STATUSES_AND_ABILITY_DATA.filter(({ element }) => element).map(look => [look.element[0].toUpperCase() + look.element.slice(1), look]));
 
@@ -122,6 +216,8 @@ export const ClassReview = () => {
   const [focus, setFocus] = useState(0);
   const [descriptionIndex, setDescriptionIndex] = useState(undefined);
   const [note, setNote] = useState("");
+  // every combo confirmed: the second pass opens (the first pass stays a click away)
+  const [isSecondPass, setIsSecondPass] = useState(() => Object.values(OPTIONS.combos).every(each => each.confirmed));
 
   const combo = current && options.combos[current];
   const confirmedCount = keys.filter(key => options.combos[key].confirmed).length;
@@ -205,7 +301,7 @@ export const ClassReview = () => {
 
   useEffect(() => {
     const onKey = event => {
-      if (!combo) return;
+      if (!combo || isSecondPass) return;
       const list = nameIndex === undefined ? combo.names : combo.names[nameIndex].descriptions;
       const pick = nameIndex === undefined ? pickName : pickDescription;
       const moves = {
@@ -233,6 +329,8 @@ export const ClassReview = () => {
   return (
     <Page>
       <Main>
+        <button style={{ float: "right" }} onClick={() => setIsSecondPass(!isSecondPass)}>{isSecondPass ? "First pass" : "Second pass"}</button>
+        {isSecondPass ? <SecondPass options={options} save={save} onSaved={setOptions} /> : <>
         <Progress><b>{confirmedCount}</b> of {keys.length} confirmed · {readyCount} ready to review{waitingCount ? ` · ${waitingCount} waiting for options (ask Claude to write the next batch)` : ""} {note && `· ${note}`}</Progress>
         {!combo ? <div>{readyCount || waitingCount ? "Nothing ready to review: the next options aren't written yet." : "Every combo is confirmed."}</div> : (
           <>
@@ -270,6 +368,7 @@ export const ClassReview = () => {
           A number or ↑ ↓ and Enter pick · C confirms and moves on<br />
           Esc or Backspace goes back: to the names, then to the last combo you confirmed
         </Keys>
+        </>}
       </Main>
       <Side>
         {keys.map(key => {
