@@ -2776,6 +2776,7 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     isTriggerPassiveImmediately: true,
     modifierVal: 2,
     fieldToModify: 'moveSpeedModifier',
+    maxPassiveStacks: 3, // each cast's +2 stacks, up to three at once (+6); a fourth takes over the oldest (Jamie, playtest 23)
     // - - - - - - - - - - -
 
     // UI data - - - - - - - - - -

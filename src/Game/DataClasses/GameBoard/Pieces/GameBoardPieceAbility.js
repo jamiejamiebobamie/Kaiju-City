@@ -52,6 +52,9 @@ export class GameBoardPieceAbility {
             // a refreshed passive takes over the one that is on, and starts its time again, instead of stacking
             const isRefresh = isPassiveRefreshed && this.passiveIds.size > 0;
             if (isRefresh) this.passiveIds.clear();
+            // stacking to a cap (Lightning's Charged Step): at the cap, the oldest ends as the new one starts
+            const { maxPassiveStacks } = this.gameBoardPieceAbilityData;
+            if (!isRefresh && maxPassiveStacks && this.passiveIds.size >= maxPassiveStacks) this.endPassive(piece, Math.min(...this.passiveIds));
             else this.gameBoardPieceAbilityData.togglePassive(piece);
             this.isPassiveApplied = true;
             this.passiveCount += 1;

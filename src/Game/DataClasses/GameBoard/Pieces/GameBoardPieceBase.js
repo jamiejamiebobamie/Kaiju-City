@@ -917,7 +917,8 @@ export class GameBoardPieceBase {
         const wading = getWaterSlow(this.waterSlowEnds, this.accTime);
         const effects = [];
         if (passive('ice') || wading > 0) effects.push({ id: 'slowed', count: wading > 1 ? wading : undefined });
-        if (passive('lightning')) effects.push({ id: 'fast' });
+        const charged = passive('lightning');
+        if (charged) effects.push({ id: 'fast', count: charged.passiveIds.size > 1 ? charged.passiveIds.size : undefined }); // its stacks (playtest 23)
         const burn = passive('fire');
         // from the first cast's passive on (it only showed once it had stacked: Jamie, playtest 20); the count once it stacks
         // counted from 1: the first cast's passive is one stack (Jamie, playtest 22: it read one short)

@@ -186,6 +186,7 @@ const GreenBar = styled.div`
   ${props => props.$isTop ? `top: -${BAR_GAP}cqw;` : `bottom: -${BAR_GAP}cqw;`}
   height: 0.35cqw;
   z-index: 3;
+  display: none; /* hidden for now (Jamie, playtest 23: they didn't add anything); the layout keeps working without them */
   background: ${LOG_LOOK.green};
   box-shadow: 0 0 0.8cqw ${LOG_LOOK.green}, 0 0 0.25cqw ${LOG_LOOK.green};
 `;
@@ -196,10 +197,11 @@ const Body = styled.div`
   min-height: 0;
 `;
 
+// the words start under the header (its height, measured: 'top' set in the render), so older ones leave at its lower
+// edge: never seen behind the portrait and name, or above them (Jamie, playtest 23)
 const Scroll = styled.div`
   position: absolute;
-  top: -${BAR_GAP - 0.35}cqw;
-  bottom: -${BAR_GAP - 0.35}cqw;
+  bottom: 0;
   left: 0;
   right: 0;
   z-index: 0;
@@ -227,7 +229,22 @@ const Header = styled.div`
   z-index: 2;
   padding: 0.8cqw 1.4cqw 0.4cqw;
   pointer-events: none;
-  background: linear-gradient(to bottom, rgba(4, 28, 15, 0.98) 80%, rgba(4, 28, 15, 0));
+`;
+
+// earlier lines up there: a small, faint arrow at the top of the words, pulsing (Jamie, playtest 23)
+const morePulse = keyframes`
+  0%, 100% { opacity: 0.25; transform: translateY(0); }
+  50% { opacity: 0.7; transform: translateY(-0.15cqw); }
+`;
+
+const MoreAbove = styled.div`
+  position: absolute;
+  right: 1.2cqw;
+  z-index: 2;
+  font-size: 0.9cqw;
+  color: ${LOG_LOOK.green};
+  pointer-events: none;
+  animation: ${morePulse} 1.6s ease-in-out infinite;
 `;
 
 const riseFromBar = keyframes`
@@ -265,10 +282,11 @@ const scanLine = keyframes`
 `;
 
 // a CRT feed: it flickers, and a bright line rolls slowly down it
+// the speaker now (the header): half again as big (Jamie, playtest 23), still leaving room for the longest line whole
 const Portrait = styled.div`
   position: relative;
   flex-shrink: 0;
-  width: 6cqw;
+  width: ${props => props.$isLarge ? 9 : 6}cqw;
   aspect-ratio: 3 / 4;
   overflow: hidden;
   border: 0.1cqw solid ${LOG_LOOK.dim};
@@ -288,7 +306,7 @@ const Portrait = styled.div`
 `;
 
 const Name = styled.div`
-  font-size: 1.15cqw;
+  font-size: ${props => props.$isLarge ? 1.6 : 1.15}cqw;
   text-transform: uppercase;
   text-shadow: 0 0 0.3cqw black, 0 0 0.5cqw currentColor;
 `;
@@ -398,14 +416,17 @@ export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, ac
     return { top: Math.max(header, 0), bottom: Math.max(buttons, 0) };
   };
   const [spacerPx, setSpacerPx] = useState(0);
-  const [headerPx, setHeaderPx] = useState(0); // the words start below the header, never behind it
+  const [headerPx, setHeaderPx] = useState(0); // where the words' room starts, down from the scroll's top (0 now: it starts under the header)
+  const [headerHeight, setHeaderHeight] = useState(0); // the scroll starts this far down: under the header
+  const [isMoreAbove, setIsMoreAbove] = useState(false); // earlier lines scrolled up out of view
   const isFollowing = useRef(true);
   const followNewest = (isSmooth = false) => {
     const scroll = scrollRef.current;
     const newest = newestRef.current;
     if (!scroll || !newest || !isFollowing.current) return;
     const room = getRoom();
-    const top = Math.max(newest.offsetTop - room.top, 0);
+    const gap = parseFloat(getComputedStyle(scroll).paddingTop) || 0; // a little room under the header, kept (playtest 23)
+    const top = Math.max(newest.offsetTop - room.top - gap, 0);
     const bottom = newest.offsetTop + newest.offsetHeight - (scroll.clientHeight - room.bottom) + 8; // a long line: its end in view
     const target = Math.max(top, bottom);
     if (Math.abs(scroll.scrollTop - target) < 2) return;
@@ -418,13 +439,15 @@ export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, ac
   useLayoutEffect(() => {
     const room = getRoom();
     const newest = newestRef.current ? newestRef.current.offsetHeight : 0;
-    if (scrollRef.current) setSpacerPx(Math.max(scrollRef.current.clientHeight - room.top - newest, 0));
+    if (scrollRef.current) setSpacerPx(Math.max(scrollRef.current.clientHeight - room.top - newest - 12, 0));
     setHeaderPx(Math.round(room.top));
+    if (headerRef.current) setHeaderHeight(headerRef.current.offsetHeight);
+    if (scrollRef.current) setIsMoreAbove(scrollRef.current.scrollTop > 2);
   });
   useLayoutEffect(() => {
     isFollowing.current = true;
     followNewest(true);
-  }, [entries.length, headerPx]);
+  }, [entries.length, headerPx, headerHeight]);
 
   // where the newest speaker's run of lines starts (the same speaker, back from the newest)
   const getIsSameSpeaker = (a, b) => !!a && !!b && a.name == b.name && a.avatar == b.avatar && a.chain == b.chain;
@@ -460,7 +483,7 @@ export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, ac
     <BuildEffect />
     <Panel onClick={() => isWaiting && handleContinue()}>
       <GreenBar $isTop />
-      <Scroll ref={scrollRef} style={{ paddingTop: `${headerPx}px` }} onWheel={() => { isFollowing.current = false; }} onTouchMove={() => { isFollowing.current = false; }}>
+      <Scroll ref={scrollRef} style={{ top: `${headerHeight}px`, paddingTop: "0.8cqw" }} onScroll={({ currentTarget }) => setIsMoreAbove(currentTarget.scrollTop > 2)} onWheel={() => { isFollowing.current = false; }} onTouchMove={() => { isFollowing.current = false; }}>
         {isBuilt && entries.map(({ key, who, name, text, avatar, chain }, index) => {
           const last = entries[index - 1];
           const isNewest = index == entries.length - 1;
@@ -485,13 +508,14 @@ export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, ac
         <div style={{ height: `${spacerPx}px` }} />
       </Scroll>
       <Body>
+        {isMoreAbove && <MoreAbove style={{ top: `${headerHeight + 2}px` }}>&#9650;</MoreAbove>}
         {isBuilt && entries.length > 0 && (() => {
           const { who, name, avatar } = entries[entries.length - 1];
           return (
             <Header ref={headerRef}>
               <Speaker style={{ marginBottom: 0 }}>
-                <Portrait style={{ backgroundImage: avatar ? `url(/levels/portraits/${avatar}.png)` : undefined }} />
-                <Name style={{ color: LOG_LOOK.names[who] || LOG_LOOK.names.other }}>{name}</Name>
+                <Portrait $isLarge style={{ backgroundImage: avatar ? `url(/levels/portraits/${avatar}.png)` : undefined }} />
+                <Name $isLarge style={{ color: LOG_LOOK.names[who] || LOG_LOOK.names.other }}>{name}</Name>
               </Speaker>
             </Header>
           );

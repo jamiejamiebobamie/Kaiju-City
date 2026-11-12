@@ -46,6 +46,7 @@ export class GameBoardTileStatusAndAbilityData {
         passiveDurationTime,
         isTriggerPassiveImmediately = true,
         modifierVal = 0,
+        maxPassiveStacks = undefined,
         fieldToModify = '',
         rotationShift = 'doNotRotate' // method name to apply to tile status icon to handle status icon rotation on tile
     }) {
@@ -117,6 +118,7 @@ export class GameBoardTileStatusAndAbilityData {
         this.passiveDurationTime = passiveDurationTime;
         this.isTriggerPassiveImmediately = isTriggerPassiveImmediately;
         this.modifierVal = modifierVal;
+        this.maxPassiveStacks = maxPassiveStacks;
         this.fieldToModify = fieldToModify;
     }
 
