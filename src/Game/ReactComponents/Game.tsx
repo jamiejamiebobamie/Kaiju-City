@@ -663,7 +663,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     settingsManager.setIsTeammate(isTeammate && !isSolo);
 
     setIsDialogueLog(isMonitorAlways); // in the monitor, conversations go to the log beside it
-    const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival, killsToWin, returnSpot, isRetry, autoRecruits: isAutoRecruits ? getCallableRecruits() : [], recruits: getCallableRecruits(), carriedObjective: lastObjective.current, terminated: terminatedAvatars, trainingPoints, healthReward: isHealthRewardDue.current, trainingOutcome: trainingOutcome.current, sparredHere: sparredLevelIds.includes(matchLevel.id), isRevisit: matchLevel.id == 'labIntro' && labVisits.current > 0 && !returnSpot, isTakeOverOnDeath });
+    const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival, killsToWin, returnSpot, isRetry, autoRecruits: isAutoRecruits ? getCallableRecruits() : [], recruits: getCallableRecruits(), carriedObjective: lastObjective.current, terminated: terminatedAvatars, fallen: isPermadeath ? fallenRecruits : [], trainingPoints, healthReward: isHealthRewardDue.current, trainingOutcome: trainingOutcome.current, sparredHere: sparredLevelIds.includes(matchLevel.id), isRevisit: matchLevel.id == 'labIntro' && labVisits.current > 0 && !returnSpot, isTakeOverOnDeath });
     if (matchLevel.id == 'labIntro' && !returnSpot) labVisits.current += 1;
     isHealthRewardDue.current = false;
     trainingOutcome.current = undefined;

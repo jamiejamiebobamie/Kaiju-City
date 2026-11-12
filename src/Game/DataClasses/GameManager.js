@@ -215,6 +215,8 @@ const CROWD_COST = { standing: 3, headedFor: 1.5 };
 
 // a train hit that doesn't kill: down this long as a ragdoll, then up again
 const TRAIN_KNOCKDOWN = { downMs: 3000, drift: 0.06 }; // drift: how much of the way to the get-up tile the body moves each tick
+// Punk Guy cut off by the train: he picks a far spot on his platform every so often and runs there (Jamie, playtest 23)
+const APART_RUN = { everyMs: 1500, minRows: 2 };
 
 // a line's camera, as the dialogue viewer sets it: 'wide' keeps the whole scene in shot, even when the line goes to the log;
 // anything else is the scene's own shot for it (usually on the speaker)
@@ -233,9 +235,10 @@ export class GameManager {
     // 'healthReward': health was just won sparring: the player and teammate glow red a while, back in the battleground
     // 'trainingOutcome': just back from a training fight won ({ isSparring, avatar }): what's said is about it.
     // 'sparredHere': sparring has been done in this battleground before: the teammate asks to go again
-    constructor({ level = PENINSULA, settingsManager, hasArrival = false, killsToWin = undefined, returnSpot = undefined, isRetry = false, autoRecruits = [], recruits = undefined, carriedObjective = null, terminated = [], trainingPoints = { player: 0, teammate: 0 }, healthReward = false, trainingOutcome = undefined, sparredHere = false, isRevisit = false, isTakeOverOnDeath = false }) {
+    constructor({ level = PENINSULA, settingsManager, hasArrival = false, killsToWin = undefined, returnSpot = undefined, isRetry = false, autoRecruits = [], recruits = undefined, carriedObjective = null, terminated = [], fallen = [], trainingPoints = { player: 0, teammate: 0 }, healthReward = false, trainingOutcome = undefined, sparredHere = false, isRevisit = false, isTakeOverOnDeath = false }) {
         this.healthReward = healthReward;
         this.terminated = terminated;
+        this.fallen = fallen; // recruits gone for good (permadeath): their battlegrounds offer sparring, as if terminated (Jamie, playtest 23)
         this.trainingPoints = trainingPoints;
         this.trainingOutcome = trainingOutcome;
         this.sparredHere = sparredHere;
@@ -2505,6 +2508,29 @@ export class GameManager {
         teleport.useAbility({ accTime: this.accTime, piece: rival, registerTimeout: this.gameManagerProxy.registerTimeout, updateTileWithAbilityStatus: this.gameManagerProxy.updateTileWithAbilityStatus });
     }
 
+    /*
+        The Subway (Jamie, playtest 23): Punk Guy on a platform of his own while the train goes by doesn't stand there:
+        he runs about it, to a far spot on his side and then another, until the train has gone.
+    */
+    updateApartRival() {
+        const rival = this.rivalPiece;
+        if (!this.getIsApartByTrain()) {
+            // the train gone: back at the team at once, not finishing the run
+            if (this.apartRunTile && rival && rival.walkToTile == this.apartRunTile) rival.walkToTile = undefined;
+            this.apartRunTile = undefined;
+            return;
+        }
+        if (rival.walkToTile || rival.shouldTeleport || rival.moveToTiles.length) return;
+        if (this.accTime < (this.nextApartRunAt || 0)) return;
+        this.nextApartRunAt = this.accTime + APART_RUN.everyMs;
+        const here = this.gameBoardManager.getCharXAndYFromTileIndex(rival.getTileIndex());
+        const far = this.gameBoardManager.getReachableTiles(rival.getTileIndex()).filter(tile => {
+            const spot = this.gameBoardManager.getCharXAndYFromTileIndex(tile);
+            return Math.hypot(spot.x - here.x, spot.y - here.y) > APART_RUN.minRows * this.getGhostRowPx() && !this.gameBoardManager.getLinkedTile(tile);
+        });
+        if (far.length) rival.walkToTile = this.apartRunTile = far[Math.floor(Math.random() * far.length)];
+    }
+
     // - - - objectives (Objectives.ts, Jamie 2026-11-10) - - -
 
     // what the player is to do, as things stand. held while a scene plays (not one mid-fight): a new one shows after it
@@ -2663,13 +2689,13 @@ export class GameManager {
     }
 
     /*
-        Sparring (Jamie, 2026-11-10): with the bystander of this battleground terminated, the teammate offers a fight with
-        each other instead: each win is one more health for the player, to SPARRING.maxPlayerLives. As often as they like.
+        Sparring (Jamie, 2026-11-10): with the bystander of this battleground terminated (or recruited, then fallen in a
+        fight: playtest 23), the teammate offers a fight with each other instead: each win is one more health for the player, to SPARRING.maxPlayerLives. As often as they like.
     */
     getSparringOffer() {
         const training = this.level.training;
         const { teammate, player } = this.getGhostTeam();
-        if (!training || !teammate || !player || !this.terminated.includes(training.recruit)) return undefined;
+        if (!training || !teammate || !player || !(this.terminated.includes(training.recruit) || this.fallen.includes(training.recruit))) return undefined;
         if (player.maxLives >= SPARRING.maxPlayerLives) return undefined;
         return { teammate };
     }
@@ -3427,6 +3453,7 @@ export class GameManager {
         this.updateObjective();
         this.updateTakeOver();
         this.updateTrappedRival();
+        this.updateApartRival();
         this.updateRoamingRival();
         this.updateQueuedVisitScene();
         this.updateTalks();
