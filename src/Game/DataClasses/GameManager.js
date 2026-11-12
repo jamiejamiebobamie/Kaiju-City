@@ -3321,10 +3321,10 @@ export class GameManager {
     getTakeOverOrder() {
         const team = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
         const recruits = team.filter(piece => piece.isRecruit);
+        // never the Hazmat Worker: a helper with no attack, he can't be played as (Jamie, playtest 23)
         return [
             ...team.filter(piece => !piece.isRecruit),
-            ...recruits.filter(piece => piece.avatar != 'hazmat'),
-            ...recruits.filter(piece => piece.avatar == 'hazmat')
+            ...recruits.filter(piece => piece.avatar != 'hazmat')
         ];
     }
 

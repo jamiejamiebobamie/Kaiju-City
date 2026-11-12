@@ -45,6 +45,7 @@ const TILE_LOOK = {
   wormholeColor: "#8a2be2",
   wormholePulseSeconds: 0.6,
   wormholeFadeMs: 1500, // over its last moments
+  isPathShown: false, // the tile the player is heading to, lit: off for now (Jamie, playtest 23; true brings it back)
   // goal tiles: a glowing light shines upward from the tile
   goalColor: "#ffd24a",
   goalPulseSeconds: 1.4,
@@ -565,7 +566,7 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
         const iconColor = isSmoke ? getSmokeColor(tile, powerColor) : powerColor;
         if (isSmoke) nextSmokeTiles.set(key, { center: getTileCenter(grid, tile.tileIndex), color });
         const pieceColor = colorLookup[`${tile.tileIndex.i} ${tile.tileIndex.j}`];
-        const isHighlighted = tile.getIsHighlighted() && isPlayerUp;
+        const isHighlighted = TILE_LOOK.isPathShown && tile.getIsHighlighted() && isPlayerUp;
         if (!color && !isHighlighted && !pieceColor) return;
 
         const center = getTileCenter(grid, tile.tileIndex);

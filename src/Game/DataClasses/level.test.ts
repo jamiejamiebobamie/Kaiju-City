@@ -1598,7 +1598,7 @@ describe('playtest fixes', () => {
     gm.stepPieces();
     expect(getUnlocks()).toContain('hazmat');
     // his word first, in a balloon (playtest 20), then the card
-    expect(gm.cutscene.steps.some(({ speech }) => speech && speech.text.includes("I'll follow you now"))).toBe(true);
+    expect(gm.cutscene.steps.some(({ speech }) => speech && speech.text.includes("I'm coming with you"))).toBe(true);
     gm.skipCutscene();
     expect(gm.unlockMessage).toContain('Hazmat');
     vi.unstubAllGlobals();

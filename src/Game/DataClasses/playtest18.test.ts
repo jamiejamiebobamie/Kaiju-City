@@ -96,7 +96,8 @@ describe('playtest 18', () => {
     const gm = makeGame(LEVELS.peninsula, { isTakeOverOnDeath: true, autoRecruits: ['hazmat', 'punk'], recruits: ['hazmat', 'punk'] });
     for (let k = 0; k < 4000 && gm.cutscene; k++) gm.stepPieces();
     const order = gm.getTakeOverOrder().map(({ avatar, isRecruit }) => isRecruit ? avatar : 'team');
-    expect(order.slice(-2)).toEqual(['punk', 'hazmat']);
+    expect(order).not.toContain('hazmat'); // a helper: never played as (playtest 23)
+    expect(order).toContain('punk');
     const [player, teammate] = gm.getPieces();
     player.isDead = true;
     player.getIsDead = () => true;

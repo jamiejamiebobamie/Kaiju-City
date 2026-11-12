@@ -129,8 +129,14 @@ const GhostBody = styled.div`
   `}
 `;
 
-// the arms and legs hanging straight down on the screen, however the body lies (a limb at 0 hangs down from the torso)
-const getHangingBody = body => ({ ...body, limbs: body.limbs.map(limb => ({ ...limb, angle: -body.angle })), easeMs: GHOST_RISE.droopMs });
+// the arms and legs drooping down the screen as the ghost lifts (a limb at 0 lies along the torso), but at most
+// HANGING_LIMB_DEGREES from it: hanging straight down, a quarter turn, looked broken (Jamie, playtest 23)
+const HANGING_LIMB_DEGREES = 35;
+const getHangingBody = body => ({
+  ...body,
+  limbs: body.limbs.map(limb => ({ ...limb, angle: -Math.sign(body.angle) * Math.min(Math.abs(body.angle), HANGING_LIMB_DEGREES) })),
+  easeMs: GHOST_RISE.droopMs
+});
 
 // the ghost lifting off the body
 const RisingGhost = props => {

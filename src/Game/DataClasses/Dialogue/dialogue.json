@@ -690,9 +690,9 @@
       "lines": [
         {
           "speaker": "Hazmat Worker",
-          "text": "Well, that's settled. I'll follow you now.",
+          "text": "I'm sick of this gig. I'm coming with you guys.",
           "id": "street.hazmatJoins.0",
-          "note": "jamie"
+          "note": "draft"
         }
       ]
     },

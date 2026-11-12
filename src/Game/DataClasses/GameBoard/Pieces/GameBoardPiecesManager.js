@@ -35,12 +35,14 @@ export class GameBoardPiecesManager {
     }
 
     getIsPlayerTeamDead() {
-        // recruits called in count too: while one still fights, the fight goes on
-        return this.getTeamPieces(this.getPlayerTeamIndex()).every(piece => piece.getIsDead());
+        // recruits called in count too: while one still fights, the fight goes on. not the Hazmat Worker: a helper with no
+        // attack, left on his own the fight is lost (Jamie, playtest 23)
+        return this.getTeamPieces(this.getPlayerTeamIndex()).every(piece => piece.getIsDead() || piece.avatar == 'hazmat');
     }
 
     getRecruitsUiState() {
-        return this.pieces.filter(piece => piece.isRecruit).map(piece => piece.getUiState());
+        // no HUD for the Hazmat Worker (a helper: Jamie, playtest 23)
+        return this.pieces.filter(piece => piece.isRecruit && piece.avatar != 'hazmat').map(piece => piece.getUiState());
     }
 
     getPlayerTeamUiState() {
