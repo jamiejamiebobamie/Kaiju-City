@@ -193,6 +193,15 @@ const Phantom = styled.span`
   animation: ${trail} ${PRESS_KEY.trailSeconds}s ease-out infinite;
 `;
 
+// pressed (Jamie): the ghosts hold where they are and fade out quickly, and don't come back while the words go white
+const Trails = styled.span`
+  transition: opacity 0.35s ease-out;
+  ${props => props.$isLeaving && css`
+    opacity: 0;
+    & > * { animation-play-state: paused; }
+  `}
+`;
+
 // gameboy has no brackets: these are a monospace's, as the dialogue's [ENTER]
 const Bracket = styled.span`
   font-family: "Courier New", Courier, monospace;
@@ -276,7 +285,9 @@ export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
       <KeyLine />
       <KeyText $isLeaving={isLeaving}>
         {/* three, a moment apart: a trail */}
-        {[1, 2, 3].map(n => <Phantom key={n} style={{ animationDelay: `${(n - 1) * 0.08}s`, filter: `opacity(${1 - (n - 1) * 0.3})` }}><KeyWords /></Phantom>)}
+        <Trails $isLeaving={isLeaving}>
+          {[1, 2, 3].map(n => <Phantom key={n} style={{ animationDelay: `${(n - 1) * 0.08}s`, filter: `opacity(${1 - (n - 1) * 0.3})` }}><KeyWords /></Phantom>)}
+        </Trails>
         <span style={{ position: "relative" }}><KeyWords /></span>
       </KeyText>
       <KeyLine />
