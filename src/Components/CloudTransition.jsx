@@ -15,13 +15,7 @@ const CLOUD_LOOK = {
   outlineTopColor: "#b9d3f2", // the outlines: pale where the sun catches them, deep blue below
   outlineBottomColor: "#22467f",
   outlineWidth: 5,
-  // the bank behind the strips is puffs, outlined too: big and few, each its own size and a little off the grid, so the
-  // sides read as varied cloud, not a busy row of bumps (Jamie, playtest 22; were 120 and 92, all near one size)
-  puffSize: 210,
-  puffStep: 165,
-  puffJitter: 0.4, // how far off its spot in the grid a puff may sit, as a share of a step
-  puffSizeRange: [0.32, 0.85], // a puff's radius, as shares of puffSize
-  puffStretchRange: [1.6, 2.6], // and how much wider than tall each one is: long ovals, like abstracted Kirby or Mario clouds (Jamie)
+  pillLengthRange: [280, 720], // the bank's pills: their lengths, before scaling (Jamie: the strips' shape, varied lengths)
   strips: 60,
   minSeconds: 2.6, // close together, so the strips meet at nearly the same moment
   maxSeconds: 3,
@@ -99,15 +93,17 @@ export const CloudTransition = ({ isPlaying }) => {
     outline.addColorStop(0, CLOUD_LOOK.outlineTopColor);
     outline.addColorStop(1, CLOUD_LOOK.outlineBottomColor);
     ctx.lineWidth = CLOUD_LOOK.outlineWidth * scale;
-    // the bank's puffs, in staggered rows, each a little bigger or smaller
-    const { puffSize, puffStep } = CLOUD_LOOK;
-    const puffs = [];
-    for (let row = 0, y = -puffSize / 2; y < height + puffSize; row += 1, y += puffStep * 0.62 * scale) {
-      for (let x = (row % 2) * puffStep * scale / 2 - puffSize; x < width + puffSize; x += puffStep * scale) {
-        const [low, high] = CLOUD_LOOK.puffSizeRange;
-        const jitter = CLOUD_LOOK.puffJitter * puffStep * scale;
-        const [least, most] = CLOUD_LOOK.puffStretchRange;
-        puffs.push({ x: x + (Math.random() - 0.5) * 2 * jitter, y: y + (Math.random() - 0.5) * jitter, radius: puffSize * scale * (low + Math.random() * (high - low)), stretch: least + Math.random() * (most - least) });
+    // the bank (Jamie, playtest 22): the strips' own pill shape, the same height, in overlapping rows top to bottom like
+    // theirs, each pill its own length and each row set off from the last, so it covers everything but isn't even
+    const pillHeight = stripHeight * scale;
+    const [shortest, longest] = CLOUD_LOOK.pillLengthRange;
+    const pills = [];
+    for (let y = -pillHeight / 2; y < height + pillHeight / 2; y += CLOUD_LOOK.rowHeight * 2 * scale) {
+      let x = -Math.random() * longest * scale;
+      while (x < width) {
+        const length = (shortest + Math.random() * (longest - shortest)) * scale;
+        pills.push({ x, y, length });
+        x += length * (0.55 + Math.random() * 0.3); // overlapping the next
       }
     }
 
@@ -123,9 +119,9 @@ export const CloudTransition = ({ isPlaying }) => {
         // the puffs fill the screen between them, under their outlines
         ctx.globalAlpha = bankOpacity;
         ctx.fillRect(0, 0, width, height);
-        puffs.forEach(({ x, y, radius, stretch }) => {
+        pills.forEach(({ x, y, length }) => {
           ctx.beginPath();
-          ctx.ellipse(x, y, radius * stretch, radius, 0, 0, Math.PI * 2);
+          ctx.roundRect(x, y, length, pillHeight, pillHeight / 2);
           ctx.fill();
           ctx.stroke();
         });
