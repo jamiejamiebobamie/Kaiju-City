@@ -35,11 +35,13 @@ export class PlayerInputHandler {
     }
 
     // the pressed direction, eg. 'up', 'up right', 'left'. 'idle' if no keys are pressed.
+    // whoever the player plays as (taken over, GameManager.updateTakeOver): a charm on the fallen player no longer
+    // reverses the keys of the ally they play on as (Jamie, playtest 21: the controls felt wrong after a take-over)
     getPressedDir() {
-        const piece = this.gameManagerProxy.getPlayerPiece();
+        const piece = this.gameManagerProxy.getControlledPiece();
         if (piece && (piece.isHeld || piece.getIsRewardPulse())) return 'idle'; // still through a reward's glow (Jamie)
         const pressedDir = this.getHeldDir();
-        return this.gameManagerProxy.getPlayerPiece().isCharmed ? REVERSED_DIRS[pressedDir] : pressedDir;
+        return piece && piece.isCharmed ? REVERSED_DIRS[pressedDir] : pressedDir;
     }
 
     getHeldDir() {

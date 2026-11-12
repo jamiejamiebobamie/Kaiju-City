@@ -490,7 +490,9 @@ export class GameBoardPieceBase {
     jumpToLinkedTile(linkedTile) {
         if (!this.getIsAllowedTile(linkedTile)) return false;
         if (this.getIsPortalResting() || this.getIsLinkResting(this.tileIndex)) return false;
-        if (this.isNpc) this.portalRestUntil = (this.accTime || 0) + PORTAL_REST_MS;
+        // (one that rests each stairway on its own, the Mermaid, keeps the other one open: with no links at all for a
+        // while, she had no way down and waited by the stairs she'd come up. Jamie, playtest 21)
+        if (this.isNpc && !this.linkRestMs) this.portalRestUntil = (this.accTime || 0) + PORTAL_REST_MS;
         // this link rests a good while for this piece, both its ends: it'll take another next time (the Mermaid, Jamie)
         if (this.linkRestMs) {
             this.linkRests = this.linkRests || {};

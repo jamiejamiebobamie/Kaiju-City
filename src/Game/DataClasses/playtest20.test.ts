@@ -41,3 +41,19 @@ describe('playtest 20', () => {
     expect(LEVELS.lab.agentDrops.isFirstStraightDown).toBe(true);
   });
 });
+
+describe('playtest 21', () => {
+  it('K9: up one stairway, the Mermaid plans down the other one at once', () => {
+    const gm = makeGame(LEVELS.aquarium);
+    for (let k = 0; k < 4000 && gm.cutscene; k++) gm.stepPieces();
+    const rival = gm.rivalPiece;
+    const [[lowA, upA], [lowB]] = LEVELS.aquarium.tileLinks;
+    rival.initCharLocation(true, lowA);
+    rival.accTime = 1000;
+    rival.jumpToLinkedTile(upA); // up stairway A: it rests now
+    expect(rival.getIsPortalResting()).toBe(false);
+    const path = gm.gameBoardManager.findPathFromTo(rival.getTileIndex(), lowB, undefined, false, rival.pieceIndex);
+    expect(path.length).toBeGreaterThan(0);
+    expect(path.some(tile => key(tile) == key(lowA))).toBe(false);
+  });
+});

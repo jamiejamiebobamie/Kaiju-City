@@ -13,6 +13,10 @@ export class GameManagerProxy {
         this.props = props;
     }
 
+    getTileIndexAtCharLocation(location) {
+        return this.props.getTileIndexAtCharLocation ? this.props.getTileIndexAtCharLocation(location) : undefined;
+    }
+
     getZIndexAtLocation(location) {
         return this.props.getZIndexAtLocation ? this.props.getZIndexAtLocation(location) : 0;
     }

@@ -3599,6 +3599,7 @@ export class GameManager {
             getTeleportAcross: this.getTeleportAcross,
             getClosestWalkableTile: tile => this.gameBoardManager.getClosestWalkableTile(tile),
             getZIndexAtLocation: this.gameBoardManager.getZIndexAtLocation,
+            getTileIndexAtCharLocation: this.gameBoardManager.getTileIndexAtCharLocation,
             getIsBossThreatNear: this.getIsBossThreatNear,
             getIsTileOpenTo: this.getIsTileOpenTo,
             // the Aquarium's sea creatures keep to the flooded floor

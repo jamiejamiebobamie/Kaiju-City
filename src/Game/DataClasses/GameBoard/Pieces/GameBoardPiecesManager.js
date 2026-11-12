@@ -262,7 +262,13 @@ export class GameBoardPiecesManager {
         // create lookup of tileindex string: '0 1' to GamePiece color for 'redrawTiles' method
         return this.pieces.filter(p => p.isOnTiles && !p.isDead && !p.isTileHidden).reduce((lookup, piece) => {
             // no powers yet: a plain white tile, till they are given some and take their color
-            lookup[`${piece.tileIndex.i} ${piece.tileIndex.j}`] = (piece.abilities.length || piece.isEmpowered) && !piece.isPlain ? piece.getColor() : POWERLESS_TILE_COLOR; // no powers, or none showing (the Sewers, after the ray)
+            // the tile under them as they go, not the one they're headed for (Jamie, playtest 21: in the scripted walks
+            // it lit up before they got there)
+            const under = piece.charLocation && this.gameManagerProxy.getTileIndexAtCharLocation(piece.charLocation);
+            const isUnderOnBoard = !!under && this.gameManagerProxy.getIsInBounds(under);
+            if (!isUnderOnBoard && piece.arrivalEnd) return lookup; // walking in, still off the tiles: none lit yet
+            const tile = isUnderOnBoard ? under : piece.tileIndex;
+            lookup[`${tile.i} ${tile.j}`] = (piece.abilities.length || piece.isEmpowered) && !piece.isPlain ? piece.getColor() : POWERLESS_TILE_COLOR; // no powers, or none showing (the Sewers, after the ray)
             return lookup;
         }, {});
     }

@@ -404,6 +404,12 @@ export class GameBoardManager {
     }
 
     // the sort order of a piece standing at a spot (by its feet), rather than by the tile it is assigned
+    // the tile under a piece's feet, where it is now (not the tile it is headed for)
+    getTileIndexAtCharLocation = ({ x, y }) => {
+        const { charOffsetX, charOffsetY, scale } = this.grid;
+        return getTileIndexAtLocation(this.grid, { x: x - charOffsetX * scale, y: y - charOffsetY * scale });
+    };
+
     getZIndexAtLocation = ({ x, y }) => {
         const { charOffsetX, charOffsetY, scale } = this.grid;
         const tile = getTileIndexAtLocation(this.grid, { x: x - charOffsetX * scale, y: y - charOffsetY * scale });
@@ -424,7 +430,7 @@ export class GameBoardManager {
         let highlightedTileIndices = [];
         const lookup = new Set();
 
-        const player = this.gameManagerProxy.getPlayerPiece();
+        const player = this.gameManagerProxy.getControlledPiece(); // the one the player plays as (taken over, too)
         const moveToTiles = player.getMoveToTiles();
 
         const toTileIndex = this.hoveredTileIndex || this.clickedTileIndex;
@@ -561,8 +567,8 @@ export class GameBoardManager {
         });
         if (!!avoidedPath.length || !enemyTiles || isAlwaysAvoid) return avoidedPath;
 
-        // boxed-in by enemies: going through them beats not moving
-        return this.findPathFromTo(startIndex, goalIndex);
+        // boxed-in by enemies: going through them beats not moving (still the piece's own: its resting stairways, its ground)
+        return this.findPathFromTo(startIndex, goalIndex, undefined, false, crowdPieceIndex);
     };
 
     getTileXAndYFromTileIndex(tileIndex) {
