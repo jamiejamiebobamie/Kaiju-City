@@ -892,11 +892,12 @@ describe('the Agents in the Lab', () => {
 
   it('walk the catwalk from off-shot, drop, and land on the floor to fight', () => {
     const { gm } = makeLab();
-    const getDropping = () => getAgents(gm).filter(piece => piece.isEntering);
+    // (the first drops straight down from the catwalk, playtest 20: the second walks in from off-shot)
+    const getDropping = () => getAgents(gm).filter(piece => piece.isEntering && (piece.charLocation.x < 0 || piece.charLocation.x > LEVELS.lab.world.width));
     while (!getDropping().length) gm.stepPieces();
     const [agent] = getDropping();
     const { y } = agent.charLocation;
-    expect(agent.charLocation.x).toBeLessThan(0);
+    expect(agent.charLocation.x < 0 || agent.charLocation.x > LEVELS.lab.world.width).toBe(true);
     expect(agent.isOnTiles).toBe(false);
     let hasFallen = false;
     for (let k = 0; k < 200 && !agent.isOnTiles; k++) {

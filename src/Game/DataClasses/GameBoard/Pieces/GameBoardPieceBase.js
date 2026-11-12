@@ -462,7 +462,11 @@ export class GameBoardPieceBase {
         this.lastHitDirs = undefined;
         this.decrementHealth(accTime, mode == 'kill' ? this.lives + this.livesModifier : dmg);
         this.moveToTiles = [];
-        this.jumpToLinkedTile(safeTile);
+        // straight there, not as through a portal: for the player that was a portal walk, so they showed twice and the
+        // ragdoll lay where they were hit (Jamie, playtest 20)
+        this.stopMoving();
+        this.initCharLocation(true, safeTile);
+        this.linkArrivalTile = safeTile; // not taken on through a link or portal there either
     }
 
     // the player stopped on a linked tile

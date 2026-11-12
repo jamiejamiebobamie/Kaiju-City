@@ -110,6 +110,26 @@ const NOTICE_TOP = "25%";
 
 const UNLOCK_CARD_MS = 5000; // as long as its fade (cardFade)
 
+/*
+  A notice that goes after 'ms' of play (Jamie, playtest 20): paused, it hides and its clock stops; unpaused, it shows
+  again and its clock goes on, however many pauses. its animation holds where it was too (getPausedNoticeStyle).
+*/
+const usePausableNotice = (notice, setNotice, ms, isPaused) => {
+  const leftMs = useRef(0);
+  const key = notice ? notice.key : undefined;
+  useEffect(() => { leftMs.current = ms; }, [key]);
+  useEffect(() => {
+    if (key === undefined || isPaused) return;
+    const startedAt = Date.now();
+    const timeout = setTimeout(() => setNotice(undefined), Math.max(leftMs.current, 0));
+    return () => {
+      clearTimeout(timeout);
+      leftMs.current -= Date.now() - startedAt;
+    };
+  }, [key, isPaused]);
+};
+const getPausedNoticeStyle = isPaused => isPaused ? { visibility: "hidden" as const, animationPlayState: "paused" } : undefined;
+
 // a notice that comes and goes on its own, in the style of the speech bubbles
 const UnlockCard = styled.div`
   position: absolute;
@@ -735,9 +755,8 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   useEffect(() => {
     if (!takeOverCount) return;
     setTakeOverNotice({ key: takeOverCount, text: takeOverText });
-    const timeout = setTimeout(() => setTakeOverNotice(undefined), OBJECTIVE_NOTICE_MS);
-    return () => clearTimeout(timeout);
   }, [takeOverCount]);
+  usePausableNotice(takeOverNotice, setTakeOverNotice, OBJECTIVE_NOTICE_MS, isPaused);
 
   // only when it changes (Jamie, playtest 19): not the same one again on a new level (the carried "Go to the Lab"),
   // and not one already shown in this fight (the Aquarium's "Survive the Flood" coming back)
@@ -750,9 +769,8 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     lastNoticeText.current = objectiveText;
     noticedThisMatch.current.add(objectiveText);
     setObjectiveNotice({ key: objectiveCount, text: objectiveText });
-    const timeout = setTimeout(() => setObjectiveNotice(undefined), OBJECTIVE_NOTICE_MS);
-    return () => clearTimeout(timeout);
   }, [objectiveCount]);
+  usePausableNotice(objectiveNotice, setObjectiveNotice, OBJECTIVE_NOTICE_MS, isPaused);
   // the objective before a detour (the walking Lab off a map walk): it carries over there
   const lastObjective = useRef(null);
   useEffect(() => {
@@ -767,8 +785,9 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     const { text, power } = rewardText.current;
     setRewardNotice({ key: Date.now(), text, power });
     rewardText.current = undefined;
-    setTimeout(() => setRewardNotice(undefined), power ? UNLOCK_CARD_MS : OBJECTIVE_NOTICE_MS); // not cleared when the glow ends: the title always goes
   }, [isRewarding, isCutscene, matchCount, isPlayingGame]);
+  // not cleared when the glow ends: the title always goes
+  usePausableNotice(rewardNotice, setRewardNotice, rewardNotice && rewardNotice.power ? UNLOCK_CARD_MS : OBJECTIVE_NOTICE_MS, isPaused);
 
   // a new playthrough: nothing chosen in the last one carries over (Jamie): who was recruited or terminated, health won
   // times in the walking Lab this playthrough: after the first, the Agent doesn't greet the team again (Jamie, playtest 18)
@@ -1522,12 +1541,12 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               )}
               {isWiping && <ScreenClip><BlackWipe /></ScreenClip>}
               {/* inside the Kaiju-Vision screen itself (Jamie), not over the casing */}
-              {objectiveNotice && createPortal(<ObjectiveNotice key={objectiveNotice.key}>{objectiveNotice.text}</ObjectiveNotice>, document.querySelector("[data-play-screen]") || document.body)}
-              {takeOverNotice && createPortal(<TakeOverNotice key={takeOverNotice.key}>{takeOverNotice.text}</TakeOverNotice>, document.querySelector("[data-play-screen]") || document.body)}
-              {rewardNotice && !rewardNotice.power && createPortal(<RewardNotice key={rewardNotice.key}>{rewardNotice.text}</RewardNotice>, document.querySelector("[data-play-screen]") || document.body)}
+              {objectiveNotice && createPortal(<ObjectiveNotice key={objectiveNotice.key} style={getPausedNoticeStyle(isPaused)}>{objectiveNotice.text}</ObjectiveNotice>, document.querySelector("[data-play-screen]") || document.body)}
+              {takeOverNotice && createPortal(<TakeOverNotice key={takeOverNotice.key} style={getPausedNoticeStyle(isPaused)}>{takeOverNotice.text}</TakeOverNotice>, document.querySelector("[data-play-screen]") || document.body)}
+              {rewardNotice && !rewardNotice.power && createPortal(<RewardNotice key={rewardNotice.key} style={getPausedNoticeStyle(isPaused)}>{rewardNotice.text}</RewardNotice>, document.querySelector("[data-play-screen]") || document.body)}
               {rewardNotice && rewardNotice.power && (() => {
                 const look = getPowerLook(rewardNotice.power);
-                return <UnlockCard key={rewardNotice.key}>{look && <PowerTile style={{ background: look.color }}><i className={`fa ${look.activeIcon}`} /></PowerTile>}{rewardNotice.text}</UnlockCard>;
+                return <UnlockCard key={rewardNotice.key} style={getPausedNoticeStyle(isPaused)}>{look && <PowerTile style={{ background: look.color }}><i className={`fa ${look.activeIcon}`} /></PowerTile>}{rewardNotice.text}</UnlockCard>;
               })()}
               {unlockMessage && <UnlockStack><UnlockCard style={{ position: "static", transform: "none" }}><UnlockPortrait src={unlockImage} />{unlockMessage}</UnlockCard></UnlockStack>}
               {fadeCards && <FadeToBlack><CardStack>{fadeCards.map(({ label, image, power }, index) => (

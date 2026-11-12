@@ -152,6 +152,7 @@ type AgentDrops = {
   maxLives: number;
   moveSpeed: number;
   firstDropMs: number;
+  isFirstStraightDown?: boolean; // the first drops straight from the catwalk, without walking in
   dropIntervalMs: number;
   catwalkY: number; // in scene pixels
   catwalkLastRow: number; // the catwalk's tile rows end here: the floor is below, out of reach but by the portal
@@ -207,7 +208,8 @@ export type LevelConfig = {
     topSpot: { x: number; y: number }; // where she goes up to, to heal
     teamSpot: { x: number; y: number }; // where her scream pulls the team
     groundSpot: { x: number; y: number }; // where she comes back down to
-    topFloor: { maxY: number; stairs: { minX: number; maxX: number; minY: number } }; // her ground while the tanks pour: above maxY, less the middle stairs
+    topFloor: { maxY: number; stairs: { minX: number; maxX: number; minY: number } };
+    stairsCamera?: { minX: number; maxX: number; maxY: number }; // her ground while the tanks pour: above maxY, less the middle stairs
     screamScene: string;
     creaturesScene: string;
   };
@@ -234,6 +236,7 @@ export type LevelConfig = {
   showdown?: { // the Agent and the team have words before the fight
     script: Array<{ who: string; text: string }>; // 'who' is 'agent', 'teammate' or 'player'
     speechSpot: { x: number; y: number };
+    lineUp?: { y: number; spacing: number }; // the team in a row before the Agent first
   };
   extras?: Array<{ avatar: string; spot: { x: number; y: number }; facingDir: string }>; // people standing in the scene, drawn as pieces
   trap?: { // the Agent has his say, then his clones chase the player to the door
@@ -409,7 +412,7 @@ const RAPID_TRANSIT_SCENE = {
       y: 60,
       width: 1074,
       height: 691,
-      zIndex: -2,
+      zIndex: 2, // over the hex tiles (their canvas is 1), under everyone (Jamie, playtest 20)
       fps: 10,
       enter: trainFrames(['enter1', 'enter2']),
       loop: trainFrames(['loop1', 'loop2', 'loop3', 'loop4']),
@@ -514,6 +517,7 @@ const AQUARIUM_SCENE = {
     teamSpot: { x: 702, y: 742 }, // the scream pulls the team here: the bottom of the hall, in the middle, below the tank
     groundSpot: { x: 872, y: 655 },
     topFloor: { maxY: 400, stairs: { minX: 555, maxX: 845, minY: 290 } }, // the middle stairs only go up to the teleport links
+    stairsCamera: { minX: 555, maxX: 845, maxY: 500 }, // on the middle stairs (a tile up them): the usual camera, no sea creature close-up (Jamie, playtest 20)
     screamScene: 'aquarium.stopScream',
     creaturesScene: 'aquarium.toCreatures' // up on the walkway, to the sea creatures
   },
@@ -724,7 +728,7 @@ const LAB_SHOWDOWN_SCRIPT = getDialogueScript('lab.showdown');
 
 const LAB_SCENE = {
   transformScene: 'lab.transformation', // the clones beaten, the teammate turns into the giant Kaiju (the final battle)
-  showdown: { script: LAB_SHOWDOWN_SCRIPT, speechSpot: { x: 700, y: 365 } },
+  showdown: { script: LAB_SHOWDOWN_SCRIPT, speechSpot: { x: 700, y: 365 }, lineUp: { y: 610, spacing: 80 } },
   extras: [standingAgent(700, 480)],
   agentDrops: {
     kits: {
@@ -738,7 +742,8 @@ const LAB_SCENE = {
     isCatwalkOpenToTeam: true, // the teammate and recruits may follow him up through the portal (Jamie, playtest 18)
     maxLives: 4,
     moveSpeed: 5,
-    firstDropMs: 1500,
+    firstDropMs: 500, // the first, 0.5 s after the talker goes up, straight down from the catwalk (Jamie, playtest 20; was 1.5 s and a walk in)
+    isFirstStraightDown: true,
     dropIntervalMs: 7000,
     catwalkY: 130,
     catwalkLastRow: 6,
@@ -877,6 +882,7 @@ const buildMapWalk = (id, name, { start, teammateStart = undefined }, sites) => 
     kaijuEntry: undefined,
     sites,
     spawnTiles: [start, teammateStart || { x: start.x + 25, y: start.y }].map(getClosest),
+    hasTeammateStart: !!teammateStart, // else the teammate starts as the recruits do, on a free tile beside the player
     phases: [],
     defaultPhases: [],
     sceneElements: sites.flatMap(getSiteElements)

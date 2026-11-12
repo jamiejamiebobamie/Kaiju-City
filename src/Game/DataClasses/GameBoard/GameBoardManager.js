@@ -52,6 +52,7 @@ export class GameBoardManager {
     addWormhole = (from, to, accTime, durationMs) => {
         const getKey = ({ i, j }) => `${i} ${j}`;
         if (getKey(from) == getKey(to) || this.linkedTiles.has(getKey(from)) || this.linkedTiles.has(getKey(to))) return;
+        if ([from, to].some(end => (this.reservedTiles.get(getKey(end)) || 0) > accTime)) return;
         this.linkedTiles.set(getKey(from), to);
         this.linkedTiles.set(getKey(to), from);
         this.wormholes.push({ from, to, startsAt: accTime, endsAt: accTime + durationMs });
@@ -470,11 +471,17 @@ export class GameBoardManager {
         return this.walkableTiles.reduce((closest, tile) => getDistance(tile) < getDistance(closest) ? tile : closest);
     }
 
-    getClosestWalkableTile(tileIndex) {
+    // 'isWithoutLinks': not a tile with a link or a portal on it (where the train throws someone: Jamie, playtest 20)
+    getClosestWalkableTile(tileIndex, isWithoutLinks = false) {
         const { x, y } = this.getCharXAndYFromTileIndex(tileIndex);
         const getDistance = tile => getDistanceToFrom(this.getCharXAndYFromTileIndex(tile), { x, y });
-        return this.walkableTiles.reduce((closest, tile) => getDistance(tile) < getDistance(closest) ? tile : closest);
+        const tiles = isWithoutLinks ? this.walkableTiles.filter(tile => !this.getLinkedTile(tile)) : this.walkableTiles;
+        return (tiles.length ? tiles : this.walkableTiles).reduce((closest, tile) => getDistance(tile) < getDistance(closest) ? tile : closest);
     }
+
+    // tiles a portal can't be made on for now: where someone hit by the train gets up (Jamie, playtest 20)
+    reservedTiles = new Map(); // key -> until (game time)
+    reserveTile = (tile, untilMs) => { this.reservedTiles.set(`${tile.i} ${tile.j}`, untilMs); };
 
     // the tile the player can walk to that is closest to a spot on the level. tiles cut off from the player don't count.
     getClosestReachableTile(fromTile, { x, y }) {

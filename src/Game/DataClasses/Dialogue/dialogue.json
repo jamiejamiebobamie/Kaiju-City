@@ -1007,6 +1007,24 @@
           "text": "You can add it to your powers at the Lab, or swap the ones you have.",
           "id": "training.labNote.0",
           "note": "draft"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Swing by the Lab when you get a chance. You can add it to your powers there.",
+          "id": "training.labNote.1",
+          "note": "draft"
+        },
+        {
+          "speaker": "teammate",
+          "text": "The Lab can set you up with that one. Swap it in whenever you like.",
+          "id": "training.labNote.2",
+          "note": "draft"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Don't forget, the Lab's where you choose your powers. It's there for you now.",
+          "id": "training.labNote.3",
+          "note": "draft"
         }
       ]
     },

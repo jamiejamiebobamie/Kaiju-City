@@ -446,7 +446,9 @@ export class GameManager {
             this.closeTracks();
             this.gameBoardPiecesManager.updatePiecesForWalkableTiles(piece => {
                 const hitAt = { ...piece.charLocation };
-                piece.hitByTrain(accTime, TRAIN_HIT, this.gameBoardManager.getClosestWalkableTile(piece.getTileIndex()));
+                const safeTile = this.gameBoardManager.getClosestWalkableTile(piece.getTileIndex(), true); // no portal there
+                this.gameBoardManager.reserveTile(safeTile, accTime + TRAIN_KNOCKDOWN.downMs + 500); // nor one made while they're down
+                piece.hitByTrain(accTime, TRAIN_HIT, safeTile);
                 if (!piece.isDead && piece.avatar != 'kaiju') this.knockDown(piece, hitAt);
             });
         } else {
@@ -570,6 +572,12 @@ export class GameManager {
             }
         }
         if (this.level.isMapWalk && this.level.sites) this.moveTeamClearOfSites();
+        // a map walk: the teammate starts as the recruits do, on a free tile beside the player (Jamie, playtest 20)
+        if (this.level.isMapWalk && !this.level.hasTeammateStart) {
+            const [player, teammate] = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
+            const tile = player && teammate && this.getFreeTileNear(player.getTileIndex(), { except: teammate, isRightmost: true });
+            if (tile) teammate.initCharLocation(true, tile);
+        }
 
         // the recruits walk with the team wherever the teammate is: the walking Lab, the Street, the map walks too (Jamie)
         const isTeammateScene = this.level.isWalkingLevel && this.settingsManager.getIsTeammate && this.settingsManager.getIsTeammate();
@@ -828,6 +836,9 @@ export class GameManager {
     getIsAtAquariumStairs = player => {
         if (!this.level.aquariumFlood || !this.isShattered || !player || !player.getTileIndex()) return false;
         if (this.getIsTopFloor(player.getTileIndex())) return true;
+        const box = this.level.aquariumFlood.stairsCamera;
+        const { x, y } = player.charLocation;
+        if (box && x > box.minX && x < box.maxX && y < box.maxY) return true;
         const near = AQUARIUM_STAIRS_NEAR_ROWS * this.getGhostRowPx();
         return (this.level.tileLinks || []).flat().some(tile => {
             const spot = this.gameBoardManager.getCharXAndYFromTileIndex(tile);
@@ -1462,9 +1473,7 @@ export class GameManager {
         const nearer = { zoomScale: PENINSULA.cameraZoom * SHATTER_SCREAM.restZoomShare, isPeninsulaSized: true };
         const onHer = (zoom = nearer) => ({ point: { x: rival.charLocation.x, y: rival.charLocation.y - CUTSCENE.shotHeadRows * rowPx * 0.5 }, ...zoom, panMs: SHATTER_SCREAM.panMs });
         const herShot = onHer(extreme);
-        const herAfter = onHer();
         const { recruits } = this.getGhostTeam();
-        const backOnHer = onHer();
         const topShot = {}; // on her up on the walkway: filled in once she is there
         const topTile = this.gameBoardManager.getClosestWalkableTileToLocation(topSpot);
         this.startAquariumFlood();
@@ -1479,18 +1488,18 @@ export class GameManager {
             { shot: herShot, ms: CUTSCENE.outcomePullMs },
             { shot: herShot, ms: getSpeechMs(scream.text) + SHATTER_SCREAM.screamMs, speech: { ...this.getSpeechOver(rival, scream.name, scream.text, { isAboveHead: true }), isShout: true } },
             // the scream pulls the team to the bottom of the hall, below the tank, as the Rooftop's does
-            ...this.getTeamTeleportSteps(this.level.aquariumFlood.teamSpot, team => this.placeTeam(team, recruits, this.level.aquariumFlood.teamSpot)),
-            // then (Jamie): the camera on her; her portal up to the top floor; her words up there; and only then the glass
-            { shot: herAfter, ms: SHATTER_SCREAM.panMs + SHATTER_SCREAM.onHerMs },
-            { shot: backOnHer, ms: SHATTER_SCREAM.portalMs, isLive: true, onStart: () => this.gameBoardManager.addWormhole(rival.getTileIndex(), topTile, this.accTime, Infinity) },
-            { shot: topShot, ms: SHATTER_SCREAM.portalMs, isLive: true, onStart: () => {
+            // with the flash, she is up on the top floor too, facing down at the hall: no portal or walk up (Jamie, playtest 20)
+            ...this.getTeamTeleportSteps(this.level.aquariumFlood.teamSpot, team => {
+                this.placeTeam(team, recruits, this.level.aquariumFlood.teamSpot);
                 rival.stopMoving();
                 rival.initCharLocation(true, topTile);
-                rival.isTeleported = !rival.isTeleported;
+                rival.facingDir = 'down';
+                rival.dir = 'idle';
                 rival.allowedTile = this.getIsTopFloor;
                 Object.assign(topShot, onHer());
-            } },
-            { shot: topShot, ms: SHATTER_SCREAM.portalMs, isLive: true, onStart: () => this.gameBoardManager.closeWormholes() },
+            }),
+            // then her words up there, and only then the glass
+            { shot: topShot, ms: SHATTER_SCREAM.panMs },
             // she looks down at the hall as she calls to them (Jamie)
             { shot: topShot, ms: getSpeechMs(toCreatures.text), isLive: true, speech: () => ({ ...this.getSpeechOver(rival, toCreatures.name, toCreatures.text, { isAboveHead: true }), isShout: true }), onStart: () => { rival.stopMoving(); rival.facingDir = 'down'; rival.dir = 'idle'; } },
             ...panelSteps,
@@ -1974,8 +1983,10 @@ export class GameManager {
         if (isRightmost) {
             const { rowStep, scale } = this.level.grid;
             const here = board.getCharXAndYFromTileIndex(tile);
-            const level = [...rings[0], ...rings[1]].filter(next => Math.abs(board.getCharXAndYFromTileIndex(next).y - here.y) <= rowStep * scale);
-            return level.sort((a, b) => board.getCharXAndYFromTileIndex(b).x - board.getCharXAndYFromTileIndex(a).x)[0] || rings[0][0] || rings[1][0];
+            // the right of the tiles beside it first, then of the ring past them
+            const getRightmost = ring => ring.filter(next => Math.abs(board.getCharXAndYFromTileIndex(next).y - here.y) <= rowStep * scale)
+                .sort((a, b) => board.getCharXAndYFromTileIndex(b).x - board.getCharXAndYFromTileIndex(a).x)[0];
+            return getRightmost(rings[0]) || getRightmost(rings[1]) || rings[0][0] || rings[1][0];
         }
         return rings[0][0] || rings[1][0];
     }
@@ -2170,12 +2181,13 @@ export class GameManager {
 
     // 'isMidFight': a scene in the middle of a fight (a boss's scream, a walk through a portal): it holds the fight,
     // but the HUDs stay up and the log stays closed
-    startCutscene(steps, { isMidFight = false, isPortalWalk = false } = {}) {
+    // 'isNoEstablish': no hold on the whole scene first (back from a training win: Jamie, playtest 20)
+    startCutscene(steps, { isMidFight = false, isPortalWalk = false, isNoEstablish = false } = {}) {
         if (!isPortalWalk) this.endTravelForScene();
         if (!isMidFight && !isPortalWalk) this.spreadOutForScene();
         // in the log, a conversation in a wide shot cuts to each speaker: first it holds on the whole scene
         const [first] = steps;
-        if (getIsDialogueLog() && first && first.speech && first.shot && first.shot.isWide) steps = [{ shot: { isWide: true }, ms: DIALOGUE.establishMs }, ...steps];
+        if (!isNoEstablish && getIsDialogueLog() && first && first.speech && first.shot && first.shot.isWide) steps = [{ shot: { isWide: true }, ms: DIALOGUE.establishMs }, ...steps];
         this.cutscene = { steps, index: -1, msLeft: 0, isMidFight };
         this.nextCutsceneStep();
     }
@@ -2599,7 +2611,7 @@ export class GameManager {
         const openSparring = { shot: { isWide: true }, ms: 0, onStart: () => { this.trainingLevelId = this.level.training.sparringLevelId; this.setPhase(TRAINING_PHASE, true); } };
         const nothingHere = getDialogueLine(this.level.visitScene || 'visit').text;
         if (outcome && outcome.isSparring) {
-            this.startCutscene(sparring ? [teammateSays(getDialogueLine('sparring.again').text), openSparring] : [teammateSays(nothingHere)]);
+            this.startCutscene(sparring ? [teammateSays(getDialogueLine('sparring.again').text), openSparring] : [teammateSays(nothingHere)], { isNoEstablish: true });
             return;
         }
         if (outcome) {
@@ -2607,8 +2619,9 @@ export class GameManager {
             const text = getKeyedLines('training.won')[outcome.avatar];
             const name = (ROSTER.find(({ id }) => id == outcome.avatar) || {}).name;
             // then the teammate: the new power is theirs to pick at the Lab (Jamie, playtest 19)
-            const labNote = getDialogueLine('training.labNote').text;
-            this.startCutscene(recruit && text ? [{ shot: { isWide: true }, ms: getSpeechMs(text), speech: this.getSpeechOver(recruit, name, text) }, teammateSays(labNote)] : [teammateSays(nothingHere)]);
+            const labNotes = getDialogueTexts('training.labNote'); // a few ways of saying it (Jamie, playtest 20)
+            const labNote = labNotes[Math.floor(Math.random() * labNotes.length)];
+            this.startCutscene(recruit && text ? [{ shot: { isWide: true }, ms: getSpeechMs(text), speech: this.getSpeechOver(recruit, name, text) }, teammateSays(labNote)] : [teammateSays(nothingHere)], { isNoEstablish: true });
             return;
         }
         if (sparring && this.sparredHere) {
@@ -2701,7 +2714,9 @@ export class GameManager {
 
     // back in the Lab: the Agent's reveal, each line once, and then he is gone and the fight is on
     startShowdown() {
-        const { script, speechSpot } = this.level.showdown;
+        const { script, speechSpot, lineUp } = this.level.showdown;
+        // the team in a row before the Agent, as in the Lab trap (Jamie, playtest 20)
+        if (lineUp) this.lineUpTeam(lineUp, speechSpot.x);
         const [player, teammate] = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
         const playerName = ROSTER.find(({ id }) => id == player.avatar).name;
         const getSpeech = ({ who, text }) => {
@@ -2790,8 +2805,7 @@ export class GameManager {
 
     // everyone stands facing the Agent while he has his say, each line once, and then the chase is on
     // the team in a row before the Agent, each on their own tile, all facing him
-    lineUpTeam({ y, spacing }) {
-        const { x } = this.level.trap.speechSpot;
+    lineUpTeam({ y, spacing }, x = this.level.trap.speechSpot.x) {
         const wholeTeam = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
         // the player in the middle of the row, the rest either side of them (Jamie)
         const player = this.gameBoardPiecesManager.getPlayerPiece();
@@ -3352,8 +3366,11 @@ export class GameManager {
             return piece;
         }
         const offShot = 60;
+        // the first drops straight from the catwalk, a moment after the talker goes up (Jamie, playtest 20); the rest walk in first
+        const dropTile = this.gameBoardManager.getClosestWalkableTileToLocation({ x, y: catwalkY });
+        const isStraightDown = this.agentsDropped == 0 && !!this.level.agentDrops.isFirstStraightDown;
         piece.startEntrance({
-            startLocation: { x: isFromLeft ? -offShot : this.level.world.width + offShot },
+            startLocation: isStraightDown ? this.gameBoardManager.getCharXAndYFromTileIndex(dropTile) : { x: isFromLeft ? -offShot : this.level.world.width + offShot },
             dropTile: this.gameBoardManager.getClosestWalkableTileToLocation({ x, y: catwalkY }),
             landingTile: this.gameBoardManager.getClosestWalkableTileToLocation({ x, y: floorY }),
             walkDir: isFromLeft ? 'downRight' : 'downLeft'
