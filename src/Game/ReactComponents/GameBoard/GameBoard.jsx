@@ -1179,7 +1179,7 @@ export const GameBoard = ({ controlMarker = "caret", speakingLineLength = 0, isS
       statusEffects={p.getStatusEffects && p.isVisible && !p.isDead ? p.getStatusEffects(gameManager.gameBoardPiecesManager.getPlayerTeamIndex()) : []}
       cleanSlateCount={p.cleanSlateCount || 0}
       isPlayer={p === gameManager.gameBoardPiecesManager.getPlayerPiece()}
-      controlMarker={controlMarker != "none" && !level.isWalkingLevel && !p.isNpc && !p.isDead && p.isOnTiles ? controlMarker : undefined}
+      controlMarker={controlMarker != "none" && !p.isNpc && !p.isDead && p.isOnTiles ? controlMarker : undefined}
     />
   );
 

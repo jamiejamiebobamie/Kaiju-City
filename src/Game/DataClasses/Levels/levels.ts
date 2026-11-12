@@ -595,7 +595,7 @@ const SEWER1_WALK_IN = {
 };
 
 const SEWER1_TALK = [
-  { id: 'exit', type: 'door' as const, phase: EXIT_OPEN_PHASE, x: 250, y: 420, width: 0, height: 0, sortY: ABOVE_CHARACTERS, label: 'Deeper' }
+  { id: 'exit', type: 'door' as const, phase: EXIT_OPEN_PHASE, x: 250, y: 420, width: 0, height: 0, sortY: ABOVE_CHARACTERS, label: 'Glow' } // (was "Deeper": Jamie, playtest 20)
 ];
 
 const SEWER1_SCENE = {

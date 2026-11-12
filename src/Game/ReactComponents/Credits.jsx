@@ -3,7 +3,7 @@ import styled, { keyframes } from "styled-components";
 
 /*
   The end of the game: after "You saved the city!", the credits rise from below the screen to above it,
-  then "Thank you for playing!", then back to the landing screen.
+  then "Thanks for playing!", then back to the landing screen.
   DRAFT credits (Jamie to review): names and wording are placeholders where marked.
 */
 export const CREDITS = [
@@ -22,7 +22,7 @@ export const CREDITS = [
 export const CREDITS_TIMING = {
   titleMs: 3500, // "You saved the city!" holds this long before the credits start
   rollSeconds: 26, // from off the bottom to off the top
-  thanksMs: 3500 // "Thank you for playing!", then the landing screen
+  thanksMs: 3500 // "Thanks for playing!", then the landing screen
 };
 
 const rise = keyframes`
@@ -109,7 +109,7 @@ export const Credits = ({ onDone }) => {
           ))}
         </Roll>
       )}
-      {isThanks && <Thanks>Thank you for playing!</Thanks>}
+      {isThanks && <Thanks>Thanks for playing!</Thanks>}
     </Cover>
   );
 };

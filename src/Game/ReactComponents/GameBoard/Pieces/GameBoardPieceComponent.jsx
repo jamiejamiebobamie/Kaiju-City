@@ -421,7 +421,7 @@ const STATUS_LOOK = {
   burn: { icon: "fa-fire", color: "#ff8a2a" },
   builder: { icon: "fa-shield", color: "#d8dde6" },
   spurned: { icon: "fa-frown-o", color: "#ff4040" },
-  charmed: { icon: "fa-heart", color: "#ff7ad9", word: "Charmed!" }
+  charmed: { icon: "fa-two-hearts", color: "#ff7ad9", word: "Charmed!" } // Charm's own icon (Jamie, playtest 20)
 };
 const STATUS_WORD_GAP_MS = 450;
 // a speaker's shake: as long as the line (per letter, within bounds), then a rest, and again (Jamie)
@@ -441,16 +441,19 @@ const markerPulse = keyframes`
   0%, 100% { opacity: 0.55; }
   50% { opacity: 1; }
 `;
+// just over whatever is over the head: the status icons, the health bar, or the head itself (Jamie, playtest 20: lower)
 const OverHead = styled.div`
   position: absolute;
   left: 5px;
-  top: ${props => props.$isHigh ? "-104px" : "-88px"};
+  top: ${props => props.$top}px;
   z-index: 3;
   pointer-events: none;
   transform: translate(-50%, 0);
   animation: ${markerBob} 0.9s ease-in-out infinite;
   color: ${props => props.$color};
-  filter: drop-shadow(0 0 1px black) drop-shadow(0 0 2px black) drop-shadow(0 0 4px ${props => props.$color});
+  /* a black outline, then a white one round it, so it stands out anywhere (Jamie, playtest 20) */
+  filter: drop-shadow(0 0 0.6px black) drop-shadow(0 0 0.6px black)
+    drop-shadow(1px 0 0 white) drop-shadow(-1px 0 0 white) drop-shadow(0 1px 0 white) drop-shadow(0 -1px 0 white);
 `;
 const CaretMark = styled(OverHead)`
   font-size: 18px;
@@ -482,9 +485,10 @@ const RingMark = styled(FeetMark)`
   border: 2px solid ${props => props.$color};
   box-shadow: 0 0 6px ${props => props.$color}, inset 0 0 4px ${props => props.$color};
 `;
-const ControlMarker = ({ kind, color, isHigh }) => {
-  if (kind == "caret") return <CaretMark $color={color} $isHigh={isHigh}><i className="fa fa-caret-down" /></CaretMark>;
-  if (kind == "p1") return <P1Mark $color={color} $isHigh={isHigh}>P1</P1Mark>;
+const ControlMarker = ({ kind, color, hasIcons, hasBar }) => {
+  const top = hasBar ? (hasIcons ? -72 : -61) : hasIcons ? -77 : -64; // the caret's box is about 17 tall
+  if (kind == "caret") return <CaretMark $color={color} $top={top}><i className="fa fa-caret-down" /></CaretMark>;
+  if (kind == "p1") return <P1Mark $color={color} $top={top}>P1</P1Mark>;
   if (kind == "ring") return <RingMark $color={color} />;
   if (kind == "hex") return (
     <FeetMark>
@@ -499,8 +503,9 @@ const ControlMarker = ({ kind, color, isHigh }) => {
 const StatusRow = styled.div`
   position: absolute;
   left: -15px;
-  /* lower, nearer the head (Jamie, playtest 19); over a health bar, right on top of it */
-  top: ${props => props.$isAboveBar ? "-80px" : "-60px"};
+  /* lower, nearer the head (Jamie, playtest 19); over a health bar, right on top of it (the bar's capsules are at about
+     -43: measured in the page, playtest 20) */
+  top: ${props => props.$isAboveBar ? "-55px" : "-60px"};
   width: 40px;
   display: flex;
   justify-content: center;
@@ -697,7 +702,7 @@ export const GameBoardPieceComponent = ({
       <NumberAnchor ref={numberAnchor} />
       {!isQuiet && modifierText}
       <HealthBarWrapper lives={lives}>{bars}</HealthBarWrapper>
-      {controlMarker && !isQuiet && <ControlMarker kind={controlMarker} color={CONTROL_MARKER_COLOR} isHigh={statusEffects.length > 0 || isBarShown} />}
+      {controlMarker && !isQuiet && <ControlMarker kind={controlMarker} color={CONTROL_MARKER_COLOR} hasIcons={statusEffects.length > 0} hasBar={isBarShown} />}
       {/* what is on them that changes play: over the head, above the health bar where there is one */}
       {statusEffects.length > 0 && !isQuiet && (
         <StatusRow $isAboveBar={isBarShown}>

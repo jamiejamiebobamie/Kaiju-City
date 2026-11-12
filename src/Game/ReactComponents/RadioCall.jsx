@@ -80,7 +80,8 @@ export const RadioCall = ({ lines, playerAvatar, teammateAvatar, isResuming, onG
     .filter(({ choices }) => !choices)
     .map(({ speaker, text }, key) => ({ key, who: speaker == "agent" ? "agent" : speaker, name: speaker == "teammate" ? ((ROSTER.find(({ id }) => id == teammateAvatar) || {}).name || NAMES.teammate) : NAMES[speaker], text, avatar: getAvatar(speaker) }));
   const actions = isChoice ? line.choices.map(choice => ({ text: choice.text, onClick: () => choose(choice) }))
-    : isLastLine ? [{ text: "Go!", onClick: onGo, isEnter: true }, { text: "Change powers", onClick: () => onChangePowers(line) }]
+    // (no "Change powers" here any more: powers are changed at the Lab. Jamie, playtest 20)
+    : isLastLine ? [{ text: "Go!", onClick: onGo, isEnter: true }]
     : [];
 
   // the call is on the log beside the monitor, like every conversation. the monitor shows the darkened map.
