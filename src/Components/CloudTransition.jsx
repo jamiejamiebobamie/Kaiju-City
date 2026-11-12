@@ -15,6 +15,7 @@ const CLOUD_LOOK = {
   outlineTopColor: "#b9d3f2", // the outlines: pale where the sun catches them, deep blue below
   outlineBottomColor: "#22467f",
   outlineWidth: 5,
+  pillDrift: 70, // how far up or down from its row a pill may sit (the bank's fill is behind them all)
   pillLengthRange: [280, 720], // the bank's pills: their lengths, before scaling (Jamie: the strips' shape, varied lengths)
   strips: 60,
   minSeconds: 2.6, // close together, so the strips meet at nearly the same moment
@@ -102,10 +103,12 @@ export const CloudTransition = ({ isPlaying }) => {
       let x = -Math.random() * longest * scale;
       while (x < width) {
         const length = (shortest + Math.random() * (longest - shortest)) * scale;
-        pills.push({ x, y, length });
+        // each a little up or down from its row, so the rows don't read as even stripes (Jamie)
+        pills.push({ x, y: y + (Math.random() - 0.5) * CLOUD_LOOK.pillDrift * scale, length });
         x += length * (0.55 + Math.random() * 0.3); // overlapping the next
       }
     }
+    pills.sort((a, b) => a.y - b.y); // top to bottom, so each outline lies over the one above
 
     let frameRef;
     const startMs = performance.now();
