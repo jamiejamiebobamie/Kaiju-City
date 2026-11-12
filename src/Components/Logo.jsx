@@ -170,16 +170,19 @@ const BREATH_EMBERS = BREATH.stepsAt.flatMap((at, step) => Array.from({ length: 
   const cx = Math.cos(angle) * reach * BREATH.cloud.width / 2;
   const cy = Math.sin(angle) * reach * BREATH.cloud.height / 2;
   // forward, as it's breathed out: never further than a head's width from the mouth, with the cloud (Jamie)
-  const push = Math.min(3 + random(2) * 4, BREATH.headWidth - cx - BREATH.cloud.width / 2);
+  const push = Math.min(2 + random(2) * 3, BREATH.headWidth - cx - BREATH.cloud.width / 2);
   // the step's lurch (Jamie): as the foot lands the head dips forward and down, and the breath is thrown the same way
   const hangSeconds = BREATH_LIFE_SECONDS * (1 - BREATH.pushShare);
   return {
     key: `${step} ${k}`,
     delay: -(BREATH.loopSeconds - (at + random(1) * 0.02) * BREATH.loopSeconds), // starts at its step in the loop
     cx, cy,
-    fx: cx + push, fy: cy + 2 + random(3) * 2,
+    fx: cx + push, fy: cy + 1 + random(3) * 1.5,
     lx: cx + push * 0.8, ly: cy - 1, // then it lifts a little as the head comes back up
-    bx: cx + push - BREATH.walkPerSecond * hangSeconds, by: cy + 2 + random(8) * 5, // left behind as it walks on, sinking
+    // left behind as it walks on, and (a middle way back to the first version: Jamie) drifting apart as they go: each its
+    // own extra way back, some rising and some sinking
+    bx: cx + push - BREATH.walkPerSecond * hangSeconds * 0.85 - random(8) * 16,
+    by: cy + (random(9) - 0.6) * 18,
     size: 1 + random(4) * 1.2,
     color: ["#d47bff", "#b04cff", "#f0c4ff"][Math.floor(random(5) * 3)]
   };
