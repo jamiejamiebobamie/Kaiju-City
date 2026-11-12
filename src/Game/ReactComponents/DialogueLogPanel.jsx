@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import styled, { keyframes } from "styled-components";
+import styled, { css, keyframes } from "styled-components";
 import { DIALOGUE } from "Game/DataClasses/DialogueLog";
 
 /*
@@ -169,21 +169,56 @@ const BreakEffect = () => (
   </Frame>
 );
 
-const Scroll = styled.div`
+/*
+  The words between two green bars (Jamie, playtest 21, from the UI epic): the one speaking now, their portrait and name,
+  stays under the top bar. each new line rises from the bottom bar to just under them; what was said before goes on up,
+  under the portrait and name, and into the top bar. scrolling back still shows it.
+*/
+const GreenBar = styled.div`
+  flex-shrink: 0;
+  height: 0.35cqw;
+  margin: ${props => props.$isTop ? "1cqw 1.4cqw 0" : "0 1.4cqw 0.2cqw"};
+  background: ${LOG_LOOK.green};
+  box-shadow: 0 0 0.8cqw ${LOG_LOOK.green}, 0 0 0.25cqw ${LOG_LOOK.green};
+`;
+
+const Body = styled.div`
+  position: relative;
   flex: 1;
   min-height: 0;
+`;
+
+const Scroll = styled.div`
+  position: absolute;
+  inset: 0;
   overflow-y: auto;
-  padding: 1.2cqw 1.4cqw 0.6cqw;
+  padding: 0 1.4cqw;
   scrollbar-width: thin;
   scrollbar-color: ${LOG_LOOK.dim} transparent;
-  /* the top fades out, like a hologram's edge */
-  mask-image: linear-gradient(to bottom, transparent, black 2.5cqw);
+`;
+
+// the one speaking now, over the words going up behind them
+const Header = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0.8cqw;
+  z-index: 1;
+  padding: 0.8cqw 1.4cqw 0.4cqw;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(4, 28, 15, 0.98) 80%, rgba(4, 28, 15, 0));
+`;
+
+const riseFromBar = keyframes`
+  from { transform: translateY(6cqw); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 `;
 
 const Chunk = styled.div`
   margin-bottom: ${props => props.$isRepeat ? "0.8cqw" : "1.2cqw"};
   opacity: ${props => props.$isOld ? 0.6 : 1};
   transition: opacity 0.4s;
+  ${props => props.$isNew ? css`animation: ${riseFromBar} 0.5s ease-out both;` : ""}
 `;
 
 // the speaker: portrait and name, a block of their own
@@ -327,16 +362,34 @@ export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, ac
     }
     onContinue();
   };
-  // it keeps to the bottom as lines come and type out, unless the player has scrolled up to read back
-  const isAtBottom = useRef(true);
-  const keepAtBottom = () => {
+  // the newest line goes to just under the speaker's portrait and name, and its end stays in view as it types out,
+  // unless the player has scrolled to read back (wheel or touch), till the next line
+  const headerRef = useRef(null);
+  const newestRef = useRef(null);
+  const [spacerPx, setSpacerPx] = useState(0);
+  const [headerPx, setHeaderPx] = useState(0); // the words start below the header, never behind it
+  const isFollowing = useRef(true);
+  const followNewest = (isSmooth = false) => {
     const scroll = scrollRef.current;
-    if (scroll && isAtBottom.current) scroll.scrollTop = scroll.scrollHeight;
+    const newest = newestRef.current;
+    if (!scroll || !newest || !isFollowing.current) return;
+    const headerPx = headerRef.current ? headerRef.current.offsetHeight : 0;
+    const top = Math.max(newest.offsetTop - headerPx, 0);
+    const bottom = newest.offsetTop + newest.offsetHeight - scroll.clientHeight + 8; // a long line: its end in view
+    const target = Math.max(top, bottom);
+    if (Math.abs(scroll.scrollTop - target) < 2) return;
+    scroll.scrollTo({ top: target, behavior: isSmooth ? "smooth" : "auto" });
   };
+  const keepAtBottom = () => followNewest(false);
+  // sizes: the spacer that lets the newest line reach the top, and the header's height (same values: no new render)
   useLayoutEffect(() => {
-    isAtBottom.current = true;
-    keepAtBottom();
-  }, [entries.length]);
+    if (scrollRef.current) setSpacerPx(scrollRef.current.clientHeight);
+    if (headerRef.current) setHeaderPx(headerRef.current.offsetHeight);
+  });
+  useLayoutEffect(() => {
+    isFollowing.current = true;
+    followNewest(true);
+  }, [entries.length, headerPx]);
 
   // it builds itself when it opens, and comes apart when it closes
   const isShown = !!entries.length && isVisible;
@@ -366,25 +419,43 @@ export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, ac
     <>
     <BuildEffect />
     <Panel onClick={() => isWaiting && handleContinue()}>
-      <Scroll ref={scrollRef} onScroll={({ currentTarget: scroll }) => { isAtBottom.current = scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight < 8; }}>
-        {isBuilt && entries.map(({ key, who, name, text, avatar, chain }, index) => {
-          const last = entries[index - 1];
-          const isRepeat = !!last && last.name == name && last.avatar == avatar && last.chain == chain;
+      <GreenBar $isTop />
+      <Body>
+        <Scroll ref={scrollRef} style={{ paddingTop: `${headerPx}px` }} onWheel={() => { isFollowing.current = false; }} onTouchMove={() => { isFollowing.current = false; }}>
+          {isBuilt && entries.map(({ key, who, name, text, avatar, chain }, index) => {
+            const last = entries[index - 1];
+            const isNewest = index == entries.length - 1;
+            const isRepeat = !!last && last.name == name && last.avatar == avatar && last.chain == chain;
+            return (
+              <Chunk key={key} ref={isNewest ? newestRef : undefined} $isOld={!isNewest} $isNew={isNewest} $isRepeat={isRepeat}>
+                {/* the newest one's speaker is in the header above */}
+                {!isRepeat && !isNewest && (
+                  <Speaker>
+                    <Portrait style={{ backgroundImage: avatar ? `url(/levels/portraits/${avatar}.png)` : undefined }} />
+                    <Name style={{ color: LOG_LOOK.names[who] || LOG_LOOK.names.other }}>{name}</Name>
+                  </Speaker>
+                )}
+                <Words>
+                  <TypedText text={text} isTyping={isNewest} isRushed={rushedKey === key} onType={keepAtBottom} onDone={() => setDoneKey(key)} />
+                </Words>
+              </Chunk>
+            );
+          })}
+          <div style={{ height: `${spacerPx}px` }} />
+        </Scroll>
+        {isBuilt && entries.length > 0 && (() => {
+          const { who, name, avatar } = entries[entries.length - 1];
           return (
-            <Chunk key={key} $isOld={index < entries.length - 1} $isRepeat={isRepeat}>
-              {!isRepeat && (
-                <Speaker>
-                  <Portrait style={{ backgroundImage: avatar ? `url(/levels/portraits/${avatar}.png)` : undefined }} />
-                  <Name style={{ color: LOG_LOOK.names[who] || LOG_LOOK.names.other }}>{name}</Name>
-                </Speaker>
-              )}
-              <Words>
-                <TypedText text={text} isTyping={index == entries.length - 1} isRushed={rushedKey === key} onType={keepAtBottom} onDone={() => setDoneKey(key)} />
-              </Words>
-            </Chunk>
+            <Header ref={headerRef}>
+              <Speaker style={{ marginBottom: 0 }}>
+                <Portrait style={{ backgroundImage: avatar ? `url(/levels/portraits/${avatar}.png)` : undefined }} />
+                <Name style={{ color: LOG_LOOK.names[who] || LOG_LOOK.names.other }}>{name}</Name>
+              </Speaker>
+            </Header>
           );
-        })}
-      </Scroll>
+        })()}
+      </Body>
+      <GreenBar />
       {isBuilt && isWaiting && !actions.length && <ContinueBar data-enter data-log-continue data-choice-key={1} onClick={event => { event.stopPropagation(); handleContinue(); }}><span>Continue &#9654;</span><KeyNumber><EnterKey /></KeyNumber></ContinueBar>}
       {isBuilt && actions.map(({ text, onClick, isEnter }, index) => (
         <ContinueBar key={text} data-enter={isEnter ? "" : undefined} data-choice-key={index + 1} onClick={event => { event.stopPropagation(); onClick(); }}><span>{text} &#9654;</span><KeyNumber>{actions.length == 1 ? <EnterKey /> : index + 1}</KeyNumber></ContinueBar>
