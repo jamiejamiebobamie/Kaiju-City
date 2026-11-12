@@ -17,7 +17,8 @@ export const RAGDOLL = {
   bounce: 0.15, // how much of the fall comes back up on landing (was 0.35)
   minBounceRows: 1, // a slower landing doesn't bounce
   slideFriction: 0.06, // what is left of the slide's speed after a second on the ground
-  spinDegrees: 220, // degrees per second, at full push (was 540)
+  spinDegrees: 620, // degrees per second, at full push: a real tumble (Jamie, playtest 20; was 220)
+  landingSpinKept: 0.7, // how much of the spin a landing keeps (was 0.5)
   restSpeedRows: 0.15,
   wallBounce: 0.6, // at the edge of the play area, it bounces back in, so it stays in the shot
   // the limbs
@@ -160,7 +161,7 @@ export const stepRagdoll = (body: Ragdoll, seconds: number, rowPx: number, bound
       // a rebound smaller than one tick of gravity would only land again: it would hop for ever, and never slide
       const isBouncing = -vHeight > RAGDOLL.minBounceRows * rowPx && -vHeight * RAGDOLL.bounce > RAGDOLL.gravityRows * rowPx * seconds;
       vHeight = isBouncing ? -vHeight * RAGDOLL.bounce : 0;
-      spin *= 0.5;
+      spin *= RAGDOLL.landingSpinKept;
       if (!isBouncing) {
         const friction = Math.pow(RAGDOLL.slideFriction, seconds);
         vx *= friction;
