@@ -624,8 +624,6 @@ const ChoiceConfirm = ({ choice, from, board }) => {
     </>
   );
 };
-
-// Sewer 2's climax (the parts' blinding light): the tiles and the people fade back into it with the parts (Jamie)
 const PARTS_CLIMAX_FADE_SECONDS = 2.5;
 
 const getIsEnemyInPlay = (player, piece) => piece.getTeamIndex() != player.getTeamIndex() && !piece.isDead && piece.isOnTiles;
@@ -712,7 +710,6 @@ export const GameBoard = ({ controlMarker = "caret", speakingLineLength = 0, isS
   useSyncExternalStore(gameManager.subscribeToBoard, gameManager.getBoardRevision);
   const pieces = gameManager.getPieces();
   // Sewer 2's climax, the parts' blinding light: the tiles and the people fade back into it (Jamie)
-  const isPartsClimax = !!(level.walkIn && level.walkIn.ending && activePhases.includes(level.walkIn.ending.phase));
 
   const boardRef = useRef(null);
   const ownChoiceFrom = useRef(undefined); // where the pressed Recruit or Terminate button was
@@ -1175,7 +1172,7 @@ export const GameBoard = ({ controlMarker = "caret", speakingLineLength = 0, isS
       portalMask={p.portalMask}
       isOnBoard={p.isOnTiles !== false}
       isRewardPulse={!!p.getIsRewardPulse && p.getIsRewardPulse()}
-      isFaded={isPartsClimax}
+      isFaded={false} // (Sewer 2's touch: no fade of their own; the scene's white covers them. Jamie, playtest 20)
       statusEffects={p.getStatusEffects && p.isVisible && !p.isDead ? p.getStatusEffects(gameManager.gameBoardPiecesManager.getPlayerTeamIndex()) : []}
       cleanSlateCount={p.cleanSlateCount || 0}
       isPlayer={p === gameManager.gameBoardPiecesManager.getPlayerPiece()}
@@ -1273,7 +1270,7 @@ export const GameBoard = ({ controlMarker = "caret", speakingLineLength = 0, isS
           : <SpeechBalloon name={speech.name} text={speech.text} x={getSpeechX(speech)} y={speech.y} isFlipped={speech.isFlipped} zIndex={2147482000} scale={overlayScale} />)}
         <WorldContent style={{ left: `${contentOffset.x}px`, top: `${contentOffset.y}px` }}>
           {/* canvases are sized from the zoom, which means nothing until the frame has been measured */}
-          {isFrameMeasured && <TileCanvas gameManager={gameManager} level={level} tone={getTileTone(level, activePhases)} isVisible={!isPaused && !isEditingTiles && !isPartsClimax} fadeSeconds={isPartsClimax ? PARTS_CLIMAX_FADE_SECONDS : undefined} zoom={closeCamera.zoom} isTeamColors={isTeamColors} />}
+          {isFrameMeasured && <TileCanvas gameManager={gameManager} level={level} tone={getTileTone(level, activePhases)} isVisible={!isPaused && !isEditingTiles} zoom={closeCamera.zoom} isTeamColors={isTeamColors} />}
           {isFrameMeasured && <WakeCanvas gameManager={gameManager} level={level} zoom={closeCamera.zoom} isActive={!!level.flood && activePhases.includes(level.flood.phase)} />}
           {piecesComponents}
           {deathPiecesComponents}

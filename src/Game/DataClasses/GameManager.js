@@ -55,7 +55,8 @@ export const TRAINING_RETURN = { cardMs: 2600 };
 // Aegis (shield), Heal and Dispel (bubble): no attack power (Jamie, playtest 18)
 // the Lab trap's sweep along the clones (getClonesSweepSteps): its zoom, pan speeds (scene px a ms) slow within a group
 // and quick across the gap between the groups (a step longer than 'gapPx'), the move in, and the holds at either end
-const CLONES_SWEEP = { zoomScale: 2.2, pxPerMs: 0.18, gapPxPerMs: 1.4, gapPx: 400, zoomInMs: 800, holdMs: 500 };
+// (playtest 20: an extreme zoom; a steady medium pan along each group, fast across the gap)
+const CLONES_SWEEP = { zoomScale: 3.4, pxPerMs: 0.22, gapPxPerMs: 1.5, gapPx: 400, zoomInMs: 900, holdMs: 400 };
 
 // taking over an ally (updateTakeOver): the camera's move in on them, and how long the fight holds there
 const TAKE_OVER = { panMs: 600, holdMs: 1800 };
@@ -3204,8 +3205,27 @@ export class GameManager {
         const tile = this.gameBoardPiecesManager.getPlayerPiece().getTileIndex();
         if (tile.i != i || tile.j != j) return;
         addUnlock(id);
-        this.unlockMessage = isRecruit ? `${label} recruited!` : `${label} unlocked!`;
-        this.unlockImage = image;
+        const showCard = () => {
+            this.unlockMessage = isRecruit ? `${label} recruited!` : `${label} unlocked!`;
+            this.unlockImage = image;
+        };
+        const { joinScene } = this.level.unlock;
+        if (!joinScene) {
+            showCard();
+            return;
+        }
+        // first his own word, in a balloon over him, in close: over the Agent's call and its camera. then the card (Jamie, playtest 20)
+        const { name, text } = getDialogueLine(joinScene);
+        const { rowStep, scale } = this.level.grid;
+        const focus = { x: spot.x, y: spot.y - CUTSCENE.shotHeadRows * rowStep * scale };
+        const speech = { name, text, avatar: id, x: spot.x, y: spot.y - 4 * rowStep * scale, focus, isShout: true };
+        const shot = { point: focus, zoomScale: DIALOGUE.speakerZoomScale, isCover: true };
+        this.startCutscene([
+            { shot, ms: CUTSCENE.pullInMs },
+            { shot, ms: getSpeechMs(text), speech },
+            { shot, ms: 0, onStart: showCard }
+        ]);
+        if (this.level.greeting) this.nextGreetingAtMs = Math.max(this.nextGreetingAtMs || 0, this.accTime + this.level.greeting.repeatMs);
     }
 
     updateExit() {

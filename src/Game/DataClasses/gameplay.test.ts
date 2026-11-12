@@ -719,7 +719,9 @@ describe('the dialogue log', () => {
     if (gm.cutscene) gm.skipCutscene();
     const player = gm.gameBoardPiecesManager.getPlayerPiece();
     // away from him, he calls again, and nothing goes to the log
-    player.initCharLocation(true, gm.gameBoardManager.getClosestWalkableTileToLocation(LEVELS.street.unlock.spot));
+    // (beside the Hazmat Worker's tile, not on it: stepping on it is a scene of its own, playtest 20)
+    const unlockTile = gm.gameBoardManager.getClosestWalkableTileToLocation(LEVELS.street.unlock.spot);
+    player.initCharLocation(true, gm.gameBoardManager.getAdjacentTileIndices(unlockTile).filter(gm.gameBoardManager.getIsInBounds)[0]);
     run(gm, Math.ceil(LEVELS.street.greeting.repeatMs / GAME_TICK.pieceMs) + 1);
     expect(gm.cutscene.steps.some(({ speech }) => speech && speech.text == LEVELS.street.greeting.text)).toBe(true);
     gm.skipCutscene();

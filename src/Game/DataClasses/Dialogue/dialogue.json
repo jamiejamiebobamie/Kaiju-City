@@ -685,6 +685,17 @@
         }
       ]
     },
+    "street.hazmatJoins": {
+      "label": "The Street: the Hazmat Worker joins the team (stepping on his tile)",
+      "lines": [
+        {
+          "speaker": "Hazmat Worker",
+          "text": "Well, that's settled. I'll follow you now.",
+          "id": "street.hazmatJoins.0",
+          "note": "jamie"
+        }
+      ]
+    },
     "labIntro.welcome": {
       "label": "Lab: welcome",
       "lines": [

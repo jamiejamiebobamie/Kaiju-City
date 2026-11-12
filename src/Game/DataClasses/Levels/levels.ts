@@ -258,7 +258,7 @@ export type LevelConfig = {
   skillOnLeave?: string; // a power (its element) that opens once the player leaves the level
   coverPanLeftX?: number; // a walking scene: with the player left of this, the view goes all the way to the scene's left edge
   coverPanRightX?: number; // the same, right of this, to its right edge
-  unlock?: { id: string; label: string; image?: string; spot: { x: number; y: number }; afterMs?: number; isRecruit?: boolean }; // a hidden tile, in scene pixels. 'afterMs': it only unlocks after this long
+  unlock?: { id: string; label: string; image?: string; spot: { x: number; y: number }; afterMs?: number; isRecruit?: boolean; joinScene?: string }; // 'joinScene': their word before the card // a hidden tile, in scene pixels. 'afterMs': it only unlocks after this long
   wideShots?: Record<string, number>; // phases the camera pulls out to show, and how long it holds there in ms
   tileTone: TileTone;
   phaseTileTones?: Record<string, TileTone>; // phases that change the floor enough to need another tone
@@ -813,7 +813,7 @@ const LEVEL_BUILDERS: Record<string, (file) => LevelConfig> = {
     ...buildLevel(file, 'Street', '#7a8a3a', [], true),
     ...STREET_SCENE,
     // on the tile of the hazmat worker sweeping by the van: there to be found from the start, before the Agent's words too (Jamie)
-    unlock: { id: 'hazmat', label: 'Hazmat Worker', image: '/levels/portraits/hazmat.png', spot: { x: 740, y: 600 }, isRecruit: true }, // "recruited!", as the other recruits' cards (Jamie, playtest 19)
+    unlock: { id: 'hazmat', label: 'Hazmat Worker', image: '/levels/portraits/hazmat.png', spot: { x: 740, y: 600 }, isRecruit: true, joinScene: 'street.hazmatJoins' }, // "recruited!", as the other recruits' cards (Jamie, playtest 19)
     exit: { spot: { x: 112, y: 690 }, afterMs: STREET_TALK_MS, isShownWhenOpen: true }, // after the Agent's words, and the camera shows it
     skillOnLeave: 'glass' // the scientists' new power, Teleport, from the Agent's words: it opens as the team leaves (picked up at the Lab)
   })
