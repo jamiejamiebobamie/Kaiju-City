@@ -161,7 +161,8 @@ const SpriteSheet = styled.div`
 // a stop; then they hang where they are and the Kaiju walks on through them, so in its own frame they slip back at its
 // walking pace ('walkPerSecond', in its frame's units), sinking a little, and fade
 // stepsAt: the head at its lowest, frames 4 and 9 of the walk's 10 (measured from kaiju-walk.png; Jamie, playtest 22)
-const BREATH = { mouth: { x: 51, y: 28 }, loopSeconds: 5, stepsAt: [0.4, 0.9], perStep: 5, lifeShare: 0.48, pushShare: 0.1, walkPerSecond: 10, cloud: { width: 7, height: 5 }, headWidth: 11 };
+// mouth: lower and a touch forward (Jamie: they looked to come from the nose; at the lowest frames the head is ~5 lower)
+const BREATH = { mouth: { x: 53, y: 33 }, loopSeconds: 5, stepsAt: [0.4, 0.9], perStep: 5, lifeShare: 0.48, pushShare: 0.1, walkPerSecond: 10, cloud: { width: 7, height: 5 }, headWidth: 11 };
 const BREATH_LIFE_SECONDS = BREATH.loopSeconds * BREATH.lifeShare;
 const BREATH_EMBERS = BREATH.stepsAt.flatMap((at, step) => Array.from({ length: BREATH.perStep }, (_, k) => {
   const random = n => ((Math.sin((step * 10 + k) * 12.9898 + n * 78.233) * 43758.5453) % 1 + 1) % 1;
@@ -178,7 +179,7 @@ const BREATH_EMBERS = BREATH.stepsAt.flatMap((at, step) => Array.from({ length: 
     key: `${step} ${k}`,
     delay: -(BREATH.loopSeconds - (at + random(1) * 0.02) * BREATH.loopSeconds), // starts at its step in the loop
     cx, cy,
-    fx: cx + push, fy: cy + 1 + random(3) * 1.5,
+    fx: cx + push, fy: cy + 2.5 + random(3) * 2, // out of the mouth down and forward
     lx: cx + push * 0.8, ly: cy - 1, // then it lifts a little as the head comes back up
     // left behind as it walks on, and (a middle way back to the first version: Jamie) drifting apart as they go: each its
     // own extra way back, some rising and some sinking
