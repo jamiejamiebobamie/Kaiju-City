@@ -66,7 +66,10 @@ const SpriteSheet = styled.div`
     : `transform: scale(.4) translate(-130px, -165px); height: 200px; width: 152px;`
   }
 
-  ${props => `filter: drop-shadow(0 0 20px ${props.color});`}
+  /* 'outline' marker (Jamie, playtest 21): a solid white edge round the sprite, under its glow's spread so the glow still shows */
+  ${props => props.$isOutlined
+    ? `filter: drop-shadow(4px 0 0 white) drop-shadow(-4px 0 0 white) drop-shadow(0 4px 0 white) drop-shadow(0 -4px 0 white) drop-shadow(0 0 20px ${props.color});`
+    : `filter: drop-shadow(0 0 20px ${props.color});`}
   -webkit-transition-duration: 0.4s;
   transition-duration: 0.4s;
   -webkit-transition: -webkit-transform 3s ease-in-out;
@@ -394,6 +397,8 @@ const numberRise = keyframes`
 const ModiferText = styled.p`
   position: absolute;
   margin: 0;
+  /* paused, or the credits rolling: the floating words and numbers hide and hold (Jamie, playtest 21) */
+  [data-game-frame][data-curtained="true"] & { visibility: hidden; animation-play-state: paused; }
   z-index: 2147483300;
   pointer-events: none;
   white-space: nowrap;
@@ -431,7 +436,9 @@ const SPEAK_SHAKE = { msPerChar: 45, minMs: 600, maxMs: 3000, restMs: 4000 }; //
   Who the player plays as (Jamie, playtest 19, to pick one; CONTROL_MARKERS): a caret over the head, a ring at the feet,
   a hex at the feet, or "P1" over the head. the character's middle is x 5; the feet are about y 28.
 */
-export const CONTROL_MARKERS = ["caret", "ring", "hex", "p1", "none"];
+export const CONTROL_MARKERS = ["caret", "outline", "ring", "hex", "p1", "none"];
+// facing down, the sprite stands taller: the marker over the head goes up this much more (Jamie, playtest 21)
+const MARKER_FACING_DOWN_LIFT = 6;
 const CONTROL_MARKER_COLOR = "#ffe14a";
 const markerBob = keyframes`
   0%, 100% { transform: translate(-50%, 0); }
@@ -452,8 +459,9 @@ const OverHead = styled.div`
   animation: ${markerBob} 0.9s ease-in-out infinite;
   color: ${props => props.$color};
   /* a black outline, then a white one round it, so it stands out anywhere (Jamie, playtest 20) */
-  filter: drop-shadow(0 0 0.6px black) drop-shadow(0 0 0.6px black)
-    drop-shadow(1px 0 0 white) drop-shadow(-1px 0 0 white) drop-shadow(0 1px 0 white) drop-shadow(0 -1px 0 white);
+  /* the white about twice the black's width (Jamie, playtest 21: it was too thick) */
+  filter: drop-shadow(0 0 0.5px black) drop-shadow(0 0 0.5px black)
+    drop-shadow(0.5px 0 0 white) drop-shadow(-0.5px 0 0 white) drop-shadow(0 0.5px 0 white) drop-shadow(0 -0.5px 0 white);
 `;
 const CaretMark = styled(OverHead)`
   font-size: 18px;
@@ -485,8 +493,8 @@ const RingMark = styled(FeetMark)`
   border: 2px solid ${props => props.$color};
   box-shadow: 0 0 6px ${props => props.$color}, inset 0 0 4px ${props => props.$color};
 `;
-const ControlMarker = ({ kind, color, hasIcons, hasBar }) => {
-  const top = hasBar ? (hasIcons ? -72 : -61) : hasIcons ? -77 : -64; // the caret's box is about 17 tall
+const ControlMarker = ({ kind, color, hasIcons, hasBar, isFacingDown }) => {
+  const top = (hasBar ? (hasIcons ? -72 : -61) : hasIcons ? -77 : -64) - (isFacingDown ? MARKER_FACING_DOWN_LIFT : 0); // the caret's box is about 17 tall
   if (kind == "caret") return <CaretMark $color={color} $top={top}><i className="fa fa-caret-down" /></CaretMark>;
   if (kind == "p1") return <P1Mark $color={color} $top={top}>P1</P1Mark>;
   if (kind == "ring") return <RingMark $color={color} />;
@@ -702,7 +710,7 @@ export const GameBoardPieceComponent = ({
       <NumberAnchor ref={numberAnchor} />
       {!isQuiet && modifierText}
       <HealthBarWrapper lives={lives}>{bars}</HealthBarWrapper>
-      {controlMarker && !isQuiet && <ControlMarker kind={controlMarker} color={CONTROL_MARKER_COLOR} hasIcons={statusEffects.length > 0} hasBar={isBarShown} />}
+      {controlMarker && !isQuiet && <ControlMarker kind={controlMarker} color={CONTROL_MARKER_COLOR} hasIcons={statusEffects.length > 0} hasBar={isBarShown} isFacingDown={dir == "down" || (dir == "idle" && facingDir == "down")} />}
       {/* what is on them that changes play: over the head, above the health bar where there is one */}
       {statusEffects.length > 0 && !isQuiet && (
         <StatusRow $isAboveBar={isBarShown}>
@@ -723,6 +731,7 @@ export const GameBoardPieceComponent = ({
           lives={lives}
           anim={anim}
           color={color}
+          $isOutlined={controlMarker == "outline"}
         /></GhostForm></RewardPulse>}
       </Character>
     </Wrapper>

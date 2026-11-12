@@ -49,14 +49,15 @@ export const FINAL_TURN = {
 };
 
 // back in the battleground from a training fight won: the card shows this long before anyone speaks (Jamie)
-export const TRAINING_RETURN = { cardMs: 2600 };
+export const TRAINING_RETURN = { cardMs: 2600, talkZoomShare: 0.7 }; // its talk: this share of the extreme close-up
 
 // the Hazmat Worker, once unlocked, walks and fights with the team like a recruit (Jamie): his powers, an orange outline.
 // Aegis (shield), Heal and Dispel (bubble): no attack power (Jamie, playtest 18)
 // the Lab trap's sweep along the clones (getClonesSweepSteps): its zoom, pan speeds (scene px a ms) slow within a group
 // and quick across the gap between the groups (a step longer than 'gapPx'), the move in, and the holds at either end
 // (playtest 20: an extreme zoom; a steady medium pan along each group, fast across the gap)
-const CLONES_SWEEP = { zoomScale: 3.4, pxPerMs: 0.22, gapPxPerMs: 1.5, gapPx: 400, zoomInMs: 900, holdMs: 400 };
+// (playtest 21: zoom 2.4, as Jamie's shot: two Agents and the tanks below in frame; was 3.4)
+const CLONES_SWEEP = { zoomScale: 2.4, pxPerMs: 0.22, gapPxPerMs: 1.5, gapPx: 400, zoomInMs: 900, holdMs: 400 };
 
 // taking over an ally (updateTakeOver): the camera's move in on them, and how long the fight holds there
 const TAKE_OVER = { panMs: 600, holdMs: 1800 };
@@ -2606,7 +2607,12 @@ export class GameManager {
     startVisitScene() {
         const [, teammate] = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
         if (!teammate) return;
-        const teammateSays = text => ({ shot: { isWide: true }, ms: getSpeechMs(text), speech: this.getSpeechOver(teammate, this.getTeammateName(), text) });
+        // back from a training win, each speaker in close: between the medium shot and the extreme one (Jamie, playtest 21)
+        const rowPx = this.getGhostRowPx();
+        const closeOn = piece => this.trainingOutcome
+            ? { point: { x: piece.charLocation.x, y: piece.charLocation.y - CUTSCENE.shotHeadRows * rowPx * 0.5 }, zoomScale: PENINSULA.cameraZoom * CUTSCENE.outcomeZoomScale * TRAINING_RETURN.talkZoomShare, isPeninsulaSized: true, panMs: CUTSCENE.pullInMs }
+            : { isWide: true };
+        const teammateSays = text => ({ shot: closeOn(teammate), ms: getSpeechMs(text), speech: this.getSpeechOver(teammate, this.getTeammateName(), text) });
         const outcome = this.trainingOutcome;
         const sparring = this.getSparringOffer();
         const openSparring = { shot: { isWide: true }, ms: 0, onStart: () => { this.trainingLevelId = this.level.training.sparringLevelId; this.setPhase(TRAINING_PHASE, true); } };
@@ -2622,7 +2628,7 @@ export class GameManager {
             // then the teammate: the new power is theirs to pick at the Lab (Jamie, playtest 19)
             const labNotes = getDialogueTexts('training.labNote'); // a few ways of saying it (Jamie, playtest 20)
             const labNote = labNotes[Math.floor(Math.random() * labNotes.length)];
-            this.startCutscene(recruit && text ? [{ shot: { isWide: true }, ms: getSpeechMs(text), speech: this.getSpeechOver(recruit, name, text) }, teammateSays(labNote)] : [teammateSays(nothingHere)], { isNoEstablish: true });
+            this.startCutscene(recruit && text ? [{ shot: closeOn(recruit), ms: getSpeechMs(text), speech: this.getSpeechOver(recruit, name, text) }, teammateSays(labNote)] : [teammateSays(nothingHere)], { isNoEstablish: true });
             return;
         }
         if (sparring && this.sparredHere) {
@@ -3242,12 +3248,13 @@ export class GameManager {
         const player = this.gameBoardPiecesManager.getPlayerPiece();
         const { rowStep, scale } = this.level.grid;
         const rows = Math.hypot(this.level.exit.spot.x - player.charLocation.x, this.level.exit.spot.y - player.charLocation.y) / (rowStep * scale);
-        const panMs = CUTSCENE.pullInMs * Math.min(Math.max(rows / CUTSCENE.exitLookFarRows, 1), 2.2);
+        const share = this.level.exit.lookShare || 1; // the Street: a quarter as long, the team is right there (Jamie, playtest 21)
+        const panMs = CUTSCENE.pullInMs * Math.min(Math.max(rows / CUTSCENE.exitLookFarRows, 1), 2.2) * share;
         const exitShot = { point: this.level.exit.spot, zoomScale: 1, isCover: true, panMs };
         const backShot = { point: { ...player.charLocation }, zoomScale: 1, isCover: true, panMs };
         this.startCutscene([
             { shot: exitShot, ms: panMs },
-            { shot: exitShot, ms: CUTSCENE.exitLookMs, isSkippable: true },
+            { shot: exitShot, ms: CUTSCENE.exitLookMs * share, isSkippable: true },
             { shot: backShot, ms: panMs }
         ]);
     }

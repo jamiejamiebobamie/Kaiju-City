@@ -220,7 +220,7 @@ export type LevelConfig = {
     rivalGround: { maxI: number; beamFromI: number; beamFromJ: number }; // her roof: tiles up to column maxI, less the beam
     screamScene: string; // her words before the scream, in dialogue.json
   };
-  exit?: { spot: { x: number; y: number }; afterMs?: number; afterPhase?: string; isShownWhenOpen?: boolean; nearRows?: number }; // opens after a time or a phase. reaching it ends the level.
+  exit?: { spot: { x: number; y: number }; afterMs?: number; afterPhase?: string; isShownWhenOpen?: boolean; nearRows?: number; lookShare?: number }; // opens after a time or a phase. reaching it ends the level.
   walkIn?: { // the opening of a scene: who stands where, and who says what
     teammateSpot?: { x: number; y: number };
     doorTile: { i: number; j: number }; // where recruits walk in from
@@ -814,7 +814,7 @@ const LEVEL_BUILDERS: Record<string, (file) => LevelConfig> = {
     ...STREET_SCENE,
     // on the tile of the hazmat worker sweeping by the van: there to be found from the start, before the Agent's words too (Jamie)
     unlock: { id: 'hazmat', label: 'Hazmat Worker', image: '/levels/portraits/hazmat.png', spot: { x: 740, y: 600 }, isRecruit: true, joinScene: 'street.hazmatJoins' }, // "recruited!", as the other recruits' cards (Jamie, playtest 19)
-    exit: { spot: { x: 112, y: 690 }, afterMs: STREET_TALK_MS, isShownWhenOpen: true }, // after the Agent's words, and the camera shows it
+    exit: { spot: { x: 112, y: 690 }, afterMs: STREET_TALK_MS, isShownWhenOpen: true, lookShare: 0.25 }, // after the Agent's words, and the camera shows it
     skillOnLeave: 'glass' // the scientists' new power, Teleport, from the Agent's words: it opens as the team leaves (picked up at the Lab)
   })
 };

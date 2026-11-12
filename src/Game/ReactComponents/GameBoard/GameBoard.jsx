@@ -705,7 +705,8 @@ const MOVEMENT_KEYS = ["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowLeft", "
 
 const getIsTouchScreen = () => window.matchMedia("(pointer: coarse)").matches;
 
-export const GameBoard = ({ controlMarker = "caret", speakingLineLength = 0, isSwirling = false, speakingPieceIndex = undefined, choiceFromRef = undefined, isWindowOpen = true, isPaused, gameManager, level, activePhases, isWholeScene, playWindow, isShowingWindowSize, isEditingTiles, isMouseLook, isEnemyZoom, isSlowMotion, isTeamColors, speech, recruitScene, recruitChoice, onChooseRecruit, onHotspot }) => {
+// 'isCurtained': the credits are over the screen: nothing of the game's own shows over them (Jamie, playtest 21)
+export const GameBoard = ({ isCurtained = false, controlMarker = "caret", speakingLineLength = 0, isSwirling = false, speakingPieceIndex = undefined, choiceFromRef = undefined, isWindowOpen = true, isPaused, gameManager, level, activePhases, isWholeScene, playWindow, isShowingWindowSize, isEditingTiles, isMouseLook, isEnemyZoom, isSlowMotion, isTeamColors, speech, recruitScene, recruitChoice, onChooseRecruit, onHotspot }) => {
   // redraws the pieces when the game updates. the tiles draw themselves.
   useSyncExternalStore(gameManager.subscribeToBoard, gameManager.getBoardRevision);
   const pieces = gameManager.getPieces();
@@ -1115,6 +1116,11 @@ export const GameBoard = ({ controlMarker = "caret", speakingLineLength = 0, isS
   // the pointer stays over the screen while paused, and in a scene with things to click (the walking Lab) (Jamie, playtest 18)
   const isCursorKept = !!isPaused || getActiveHotspots(level, activePhases).length > 0;
   const isCursorKeptRef = useRef(false);
+  // the floating words and numbers are drawn on the game's frame: it is marked so they hide while paused or behind the credits
+  useEffect(() => {
+    const frame = boardRef.current && boardRef.current.closest("[data-game-frame]");
+    if (frame) frame.dataset.curtained = String(!!isPaused || isCurtained);
+  }, [isPaused, isCurtained]);
   isCursorKeptRef.current = isCursorKept;
   const getBoardCursor = () => isChoosingRef.current ? "pointer" : isCursorKeptRef.current ? "default" : "";
   useEffect(() => {
@@ -1295,9 +1301,9 @@ export const GameBoard = ({ controlMarker = "caret", speakingLineLength = 0, isS
       </SceneShake>
       {gameManager.ghostFlashCount > 0 && createPortal(<ScreamFlash key={gameManager.ghostFlashCount} style={{ background: (level && level.rival && level.rival.screamFlashColor) || SCREAM_FLASH.color }} />, document.querySelector("[data-play-screen]") || document.body)}
       {recruitScene && recruitChoice && <ChoiceConfirm choice={recruitChoice} from={choiceFrom.current} board={boardRef.current} />}
-      {!isPaused && edgeCarets}
-      {!isPaused && <GiantMeters gameManager={gameManager} />}
-      {!isPaused && trainWarning}
+      {!isPaused && !isCurtained && edgeCarets}
+      {!isPaused && !isCurtained && <GiantMeters gameManager={gameManager} />}
+      {!isPaused && !isCurtained && trainWarning}
       {isShowingWindowSize && (
         <WindowSize>
           {Math.round((playWindow.right - playWindow.left) * 100)}% x {Math.round((playWindow.bottom - playWindow.top) * 100)}% of the frame:

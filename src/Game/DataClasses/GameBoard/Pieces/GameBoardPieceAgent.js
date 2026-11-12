@@ -69,7 +69,10 @@ export class GameBoardPieceAgent extends GameBoardPieceBase {
         this.isChaser = true;
         this.dealsContactDmg = true;
         const landing = this.gameManagerProxy.getCharXAndYFromTileIndex(landingTile);
-        this.startEntrance({ startLocation, dropTile: landingTile, landingTile, walkDir: startLocation.y > landing.y ? 'up' : 'down' });
+        const isDropping = startLocation.y < landing.y;
+        this.startEntrance({ startLocation, dropTile: landingTile, landingTile, walkDir: isDropping ? 'down' : 'up' });
+        // from the catwalk: the falling frame all the way down, not running (Jamie, playtest 21)
+        if (isDropping) this.isFalling = true;
     }
 
     startEntrance({ startLocation, dropTile, landingTile, walkDir }) {

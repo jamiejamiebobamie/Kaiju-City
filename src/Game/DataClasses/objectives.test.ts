@@ -109,7 +109,7 @@ describe('objectives', () => {
   it('the last fight: Defeat the Kaiju, then Stop [the teammate]', () => {
     const gm = makeGame(LEVELS.finalTurnFight, { isRetry: true });
     gm.stepPieces();
-    expect(text(gm)).toBe(`Stop ${gm.getTeammateName()}`);
+    expect(text(gm)).toBe(`Stop Kaiju ${gm.getTeammateName()}!`);
     expect(gm.getUiState().isObjectiveKaijuCount).toBe(false);
   });
 

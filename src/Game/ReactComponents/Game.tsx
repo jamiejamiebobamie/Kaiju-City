@@ -758,16 +758,13 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   }, [takeOverCount]);
   usePausableNotice(takeOverNotice, setTakeOverNotice, OBJECTIVE_NOTICE_MS, isPaused);
 
-  // only when it changes (Jamie, playtest 19): not the same one again on a new level (the carried "Go to the Lab"),
-  // and not one already shown in this fight (the Aquarium's "Survive the Flood" coming back)
+  // whenever it differs from the one just before (Jamie, playtest 21: even one seen before, as the Rooftop's second
+  // "Survive the Ghosts"); not the same one again on a new level (the carried "Go to the Lab")
   const lastNoticeText = useRef("");
-  const noticedThisMatch = useRef(new Set<string>());
-  useEffect(() => { noticedThisMatch.current = new Set(); }, [matchCount]);
   useEffect(() => {
     if (!objectiveCount || !objectiveText) return;
-    if (objectiveText == lastNoticeText.current || noticedThisMatch.current.has(objectiveText)) return;
+    if (objectiveText == lastNoticeText.current) return;
     lastNoticeText.current = objectiveText;
-    noticedThisMatch.current.add(objectiveText);
     setObjectiveNotice({ key: objectiveCount, text: objectiveText });
   }, [objectiveCount]);
   usePausableNotice(objectiveNotice, setObjectiveNotice, OBJECTIVE_NOTICE_MS, isPaused);
@@ -1086,14 +1083,8 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     gm.setNpcModelDriver(isTrainedNpcs ? new NpcModelDriver(gm.getTrainablePieces, () => npcAggressionRef.current) : undefined);
   }, [isTrainedNpcs, matchCount, levelId, campaignIndex]);
 
-  // the first Peninsula fight opens with the controls, once the teammate's arrival has played
-  const hasShownFirstControls = useRef(false);
-  useEffect(() => {
-    const isFirstFight = campaignIndex === 0 && level.id == PENINSULA.id && isPlayingGame && !radioLines && !!gameManager.current;
-    if (!isFirstFight || isCutscene || hasShownFirstControls.current) return;
-    hasShownFirstControls.current = true;
-    openControls();
-  }, [campaignIndex, level, isPlayingGame, radioLines, isCutscene, matchCount]);
+  // (the controls no longer pop up at the first fight: Jamie, playtest 21. an image version is on the backlog; the
+  // Controls button still opens them)
 
   const handleClickPause = () => {
     if (isShowingControls) {
@@ -1505,6 +1496,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               {/* for a Lab screen, the scene slides away inside the monitor, and the screen takes its place there */}
               <SlideClip><SlideAway style={leavingFor ? { transform: `translateX(${leavingFor == "colors" ? -45 : 45}%)`, opacity: 0 } : undefined}>
               <GameBoard
+                isCurtained={!!matchEnd && !!matchEnd.isFinale}
                 key={`${level.id} ${matchCount}`}
                 choiceFromRef={recruitChoiceFrom}
                 // a line in the log: they shake once it shows there. a balloon (a shout across the street) shows at once
@@ -1561,7 +1553,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               {campaignIndex !== null && level.isWalkingLevel && !level.sites && !level.exit && !level.walkIn && !isEditingTiles && (
                 <ContinueButton data-enter onClick={() => showSection(campaignIndex + 1)}>Continue</ContinueButton>
               )}
-              {!isAutoRecruits && !level.isWalkingLevel && !isEditingTiles && !recruitScene && winner === null && getCallableRecruits().length > 0 && (
+              {!isAutoRecruits && !level.isWalkingLevel && !isEditingTiles && !recruitScene && winner === null && !matchEnd && getCallableRecruits().length > 0 && (
                 <RecruitCalls key={matchCount} recruits={getCallableRecruits()} onCall={avatar => !!gameManager.current && gameManager.current.callRecruit(avatar)} isDisabled={isPaused} />
               )}
             </PlayWindow>
@@ -1593,7 +1585,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               kaijuKilledToWin={kaijuToWin}
               isKaijuLevel={!!level.kaijuEntry}
               isCountOnBezel={!isWindowOpen}
-              isShowingHuds={(!level.isWalkingLevel || isRewarding) && !isCutscene && !recruitScene}
+              isShowingHuds={(!level.isWalkingLevel || isRewarding) && !isCutscene && !recruitScene && !(matchEnd && matchEnd.isFinale)}
               isShowingTopBar={!isCutscene && !recruitScene}
               isPaused={isPaused}
             />}

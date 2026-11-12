@@ -25,7 +25,7 @@ export const OBJECTIVES = {
   escape: 'Escape the Lab',
   glow: 'Investigate the Glow',
   agents: 'Defeat the Agents', // (Jamie, playtest 18)
-  stopTeammate: (name: string) => `Stop ${name}`
+  stopTeammate: (name: string) => `Stop Kaiju ${name}!` // what he's become, named (Jamie, playtest 21)
 };
 
 // a detour off a map walk (the walking Lab, a battleground visited again): the walk's objective carries over
