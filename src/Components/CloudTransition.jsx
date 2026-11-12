@@ -15,8 +15,12 @@ const CLOUD_LOOK = {
   outlineTopColor: "#b9d3f2", // the outlines: pale where the sun catches them, deep blue below
   outlineBottomColor: "#22467f",
   outlineWidth: 5,
-  puffSize: 120, // the bank behind the strips is puffs, outlined too
-  puffStep: 92,
+  // the bank behind the strips is puffs, outlined too: big and few, each its own size and a little off the grid, so the
+  // sides read as varied cloud, not a busy row of bumps (Jamie, playtest 22; were 120 and 92, all near one size)
+  puffSize: 210,
+  puffStep: 165,
+  puffJitter: 0.4, // how far off its spot in the grid a puff may sit, as a share of a step
+  puffSizeRange: [0.32, 0.85], // a puff's radius, as shares of puffSize
   strips: 60,
   minSeconds: 2.6, // close together, so the strips meet at nearly the same moment
   maxSeconds: 3,
@@ -99,7 +103,9 @@ export const CloudTransition = ({ isPlaying }) => {
     const puffs = [];
     for (let row = 0, y = -puffSize / 2; y < height + puffSize; row += 1, y += puffStep * 0.62 * scale) {
       for (let x = (row % 2) * puffStep * scale / 2 - puffSize; x < width + puffSize; x += puffStep * scale) {
-        puffs.push({ x, y, radius: puffSize * scale * (0.42 + Math.random() * 0.16) });
+        const [low, high] = CLOUD_LOOK.puffSizeRange;
+        const jitter = CLOUD_LOOK.puffJitter * puffStep * scale;
+        puffs.push({ x: x + (Math.random() - 0.5) * 2 * jitter, y: y + (Math.random() - 0.5) * jitter, radius: puffSize * scale * (low + Math.random() * (high - low)) });
       }
     }
 

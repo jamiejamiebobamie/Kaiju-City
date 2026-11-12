@@ -36,9 +36,10 @@ const PANEL_MOTION = { buildMs: 750, pieceMs: 480, strips: 9, staggerMs: 45, blo
 export const BREAK_TOTAL_MS = PANEL_MOTION.pieceMs + (PANEL_MOTION.strips - 1) * PANEL_MOTION.staggerMs;
 
 // it builds out from the screen's edge: revealed left to right
+// built, it opens a little past its edges: the green bars sit outside it (BAR_GAP)
 const buildOut = keyframes`
-  from { clip-path: inset(0 100% 0 0); }
-  to { clip-path: inset(0 0 0 0); }
+  from { clip-path: inset(-3cqw 100% -3cqw 0); }
+  to { clip-path: inset(-3cqw -1cqw -3cqw -1cqw); }
 `;
 
 // and comes apart: the whole panel goes as its strips float off
@@ -174,10 +175,17 @@ const BreakEffect = () => (
   stays under the top bar. each new line rises from the bottom bar to just under them; what was said before goes on up,
   under the portrait and name, and into the top bar. scrolling back still shows it.
 */
+// the bars stand off the panel, the page showing between (Jamie, playtest 22); the words run between the bars, through
+// the gaps, and behind the speaker's portrait and name and the buttons, which stay over them
+const BAR_GAP = 1.6; // cqw
+
 const GreenBar = styled.div`
-  flex-shrink: 0;
+  position: absolute;
+  left: 1.4cqw;
+  right: 1.4cqw;
+  ${props => props.$isTop ? `top: -${BAR_GAP}cqw;` : `bottom: -${BAR_GAP}cqw;`}
   height: 0.35cqw;
-  margin: ${props => props.$isTop ? "1cqw 1.4cqw 0" : "0 1.4cqw 0.2cqw"};
+  z-index: 3;
   background: ${LOG_LOOK.green};
   box-shadow: 0 0 0.8cqw ${LOG_LOOK.green}, 0 0 0.25cqw ${LOG_LOOK.green};
 `;
@@ -190,11 +198,24 @@ const Body = styled.div`
 
 const Scroll = styled.div`
   position: absolute;
-  inset: 0;
+  top: -${BAR_GAP - 0.35}cqw;
+  bottom: -${BAR_GAP - 0.35}cqw;
+  left: 0;
+  right: 0;
+  z-index: 0;
   overflow-y: auto;
   padding: 0 1.4cqw;
   scrollbar-width: thin;
   scrollbar-color: ${LOG_LOOK.dim} transparent;
+`;
+
+// the buttons at the foot: over the words passing behind them
+const BottomArea = styled.div`
+  position: relative;
+  z-index: 2;
+  background: linear-gradient(to bottom, rgba(4, 24, 13, 0), rgba(4, 24, 13, 0.97) 0.8cqw);
+  padding-top: 0.4cqw;
+  &:empty { display: none; }
 `;
 
 // the one speaking now, over the words going up behind them
@@ -203,7 +224,7 @@ const Header = styled.div`
   top: 0;
   left: 0;
   right: 0.8cqw;
-  z-index: 1;
+  z-index: 2;
   padding: 0.8cqw 1.4cqw 0.4cqw;
   pointer-events: none;
   background: linear-gradient(to bottom, rgba(4, 28, 15, 0.98) 80%, rgba(4, 28, 15, 0));
@@ -366,6 +387,16 @@ export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, ac
   // unless the player has scrolled to read back (wheel or touch), till the next line
   const headerRef = useRef(null);
   const newestRef = useRef(null);
+  const bottomRef = useRef(null);
+  // the words' room: from under the header (measured from the scroll's own top, which is up in the gap) to over the buttons
+  const getRoom = () => {
+    const scroll = scrollRef.current;
+    if (!scroll) return { top: 0, bottom: 0 };
+    const box = scroll.getBoundingClientRect();
+    const header = headerRef.current ? headerRef.current.getBoundingClientRect().bottom - box.top : 0;
+    const buttons = bottomRef.current && bottomRef.current.offsetHeight ? box.bottom - bottomRef.current.getBoundingClientRect().top : 0;
+    return { top: Math.max(header, 0), bottom: Math.max(buttons, 0) };
+  };
   const [spacerPx, setSpacerPx] = useState(0);
   const [headerPx, setHeaderPx] = useState(0); // the words start below the header, never behind it
   const isFollowing = useRef(true);
@@ -373,9 +404,9 @@ export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, ac
     const scroll = scrollRef.current;
     const newest = newestRef.current;
     if (!scroll || !newest || !isFollowing.current) return;
-    const headerPx = headerRef.current ? headerRef.current.offsetHeight : 0;
-    const top = Math.max(newest.offsetTop - headerPx, 0);
-    const bottom = newest.offsetTop + newest.offsetHeight - scroll.clientHeight + 8; // a long line: its end in view
+    const room = getRoom();
+    const top = Math.max(newest.offsetTop - room.top, 0);
+    const bottom = newest.offsetTop + newest.offsetHeight - (scroll.clientHeight - room.bottom) + 8; // a long line: its end in view
     const target = Math.max(top, bottom);
     if (Math.abs(scroll.scrollTop - target) < 2) return;
     scroll.scrollTo({ top: target, behavior: isSmooth ? "smooth" : "auto" });
@@ -385,10 +416,10 @@ export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, ac
   // the spacer: just enough for the newest line to reach the header, no more (Jamie, playtest 22: scrolling down went on
   // past the words into nothing)
   useLayoutEffect(() => {
-    const header = headerRef.current ? headerRef.current.offsetHeight : 0;
+    const room = getRoom();
     const newest = newestRef.current ? newestRef.current.offsetHeight : 0;
-    if (scrollRef.current) setSpacerPx(Math.max(scrollRef.current.clientHeight - header - newest, 0));
-    if (headerRef.current) setHeaderPx(header);
+    if (scrollRef.current) setSpacerPx(Math.max(scrollRef.current.clientHeight - room.top - newest, 0));
+    setHeaderPx(Math.round(room.top));
   });
   useLayoutEffect(() => {
     isFollowing.current = true;
@@ -429,31 +460,31 @@ export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, ac
     <BuildEffect />
     <Panel onClick={() => isWaiting && handleContinue()}>
       <GreenBar $isTop />
+      <Scroll ref={scrollRef} style={{ paddingTop: `${headerPx}px` }} onWheel={() => { isFollowing.current = false; }} onTouchMove={() => { isFollowing.current = false; }}>
+        {isBuilt && entries.map(({ key, who, name, text, avatar, chain }, index) => {
+          const last = entries[index - 1];
+          const isNewest = index == entries.length - 1;
+          // the newest speaker's run of lines: their portrait is the header's, not shown again in the words (playtest 22)
+          const isInHeaderRun = index >= headerRunStart;
+          const isRepeat = !!last && last.name == name && last.avatar == avatar && last.chain == chain;
+          return (
+            <Chunk key={key} ref={isNewest ? newestRef : undefined} $isOld={!isNewest} $isNew={isNewest} $isRepeat={isRepeat}>
+              {/* the newest one's speaker is in the header above */}
+              {!isRepeat && !isInHeaderRun && (
+                <Speaker>
+                  <Portrait style={{ backgroundImage: avatar ? `url(/levels/portraits/${avatar}.png)` : undefined }} />
+                  <Name style={{ color: LOG_LOOK.names[who] || LOG_LOOK.names.other }}>{name}</Name>
+                </Speaker>
+              )}
+              <Words>
+                <TypedText text={text} isTyping={isNewest} isRushed={rushedKey === key} onType={keepAtBottom} onDone={() => setDoneKey(key)} />
+              </Words>
+            </Chunk>
+          );
+        })}
+        <div style={{ height: `${spacerPx}px` }} />
+      </Scroll>
       <Body>
-        <Scroll ref={scrollRef} style={{ paddingTop: `${headerPx}px` }} onWheel={() => { isFollowing.current = false; }} onTouchMove={() => { isFollowing.current = false; }}>
-          {isBuilt && entries.map(({ key, who, name, text, avatar, chain }, index) => {
-            const last = entries[index - 1];
-            const isNewest = index == entries.length - 1;
-            // the newest speaker's run of lines: their portrait is the header's, not shown again in the words (playtest 22)
-            const isInHeaderRun = index >= headerRunStart;
-            const isRepeat = !!last && last.name == name && last.avatar == avatar && last.chain == chain;
-            return (
-              <Chunk key={key} ref={isNewest ? newestRef : undefined} $isOld={!isNewest} $isNew={isNewest} $isRepeat={isRepeat}>
-                {/* the newest one's speaker is in the header above */}
-                {!isRepeat && !isInHeaderRun && (
-                  <Speaker>
-                    <Portrait style={{ backgroundImage: avatar ? `url(/levels/portraits/${avatar}.png)` : undefined }} />
-                    <Name style={{ color: LOG_LOOK.names[who] || LOG_LOOK.names.other }}>{name}</Name>
-                  </Speaker>
-                )}
-                <Words>
-                  <TypedText text={text} isTyping={isNewest} isRushed={rushedKey === key} onType={keepAtBottom} onDone={() => setDoneKey(key)} />
-                </Words>
-              </Chunk>
-            );
-          })}
-          <div style={{ height: `${spacerPx}px` }} />
-        </Scroll>
         {isBuilt && entries.length > 0 && (() => {
           const { who, name, avatar } = entries[entries.length - 1];
           return (
@@ -466,12 +497,14 @@ export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, ac
           );
         })()}
       </Body>
-      <GreenBar />
+      <BottomArea ref={bottomRef}>
       {isBuilt && isWaiting && !actions.length && <ContinueBar data-enter data-log-continue data-choice-key={1} onClick={event => { event.stopPropagation(); handleContinue(); }}><span>Continue &#9654;</span><KeyNumber><EnterKey /></KeyNumber></ContinueBar>}
       {isBuilt && actions.map(({ text, onClick, isEnter }, index) => (
         <ContinueBar key={text} data-enter={isEnter ? "" : undefined} data-choice-key={index + 1} onClick={event => { event.stopPropagation(); onClick(); }}><span>{text} &#9654;</span><KeyNumber>{actions.length == 1 ? <EnterKey /> : index + 1}</KeyNumber></ContinueBar>
       ))}
       {isBuilt && footer && <Footer onClick={event => event.stopPropagation()}>{footer}</Footer>}
+      </BottomArea>
+      <GreenBar />
     </Panel>
     </>
   );

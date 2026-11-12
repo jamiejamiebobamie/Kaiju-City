@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import styled from "styled-components";
+import styled, { keyframes } from "styled-components";
 import {
   Title,
   StyledSpookyText,
@@ -150,6 +150,51 @@ const SpriteSheet = styled.div`
 
 `;
 
+/*
+  The Kaiju's breath (Jamie, playtest 22): on each down-step of its walk it breathes out glowing purple embers, round and
+  clean (not the page's pixel ones). they puff out of its mouth and drift back behind it, rising a little, and fade.
+  they live in the Kaiju's own frame, so they turn round with it and trail behind whichever way it walks.
+  'mouth' is in that frame (its sprite's box runs about x 2-74, y 3-96, the head top right); 'stepsAt': when in the
+  5 s walk loop the feet come down, as shares of it.
+*/
+const BREATH = { mouth: { x: 53, y: 25 }, loopSeconds: 5, stepsAt: [0.05, 0.55], perStep: 6, lifeShare: 0.42 };
+const BREATH_EMBERS = BREATH.stepsAt.flatMap((at, step) => Array.from({ length: BREATH.perStep }, (_, k) => {
+  const random = n => ((Math.sin((step * 10 + k) * 12.9898 + n * 78.233) * 43758.5453) % 1 + 1) % 1;
+  return {
+    key: `${step} ${k}`,
+    delay: -(BREATH.loopSeconds - (at + random(1) * 0.04) * BREATH.loopSeconds), // starts at its step in the loop
+    dx: -(14 + random(2) * 26), // back behind it
+    dy: -(2 + random(3) * 12),
+    size: 1.1 + random(4) * 1.1,
+    color: ["#d47bff", "#b04cff", "#f0c4ff"][Math.floor(random(5) * 3)]
+  };
+}));
+
+const breathPuff = keyframes`
+  0% { transform: translate(0, 0) scale(0.6); opacity: 0; }
+  3% { opacity: 1; transform: translate(calc(var(--dx) * 0.08), calc(var(--dy) * 0.05)) scale(1); }
+  ${BREATH.lifeShare * 100 * 0.6}% { opacity: 0.85; }
+  ${BREATH.lifeShare * 100}% { transform: translate(var(--dx), var(--dy)) scale(0.5); opacity: 0; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(0.5); opacity: 0; }
+`;
+
+const BreathEmber = styled.span`
+  position: absolute;
+  z-index: 1;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: ${breathPuff} ${BREATH.loopSeconds}s ease-out infinite;
+`;
+
+const Breath = () => BREATH_EMBERS.map(({ key, delay, dx, dy, size, color }) => (
+  <BreathEmber key={key} style={{
+    left: `${BREATH.mouth.x}px`, top: `${BREATH.mouth.y}px`, width: `${size}px`, height: `${size}px`,
+    background: `radial-gradient(circle, white 0%, ${color} 55%, transparent 100%)`,
+    boxShadow: `0 0 ${size * 2}px ${color}`,
+    animationDelay: `${delay}s`, "--dx": `${dx}px`, "--dy": `${dy}px`
+  }} />
+));
+
 export const Logo = () => (<LogoWrapper>
   <Title isDescription={false}>
     <StyledSpookyText isDescription={true}>Kaiju</StyledSpookyText>{" "}
@@ -159,6 +204,7 @@ export const Logo = () => (<LogoWrapper>
   <LogoImage src={"./SVG_logo.svg"} />
   <KaijuWrapper >
     <SpriteSheet />
+    <Breath />
   </KaijuWrapper>
   <KaijuWrapper isSmoke={true}>
     <SpriteSheet isSmoke={true}/>
