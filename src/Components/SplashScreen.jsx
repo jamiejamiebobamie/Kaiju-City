@@ -55,11 +55,12 @@ const Loading = styled.div`
   color: #c9a6ff;
   text-shadow: 0 0 6px rgba(150, 60, 255, 0.8);
   pointer-events: none;
-  /* the dots don't push the word over: it stays put as they come and go */
+  /* the word itself is centred; the dots hang off its right, outside the centring (Jamie) */
   &::after {
     content: "";
-    display: inline-block;
-    width: 3ch;
+    position: absolute;
+    left: 100%;
+    top: 0;
     text-align: left;
     animation: ${dots} 1.6s steps(1) infinite;
   }

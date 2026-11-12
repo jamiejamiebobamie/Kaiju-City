@@ -21,7 +21,7 @@ import { PIECES_INFO } from "Utils/gameState";
   ghosts of itself sliding off behind it and fading. Any key or a click: the logo slides off left, the words and lines
   flash white and fade, and the game goes on.
 */
-const PRESS_KEY = { leaveMs: 1500, trailSeconds: 1.8, color: "#e25cff", trailColor: "#ff5cc8" };
+const PRESS_KEY = { leaveMs: 1500, trailSeconds: 6, color: "#e25cff", trailColor: "#ff5cc8" };
 
 const SceneSlide = styled.div`
   position: absolute;
@@ -81,10 +81,21 @@ const KeyText = styled.div`
   ${props => !props.$isLeaving && css`animation: ${blink} 1.4s steps(1) infinite;`}
 `;
 
-// a ghost of the words, sliding off behind them and fading into the background
+// a ghost of the words, sliding off behind them and fading into the background: up right, up left, down left, down
+// right, a pause at each, and round again (Jamie)
 const trail = keyframes`
-  from { transform: translateX(0); opacity: 0.55; }
-  to { transform: translateX(28px); opacity: 0; }
+  0% { transform: translate(0, 0); opacity: 0.6; }
+  12% { transform: translate(18px, -9px); opacity: 0.15; }
+  25% { transform: translate(18px, -9px); opacity: 0; }
+  25.01% { transform: translate(0, 0); opacity: 0.6; }
+  37% { transform: translate(-18px, -9px); opacity: 0.15; }
+  50% { transform: translate(-18px, -9px); opacity: 0; }
+  50.01% { transform: translate(0, 0); opacity: 0.6; }
+  62% { transform: translate(-18px, 9px); opacity: 0.15; }
+  75% { transform: translate(-18px, 9px); opacity: 0; }
+  75.01% { transform: translate(0, 0); opacity: 0.6; }
+  87% { transform: translate(18px, 9px); opacity: 0.15; }
+  100% { transform: translate(18px, 9px); opacity: 0; }
 `;
 
 const Phantom = styled.span`
@@ -136,6 +147,12 @@ export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
     };
   }, [toolScreen]);
 
+  // the whole landing page clicks through: the hand cursor everywhere on it (Jamie)
+  useEffect(() => {
+    document.body.style.cursor = "pointer";
+    return () => { document.body.style.cursor = ""; };
+  }, []);
+
   // (the "New Game" button is gone: any key starts it. Jamie, playtest 21)
   const navButtons = (<ButtonGroup>
     {/* Settings returns with multiplayer, as a stretch goal */}
@@ -170,7 +187,8 @@ export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
     <PressAnyKey $isLeaving={isLeaving}>
       <KeyLine />
       <KeyText $isLeaving={isLeaving}>
-        {[1, 2, 3].map(n => <Phantom key={n} style={{ animationDelay: `${(n - 1) * PRESS_KEY.trailSeconds / 3}s` }}><KeyWords /></Phantom>)}
+        {/* three, a moment apart: a trail */}
+        {[1, 2, 3].map(n => <Phantom key={n} style={{ animationDelay: `${(n - 1) * 0.08}s`, filter: `opacity(${1 - (n - 1) * 0.3})` }}><KeyWords /></Phantom>)}
         <span style={{ position: "relative" }}><KeyWords /></span>
       </KeyText>
       <KeyLine />
