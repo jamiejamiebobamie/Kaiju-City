@@ -17,7 +17,7 @@ import { PIECES_INFO } from "Utils/gameState";
 
 /*
   The landing screen (Jamie, playtest 21, until the UI epic's mock-ups): the logo, and "[Press any key]" at five sixths
-  of the way down, a line either side of it from a seventh in from each edge. It blinks, purple pink, with pink
+  of the way down, a line either side of it from a seventh in from each edge. Purple pink, with pink
   ghosts of itself sliding off behind it and fading. Any key or a click: the logo slides off left, the words and lines
   flash white and fade, and the game goes on.
 */
@@ -132,12 +132,6 @@ const KeyLine = styled.div`
   box-shadow: 0 0 6px ${PRESS_KEY.color};
 `;
 
-const blink = keyframes`
-  0%, 55% { opacity: 1; }
-  70%, 85% { opacity: 0.15; }
-  100% { opacity: 1; }
-`;
-
 const KeyText = styled.div`
   position: relative;
   font-family: gameboy;
@@ -146,7 +140,7 @@ const KeyText = styled.div`
   white-space: nowrap;
   color: ${PRESS_KEY.color};
   text-shadow: 0 0 8px ${PRESS_KEY.color};
-  ${props => !props.$isLeaving && css`animation: ${blink} 1.8s steps(1) infinite; /* half as often (Jamie) */`}
+  /* no blink (Jamie: its dark beat was too dark); the ghost trail carries the life */
 `;
 
 // a ghost of the words, sliding off behind them and fading into the background: up right, up left, down left, down
