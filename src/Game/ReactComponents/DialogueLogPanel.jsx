@@ -382,14 +382,23 @@ export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, ac
   };
   const keepAtBottom = () => followNewest(false);
   // sizes: the spacer that lets the newest line reach the top, and the header's height (same values: no new render)
+  // the spacer: just enough for the newest line to reach the header, no more (Jamie, playtest 22: scrolling down went on
+  // past the words into nothing)
   useLayoutEffect(() => {
-    if (scrollRef.current) setSpacerPx(scrollRef.current.clientHeight);
-    if (headerRef.current) setHeaderPx(headerRef.current.offsetHeight);
+    const header = headerRef.current ? headerRef.current.offsetHeight : 0;
+    const newest = newestRef.current ? newestRef.current.offsetHeight : 0;
+    if (scrollRef.current) setSpacerPx(Math.max(scrollRef.current.clientHeight - header - newest, 0));
+    if (headerRef.current) setHeaderPx(header);
   });
   useLayoutEffect(() => {
     isFollowing.current = true;
     followNewest(true);
   }, [entries.length, headerPx]);
+
+  // where the newest speaker's run of lines starts (the same speaker, back from the newest)
+  const getIsSameSpeaker = (a, b) => !!a && !!b && a.name == b.name && a.avatar == b.avatar && a.chain == b.chain;
+  let headerRunStart = entries.length - 1;
+  while (headerRunStart > 0 && getIsSameSpeaker(entries[headerRunStart - 1], entries[headerRunStart])) headerRunStart -= 1;
 
   // it builds itself when it opens, and comes apart when it closes
   const isShown = !!entries.length && isVisible;
@@ -425,11 +434,13 @@ export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, ac
           {isBuilt && entries.map(({ key, who, name, text, avatar, chain }, index) => {
             const last = entries[index - 1];
             const isNewest = index == entries.length - 1;
+            // the newest speaker's run of lines: their portrait is the header's, not shown again in the words (playtest 22)
+            const isInHeaderRun = index >= headerRunStart;
             const isRepeat = !!last && last.name == name && last.avatar == avatar && last.chain == chain;
             return (
               <Chunk key={key} ref={isNewest ? newestRef : undefined} $isOld={!isNewest} $isNew={isNewest} $isRepeat={isRepeat}>
                 {/* the newest one's speaker is in the header above */}
-                {!isRepeat && !isNewest && (
+                {!isRepeat && !isInHeaderRun && (
                   <Speaker>
                     <Portrait style={{ backgroundImage: avatar ? `url(/levels/portraits/${avatar}.png)` : undefined }} />
                     <Name style={{ color: LOG_LOOK.names[who] || LOG_LOOK.names.other }}>{name}</Name>

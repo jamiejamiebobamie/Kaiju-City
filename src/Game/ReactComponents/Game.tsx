@@ -578,7 +578,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const [isTakeOverOnDeath, setIsTakeOverOnDeath] = useState(true);
   const [isPermadeath, setIsPermadeath] = useState(true);
   // dev (Jamie, playtest 19, to pick one): the marker on the one the player plays as
-  const [controlMarker, setControlMarker] = useState("caret");
+  const [controlMarker, setControlMarker] = useState("outline"); // the outline by default (Jamie, playtest 22)
   const [fallenRecruits, setFallenRecruits] = useState<Array<string>>([]);
   const [isTrainedNpcs, setIsTrainedNpcs] = useState(false); // off by default (Jamie, 2026-11-06). NPCs play by the trained model in public/models in fights with no Kaiju; against a Kaiju they hand back to the rules
   const [isDevHidden, setIsDevHidden] = useState(false); // the dev tools tucked away, to see the game as it will ship

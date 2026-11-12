@@ -24,7 +24,7 @@ const App = () => {
   // show splash screen for 5 seconds on first load of site
   useEffect(() => {
     const timeoutRef = setTimeout(() => {
-      setTimeout(() => setIsFirstLoad(false), 750);
+      setTimeout(() => setIsFirstLoad(false), CLOUD_TIMING.coveredMs); // (was 750: the landing showed through the clouds)
       triggerTransition();
     }, 5000);
     return () => clearTimeout(timeoutRef);
@@ -40,7 +40,7 @@ const App = () => {
       setShouldPlayAnim(false);
     }, inMs + holdMs + outMs);
     // the next screen is made once the clouds cover the whole screen
-    callback && setTimeout(() => callback(), inMs + 30);
+    callback && setTimeout(() => callback(), CLOUD_TIMING.coveredMs);
   };
 
   const appContent = isFirstLoad ? <SplashScreen /> : <Home triggerTransition={triggerTransition} />;

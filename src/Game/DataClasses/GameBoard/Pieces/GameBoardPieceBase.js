@@ -920,7 +920,8 @@ export class GameBoardPieceBase {
         if (passive('lightning')) effects.push({ id: 'fast' });
         const burn = passive('fire');
         // from the first cast's passive on (it only showed once it had stacked: Jamie, playtest 20); the count once it stacks
-        if (isTeam && burn) effects.push({ id: 'burn', count: burn.stacks > 0 ? burn.stacks : undefined });
+        // counted from 1: the first cast's passive is one stack (Jamie, playtest 22: it read one short)
+        if (isTeam && burn) effects.push({ id: 'burn', count: (burn.stacks || 0) + 1 });
         if (isTeam && passive('metal')) effects.push({ id: 'builder' });
         const charmer = this.isNpc && this.spurnedBy !== undefined && this.spurnedBy >= 0 ? this.gameManagerProxy.getPiece(this.spurnedBy) : undefined;
         if (charmer && !charmer.getIsDead() && !this.isCharmed) effects.push({ id: 'spurned' });

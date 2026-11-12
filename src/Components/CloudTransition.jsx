@@ -31,6 +31,9 @@ const CLOUD_LOOK = {
 // the scene changes when the strips meet: 'inMs' after the clouds start
 export const CLOUD_TIMING = {
   inMs: Math.round(CLOUD_LOOK.minSeconds * 0.5 * 1000),
+  // the whole screen covered: the slowest strip has met the others too. the next screen is made only then (Jamie,
+  // playtest 22: it showed through before the clouds had closed)
+  coveredMs: Math.round(CLOUD_LOOK.maxSeconds * 0.5 * 1000) + 30,
   holdMs: 0,
   outMs: Math.round((CLOUD_LOOK.maxSeconds - CLOUD_LOOK.minSeconds * 0.5) * 1000)
 };

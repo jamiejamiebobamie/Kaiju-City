@@ -56,49 +56,43 @@ const KaijuWrapper = styled.div`
 
   ${props => props.isSmoke ? "z-index: 9; filter: invert(1) blur(1px) drop-shadow(0px 0px 1px rgb(191, 64, 191)) opacity(.25);" :  "z-index: 8; filter: drop-shadow(0px 0px 1px rgb(191, 64, 191));" }
 
-  animation: fadeKaijuWalk linear 60s infinite;
+  /* trimmed to when it's in view (Jamie, playtest 22: it was hidden a third of the minute): the same spots where it
+     fades in and out by the buildings and the same walking speed, just no long wait off past them */
+  animation: fadeKaijuWalk linear 40s infinite;
 
   @keyframes fadeKaijuWalk {
     0% {
       opacity: 0;
-      transform: scale(2.7) translate(10px, 67px);
+      transform: scale(2.7) translate(57.6px, 67px);
     }
-    8.5%{
-      opacity: 0;
-    }
-    13% {
+    6.75% {
       opacity: 1;
     }
-    41.5%{
+    49.5% {
       opacity: 1;
     }
-    44% {
+    53.25% {
       opacity: 0;
+      transform: scale(2.7) translate(256px, 67px);
     }
-    50% {
+    54.5% {
       opacity: 0;
-      transform: scale(2.7) translate(290px, 67px);
+      transform: scale(-2.7, 2.7) translate(-151.8px, 67px);
     }
-    51% {
-      opacity: 0;
-      transform: scale(-2.7, 2.7) translate(-240px, 67px);
-    }
-    64.5%{
-      opacity: 0;
-    }
-    69% {
+    61.25% {
       opacity: 1;
     }
-    91.5%{
+    95% {
       opacity: 1;
     }
-    94% {
+    98.75% {
       opacity: 0;
+      transform: scale(-2.7, 2.7) translate(40.8px, 67px);
     }
     100% {
       opacity: 0;
-      transform: scale(-2.7, 2.7) translate(80px, 67px);
-    }  
+      transform: scale(2.7) translate(57.6px, 67px);
+    }
   }
   
 `;

@@ -68,7 +68,7 @@ const SpriteSheet = styled.div`
 
   /* 'outline' marker (Jamie, playtest 21): a solid white edge round the sprite, under its glow's spread so the glow still shows */
   ${props => props.$isOutlined
-    ? `filter: drop-shadow(4px 0 0 white) drop-shadow(-4px 0 0 white) drop-shadow(0 4px 0 white) drop-shadow(0 -4px 0 white) drop-shadow(0 0 20px ${props.color});`
+    ? `filter: drop-shadow(2px 0 0 white) drop-shadow(-2px 0 0 white) drop-shadow(0 2px 0 white) drop-shadow(0 -2px 0 white) drop-shadow(0 0 20px ${props.color});`
     : `filter: drop-shadow(0 0 20px ${props.color});`}
   -webkit-transition-duration: 0.4s;
   transition-duration: 0.4s;

@@ -706,7 +706,7 @@ const MOVEMENT_KEYS = ["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowLeft", "
 const getIsTouchScreen = () => window.matchMedia("(pointer: coarse)").matches;
 
 // 'isCurtained': the credits are over the screen: nothing of the game's own shows over them (Jamie, playtest 21)
-export const GameBoard = ({ isCurtained = false, controlMarker = "caret", speakingLineLength = 0, isSwirling = false, speakingPieceIndex = undefined, choiceFromRef = undefined, isWindowOpen = true, isPaused, gameManager, level, activePhases, isWholeScene, playWindow, isShowingWindowSize, isEditingTiles, isMouseLook, isEnemyZoom, isSlowMotion, isTeamColors, speech, recruitScene, recruitChoice, onChooseRecruit, onHotspot }) => {
+export const GameBoard = ({ isCurtained = false, controlMarker = "outline", speakingLineLength = 0, isSwirling = false, speakingPieceIndex = undefined, choiceFromRef = undefined, isWindowOpen = true, isPaused, gameManager, level, activePhases, isWholeScene, playWindow, isShowingWindowSize, isEditingTiles, isMouseLook, isEnemyZoom, isSlowMotion, isTeamColors, speech, recruitScene, recruitChoice, onChooseRecruit, onHotspot }) => {
   // redraws the pieces when the game updates. the tiles draw themselves.
   useSyncExternalStore(gameManager.subscribeToBoard, gameManager.getBoardRevision);
   const pieces = gameManager.getPieces();

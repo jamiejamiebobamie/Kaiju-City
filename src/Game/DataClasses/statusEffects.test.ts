@@ -29,7 +29,7 @@ describe('status effects', () => {
     const fire = setPassive(player, 'fire', true);
     fire.stacks = 2;
     expect(ids(gm, player)).toEqual(['slowed', 'fast', 'burn']);
-    expect(player.getStatusEffects(0).find(({ id }) => id == 'burn').count).toBe(2);
+    expect(player.getStatusEffects(0).find(({ id }) => id == 'burn').count).toBe(3); // counted from 1 (playtest 22)
   });
 
   it('wading in the water: slowed, with its stacks', () => {

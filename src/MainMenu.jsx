@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
 import styled, { css, keyframes } from "styled-components";
+import { SpeedBlurFilter, slideAway } from "./Components/SlideAway";
 import {
   Wrapper,
   ButtonGroup,
@@ -22,7 +23,9 @@ import { PIECES_INFO } from "Utils/gameState";
   flash white and fade, and the game goes on.
 */
 // trailSeconds: 3 (was 6, livelier: Jamie)
-const PRESS_KEY = { topShare: 0.68, leaveMs: 1500, trailSeconds: 3, color: "#e25cff", trailColor: "#ff5cc8" };
+// trailSeconds 5 (slower again: Jamie, playtest 22); confirmMs: the confirm's blinks, white and slow fade, which runs on
+// under the clouds as they come
+const PRESS_KEY = { topShare: 0.68, leaveMs: 1500, confirmMs: 2800, trailSeconds: 5, color: "#e25cff", trailColor: "#ff5cc8" };
 
 /*
   Embers (Jamie): glowing purple pixels drifting down all over the landing page, swaying as they fall and flickering,
@@ -91,6 +94,15 @@ const Embers = () => (
   </EmberField>
 );
 
+/*
+  Leaving (Jamie, playtest 22): a parallax, each layer sliding off left at its own speed as if at its own depth, nearer
+  ones faster: the title, then the skyline, then the Kaiju behind it, then the embers. once moving, a sideways speed
+  blur (#speedBlur, a blur along x only).
+*/
+const SLIDE = { ms: PRESS_KEY.leaveMs * 0.9, title: "-170vw", skyline: "-120vw", kaiju: "-90vw", embers: "-45vw" };
+// the logo's own layers: its title, the skyline image, the Kaiju walking behind the buildings
+const layerSlide = (distance, isOn) => isOn && css`animation: ${slideAway(distance)} ${SLIDE.ms}ms ease-in forwards;`;
+
 const SceneSlide = styled.div`
   position: absolute;
   inset: 0;
@@ -98,17 +110,29 @@ const SceneSlide = styled.div`
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  transition: transform ${PRESS_KEY.leaveMs * 0.9}ms ease-in;
-  ${props => props.$isLeaving && "transform: translateX(-120vw);"}
+  & > div > :first-child { ${props => layerSlide(SLIDE.title, props.$isLeaving)} }
+  & img { ${props => layerSlide(SLIDE.skyline, props.$isLeaving)} }
+  /* the Kaiju keeps its walk and its own glow: it slides by 'translate' alone */
+  & > div > :nth-child(n + 3) { ${props => props.$isLeaving && css`transition: translate ${SLIDE.ms}ms ease-in; translate: ${SLIDE.kaiju} 0;`} }
 `;
 
+const EmberSlide = styled.div`
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  ${props => layerSlide(SLIDE.embers, props.$isLeaving)}
+`;
+
+// confirmed (Jamie, playtest 22): two slow blinks, then white, then it fades
+const WHITE = "brightness(4) saturate(0) drop-shadow(0 0 6px white)";
 const leaveFlash = keyframes`
   0% { opacity: 1; filter: none; }
-  10% { opacity: 1; filter: brightness(4) saturate(0) drop-shadow(0 0 6px white); }
-  25% { opacity: 1; filter: none; }
-  40% { opacity: 1; filter: brightness(4) saturate(0) drop-shadow(0 0 6px white); }
-  60% { opacity: 0.8; filter: brightness(2) saturate(0.4); }
-  100% { opacity: 0; filter: none; }
+  7% { opacity: 0; filter: none; }
+  14% { opacity: 1; filter: none; }
+  21% { opacity: 0; filter: none; }
+  28% { opacity: 1; filter: ${WHITE}; }
+  55% { opacity: 1; filter: ${WHITE}; }
+  100% { opacity: 0; filter: ${WHITE}; }
 `;
 
 const PressAnyKey = styled.div`
@@ -122,7 +146,7 @@ const PressAnyKey = styled.div`
   align-items: center;
   gap: 2.5vw;
   pointer-events: none;
-  ${props => props.$isLeaving && css`animation: ${leaveFlash} ${PRESS_KEY.leaveMs}ms ease-out forwards;`}
+  ${props => props.$isLeaving && css`animation: ${leaveFlash} ${PRESS_KEY.confirmMs}ms linear forwards;`}
 `;
 
 const KeyLine = styled.div`
@@ -144,20 +168,20 @@ const KeyText = styled.div`
 `;
 
 // a ghost of the words, sliding off behind them and fading into the background: up right, up left, down left, down
-// right, a pause at each, and round again (Jamie)
+// right, a pause at each, and round again (Jamie); far enough to come clear of the words (playtest 22)
 const trail = keyframes`
   0% { transform: translate(0, 0); opacity: 0.6; }
-  12% { transform: translate(24px, -12px); opacity: 0.15; }
-  25% { transform: translate(24px, -12px); opacity: 0; }
+  12% { transform: translate(70px, -34px); opacity: 0.3; }
+  25% { transform: translate(70px, -34px); opacity: 0; }
   25.01% { transform: translate(0, 0); opacity: 0.6; }
-  37% { transform: translate(-24px, -12px); opacity: 0.15; }
-  50% { transform: translate(-24px, -12px); opacity: 0; }
+  37% { transform: translate(-70px, -34px); opacity: 0.3; }
+  50% { transform: translate(-70px, -34px); opacity: 0; }
   50.01% { transform: translate(0, 0); opacity: 0.6; }
-  62% { transform: translate(-24px, 12px); opacity: 0.15; }
-  75% { transform: translate(-24px, 12px); opacity: 0; }
+  62% { transform: translate(-70px, 34px); opacity: 0.3; }
+  75% { transform: translate(-70px, 34px); opacity: 0; }
   75.01% { transform: translate(0, 0); opacity: 0.6; }
-  87% { transform: translate(24px, 12px); opacity: 0.15; }
-  100% { transform: translate(24px, 12px); opacity: 0; }
+  87% { transform: translate(70px, 34px); opacity: 0.3; }
+  100% { transform: translate(70px, 34px); opacity: 0; }
 `;
 
 const Phantom = styled.span`
@@ -244,7 +268,8 @@ export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
   </ButtonGroup>);
 
   return <Wrapper>
-    <Embers />
+    <SpeedBlurFilter />
+    <EmberSlide $isLeaving={isLeaving}><Embers /></EmberSlide>
     <SceneSlide $isLeaving={isLeaving}><Logo /></SceneSlide>
     {navButtons}
     <PressAnyKey $isLeaving={isLeaving}>

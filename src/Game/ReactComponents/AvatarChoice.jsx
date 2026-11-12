@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
 import styled, { css, keyframes } from "styled-components";
 import { GlobalSettingsContext } from "Home";
+import { SpeedBlurFilter, slideAway } from "Components/SlideAway";
 
 /*
   The start of the game (Jamie, playtest 21; the UI epic's mock-ups will restyle it): the guy and the girl, side by
@@ -29,9 +30,10 @@ const Screen = styled.div`
   justify-content: center;
   align-items: center;
   gap: 28px;
-  transition: transform ${CHOICE.slideMs}ms ease-in;
-  ${props => props.$isLeaving && "transform: translateX(-120vw);"}
 `;
+
+// leaving: a parallax (Jamie, playtest 22): the two of them nearest, fastest; their labels behind, slower; both blurring
+const leaveLayer = (distance, isLeaving) => isLeaving && css`animation: ${slideAway(distance)} ${CHOICE.slideMs}ms ease-in forwards;`;
 
 const Row = styled.div`
   display: flex;
@@ -64,6 +66,7 @@ const Sprite = styled.div`
   ${props => !props.$isLocked && css`${Choice}:hover & { animation: ${idle} 1.2s steps(6) -0.4s infinite; }`}
   /* picked: facing front, glowing brighter (the idle cycle turns them round) */
   ${props => props.$isChosen && css`filter: drop-shadow(0 0 8px ${props.$color}) drop-shadow(0 0 3px white);`}
+  ${props => leaveLayer("-170vw", props.$isLeaving)}
 `;
 
 const KeyNumber = styled.span`
@@ -92,7 +95,8 @@ const Label = styled.span`
   text-transform: uppercase;
   color: var(--color);
   opacity: 0;
-  ${props => props.$isShown && css`animation: ${lockIn} ${CHOICE.lockInMs}ms linear forwards;`}
+  ${props => props.$isShown && !props.$isLeaving && css`animation: ${lockIn} ${CHOICE.lockInMs}ms linear forwards;`}
+  ${props => props.$isLeaving && css`opacity: 1; animation: ${slideAway("-110vw")} ${CHOICE.slideMs}ms ease-in forwards;`}
 `;
 
 const Prompt = styled.div`
@@ -132,13 +136,14 @@ export const AvatarChoice = ({ onChoose }) => {
   }, []);
 
   return (
-    <Screen $isLeaving={isLeaving}>
+    <Screen>
+      <SpeedBlurFilter />
       <Row>
         {AVATARS.map(({ id, sheet, key }) => (
           <Choice key={id} $isLocked={!!chosen} onClick={() => choose(id)} aria-label={id}>
-            <Sprite $sheet={sheet} $color={CHOICE.colors[id]} $isChosen={chosen == id} $isLocked={!!chosen} />
+            <Sprite $sheet={sheet} $color={CHOICE.colors[id]} $isChosen={chosen == id} $isLocked={!!chosen} $isLeaving={isLeaving} />
             <KeyNumber $isHidden={!!chosen}>{key}</KeyNumber>
-            <Label $isShown={!!chosen} style={{ "--color": CHOICE.colors[id] }}>{chosen ? (chosen == id ? "Player" : "Teammate") : ""}</Label>
+            <Label $isShown={!!chosen} $isLeaving={isLeaving} style={{ "--color": CHOICE.colors[id] }}>{chosen ? (chosen == id ? "Player" : "Teammate") : ""}</Label>
           </Choice>
         ))}
       </Row>
