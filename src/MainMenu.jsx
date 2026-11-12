@@ -21,7 +21,8 @@ import { PIECES_INFO } from "Utils/gameState";
   ghosts of itself sliding off behind it and fading. Any key or a click: the logo slides off left, the words and lines
   flash white and fade, and the game goes on.
 */
-const PRESS_KEY = { topShare: 0.68, leaveMs: 1500, trailSeconds: 3, // (was 6: livelier, Jamie) color: "#e25cff", trailColor: "#ff5cc8" };
+// trailSeconds: 3 (was 6, livelier: Jamie)
+const PRESS_KEY = { topShare: 0.68, leaveMs: 1500, trailSeconds: 3, color: "#e25cff", trailColor: "#ff5cc8" };
 
 /*
   Embers (Jamie): glowing purple pixels drifting down all over the landing page, swaying as they fall and flickering,
@@ -38,17 +39,19 @@ const EMBER_LIST = Array.from({ length: EMBERS.count }, (_, k) => {
     delay: -random(5) * 13, // already blowing when the page opens
     sway: `${(random(6) - 0.5) * 70}px`,
     drift: `${-(55 + random(8) * 45)}vw`, // how far left the wind takes it on the way down
+    rise: `${random(9) < 0.35 ? 8 + random(10) * 22 : 0}vh` // a third of them lifted by the gusts, each its own amount (Jamie)
     flicker: 0.8 + random(7) * 1.6
   };
 });
 
-// blown left on a slant, in gusts: quick sweeps, then a lull where it hangs and wavers (Jamie: not snow)
+// blown left on a slant, in gusts: quick sweeps, then a lull where it hangs and wavers (Jamie: not snow). with a --rise,
+// the gusts lift it back up a while before it sinks on
 const emberFall = keyframes`
   0% { transform: translate(0, -5vh); }
-  18% { transform: translate(calc(var(--drift) * 0.32), calc(14vh + var(--sway))); }
-  30% { transform: translate(calc(var(--drift) * 0.38), 24vh); }
-  52% { transform: translate(calc(var(--drift) * 0.66), calc(50vh - var(--sway))); }
-  64% { transform: translate(calc(var(--drift) * 0.72), 60vh); }
+  18% { transform: translate(calc(var(--drift) * 0.32), calc(14vh + var(--sway) - var(--rise))); }
+  30% { transform: translate(calc(var(--drift) * 0.38), calc(24vh - var(--rise) * 0.6)); }
+  52% { transform: translate(calc(var(--drift) * 0.66), calc(50vh - var(--sway) - var(--rise) * 1.2)); }
+  64% { transform: translate(calc(var(--drift) * 0.72), calc(60vh - var(--rise) * 0.5)); }
   86% { transform: translate(calc(var(--drift) * 0.94), calc(88vh + var(--sway))); }
   100% { transform: translate(var(--drift), 106vh); }
 `;
@@ -77,12 +80,12 @@ const Ember = styled.span`
 
 const Embers = () => (
   <EmberField>
-    {EMBER_LIST.map(({ left, size, color, seconds, delay, sway, flicker, drift }, k) => (
+    {EMBER_LIST.map(({ left, size, color, seconds, delay, sway, flicker, drift, rise }, k) => (
       <Ember key={k} style={{
         left, width: `${size}px`, height: `${size}px`, background: color,
         // a short glow trailing up and right, the way it came
         boxShadow: `0 0 ${size * 2}px ${color}, ${size}px ${-size * 0.6}px ${size}px ${color}, ${size * 2.2}px ${-size * 1.3}px ${size * 1.5}px rgba(176, 76, 255, 0.35)`,
-        "--fall": `${seconds}s`, "--delay": `${delay}s`, "--sway": sway, "--flicker": `${flicker}s`, "--drift": drift
+        "--fall": `${seconds}s`, "--delay": `${delay}s`, "--sway": sway, "--flicker": `${flicker}s`, "--drift": drift, "--rise": rise
       }} />
     ))}
   </EmberField>
