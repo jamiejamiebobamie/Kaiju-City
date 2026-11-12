@@ -160,10 +160,11 @@ const SpriteSheet = styled.div`
 // each breath (Jamie): the embers come out together, set like a little cloud, pushed forward from the mouth and slowing to
 // a stop; then they hang where they are and the Kaiju walks on through them, so in its own frame they slip back at its
 // walking pace ('walkPerSecond', in its frame's units), sinking a little, and fade
-// stepsAt: the head at its lowest, frames 4 and 9 of the walk's 10 (measured from kaiju-walk.png; Jamie, playtest 22)
+// stepsAt: just after the head's lowest frames (4 and 9 of the walk's 10), as it comes back up: frames ~1 and ~6, the pose in
+// Jamie's screenshot (the lowest frames themselves were too soon)
 // mouth: lower and a touch forward (Jamie: they looked to come from the nose; at the lowest frames the head is ~5 lower)
 // lifeShare 0.32: 1.5x quicker (Jamie; was 0.48)
-const BREATH = { mouth: { x: 53, y: 33 }, loopSeconds: 5, stepsAt: [0.4, 0.9], perStep: 5, lifeShare: 0.32, pushShare: 0.1, walkPerSecond: 10, cloud: { width: 7, height: 5 }, headWidth: 11 };
+const BREATH = { mouth: { x: 53, y: 33 }, loopSeconds: 5, stepsAt: [0.12, 0.62], perStep: 5, lifeShare: 0.32, pushShare: 0.1, walkPerSecond: 10, cloud: { width: 7, height: 5 }, headWidth: 11 };
 const BREATH_LIFE_SECONDS = BREATH.loopSeconds * BREATH.lifeShare;
 const BREATH_EMBERS = BREATH.stepsAt.flatMap((at, step) => Array.from({ length: BREATH.perStep }, (_, k) => {
   const random = n => ((Math.sin((step * 10 + k) * 12.9898 + n * 78.233) * 43758.5453) % 1 + 1) % 1;
