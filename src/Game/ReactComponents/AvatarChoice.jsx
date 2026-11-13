@@ -18,8 +18,10 @@ const CHOICE = {
   textColor: "#e25cff"
 };
 const AVATARS = [
-  { id: "guy", sheet: "spritesheet/player.png", key: "1" },
-  { id: "girl", sheet: "spritesheet/teammate.png", key: "2" }
+  // 'figureOffset': how far the figure stands from its frame's middle (measured on the sheets), so the green grid is
+  // centered on them, not on the frame
+  { id: "guy", sheet: "spritesheet/player.png", key: "1", figureOffset: 4 },
+  { id: "girl", sheet: "spritesheet/teammate.png", key: "2", figureOffset: -4 }
 ];
 
 const Screen = styled.div`
@@ -127,14 +129,14 @@ const Prompt = styled.div`
   visibility: ${props => props.$isHidden ? "hidden" : "visible"};
 `;
 
-const ChoiceAvatar = ({ id, sheet, keyName, chosen, isLeaving, onChoose }) => {
+const ChoiceAvatar = ({ id, sheet, keyName, figureOffset, chosen, isLeaving, onChoose }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [doodadOpacity, setDoodadOpacity] = useState(0);
   return (
     <Choice $isLocked={!!chosen} onClick={onChoose} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} aria-label={id}>
       <SpriteBox $isLeaving={isLeaving}>
         <DoodadHolder>
-          <Doodads hasPrompt={false} show={isHovered && !chosen} persistDisc={false} globalTranslation="0px, 0px" opacity={doodadOpacity} setOpacity={setDoodadOpacity} />
+          <Doodads hasPrompt={false} show={isHovered && !chosen} persistDisc={false} hasDisc={false} globalTranslation={`${figureOffset}px, 0px`} opacity={doodadOpacity} setOpacity={setDoodadOpacity} />
         </DoodadHolder>
         <Sprite $sheet={sheet} $color={CHOICE.colors[id]} $isChosen={chosen == id} $isLocked={!!chosen} />
       </SpriteBox>
@@ -175,8 +177,8 @@ export const AvatarChoice = ({ onChoose }) => {
     <Screen>
       <SpeedBlurFilter />
       <Row>
-        {AVATARS.map(({ id, sheet, key }) => (
-          <ChoiceAvatar key={id} id={id} sheet={sheet} keyName={key} chosen={chosen} isLeaving={isLeaving} onChoose={() => choose(id)} />
+        {AVATARS.map(({ id, sheet, key, figureOffset }) => (
+          <ChoiceAvatar key={id} id={id} sheet={sheet} keyName={key} figureOffset={figureOffset} chosen={chosen} isLeaving={isLeaving} onChoose={() => choose(id)} />
         ))}
       </Row>
       <Prompt $isHidden={!!chosen}>Choose your character</Prompt>
