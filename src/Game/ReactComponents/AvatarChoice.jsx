@@ -92,12 +92,98 @@ const Sprite = styled.div`
   ${props => props.$isChosen && css`filter: drop-shadow(0 0 8px ${props.$color}) drop-shadow(0 0 3px white);`}
 `;
 
+/*
+  Hovered, the number goes the doodads' green and is electrified (Jamie, 2026-11-12): its glow crackles, and now and
+  then it throws a few sparks that arc out and fall.
+*/
+const SPARKS = {
+  color: "#80EF80",
+  everyMs: [350, 1300], // between bursts (a random wait in this range)
+  perBurst: [2, 5],
+  lifeMs: 700,
+  spreadPx: 26, // how far across a spark can fly
+  fallPx: [22, 46] // how far down it falls
+};
+
+const numberCrackle = keyframes`
+  0%, 100% { text-shadow: 0 0 4px ${SPARKS.color}, 0 0 9px ${SPARKS.color}; filter: brightness(1); }
+  12% { text-shadow: 0 0 2px ${SPARKS.color}; filter: brightness(0.75); }
+  16% { text-shadow: 0 0 6px white, 0 0 14px ${SPARKS.color}; filter: brightness(1.6); }
+  20% { text-shadow: 0 0 4px ${SPARKS.color}, 0 0 9px ${SPARKS.color}; filter: brightness(1); }
+  57% { text-shadow: 0 0 3px ${SPARKS.color}, 0 0 6px ${SPARKS.color}; filter: brightness(0.9); }
+  61% { text-shadow: 0 0 7px white, 0 0 16px ${SPARKS.color}; filter: brightness(1.5); translate: 1px 0; }
+  64% { text-shadow: 0 0 4px ${SPARKS.color}, 0 0 9px ${SPARKS.color}; translate: 0 0; }
+`;
+
 const KeyNumber = styled.span`
+  position: relative;
+  display: inline-block;
   font-family: gameboy;
   font-size: 18px;
   color: #c9c3d6;
+  transition: color 120ms;
   visibility: ${props => props.$isHidden ? "hidden" : "visible"};
+  ${props => props.$isElectric && css`
+    color: ${SPARKS.color};
+    animation: ${numberCrackle} 0.9s steps(1) infinite;
+  `}
 `;
+
+// a spark's flight: out and up a little, then falling, shrinking and fading
+const sparkFall = keyframes`
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  25% { transform: translate(calc(var(--dx) * 0.45), -6px) scale(1); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(0.3); opacity: 0; }
+`;
+
+const Spark = styled.span`
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  width: 3px;
+  height: 3px;
+  margin: -1.5px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 0 3px 1px ${SPARKS.color}, 0 0 7px 2px ${SPARKS.color};
+  pointer-events: none;
+  animation: ${sparkFall} ${SPARKS.lifeMs}ms cubic-bezier(0.3, 0, 0.8, 1) forwards;
+`;
+
+const between = ([low, high]) => low + Math.random() * (high - low);
+let sparkId = 0; // across hovers, so a spark still falling keeps its key
+
+const useSparks = isOn => {
+  const [sparks, setSparks] = useState([]);
+  useEffect(() => {
+    if (!isOn) return;
+    let timeout;
+    const burst = () => {
+      const count = Math.round(between(SPARKS.perBurst));
+      const born = Array.from({ length: count }, () => ({
+        id: sparkId++,
+        dx: (Math.random() * 2 - 1) * SPARKS.spreadPx,
+        dy: between(SPARKS.fallPx)
+      }));
+      setSparks(all => [...all, ...born]);
+      setTimeout(() => setSparks(all => all.filter(spark => !born.includes(spark))), SPARKS.lifeMs);
+      timeout = setTimeout(burst, between(SPARKS.everyMs));
+    };
+    timeout = setTimeout(burst, 150); // the first, soon after the hover
+    return () => clearTimeout(timeout);
+  }, [isOn]);
+  return sparks;
+};
+
+const ElectricNumber = ({ isElectric, isHidden, children }) => {
+  const sparks = useSparks(isElectric && !isHidden);
+  return (
+    <KeyNumber $isHidden={isHidden} $isElectric={isElectric && !isHidden}>
+      {children}
+      {sparks.map(({ id, dx, dy }) => <Spark key={id} style={{ "--dx": `${dx}px`, "--dy": `${dy}px` }} />)}
+    </KeyNumber>
+  );
+};
 
 // locked in: a white flash on the way in, quick at first, then slower, then still (no words for it: Jamie)
 const lockIn = keyframes`
@@ -142,7 +228,7 @@ const ChoiceAvatar = ({ id, sheet, keyName, figureOffset, chosen, isLeaving, onC
         </DoodadHolder>
         <Sprite $sheet={sheet} $color={CHOICE.colors[id]} $isChosen={chosen == id} $isLocked={!!chosen} />
       </SpriteBox>
-      <KeyNumber $isHidden={!!chosen}>{keyName}</KeyNumber>
+      <ElectricNumber isElectric={isHovered} isHidden={!!chosen}>{keyName}</ElectricNumber>
       <Label $isShown={!!chosen} $isLeaving={isLeaving} style={{ "--color": CHOICE.colors[id] }}>{chosen ? (chosen == id ? "Player" : "Teammate") : ""}</Label>
     </Choice>
   );
