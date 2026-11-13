@@ -1,295 +1,309 @@
 {
   "cards": {
-    "0:1amjxr9": {
-      "section": "Peninsula 1",
-      "text": "The story opens on Kaiju City, a coastal city on a peninsula, seen at night from above as a map of streets and parks between two dark seas. Kaiju are wading ashore out of a purple glow in the water. An unnamed Agent, the voice of authority, orders {player} and {teammate} to protect the Peninsula: it is their job. {teammate} runs in to join {player} as the first wave hits. Established: two soldiers with powers, a chain of command above them, and a city under siege from the sea. Theme: duty, given without explanation.",
-      "ancestorHashes": [
-        "ztntfp"
-      ]
-    },
-    "1:102l9zp": {
-      "section": "Street",
-      "text": "After the first fight, the city is shown up close in daylight: a downtown street strewn with the remains of beaten Kaiju (a clawed hand in pink goo, a dripping tail, an eyeball, tentacles), cleaned up by hazmat workers. The Agent meets the team in person and praises them, then gives the rule that drives the next act: Kaiju parts change anyone who touches them, for good, and bystanders are gathering near one at West Rapid Transit. The Lab is introduced as the place that gives the team their 'Kaiju Juice' and can swap the teammate. Revealed: the soldiers' powers come from the Lab, and the city treats Kaiju parts as toxic waste. Theme: what is human, and who controls the power that changes people.",
-      "ancestorHashes": [
-        "1amjxr9"
-      ]
-    },
     "2:rkiewh": {
       "section": "Map to Subway",
       "text": "The night map becomes a map of missions: glowing icons mark the subway station ahead and the Lab as a stop on the way. The city now has places, not just a coastline to defend.",
       "ancestorHashes": [
-        "k4ky18"
-      ]
-    },
-    "3:ua531q": {
-      "section": "The Lab (a stop on any map walk)",
-      "text": "In the Lab (a clean, high-tech room of tilted glass tanks holding suspended bodies and insect-winged humanoid specimens, technicians at monitors, a vat that changes the soldiers' glow), the Agent welcomes the team. Asked about the specimens, he is visibly nervous and waves them off as 'just some R&D: cryo-chimeric epigenetics'. A Lab Tech cheerfully approves the player's new glow. Planted here: the Lab grows things in its tanks, and the Agent is hiding something. The soldiers' bodies and powers are products of this place.",
-      "ancestorHashes": [
-        "1jowd9z"
-      ]
-    },
-    "4:1v27lg1": {
-      "section": "Subway",
-      "text": "At the grimy subway station, a punk (Punk Guy) has found a giant Kaiju eye on the platform and, entranced ('Ooo... pretty...'), touches it despite {teammate}'s warning. The part's power floods into him and the team has to fight him off between rushing trains. Beaten, he lies at their feet, and {teammate} lays out the choice: recruit him, or study his DNA to take his power, which would kill him. {player} chooses to recruit him. The game's central moral choice appears: a changed human can be an ally or a resource, and the player decides.",
-      "ancestorHashes": [
-        "1w76r7j"
-      ]
-    },
-    "4:1f4qebg": {
-      "section": "Subway",
-      "text": "At the grimy subway station, a punk (Punk Guy) has found a giant Kaiju eye on the platform and, entranced ('Ooo... pretty...'), touches it despite {teammate}'s warning. The part's power floods into him and the team has to fight him off between rushing trains. Beaten, he lies at their feet, and {teammate} lays out the choice: recruit him, or study his DNA to take his power, which would kill him. {player} chooses to terminate him and take his power. The game's central moral choice appears, and the player picks the colder path: a changed human is treated as a resource.",
-      "ancestorHashes": [
-        "1w76r7j"
-      ]
-    },
-    "5:1jwqkuh": {
-      "section": "Peninsula 2",
-      "text": "Back on the Peninsula for a second, bigger wave, the Agent reports on Punk Guy: he has been through 're-education', is 'mentally compliant', stronger than he should be, and kept his mohawk. Recruiting has a price the player hears in passing: the Lab reshapes the minds of the people it takes in. The threat is escalating, wave by wave.",
-      "ancestorHashes": [
-        "1u78hfo"
-      ]
-    },
-    "5:dgu033": {
-      "section": "Peninsula 2",
-      "text": "Back on the Peninsula for a second, bigger wave, the Agent reports that Punk Guy 'won't be a problem anymore. Cold, but clean.' The killing is handled as routine paperwork, and the player now carries his power. The threat is escalating, wave by wave.",
-      "ancestorHashes": [
-        "10j5qip"
+        "zhlnjm"
       ]
     },
     "6:emffma": {
       "section": "Map to Rooftop",
-      "text": "After the second wave the Agent praises the team, and {teammate} notices the Kaiju are coming faster than they used to. The Agent singles out the player's {power} power, and when asked a real question (where the Kaiju come from, the first option) he deflects: 'above your pay grade'. He sends them to the cemetery district, where Kaiju parts are falling onto rooftops. The pattern sets in: escalation, flattery, and an authority that won't explain.",
+      "text": "After the second wave the Agent tells the two they are holding the city together, and {teammate} notices the Kaiju are coming faster than they used to. The Agent answers with numbers, not reasons: he is 'seeing good numbers' on the player's {power} power. He sends them to the cemetery district, where Kaiju parts are falling onto rooftops, before another citizen touches one. The pattern sets in: escalation, flattery, and an authority that measures its soldiers and never explains.",
       "ancestorHashes": [
-        "1sw59y3",
-        "1an8eym"
-      ]
-    },
-    "7:gv7hnd": {
-      "section": "Rooftop",
-      "text": "On a rooftop cemetery above the city, among gravestones and a mausoleum, a goth woman (Ghost Girl) hears her ancestors calling from the graves; they are 'so ANGRY' and want her to take the Kaiju head that has landed there. She touches it and feels its power flowing through her. Beaten, she lies by the RIP stone. {teammate} notes that the last one joined the crew, and offers the same choice. {player} recruits her as well. Themes: the dead and the past pressing on the living, and a player who keeps choosing mercy.",
-      "ancestorHashes": [
-        "15mqqq3"
-      ]
-    },
-    "7:1w30lie": {
-      "section": "Rooftop",
-      "text": "On a rooftop cemetery above the city, among gravestones and a mausoleum, a goth woman (Ghost Girl) hears her ancestors calling from the graves; they are 'so ANGRY' and want her to take the Kaiju head that has landed there. She touches it and feels its power flowing through her. Beaten, she lies by the RIP stone. {teammate} recalls that last time they took the power for themselves, and offers to do it again. {player} turns from that and recruits her. Themes: the dead and the past pressing on the living, and a player who changes course toward mercy.",
-      "ancestorHashes": [
-        "bvcv9m"
-      ]
-    },
-    "7:13q8246": {
-      "section": "Rooftop",
-      "text": "On a rooftop cemetery above the city, among gravestones and a mausoleum, a goth woman (Ghost Girl) hears her ancestors calling from the graves; they are 'so ANGRY' and want her to take the Kaiju head that has landed there. She touches it and feels its power flowing through her. Beaten, she lies by the RIP stone. {teammate} notes that the last one joined the crew, but {player} chooses to terminate her and take her power. Themes: the dead and the past pressing on the living, and a player turning from mercy to harvest.",
-      "ancestorHashes": [
-        "15mqqq3"
-      ]
-    },
-    "7:2rpr9t": {
-      "section": "Rooftop",
-      "text": "On a rooftop cemetery above the city, among gravestones and a mausoleum, a goth woman (Ghost Girl) hears her ancestors calling from the graves; they are 'so ANGRY' and want her to take the Kaiju head that has landed there. She touches it and feels its power flowing through her. Beaten, she lies by the RIP stone. {teammate} recalls they took the last one's power, and {player} terminates her too. Themes: the dead and the past pressing on the living, and a player settling into the harvest.",
-      "ancestorHashes": [
-        "bvcv9m"
-      ]
-    },
-    "8:a7i6c7": {
-      "section": "Peninsula 3",
-      "text": "The Agent reports that the woman from the rooftop is through re-education: she still hears voices, 'stable, for her', physically flawless, and they could not get her out of the black. Then the shipping lanes go dark and the biggest wave yet comes in. {teammate}'s 'Oh no...' marks the first fear in the team. The city's reach widens to its harbor and trade.",
-      "ancestorHashes": [
-        "1x9c2ry",
-        "8ht9u2"
-      ]
-    },
-    "8:y7pugc": {
-      "section": "Peninsula 3",
-      "text": "The Agent reports that the woman from the rooftop 'is in the ground. Fitting, for that address.' Then the shipping lanes go dark and the biggest wave yet comes in. {teammate}'s 'Oh no...' marks the first fear in the team. The city's reach widens to its harbor and trade.",
-      "ancestorHashes": [
-        "130mri1",
-        "3mxbdp"
+        "18r4i0u",
+        "1xmu0qr"
       ]
     },
     "9:1wqs9mt": {
       "section": "Map to Aquarium",
-      "text": "With the harbor quiet again, the Mayor sends thanks: the city has a government beyond the Agent. {teammate} doubts the quiet will last. The Agent again praises the {power} power, and when asked whether anyone is looking into the Kaiju parts, says their 'best guys' are on it and the team will meet them soon, a line that hints at what waits in the Lab. He sends them to the Aquarium.",
+      "text": "With the harbor quiet again, the Mayor sends his thanks: the city has a government beyond the Agent. {teammate} doubts the quiet will last, and the Agent agrees, then tells the player to keep the {power} power charged, the soldier valued for the power once more. Something has happened at the Aquarium, and he sends them there with a single word: go.",
       "ancestorHashes": [
-        "1dgtt1r",
-        "141px1f",
-        "df2w6n",
-        "10mdidv"
-      ]
-    },
-    "10:1k21t02": {
-      "section": "Aquarium",
-      "text": "In the grand hall of the Kaiju City Aquarium, among fish tanks and Kaiju skeletons displayed like dinosaur fossils, a worker has taken up a giant Kaiju tongue and declares 'I'M A MERMAID!!'. {teammate} sees the pattern now: the Kaiju radiation scrambles people's minds, 'like the others'. After the fight (the skylight shatters and the hall floods), {teammate} assumes they will recruit her like the others, and {player} does. With all three recruited, the player has built a crew of changed people.",
-      "ancestorHashes": [
-        "1w7r4f2"
-      ]
-    },
-    "10:1il1tlh": {
-      "section": "Aquarium",
-      "text": "In the grand hall of the Kaiju City Aquarium, among fish tanks and Kaiju skeletons displayed like dinosaur fossils, a worker has taken up a giant Kaiju tongue and declares 'I'M A MERMAID!!'. {teammate} sees the pattern now: the Kaiju radiation scrambles people's minds, 'like the others'. After the fight (the skylight shatters and the hall floods), {teammate} weighs that they have both recruited and terminated, and {player} recruits her.",
-      "ancestorHashes": [
-        "4ihqj6",
-        "1hsx67y"
-      ]
-    },
-    "10:10ys3xl": {
-      "section": "Aquarium",
-      "text": "In the grand hall of the Kaiju City Aquarium, among fish tanks and Kaiju skeletons displayed like dinosaur fossils, a worker has taken up a giant Kaiju tongue and declares 'I'M A MERMAID!!'. {teammate} sees the pattern now: the Kaiju radiation scrambles people's minds, 'like the others'. After the fight (the skylight shatters and the hall floods), {teammate} expects to recruit her like the others, but {player} breaks the pattern and terminates her.",
-      "ancestorHashes": [
-        "1w7r4f2"
-      ]
-    },
-    "10:725xwu": {
-      "section": "Aquarium",
-      "text": "In the grand hall of the Kaiju City Aquarium, among fish tanks and Kaiju skeletons displayed like dinosaur fossils, a worker has taken up a giant Kaiju tongue and declares 'I'M A MERMAID!!'. {teammate} sees the pattern now: the Kaiju radiation scrambles people's minds, 'like the others'. After the fight (the skylight shatters and the hall floods), {teammate} weighs that they have both recruited and terminated, and {player} terminates her.",
-      "ancestorHashes": [
-        "4ihqj6",
-        "1hsx67y"
-      ]
-    },
-    "11:jo2gbu": {
-      "section": "Peninsula 4",
-      "text": "The Agent reports the mermaid is in re-education ('mental state: she is a mermaid... the tail is a lot'). Then every approach to the city fills with Kaiju at once, and the Agent calls it everything they have: hold the Peninsula, whatever it takes. The war on the coast reaches its peak.",
-      "ancestorHashes": [
-        "1eaevd6",
-        "1dqrfmp",
-        "sqirrx",
-        "dds3o1"
-      ]
-    },
-    "11:1x9wk4k": {
-      "section": "Peninsula 4",
-      "text": "The Agent reports the mermaid is 'off the board', and that the Aquarium wants to know who's paying for the repairs. Then every approach to the city fills with Kaiju at once, and the Agent calls it everything they have: hold the Peninsula, whatever it takes. The war on the coast reaches its peak.",
-      "ancestorHashes": [
-        "hcxmn5",
-        "2apelu",
-        "18kjet2",
-        "30q8ua"
+        "jwl1l7",
+        "cnmyqt",
+        "1yqf0nn",
+        "13pk5r5"
       ]
     },
     "12:1n8r7rt": {
       "section": "Map to Lab",
       "text": "With the city held, the Agent calls the soldier to the Lab 'on the double': the brains have been cooking up something special for them. After every deflection so far, the summons carries a note of menace.",
       "ancestorHashes": [
-        "11yyvbi",
-        "12l6ei5",
-        "1v4b4s9",
-        "1bfg2rh",
-        "rivtkf",
-        "37lds0",
-        "1q6mfpw",
-        "1q4s45s"
+        "1qm3019",
+        "qpxgs8",
+        "fynk1e",
+        "967kog",
+        "1as1z1q",
+        "1gbg43z",
+        "1mlfk7d",
+        "h5wzuf"
       ]
     },
-    "13:2y6rol": {
-      "section": "Lab trap",
-      "text": "The Lab reveals itself as a trap. The Agent thanks the soldiers, says their powers were only on loan, and introduces 'the new team': clones of himself stepping out of the tanks, the specimens seen before. {teammate} realizes what was in the tanks. The Agent reclaims the powers as 'Lab property' and fires a ray that drains the team, but a recruit's power stays: powers from Kaiju parts are not the Lab's to take. The Agent orders them seized; the recruits hold the clones off while {player} and {teammate} run. The authority that gave them purpose turns on them; the people they spared now save them.",
+    "0:nt6rio": {
+      "section": "Peninsula 1",
+      "text": "The game opens on a night skyline where a Kaiju walks behind the buildings, breathing out drifting neon-purple embers: the city is already living beside its monsters. {player} and {teammate} are chosen side by side; hovering over one calls up phantom green readouts that flicker, jump and switch off like an old TV over a staticky grid, so the soldiers are introduced as signals on a screen, things to be measured. From then on everything is watched on Kaiju-Vision, a monitor that glows red with alarm when Kaiju attack, and the Agent speaks only over the radio, as a green radar sweeping out from the Lab while purple dots creep in from the sea. He orders the two to protect the Peninsula: it is their job. On the night map of Kaiju City, Kaiju wade ashore out of a purple glow, and {teammate} calls the first wave in. Established: two soldiers with powers, a chain of command that watches from a distance, and a city under siege from the sea. Theme: duty, given without explanation, and people seen through a screen.",
       "ancestorHashes": [
-        "1quhgch",
-        "158atim",
-        "1qyjvhu",
-        "1eqp7tq",
-        "g1futs",
-        "kds7e3",
-        "hxtkfr"
+        "ztntfp"
       ]
     },
-    "13:91xcpy": {
+    "1:1r4z5a8": {
+      "section": "Street",
+      "text": "After the first fight, the city is shown up close in daylight: a downtown street strewn with the remains of beaten Kaiju (a clawed hand in pink goo, a dripping tail, an eyeball, tentacles), swept up by hazmat workers while runners hurry past. The Agent meets the team in person for the first time and praises them, then gives the rule that drives the next act: Kaiju parts change anyone who touches them, for good, and bystanders are gathering near one at West Rapid Transit. The Lab is introduced as the place that gives the team their 'Kaiju Juice', can swap the teammate, and has a new power, Teleport, waiting. Revealed: the soldiers' powers come from the Lab, and the city treats Kaiju parts as toxic waste. Theme: what is human, and who controls the power that changes people.",
+      "ancestorHashes": [
+        "nt6rio"
+      ]
+    },
+    "3:1vioi0n": {
+      "section": "The Lab (a stop on any map walk)",
+      "text": "In the Lab (a clean, high-tech room of tilted glass tanks holding suspended bodies and insect-winged humanoid specimens, technicians at monitors, a window over the city, and a vat that changes the soldiers' glow), the Agent welcomes the team. Asked about the specimens, he turns nervous and waves them off as 'just some R&D: cryo-chimeric epigenetics'. A Lab Tech cheerfully approves the player's new glow. Planted here: the Lab grows things in its tanks, and the Agent is hiding something. The soldiers' bodies and powers are products of this place.",
+      "ancestorHashes": [
+        "x8jj45"
+      ]
+    },
+    "4:1k5ekny": {
+      "section": "Subway",
+      "text": "At the grimy subway station, a punk (Punk Guy) has found a giant Kaiju eye on the platform and, entranced ('Ooo... pretty...'), touches it despite {teammate}'s warning: 'I do what I want!'. The part's power floods into him and the team fights him between trains that rush through behind flashing warnings and a TRAIN INCOMING! alert, cutting the platforms off from each other. Beaten, he lies at their feet, and {teammate} lays out the choice: recruit him, or study his DNA to take his power, which would kill him. {player} chooses to recruit him. The game's central moral choice appears: a changed human can be an ally or a resource, and the player decides.",
+      "ancestorHashes": [
+        "fx6086"
+      ]
+    },
+    "4:37o6hz": {
+      "section": "Subway",
+      "text": "At the grimy subway station, a punk (Punk Guy) has found a giant Kaiju eye on the platform and, entranced ('Ooo... pretty...'), touches it despite {teammate}'s warning: 'I do what I want!'. The part's power floods into him and the team fights him between trains that rush through behind flashing warnings and a TRAIN INCOMING! alert, cutting the platforms off from each other. Beaten, he lies at their feet, and {teammate} lays out the choice: recruit him, or study his DNA to take his power, which would kill him. {player} chooses to terminate him and take his power. The game's central moral choice appears, and the player picks the colder path: a changed human is treated as a resource.",
+      "ancestorHashes": [
+        "fx6086"
+      ]
+    },
+    "5:tv4dvq": {
+      "section": "Peninsula 2",
+      "text": "Over the radar, the Agent reports on Punk Guy: he has been through 're-education', is 'mentally compliant', stronger than he should be, and kept his mohawk. Recruiting has a price the player hears in passing: the Lab reshapes the minds of the people it takes in. Then sonar shows a second, bigger wave, and the team holds the Peninsula again. The threat is escalating, wave by wave.",
+      "ancestorHashes": [
+        "1eato3i"
+      ]
+    },
+    "5:89djds": {
+      "section": "Peninsula 2",
+      "text": "Over the radar, the Agent reports that Punk Guy 'won't be a problem anymore. Cold, but clean.' The killing is handled as routine paperwork, and the player now carries his power. Then sonar shows a second, bigger wave, and the team holds the Peninsula again. The threat is escalating, wave by wave.",
+      "ancestorHashes": [
+        "1p3qufb"
+      ]
+    },
+    "7:nk8t6o": {
+      "section": "Rooftop",
+      "text": "On a rooftop cemetery above the city, a goth woman (Ghost Girl) hears her ancestors calling from the graves; they are 'so ANGRY' and want her to take the Kaiju head that has landed there. She touches it and feels its power flowing through her. Each time the team beats her down she screams for her ancestors to protect her: a red flash, the screen splits as {player} and {teammate} are torn across to the other roof, and a ring of ghosts spins around them and launches one by one, while she rises again at full health. {teammate} keeps close to block the ghosts. When she falls for good, {teammate} notes that the last one joined the crew, and {player} recruits her as well. Themes: the dead and the past pressing on the living, and a player who keeps choosing mercy.",
+      "ancestorHashes": [
+        "1s52bbe"
+      ]
+    },
+    "7:1hnkitl": {
+      "section": "Rooftop",
+      "text": "On a rooftop cemetery above the city, a goth woman (Ghost Girl) hears her ancestors calling from the graves; they are 'so ANGRY' and want her to take the Kaiju head that has landed there. She touches it and feels its power flowing through her. Each time the team beats her down she screams for her ancestors to protect her: a red flash, the screen splits as {player} and {teammate} are torn across to the other roof, and a ring of ghosts spins around them and launches one by one, while she rises again at full health. {teammate} keeps close to block the ghosts. When she falls for good, {teammate} recalls that last time they took the power for themselves, and offers to do it again. {player} turns from that and recruits her. Themes: the dead and the past pressing on the living, and a player who changes course toward mercy.",
+      "ancestorHashes": [
+        "1279ecz"
+      ]
+    },
+    "7:185d27d": {
+      "section": "Rooftop",
+      "text": "On a rooftop cemetery above the city, a goth woman (Ghost Girl) hears her ancestors calling from the graves; they are 'so ANGRY' and want her to take the Kaiju head that has landed there. She touches it and feels its power flowing through her. Each time the team beats her down she screams for her ancestors to protect her: a red flash, the screen splits as {player} and {teammate} are torn across to the other roof, and a ring of ghosts spins around them and launches one by one, while she rises again at full health. {teammate} keeps close to block the ghosts. When she falls for good, {teammate} notes that the last one joined the crew, but {player} chooses to terminate her and take her power. Themes: the dead and the past pressing on the living, and a player turning from mercy to harvest.",
+      "ancestorHashes": [
+        "1s52bbe"
+      ]
+    },
+    "7:2gk848": {
+      "section": "Rooftop",
+      "text": "On a rooftop cemetery above the city, a goth woman (Ghost Girl) hears her ancestors calling from the graves; they are 'so ANGRY' and want her to take the Kaiju head that has landed there. She touches it and feels its power flowing through her. Each time the team beats her down she screams for her ancestors to protect her: a red flash, the screen splits as {player} and {teammate} are torn across to the other roof, and a ring of ghosts spins around them and launches one by one, while she rises again at full health. {teammate} keeps close to block the ghosts. When she falls for good, {teammate} recalls they took the last one's power, and {player} terminates her too. Themes: the dead and the past pressing on the living, and a player settling into the harvest.",
+      "ancestorHashes": [
+        "1279ecz"
+      ]
+    },
+    "8:1y75m3h": {
+      "section": "Peninsula 3",
+      "text": "Over the radar, the Agent reports that the woman from the rooftop is through re-education: she still hears voices, 'stable, for her', physically flawless, and they could not get her out of the black. Then the shipping lanes go dark and the biggest wave yet comes in. {teammate}'s 'Oh no...' marks the first fear in the team. The city's reach widens to its harbor and trade.",
+      "ancestorHashes": [
+        "j5po50",
+        "y6dlu6"
+      ]
+    },
+    "8:ampq2q": {
+      "section": "Peninsula 3",
+      "text": "Over the radar, the Agent reports that the woman from the rooftop 'is in the ground. Fitting, for that address.' Then the shipping lanes go dark and the biggest wave yet comes in. {teammate}'s 'Oh no...' marks the first fear in the team. The city's reach widens to its harbor and trade.",
+      "ancestorHashes": [
+        "1etfx9h",
+        "4il9nv"
+      ]
+    },
+    "10:1cj5lgh": {
+      "section": "Aquarium",
+      "text": "In the grand hall of the Kaiju City Aquarium, among fish tanks and Kaiju skeletons displayed like dinosaur fossils, a worker has taken up a giant Kaiju tongue and declares 'I'M A MERMAID!!'. {teammate} sees the pattern now: the Kaiju radiation scrambles people's minds, 'like the others'. Beaten down, she screams 'Stop!!!': tank after tank shatters, the hall floods, and she slips through a portal to the top floor to heal while she sends the sea creatures after the team ('Attack the invaders, my beauties!'). When the flood drains and she falls, {teammate} assumes they will recruit her like the others, and {player} does. With all three recruited, the player has built a crew of changed people.",
+      "ancestorHashes": [
+        "10nngt6"
+      ]
+    },
+    "10:1h6v7v4": {
+      "section": "Aquarium",
+      "text": "In the grand hall of the Kaiju City Aquarium, among fish tanks and Kaiju skeletons displayed like dinosaur fossils, a worker has taken up a giant Kaiju tongue and declares 'I'M A MERMAID!!'. {teammate} sees the pattern now: the Kaiju radiation scrambles people's minds, 'like the others'. Beaten down, she screams 'Stop!!!': tank after tank shatters, the hall floods, and she slips through a portal to the top floor to heal while she sends the sea creatures after the team ('Attack the invaders, my beauties!'). When the flood drains and she falls, {teammate} weighs that they have both recruited and terminated, and {player} recruits her.",
+      "ancestorHashes": [
+        "a0cdvs",
+        "nbvtnm"
+      ]
+    },
+    "10:xqycx4": {
+      "section": "Aquarium",
+      "text": "In the grand hall of the Kaiju City Aquarium, among fish tanks and Kaiju skeletons displayed like dinosaur fossils, a worker has taken up a giant Kaiju tongue and declares 'I'M A MERMAID!!'. {teammate} sees the pattern now: the Kaiju radiation scrambles people's minds, 'like the others'. Beaten down, she screams 'Stop!!!': tank after tank shatters, the hall floods, and she slips through a portal to the top floor to heal while she sends the sea creatures after the team ('Attack the invaders, my beauties!'). When the flood drains and she falls, {teammate} expects to terminate her like the others, and admits there is no crew to grow: it has only ever been the two of them. {player} breaks the pattern and recruits her, starting a crew at last: the only one spared.",
+      "ancestorHashes": [
+        "u0d7t0"
+      ]
+    },
+    "10:wpztiq": {
+      "section": "Aquarium",
+      "text": "In the grand hall of the Kaiju City Aquarium, among fish tanks and Kaiju skeletons displayed like dinosaur fossils, a worker has taken up a giant Kaiju tongue and declares 'I'M A MERMAID!!'. {teammate} sees the pattern now: the Kaiju radiation scrambles people's minds, 'like the others'. Beaten down, she screams 'Stop!!!': tank after tank shatters, the hall floods, and she slips through a portal to the top floor to heal while she sends the sea creatures after the team ('Attack the invaders, my beauties!'). When the flood drains and she falls, {teammate} expects to recruit her like the others, but {player} breaks the pattern and terminates her.",
+      "ancestorHashes": [
+        "10nngt6"
+      ]
+    },
+    "10:1s91yur": {
+      "section": "Aquarium",
+      "text": "In the grand hall of the Kaiju City Aquarium, among fish tanks and Kaiju skeletons displayed like dinosaur fossils, a worker has taken up a giant Kaiju tongue and declares 'I'M A MERMAID!!'. {teammate} sees the pattern now: the Kaiju radiation scrambles people's minds, 'like the others'. Beaten down, she screams 'Stop!!!': tank after tank shatters, the hall floods, and she slips through a portal to the top floor to heal while she sends the sea creatures after the team ('Attack the invaders, my beauties!'). When the flood drains and she falls, {teammate} weighs that they have both recruited and terminated, and {player} terminates her.",
+      "ancestorHashes": [
+        "a0cdvs",
+        "nbvtnm"
+      ]
+    },
+    "10:68kc2z": {
+      "section": "Aquarium",
+      "text": "In the grand hall of the Kaiju City Aquarium, among fish tanks and Kaiju skeletons displayed like dinosaur fossils, a worker has taken up a giant Kaiju tongue and declares 'I'M A MERMAID!!'. {teammate} sees the pattern now: the Kaiju radiation scrambles people's minds, 'like the others'. Beaten down, she screams 'Stop!!!': tank after tank shatters, the hall floods, and she slips through a portal to the top floor to heal while she sends the sea creatures after the team ('Attack the invaders, my beauties!'). When the flood drains and she falls, {teammate} expects to terminate her like the others, and notes it has only ever been the two of them, with no crew. {player} terminates her too. Every changed person the team has met is dead, and their powers belong to the player.",
+      "ancestorHashes": [
+        "u0d7t0"
+      ]
+    },
+    "11:rkh688": {
+      "section": "Peninsula 4",
+      "text": "Over the radar, the Agent reports the mermaid is in re-education ('mental state: she is a mermaid... the tail is a lot'). Then every approach to the city fills with Kaiju at once, and the Agent calls it everything they have: hold the Peninsula, whatever it takes. The war on the coast reaches its peak.",
+      "ancestorHashes": [
+        "noa9yd",
+        "yz3cmu",
+        "cvjres",
+        "5xn73y"
+      ]
+    },
+    "11:16nkvhy": {
+      "section": "Peninsula 4",
+      "text": "Over the radar, the Agent reports the mermaid is 'off the board', and that the Aquarium wants to know who's paying for the repairs. Then every approach to the city fills with Kaiju at once, and the Agent calls it everything they have: hold the Peninsula, whatever it takes. The war on the coast reaches its peak.",
+      "ancestorHashes": [
+        "sesvvi",
+        "1963ls5",
+        "ffljzz",
+        "qgw359"
+      ]
+    },
+    "13:1ie8kt4": {
+      "section": "Lab (before the trap, no Agent)",
+      "text": "The Lab is quiet and the Agent who summoned them is nowhere to be seen. {teammate} suggests searching the Lab for him, and choosing their powers first, since who knows when they will get the chance again. The way out reads 'Search for Agent'. An empty room, and a last chance to prepare: the calm before something.",
+      "ancestorHashes": [
+        "1k2unla",
+        "12gk3gj",
+        "dqz1m5",
+        "1m4kirf",
+        "1ktcspt",
+        "110oovk",
+        "zeni02",
+        "1363fa0"
+      ]
+    },
+    "14:2y6rol": {
+      "section": "Lab trap",
+      "text": "The Lab reveals itself as a trap. The Agent thanks the soldiers, says their powers were only on loan, and introduces 'the new team': clones of himself stepping out of the tanks, the specimens seen before. {teammate} realizes what was in the tanks. The Agent reclaims the powers as 'Lab property' and fires a ray that drains the team, but a recruit's power stays: powers from Kaiju parts are not the Lab's to take. The Agent orders them seized; the recruits hold the clones off while {player} and {teammate} run for the exit. The authority that gave them purpose turns on them; the people they spared now save them.",
+      "ancestorHashes": [
+        "1ry2r80",
+        "bpc1mv",
+        "111xqkx",
+        "1u1cb3j",
+        "18tr2cd",
+        "h1a9hu",
+        "1hbcqto"
+      ]
+    },
+    "14:91xcpy": {
       "section": "Lab trap",
       "text": "The Lab reveals itself as a trap. The Agent thanks the soldiers, says their powers were only on loan, and introduces 'the new team': clones of himself stepping out of the tanks, the specimens seen before. {teammate} realizes what was in the tanks. The Agent reclaims the powers as 'Lab property' and fires a ray that drains the team completely: every power they harvested goes with it. The Agent orders them seized and {player} and {teammate} flee alone. The authority that gave them purpose turns on them, and no one is left to help.",
       "ancestorHashes": [
-        "gunkyj"
+        "1dobfka"
       ]
     },
-    "14:a47dvu": {
+    "15:a47dvu": {
       "section": "Sewer 1",
       "text": "Escaped into the dark, wet sewer below the Lab, the recruits praise the quick thinking and say the Agent will never look down here. {teammate} works it out aloud: the Lab only lent their powers through nano-tech, but powers gained by touching Kaiju parts, the way the bystanders got theirs, last; that is why the ray couldn't take the recruits'. If they can find and touch Kaiju parts, they can get their powers back and fight back. A doorway begins to glow. The turn: the thing they were taught to fear is their only way to fight.",
       "ancestorHashes": [
-        "1tvi8fc",
-        "7hveil",
-        "xbeb41",
-        "1ljtfyl",
-        "edh24r",
-        "bn7p32",
-        "tbe3yi"
+        "drhmdn",
+        "1id18e2",
+        "zolcrc",
+        "1julp5e",
+        "1lknuro",
+        "3aor1d",
+        "1y8m8x3"
       ]
     },
-    "15:1u25y4r": {
-      "section": "Sewer 2",
-      "text": "In a deeper chamber, the glowing doorway opens on a heap of pulsing Kaiju parts (an eye, a tail, a tooth, viscera, a bone, a claw), flushed down from the Lab's experiments. {player} and {teammate} face what touching them means: there's no taking it back. {teammate} admits {teammate:he}'s glad it was {player} out there; {player} feels the same. They touch the parts together and vanish into blinding white light. Theme: choosing to be changed, together, at the cost of being human as they knew it.",
-      "ancestorHashes": [
-        "1px4qs",
-        "s6clel",
-        "1tl3d61",
-        "lx6kkt",
-        "17a4vxv",
-        "etlhvm",
-        "1qufveu",
-        "3p5ewa"
-      ]
-    },
-    "16:wpacjj": {
-      "section": "Lab fight",
-      "text": "Back in the Lab's window room high over the city, the team returns with their powers. The Agent laughs: powers from Kaiju parts are inherently unstable, and every Kaiju that ever attacked the city used to be an Agent, failed experiments. The siege the team gave everything to stop was the Lab's own waste, and their new powers are the start of the same fate. His clones drop from the catwalk for the final fight in the Lab.",
-      "ancestorHashes": [
-        "p8wrot",
-        "ob1582",
-        "1o5hbqe",
-        "ceowo2",
-        "17g5m0c",
-        "1o3psf3",
-        "14d0vrf",
-        "uvjbnb"
-      ]
-    },
-    "17:1w9ri76": {
-      "section": "Final battle",
-      "text": "The final battle returns to the peninsula night map: the city the team swore to protect, fought for one last time, now knowing what the Kaiju are and what they may become.",
-      "ancestorHashes": [
-        "1wjrf9o",
-        "1gf5qbf",
-        "reegbj",
-        "1ie2g4r",
-        "9k8b2l",
-        "1oqem46",
-        "4pwm8y",
-        "tjw3hq"
-      ]
-    },
-    "18:rgxdw5": {
-      "section": "Visiting a battleground (any map walk, after its fight)",
-      "text": "Revisiting a battleground already won, the place is quiet; {teammate} remarks there's not much to do but it would be a good place to train. A breather that shows the world holds still between missions.",
-      "ancestorHashes": [
-        "14jto3c",
-        "ad7i1h",
-        "1vjrlrd",
-        "kssd8l",
-        "zw7gfr",
-        "j6d95e",
-        "rj6p1a",
-        "1sr44tm"
-      ]
-    },
-    "10:1851mut": {
-      "section": "Aquarium",
-      "text": "In the grand hall of the Kaiju City Aquarium, among fish tanks and Kaiju skeletons displayed like dinosaur fossils, a worker has taken up a giant Kaiju tongue and declares 'I'M A MERMAID!!'. {teammate} sees the pattern now: the Kaiju radiation scrambles people's minds, 'like the others'. After the fight (the skylight shatters and the hall floods), {teammate} expects to terminate her like the others, and admits there is no crew to grow: it has only ever been the two of them. {player} breaks the pattern and recruits her, starting a crew at last: the only one spared.",
-      "ancestorHashes": [
-        "ptrr8i"
-      ]
-    },
-    "10:1gzij7y": {
-      "section": "Aquarium",
-      "text": "In the grand hall of the Kaiju City Aquarium, among fish tanks and Kaiju skeletons displayed like dinosaur fossils, a worker has taken up a giant Kaiju tongue and declares 'I'M A MERMAID!!'. {teammate} sees the pattern now: the Kaiju radiation scrambles people's minds, 'like the others'. After the fight (the skylight shatters and the hall floods), {teammate} expects to terminate her like the others, and notes it has only ever been the two of them, with no crew. {player} terminates her too. Every changed person the team has met is dead, and their powers belong to the player.",
-      "ancestorHashes": [
-        "ptrr8i"
-      ]
-    },
-    "14:18k9sln": {
+    "15:18k9sln": {
       "section": "Sewer 1",
       "text": "Escaped into the dark, wet sewer below the Lab, {player} catches {you:his} breath: jumping into the sewers was quick thinking, and the Agent will never look down here. {teammate} works it out aloud: the Lab only lent their powers through nano-tech, but powers gained by touching Kaiju parts, the way the bystanders got theirs, last. If they can find and touch Kaiju parts, they can get their powers back and fight back. {player} spots a doorway beginning to glow. With no one else left, it is just the two of them; the thing they were taught to fear is their only way to fight.",
       "ancestorHashes": [
-        "1iesi9t"
+        "12cyyn6"
+      ]
+    },
+    "16:1u25y4r": {
+      "section": "Sewer 2",
+      "text": "In a deeper chamber, the glowing doorway opens on a heap of pulsing Kaiju parts (an eye, a tail, a tooth, viscera, a bone, a claw), flushed down from the Lab's experiments: the one thing they need, in the next room all along. {player} and {teammate} face what touching them means: there's no taking it back. {teammate} admits {teammate:he}'s glad it was {player} out there; {player} feels the same. They touch the parts together and vanish into blinding white light. Theme: choosing to be changed, together, at the cost of being human as they knew it.",
+      "ancestorHashes": [
+        "tesshf",
+        "1hxugty",
+        "12f3d2s",
+        "1iruufi",
+        "miywrc",
+        "1c9c6vd",
+        "1i89hl3",
+        "l5pok7"
+      ]
+    },
+    "17:1xwvsfk": {
+      "section": "Lab fight",
+      "text": "Back in the Lab's window room high over the city, the team returns with their powers. The Agent laughs: powers from Kaiju parts are inherently unstable, and every Kaiju that ever attacked the city used to be an Agent, failed experiments. The siege the team gave everything to stop was the Lab's own waste. His clones fight them, one dropping from the catwalk. Then the cost arrives: {teammate}'s hands start burning, {player} begs {teammate:him} to breathe, and {teammate} pleads to be left, unable to hold it. Their new powers are the start of the same fate.",
+      "ancestorHashes": [
+        "1mrl54c",
+        "my0fvf",
+        "6vhrlp",
+        "1mjsfhf",
+        "18d2urt",
+        "1tt5gqu",
+        "1fidim0",
+        "1h3xn54"
+      ]
+    },
+    "18:1ldea9w": {
+      "section": "Final battle",
+      "text": "The radio carries no orders now, only {player} and {teammate}: nobody at the Lab is in charge, so they give the orders themselves. The radar shows every Kaiju left in the sea coming at once, and they hold the Peninsula together one last time; {teammate} says {teammate:he} isn't scared, only strange. When the last Kaiju falls, {teammate} still hears them calling, {teammate:his} hands burn, and {teammate:he} turns into a Kaiju with every power, and {player} has to fight the partner {player} swore to protect. A win ends with 'You saved the city!' and the credits. If {teammate} fell earlier, the change comes for {player} alone instead, and the city is destroyed by the one meant to save it. Theme: the protectors become the threat, and the only thing left to choose is how it ends.",
+      "ancestorHashes": [
+        "1g6dlri",
+        "blvw8j",
+        "m1ajz1",
+        "1xfh8mz",
+        "17nkpqp",
+        "11gx9v4",
+        "1j5s5j6",
+        "3avh0y"
+      ]
+    },
+    "19:1bzs3ev": {
+      "section": "Visiting a battleground (any map walk, after its fight)",
+      "text": "Revisiting a battleground already won, the place is quiet; {teammate} remarks there's not much to do but it would be a good place to train, and offers to spar. A recruit waiting there may offer to teach their power (Overgrowth, Haunt or Charm) to whoever beats them one on one. A breather that shows the world holds still between missions, and that the people the player spared now give something back.",
+      "ancestorHashes": [
+        "1feh2d8",
+        "w3b3rd",
+        "fmikor",
+        "1o73hxd",
+        "agdj67",
+        "1j1j4fi",
+        "7cln74",
+        "5pzjuo"
       ]
     }
   }
