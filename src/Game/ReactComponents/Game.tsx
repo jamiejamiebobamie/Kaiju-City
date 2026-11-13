@@ -919,7 +919,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     // the end of the game: the title, then the credits, then the landing screen
     // the last fight's ends: the city saved, or (the player turned, with no teammate left to) destroyed (Jamie)
     const isDestroyed = !!gameManager.current && gameManager.current.finalTurnState == "destroyed";
-    if (isWon && (level.giantKaiju || (campaignIndex !== null && getIsLastSection(campaignIndex)))) return { title: isDestroyed ? "You destroyed the city!" : "You saved the city!", buttons: [], isFinale: true };
+    if (isWon && (level.giantKaiju || (campaignIndex !== null && getIsLastSection(campaignIndex)))) return { title: isDestroyed ? "You turned into a Kaiju and destroyed the city!" : "You saved the city!", buttons: [], isFinale: true };
     if (campaignIndex === null) {
       return { title, buttons: [{ text: "Play again", onClick: () => triggerTransition(resetMatch) }, { text: "Leave", onClick: handleClickHome }] };
     }
@@ -1314,8 +1314,8 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
           <GameFrame data-game-frame>
             {/* the alarm only when the call sends the team into a Kaiju fight */}
             <PlayWindow playWindow={playWindow} setPlayWindow={updatePlayWindow} isAdjusting={false} isOpen={false} isSiren={isRadioAlarm} buttons={getBezelButtons({
-              // once the siren goes, the count of the Kaiju ahead (none down yet); before it, the display is blank
-              ticker: <ObjectiveTicker text="" isKaijuCount={isRadioAlarm && !!CAMPAIGN_SECTIONS[campaignIndex].kills} count={0} toWin={CAMPAIGN_SECTIONS[campaignIndex].kills || 0} />
+              // blank through the call (Jamie, playtest 24): the Kaiju count only once the fight's "Defeat the Kaiju" has shown
+              ticker: <ObjectiveTicker text="" isKaijuCount={false} count={0} toWin={0} />
             })}>
               <RadioCall
                 isPaused={isRadioPaused}

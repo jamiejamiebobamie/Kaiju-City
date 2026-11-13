@@ -2,12 +2,15 @@ import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 import { ICON_LOOKUP } from 'Utils/gameState';
 
+// the passives sit round the portrait's rim, this far apart: more than they were (18), so they don't overlap (Jamie, playtest 24)
+const ARC_STEP_DEGREES = 26;
+
 const Wrapper = styled.div`
   position: absolute;
   right: 20px;
   width: 100px;
   height: 0px;
-  transform: rotate(${props => props.i * -18}deg);
+  transform: rotate(${props => props.i * -ARC_STEP_DEGREES}deg);
   transform-origin: top right;
 `;
 const PassiveAbilityWrapper = styled.div`
@@ -20,8 +23,7 @@ const PassiveAbilityWrapper = styled.div`
   border-radius: 100%;
   background-color: ${props => props.color};
   color: #152642;
-  transform: rotate(${props => props.i * 18 - 90}deg
-  );
+  transform: rotate(${props => props.i * ARC_STEP_DEGREES - 90}deg);
   pointer-events: auto;
   ${props => props.isOnCooldown ? "filter: brightness(1);" : "filter: brightness(.2);"}
 

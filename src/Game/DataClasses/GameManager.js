@@ -215,6 +215,8 @@ const CROWD_COST = { standing: 3, headedFor: 1.5 };
 
 // a train hit that doesn't kill: down this long as a ragdoll, then up again
 const TRAIN_KNOCKDOWN = { downMs: 3000, drift: 0.06 }; // drift: how much of the way to the get-up tile the body moves each tick
+// the player's own Kaiju at the end: a lot of health, but not so much its bar runs off the screen (Jamie, playtest 24; was 99)
+const PLAYER_KAIJU_LIVES = 20;
 // Punk Guy cut off by the train: he picks a far spot on his platform every so often and runs there (Jamie, playtest 23)
 const APART_RUN = { everyMs: 1500, minRows: 2 };
 
@@ -1226,7 +1228,7 @@ export class GameManager {
         player.isUnhurtable = true;
         const kaiju = this.gameBoardPiecesManager.addPiece({
             pieceClass: GameBoardPieceKaiju,
-            pieceInfo: { ...PIECES_INFO.kaiju, abilities: [], spewFireCoolDown: Infinity, maxLives: 99, moveSpeed: 0, isDoAvoidEnemy: false, color: player.color },
+            pieceInfo: { ...PIECES_INFO.kaiju, abilities: [], spewFireCoolDown: Infinity, maxLives: PLAYER_KAIJU_LIVES, moveSpeed: 0, isDoAvoidEnemy: false, color: player.color },
             teamIndex: 1
         });
         kaiju.initCharLocation(true, tile);

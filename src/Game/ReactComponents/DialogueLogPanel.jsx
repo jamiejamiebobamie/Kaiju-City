@@ -191,10 +191,12 @@ const GreenBar = styled.div`
   box-shadow: 0 0 0.8cqw ${LOG_LOOK.green}, 0 0 0.25cqw ${LOG_LOOK.green};
 `;
 
+// over the words (it holds the header): the wheel and touches go through it to them (Jamie, playtest 24: no scrolling back)
 const Body = styled.div`
   position: relative;
   flex: 1;
   min-height: 0;
+  pointer-events: none;
 `;
 
 // the words start under the header (its height, measured: 'top' set in the render), so older ones leave at its lower

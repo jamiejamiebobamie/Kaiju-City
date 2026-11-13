@@ -166,9 +166,10 @@ const SpriteSheet = styled.div`
 // backScale / backSpread: how fast they go back once they turn (Jamie, playtest 23: faster; were 0.85 and 26)
 // streak: each ember a capsule with a fading tail, not a round dot (Jamie, playtest 23): 'length' times as long as it's
 // tall going back; near round ('pushLength') while it's breathed out. subtler, then (Jamie): a short one
-// flit (Jamie: an ember is light, fragile): as it goes back it turns counter-clockwise ('spinDegrees') and flutters up and
-// down a little ('flutter', in its frame's units), each its own way
-const BREATH = { mouth: { x: 53, y: 33 }, loopSeconds: 5, stepsAt: [0.4, 0.9], perStep: 5, lifeShare: 0.32, pushShare: 0.1, walkPerSecond: 10, cloud: { width: 7, height: 5 }, headWidth: 11, backScale: 1.4, backSpread: 42, streak: { length: 2, pushLength: 0.6 }, spinDegrees: 420, flutter: 2.5 };
+// flit (Jamie: an ember is light, fragile): it flutters up and down a little ('flutter', in its frame's units) as it goes
+// back. a few ('spinShare') turn once counter-clockwise ('spinDegrees'), just as they start back, then not again
+// (Jamie, playtest 24: not all of them, not all the time)
+const BREATH = { mouth: { x: 53, y: 33 }, loopSeconds: 5, stepsAt: [0.4, 0.9], perStep: 5, lifeShare: 0.32, pushShare: 0.1, walkPerSecond: 10, cloud: { width: 7, height: 5 }, headWidth: 11, backScale: 1.4, backSpread: 42, streak: { length: 2, pushLength: 0.6 }, spinDegrees: 360, spinShare: 0.25, flutter: 2.5 };
 const BREATH_LIFE_SECONDS = BREATH.loopSeconds * BREATH.lifeShare;
 const BREATH_EMBERS = BREATH.stepsAt.flatMap((at, step) => Array.from({ length: BREATH.perStep }, (_, k) => {
   const random = n => ((Math.sin((step * 10 + k) * 12.9898 + n * 78.233) * 43758.5453) % 1 + 1) % 1;
@@ -192,7 +193,7 @@ const BREATH_EMBERS = BREATH.stepsAt.flatMap((at, step) => Array.from({ length: 
     bx: cx + push - BREATH.walkPerSecond * hangSeconds * BREATH.backScale - random(8) * BREATH.backSpread, // spread wider as they go (Jamie)
     by: cy + (random(9) - 0.6) * 10, // only a little up or down: they spread mostly back (Jamie; was 28)
     flutter: (random(10) < 0.5 ? -1 : 1) * BREATH.flutter * (0.5 + random(11) * 0.5),
-    spin: -BREATH.spinDegrees * (0.6 + random(12) * 0.8), // counter-clockwise
+    spin: random(12) < BREATH.spinShare ? -BREATH.spinDegrees : 0, // counter-clockwise, a few of them
     size: 1 + random(4) * 1.2,
     color: ["#d47bff", "#b04cff", "#f0c4ff"][Math.floor(random(5) * 3)]
   };
@@ -201,13 +202,13 @@ const BREATH_EMBERS = BREATH.stepsAt.flatMap((at, step) => Array.from({ length: 
 // the ember's head is its left end (the way it goes back); its tail stretches out behind it as it picks up speed
 const { pushLength } = BREATH.streak;
 const breathPuff = keyframes`
-  0% { transform: translate(var(--cx), var(--cy)) scale(${0.5 * pushLength}, 0.5); opacity: 0; animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1); }
+  0% { transform: translate(var(--cx), var(--cy)) rotate(0deg) scale(${0.5 * pushLength}, 0.5); opacity: 0; animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1); }
   2% { opacity: 1; }
-  ${BREATH.lifeShare * BREATH.pushShare * 100}% { transform: translate(var(--fx), var(--fy)) scale(${pushLength}, 1); animation-timing-function: ease-out; }
-  ${BREATH.lifeShare * BREATH.pushShare * 2 * 100}% { transform: translate(var(--lx), var(--ly)) scale(${pushLength}, 1); animation-timing-function: linear; }
-  ${BREATH.lifeShare * BREATH.pushShare * 3.5 * 100}% { transform: translate(calc(var(--lx) + (var(--bx) - var(--lx)) * 0.15), calc(var(--ly) + (var(--by) - var(--ly)) * 0.15 + var(--wy))) rotate(calc(var(--spin) * 0.2)) scale(1, 0.9); animation-timing-function: ease-in-out; }
-  ${BREATH.lifeShare * 100 * 0.5}% { transform: translate(calc(var(--lx) + (var(--bx) - var(--lx)) * 0.45), calc(var(--ly) + (var(--by) - var(--ly)) * 0.45 - var(--wy))) rotate(calc(var(--spin) * 0.5)) scale(0.95, 0.8); animation-timing-function: ease-in-out; }
-  ${BREATH.lifeShare * 100 * 0.7}% { opacity: 0.7; transform: translate(calc(var(--lx) + (var(--bx) - var(--lx)) * 0.7), calc(var(--ly) + (var(--by) - var(--ly)) * 0.7 + var(--wy))) rotate(calc(var(--spin) * 0.75)) scale(0.9, 0.7); animation-timing-function: ease-in-out; }
+  ${BREATH.lifeShare * BREATH.pushShare * 100}% { transform: translate(var(--fx), var(--fy)) rotate(0deg) scale(${pushLength}, 1); animation-timing-function: ease-out; }
+  ${BREATH.lifeShare * BREATH.pushShare * 2 * 100}% { transform: translate(var(--lx), var(--ly)) rotate(0deg) scale(${pushLength}, 1); animation-timing-function: linear; }
+  ${BREATH.lifeShare * BREATH.pushShare * 3.5 * 100}% { transform: translate(calc(var(--lx) + (var(--bx) - var(--lx)) * 0.15), calc(var(--ly) + (var(--by) - var(--ly)) * 0.15 + var(--wy))) rotate(var(--spin)) scale(1, 0.9); animation-timing-function: ease-in-out; }
+  ${BREATH.lifeShare * 100 * 0.5}% { transform: translate(calc(var(--lx) + (var(--bx) - var(--lx)) * 0.45), calc(var(--ly) + (var(--by) - var(--ly)) * 0.45 - var(--wy))) rotate(var(--spin)) scale(0.95, 0.8); animation-timing-function: ease-in-out; }
+  ${BREATH.lifeShare * 100 * 0.7}% { opacity: 0.7; transform: translate(calc(var(--lx) + (var(--bx) - var(--lx)) * 0.7), calc(var(--ly) + (var(--by) - var(--ly)) * 0.7 + var(--wy))) rotate(var(--spin)) scale(0.9, 0.7); animation-timing-function: ease-in-out; }
   ${BREATH.lifeShare * 100}% { transform: translate(var(--bx), var(--by)) rotate(var(--spin)) scale(0.8, 0.5); opacity: 0; }
   100% { transform: translate(var(--bx), var(--by)) rotate(var(--spin)) scale(0.8, 0.5); opacity: 0; }
 `;
