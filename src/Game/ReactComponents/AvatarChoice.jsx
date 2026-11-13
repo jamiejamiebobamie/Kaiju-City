@@ -131,6 +131,10 @@ const KeyNumber = styled.span`
   transition: color 120ms;
   visibility: ${props => props.$isHidden ? "hidden" : "visible"};
   ${props => props.$isElectric && css`
+    /* kept readable (Jamie): a thin dark outline, and the sparks behind it ('isolation' keeps them in here) */
+    isolation: isolate;
+    -webkit-text-stroke: 1px #06210a;
+    paint-order: stroke fill;
     color: ${SPARKS.color};
     animation: ${numberCrackle} 0.9s steps(1) infinite, ${numberPulse} ${SPARKS.pulseMs}ms ease-in-out infinite alternate;
   `}
@@ -146,7 +150,8 @@ const sparkFall = keyframes`
 const Spark = styled.span`
   position: absolute;
   left: 50%;
-  top: 45%;
+  top: 92%; /* from the number's bottom edge, so they fall away from it */
+  z-index: -1; /* behind the number */
   width: 3px;
   height: 3px;
   margin: -1.5px;
