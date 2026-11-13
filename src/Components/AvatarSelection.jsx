@@ -416,11 +416,13 @@ const useTranslationEffect = ({ STARTING_POSTIONS, show, setTranslations, active
   Their pointer lines never reach the green graph: a move is held back 'gapPx' from its edge.
 */
 const DRIFT = {
-  beatsMs: [120, 120, 240, 90, 90, 90, 360, 120, 240, 90, 480], // the rhythm, round and round
-  cutMs: 60, // a move's glide: next to a hard cut
-  rangePx: 45, // how far one jumps from its place (in the doodad's own pixels; on screen, x0.45)
-  flashChance: 0.35,
-  offChance: 0.12,
+  // a middle ground between the slow 1.5 s drift and the frantic cuts (Jamie, 2026-11-12: "a bit crazy")
+  beatsMs: [300, 300, 600, 240, 240, 900, 300, 600, 1100], // the rhythm, round and round
+  cutMs: 220, // a move's glide: quick, not a hard cut
+  rangePx: 32, // how far one jumps from its place (in the doodad's own pixels; on screen, x0.45)
+  maxMoving: 2, // doodads moving on one beat
+  flashChance: 0.18,
+  offChance: 0.04,
   gapPx: 6, // on screen, between a pointer line's end and the green graph
   count: 3
 };
@@ -447,7 +449,7 @@ const useDriftEffect = ({ isOn, starts, setTranslations }) => useEffect(() => {
   let beat = 0;
   let timeout;
   const cut = () => {
-    const moving = 1 + Math.floor(Math.random() * DRIFT.count); // one to all three on a cut
+    const moving = 1 + Math.floor(Math.random() * DRIFT.maxMoving); // one or two on a beat
     const order = [0, 1, 2].sort(() => Math.random() - 0.5).slice(0, moving);
     setTranslations(ts => ts.map((t, i) => {
       if (i >= DRIFT.count) return t;
