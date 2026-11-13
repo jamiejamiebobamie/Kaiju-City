@@ -321,36 +321,82 @@ const CrtScreen = styled.div`
 `;
 
 /*
-  The doodads see-through a little, with the green graph's snow on them (Jamie, 2026-11-12). The snow is an svg
-  filter, kept to the art's own shape (not the sheet's whole frame), and swapped between 4 seeds to crackle like
-  the graph's (0.24 s).
+  The doodads as a phantom signal (Jamie, 2026-11-12: cyberpunk tech, a Phantom Dust feel), all in one svg filter
+  per doodad, kept to the art's own shape:
+  - noise that only darkens: the green goes to black in specks, never to white (4 seeds, swapped like the grid's snow)
+  - a voltage line: now and then a bright line of current runs down the art, and the art kinks sideways where it is
+  - a CRT bar: a faint green band rolls down the art, round and round
+  A little see-through, too. The doodads' timings differ, so they don't zap together.
 */
-const DOODAD_GRAIN = { opacity: 0.8, seeds: 4, snowMs: 240 };
+const DOODAD_SIGNAL = {
+  opacity: 0.8,
+  seeds: 4,
+  snowMs: 240, // the noise's crackle, as the grid's
+  noiseDark: 0.9, // how far the specks go toward black (0: none)
+  zapEveryMs: [2300, 3100, 3900], // a voltage line's run, per doodad (bars, heartbeat, vertices)
+  zapRunMs: 380, // its trip down the art
+  zapKinkPx: 22, // how far the art kinks across (in the art's pixels; on screen, x0.45)
+  barEveryMs: [3400, 4100, 3700], // the CRT bar's roll down, per doodad
+  barOpacity: 0.22
+};
+const ART = { width: 344, height: 256 }; // a doodad's frame on its sheet
 
-const DoodadGrainFilters = () =>
+const DoodadSignalFilter = ({ doodad, seed }) => {
+  const zapDur = `${DOODAD_SIGNAL.zapEveryMs[doodad] / 1000}s`;
+  const zapEnd = (DOODAD_SIGNAL.zapRunMs / DOODAD_SIGNAL.zapEveryMs[doodad]).toFixed(3);
+  const zapAt = offset => <animate attributeName="y" values={`${-30 + offset};${ART.height + 20 + offset};${ART.height + 20 + offset}`} keyTimes={`0;${zapEnd};1`} dur={zapDur} repeatCount="indefinite" />;
+  return (
+    <filter id={`doodadSignal${doodad}_${seed}`} x="-15%" y="-15%" width="130%" height="130%" colorInterpolationFilters="sRGB">
+      {/* the voltage line's kink: jagged noise in a band that runs down, on a neutral (no shift) gray */}
+      <feFlood floodColor="rgb(128,128,128)" result="neutral" />
+      <feTurbulence type="turbulence" baseFrequency="0.012 0.35" numOctaves="1" seed={seed + 1} result="jag" />
+      <feFlood floodColor="white" x="-60" width={ART.width + 120} height="16" result="band">{zapAt(0)}</feFlood>
+      <feComposite in="jag" in2="band" operator="in" result="jagBand" />
+      <feMerge result="kinkMap"><feMergeNode in="neutral" /><feMergeNode in="jagBand" /></feMerge>
+      <feDisplacementMap in="SourceGraphic" in2="kinkMap" scale={DOODAD_SIGNAL.zapKinkPx} xChannelSelector="R" yChannelSelector="G" result="art" />
+      {/* the noise: specks toward black only, so it stays green and black */}
+      <feTurbulence type="fractalNoise" baseFrequency="0.95" numOctaves="2" seed={seed + 1} result="noise" />
+      <feColorMatrix in="noise" values={`${-DOODAD_SIGNAL.noiseDark} 0 0 0 1.25  ${-DOODAD_SIGNAL.noiseDark} 0 0 0 1.25  ${-DOODAD_SIGNAL.noiseDark} 0 0 0 1.25  0 0 0 0 1`} result="specks" />
+      <feBlend in="art" in2="specks" mode="multiply" result="speckled" />
+      <feComposite in="speckled" in2="art" operator="in" result="noisyArt" />
+      {/* the CRT bar */}
+      <feFlood floodColor="#80EF80" floodOpacity={DOODAD_SIGNAL.barOpacity} x="-60" width={ART.width + 120} height="70" result="bar">
+        <animate attributeName="y" values={`-70;${ART.height}`} dur={`${DOODAD_SIGNAL.barEveryMs[doodad] / 1000}s`} repeatCount="indefinite" />
+      </feFlood>
+      <feComposite in="bar" in2="art" operator="in" result="barOnArt" />
+      {/* the current itself: a bright line on the art where the kink is, with a glow */}
+      <feFlood floodColor="#e6ffe6" x="-60" width={ART.width + 120} height="3" result="line">{zapAt(7)}</feFlood>
+      <feComposite in="line" in2="art" operator="in" result="lineOnArt" />
+      <feGaussianBlur in="lineOnArt" stdDeviation="2.5" result="lineGlow" />
+      <feMerge>
+        <feMergeNode in="noisyArt" />
+        <feMergeNode in="barOnArt" />
+        <feMergeNode in="lineGlow" />
+        <feMergeNode in="lineOnArt" />
+      </feMerge>
+    </filter>
+  );
+};
+
+const DoodadSignalFilters = () =>
   <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true">
-    {[...Array(DOODAD_GRAIN.seeds).keys()].map(seed =>
-      <filter key={seed} id={`doodadGrain${seed}`}>
-        <feTurbulence type="fractalNoise" baseFrequency="0.95" numOctaves="2" seed={seed + 1} result="noise" />
-        <feColorMatrix in="noise" values="0 0 0 0 0.6  0 0 0 0 1  0 0 0 0 0.6  0 0 0 0.55 -0.25" result="snow" />
-        <feComposite in="snow" in2="SourceAlpha" operator="in" result="snowOnArt" />
-        <feBlend in="snowOnArt" in2="SourceGraphic" mode="screen" />
-      </filter>
-    )}
+    {[0, 1, 2].map(doodad => [...Array(DOODAD_SIGNAL.seeds).keys()].map(seed =>
+      <DoodadSignalFilter key={`${doodad}_${seed}`} doodad={doodad} seed={seed} />
+    ))}
   </svg>;
 
 const Grainy = styled.div`
   position: absolute;
-  width: 344px;
-  height: 256px;
+  width: ${ART.width}px;
+  height: ${ART.height}px;
   ${props => props.$isOn && `
-    opacity: ${DOODAD_GRAIN.opacity};
-    animation: doodadSnow ${DOODAD_GRAIN.snowMs}ms steps(1) infinite;
-    @keyframes doodadSnow {
-      0% { filter: url(#doodadGrain0); }
-      25% { filter: url(#doodadGrain1); }
-      50% { filter: url(#doodadGrain2); }
-      75% { filter: url(#doodadGrain3); }
+    opacity: ${DOODAD_SIGNAL.opacity};
+    animation: doodadSignal${props.$doodad} ${DOODAD_SIGNAL.snowMs}ms steps(1) infinite;
+    @keyframes doodadSignal${props.$doodad} {
+      0% { filter: url(#doodadSignal${props.$doodad}_0); }
+      25% { filter: url(#doodadSignal${props.$doodad}_1); }
+      50% { filter: url(#doodadSignal${props.$doodad}_2); }
+      75% { filter: url(#doodadSignal${props.$doodad}_3); }
     }
   `}
 `;
@@ -623,11 +669,11 @@ export const Doodads = ({ persistDisc, show, globalTranslation, isRed, opacity, 
         textAlign={'start'}
         fontSize={'13px'}
       />}
-      {isDrifting && <DoodadGrainFilters />}
+      {isDrifting && <DoodadSignalFilters />}
       <BlinkFadeEffect high={69} low={40}>
         <DoodadTransform scale={`${STARTING_POSTIONS[0].scaleX}, ${STARTING_POSTIONS[0].scaleY}`} translation={`${translations[0].x}px, ${translations[0].y}px`} ms={isDrifting ? translations[0].ms : undefined} $ease={isDrifting ? translations[0].ease : undefined} $isFlash={translations[0].isFlash}>
           <CrtScreen $origin="105px 133px" $isOff={translations[0].isOff} $isReturning={translations[0].isReturning}>
-            <Grainy $isOn={isDrifting}>
+            <Grainy $isOn={isDrifting} $doodad={0}>
               <DoodadSpriteSheet
                 src={"spritesheet/doo_dad_bars.png"}
                 zIndex={110}
@@ -638,7 +684,7 @@ export const Doodads = ({ persistDisc, show, globalTranslation, isRed, opacity, 
         </DoodadTransform>
         <DoodadTransform scale={`${STARTING_POSTIONS[1].scaleX}, ${STARTING_POSTIONS[1].scaleY}`} translation={`${translations[1].x}px, ${translations[1].y}px`} ms={isDrifting ? translations[1].ms : undefined} $ease={isDrifting ? translations[1].ease : undefined} $isFlash={translations[1].isFlash}>
           <CrtScreen $origin="240px 183px" $isOff={translations[1].isOff} $isReturning={translations[1].isReturning}>
-            <Grainy $isOn={isDrifting}>
+            <Grainy $isOn={isDrifting} $doodad={1}>
               <DoodadSpriteSheet
                 src={"spritesheet/doo_dad_heartbeat.png"}
                 zIndex={111}
@@ -649,7 +695,7 @@ export const Doodads = ({ persistDisc, show, globalTranslation, isRed, opacity, 
         </DoodadTransform>
         <DoodadTransform scale={`${STARTING_POSTIONS[2].scaleX}, ${STARTING_POSTIONS[2].scaleY}`} translation={`${translations[2].x}px, ${translations[2].y}px`} ms={isDrifting ? translations[2].ms : undefined} $ease={isDrifting ? translations[2].ease : undefined} $isFlash={translations[2].isFlash}>
           <CrtScreen $origin="243px 75px" $isOff={translations[2].isOff} $isReturning={translations[2].isReturning}>
-            <Grainy $isOn={isDrifting}>
+            <Grainy $isOn={isDrifting} $doodad={2}>
               <DoodadSpriteSheet
                 src={"spritesheet/doo_dad_vertices.png"}
                 zIndex={112}
