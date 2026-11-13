@@ -611,6 +611,8 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const [recruitChoice, setRecruitChoice] = useState(undefined);
   const [leavingFor, setLeavingFor] = useState(undefined); // the Lab screen the scene is sliding away for
   const [isResumingRadio, setIsResumingRadio] = useState(false);
+  const [isRadioPaused, setIsRadioPaused] = useState(false); // the radar call paused from the bezel (Jamie, playtest 23)
+  useEffect(() => setIsRadioPaused(false), [radioLines]);
   const isOnLabDetour = useRef(false); // the Lab, or a battleground visited again, off a map walk
   const detourSpot = useRef(undefined); // where that site is on the map: the walk carries on from beside it
   const [labScreen, setLabScreen] = useState(undefined); // 'colors'
@@ -1058,7 +1060,15 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
 
   // the game holds still while the controls are up
   const openControls = () => {
-    if (!gameManager.current || isShowingControls) return;
+    if (isShowingControls) return;
+    // the radar call: it holds while they're up, as a fight does
+    if (radioLines) {
+      isPausedForControls.current = !isRadioPaused;
+      setIsRadioPaused(true);
+      setIsShowingControls(true);
+      return;
+    }
+    if (!gameManager.current) return;
     isPausedForControls.current = !isPaused && winner === null;
     if (isPausedForControls.current) {
       gameManager.current.togglePauseGame();
@@ -1069,6 +1079,11 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
 
   const closeControls = () => {
     setIsShowingControls(false);
+    if (radioLines) {
+      if (isPausedForControls.current) setIsRadioPaused(false);
+      isPausedForControls.current = false;
+      return;
+    }
     if (isPausedForControls.current && gameManager.current) {
       gameManager.current.togglePauseGame();
       publishGameUi(gameManager.current.getUiState());
@@ -1091,12 +1106,28 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
       closeControls();
       return;
     }
+    if (radioLines) {
+      setIsRadioPaused(paused => !paused);
+      return;
+    }
     if (!gameManager.current || winner !== null) return;
+
     gameManager.current.togglePauseGame();
     publishGameUi(gameManager.current.getUiState());
   };
 
   useKeyPress({ keyCodes: "Escape", keyUpCallback: handleClickPause, isCharacterDead: false });
+
+  // the Kaiju-Vision's bezel, the same on every screen it shows (Jamie, playtest 23): Pause, Controls and Leave, and the
+  // display top right. Pause is off once a fight is decided (nothing left to hold)
+  const getBezelButtons = ({ isPauseOff = false, ticker }) => (
+    <>
+      <BezelButton title="Pause" onClick={handleClickPause} disabled={isPauseOff}>Pause</BezelButton>
+      <BezelButton title="How to play" onClick={openControls}>Controls</BezelButton>
+      <BezelButton title="Goodbye!" onClick={handleClickHome}>Leave</BezelButton>
+      {ticker}
+    </>
+  );
 
   // a cutscene's line waiting in the log moves on with any key. Enter does it through its Continue bar, below; Escape pauses.
   useEffect(() => {
@@ -1282,8 +1313,12 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
         <GameArea>
           <GameFrame data-game-frame>
             {/* the alarm only when the call sends the team into a Kaiju fight */}
-            <PlayWindow playWindow={playWindow} setPlayWindow={updatePlayWindow} isAdjusting={false} isOpen={false} isSiren={isRadioAlarm}>
+            <PlayWindow playWindow={playWindow} setPlayWindow={updatePlayWindow} isAdjusting={false} isOpen={false} isSiren={isRadioAlarm} buttons={getBezelButtons({
+              // once the siren goes, the count of the Kaiju ahead (none down yet); before it, the display is blank
+              ticker: <ObjectiveTicker text="" isKaijuCount={isRadioAlarm && !!CAMPAIGN_SECTIONS[campaignIndex].kills} count={0} toWin={CAMPAIGN_SECTIONS[campaignIndex].kills || 0} />
+            })}>
               <RadioCall
+                isPaused={isRadioPaused}
                 key={campaignIndex}
                 lines={radioLines}
                 playerAvatar={selectedAvatar}
@@ -1298,6 +1333,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 kaijuCount={CAMPAIGN_SECTIONS[campaignIndex].kills || 0}
               />
             </PlayWindow>
+            {isShowingControls && <ControlsOverlay onClose={closeControls} />}
           </GameFrame>
         </GameArea>
       : fullScreenPageData ?
@@ -1482,17 +1518,11 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
             </PhaseToggles>
           )}
           <GameFrame data-game-frame>
-            <PlayWindow playWindow={playWindow} setPlayWindow={updatePlayWindow} isAdjusting={isAdjustingWindow} isOpen={isWindowOpen} isCut={!!recruitScene} isSiren={!!level.kaijuEntry && winner === null && !isPaused} buttons={!isEditingTiles && (
-              <>
-                <BezelButton title="Pause" onClick={handleClickPause}>Pause</BezelButton>
-                <BezelButton title="How to play" onClick={openControls}>Controls</BezelButton>
-                <BezelButton title="Goodbye!" onClick={handleClickHome}>Leave</BezelButton>
-                {/* the objective's display: always there (Jamie), running the objective, or the Kaiju count */}
-                {!isWindowOpen && (
-                  <ObjectiveTicker text={objectiveText} isKaijuCount={isObjectiveKaijuCount} count={kaijuKillCount} toWin={kaijuToWin} />
-                )}
-              </>
-            )}>
+            <PlayWindow playWindow={playWindow} setPlayWindow={updatePlayWindow} isAdjusting={isAdjustingWindow} isOpen={isWindowOpen} isCut={!!recruitScene} isSiren={!!level.kaijuEntry && winner === null && !isPaused} buttons={!isEditingTiles && getBezelButtons({
+              isPauseOff: winner !== null,
+              // the objective's display: always there (Jamie), running the objective, or the Kaiju count
+              ticker: !isWindowOpen && <ObjectiveTicker text={objectiveText || ""} isKaijuCount={isObjectiveKaijuCount} count={kaijuKillCount} toWin={kaijuToWin} />
+            })}>
               {/* for a Lab screen, the scene slides away inside the monitor, and the screen takes its place there */}
               <SlideClip><SlideAway style={leavingFor ? { transform: `translateX(${leavingFor == "colors" ? -45 : 45}%)`, opacity: 0 } : undefined}>
               <GameBoard

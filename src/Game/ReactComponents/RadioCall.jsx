@@ -5,6 +5,7 @@ import { getIsClickThrough } from "Game/DataClasses/DialogueLog";
 import { DialogueLogPanel } from "./DialogueLogPanel";
 import { ROSTER } from "Game/DataClasses/Avatars";
 import { RadarMap } from "./RadarMap";
+import { PauseModal } from "./GameBoard/PauseModal";
 
 /*
   A radio call from the Agent: its lines go to the dialogue log beside the monitor, as every conversation does,
@@ -34,7 +35,8 @@ const getHoldMs = text => {
 
 // 'onAlarm': called once the call reaches the line about Kaiju coming, for the siren
 // 'kaijuCount': the Kaiju in the fight this call sends the team to, shown on the radar once the siren goes
-export const RadioCall = ({ lines, playerAvatar, teammateAvatar, isResuming, onGo, onChangePowers, onAlarm = () => {}, kaijuCount = 0 }) => {
+// 'isPaused': from the bezel's Pause (or Controls): the call holds, and keys don't move it on
+export const RadioCall = ({ lines, playerAvatar, teammateAvatar, isResuming, onGo, onChangePowers, onAlarm = () => {}, kaijuCount = 0, isPaused = false }) => {
   const [script, setScript] = useState(lines);
   const [lineIndex, setLineIndex] = useState(0);
 
@@ -56,14 +58,14 @@ export const RadioCall = ({ lines, playerAvatar, teammateAvatar, isResuming, onG
 
   // without Click through, each line holds a while and the call goes on by itself
   useEffect(() => {
-    if (isChoice || getIsClickThrough()) return;
+    if (isChoice || isPaused || getIsClickThrough()) return;
     const timeoutRef = setTimeout(nextLine, getHoldMs(line.text || ""));
     return () => clearTimeout(timeoutRef);
-  }, [lineIndex, isChoice, script]);
+  }, [lineIndex, isChoice, script, isPaused]);
 
   // a waiting line moves on with any key (Enter presses the panel's bar)
   const nextLineRef = useRef(nextLine);
-  nextLineRef.current = nextLine;
+  nextLineRef.current = isPaused ? () => {} : nextLine;
   useEffect(() => {
     const handleKeyDown = ({ code, repeat }) => {
       if (!repeat && !["Enter", "NumpadEnter", "Escape"].includes(code)) nextLineRef.current();
@@ -91,8 +93,9 @@ export const RadioCall = ({ lines, playerAvatar, teammateAvatar, isResuming, onG
     <>
       <Page>
         <RadarMap dotCount={kaijuCount} alarmAtMs={alarmAtMs} />
+        {isPaused && <PauseModal />}
       </Page>
-      {frame && createPortal(<DialogueLogPanel entries={entries} isWaiting={!isChoice && !isLastLine} isVisible onContinue={nextLine} actions={actions} />, frame)}
+      {frame && createPortal(<DialogueLogPanel entries={entries} isWaiting={!isPaused && !isChoice && !isLastLine} isVisible onContinue={() => nextLineRef.current()} actions={isPaused ? [] : actions} />, frame)}
     </>
   );
 };

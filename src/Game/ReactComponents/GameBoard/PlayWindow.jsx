@@ -354,12 +354,17 @@ export const BezelButton = styled.button`
   border: 0.1cqw solid #050505;
   border-radius: 0.3cqw;
   box-shadow: inset 0 0.08cqw 0 ${TV_LOOK.casingLight}, 0 0.12cqw 0 #050505;
-  &:hover {
+  &:hover:not(:disabled) {
     color: #e6e0da;
   }
-  &:active {
+  &:active:not(:disabled) {
     transform: translateY(0.1cqw);
     box-shadow: inset 0 0.08cqw 0 #050505;
+  }
+  /* nothing it can do here now (Jamie, playtest 23) */
+  &:disabled {
+    cursor: default;
+    opacity: 0.4;
   }
 `;
 
