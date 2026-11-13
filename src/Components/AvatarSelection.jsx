@@ -287,7 +287,7 @@ const FadeInOutEffect = styled.div`
 `;
 
 const DoodadTransform = styled.div`
-  transition: transform ${props => props.ms || 1500}ms ease-out, filter ${props => props.ms || 1500}ms;
+  transition: transform ${props => props.ms || 1500}ms ${props => props.$ease || 'ease-out'}, filter 220ms;
   ${props => `transform: scale(${props.scale}) translate(${props.translation});`}
   ${props => props.$isFlash && `filter: brightness(1.9);`}
   ${props => props.$isOff && `opacity: 0;`}
@@ -411,16 +411,18 @@ const useTranslationEffect = ({ STARTING_POSTIONS, show, setTranslations, active
 // 'hasDisc': false leaves out the circuit disc on the floor (the character select, Jamie 2026-11-12)
 /*
   Shown, the three doodads jump about their places (not the green graph), cut to the quick, uneven beat of a
-  title sequence (Jamie, 2026-11-12, after Batman Beyond's intro): hard, near-instant moves on short beats, a held
-  beat now and then, a flash on a cut, and now and then one blinks out for a beat.
+  title sequence (Jamie, 2026-11-12, after Batman Beyond's intro), a flash on a jump and now and then a blink out.
+  Never still (Jamie): on every beat each one moves, and each move lasts until the next beat. One or two jump (quick
+  off the mark, then easing slowly the rest of the way); the others drift a little, slowly.
   Their pointer lines never reach the green graph: a move is held back 'gapPx' from its edge.
 */
 const DRIFT = {
   // a middle ground between the slow 1.5 s drift and the frantic cuts (Jamie, 2026-11-12: "a bit crazy")
   beatsMs: [300, 300, 600, 240, 240, 900, 300, 600, 1100], // the rhythm, round and round
-  cutMs: 220, // a move's glide: quick, not a hard cut
+  jumpEase: 'cubic-bezier(0.15, 0.85, 0.3, 1)', // a jump: most of the way at once, then a slow ease in
   rangePx: 32, // how far one jumps from its place (in the doodad's own pixels; on screen, x0.45)
-  maxMoving: 2, // doodads moving on one beat
+  driftPx: 8, // how far the others drift on a beat
+  maxMoving: 2, // doodads jumping on one beat
   flashChance: 0.18,
   offChance: 0.04,
   gapPx: 6, // on screen, between a pointer line's end and the green graph
@@ -449,22 +451,28 @@ const useDriftEffect = ({ isOn, starts, setTranslations }) => useEffect(() => {
   let beat = 0;
   let timeout;
   const cut = () => {
-    const moving = 1 + Math.floor(Math.random() * DRIFT.maxMoving); // one or two on a beat
+    const ms = DRIFT.beatsMs[beat++ % DRIFT.beatsMs.length];
+    const moving = 1 + Math.floor(Math.random() * DRIFT.maxMoving); // one or two jump on a beat
     const order = [0, 1, 2].sort(() => Math.random() - 0.5).slice(0, moving);
+    const within = (value, start) => Math.max(start - DRIFT.rangePx, Math.min(start + DRIFT.rangePx, value));
     setTranslations(ts => ts.map((t, i) => {
       if (i >= DRIFT.count) return t;
-      if (!order.includes(i)) return { ...t, isFlash: false, isOff: false };
       const start = starts[i];
-      const x = start.x + (Math.random() * 2 - 1) * DRIFT.rangePx;
+      const isJump = order.includes(i);
+      const reach = isJump ? DRIFT.rangePx : DRIFT.driftPx;
+      const from = isJump ? start : t; // a jump goes anywhere about its place; a drift, from where it is
+      const x = within(from.x + (Math.random() * 2 - 1) * reach, start.x);
       return {
-        ...start,
+        ...t,
         x: keepOffGraph(x, start, POINTER_TIPS_X[i], starts[3]),
-        y: start.y + (Math.random() * 2 - 1) * DRIFT.rangePx,
-        isFlash: Math.random() < DRIFT.flashChance,
-        isOff: Math.random() < DRIFT.offChance
+        y: within(from.y + (Math.random() * 2 - 1) * reach, start.y),
+        ms,
+        ease: isJump ? DRIFT.jumpEase : 'linear',
+        isFlash: isJump && Math.random() < DRIFT.flashChance,
+        isOff: isJump && Math.random() < DRIFT.offChance
       };
     }));
-    timeout = setTimeout(cut, DRIFT.beatsMs[beat++ % DRIFT.beatsMs.length]);
+    timeout = setTimeout(cut, ms);
   };
   cut();
   return () => clearTimeout(timeout);
@@ -512,19 +520,19 @@ export const Doodads = ({ persistDisc, show, globalTranslation, isRed, opacity, 
         fontSize={'13px'}
       />}
       <BlinkFadeEffect high={69} low={40}>
-        <DoodadTransform scale={`${STARTING_POSTIONS[0].scaleX}, ${STARTING_POSTIONS[0].scaleY}`} translation={`${translations[0].x}px, ${translations[0].y}px`} ms={isDrifting ? DRIFT.cutMs : undefined} $isFlash={translations[0].isFlash} $isOff={translations[0].isOff}>
+        <DoodadTransform scale={`${STARTING_POSTIONS[0].scaleX}, ${STARTING_POSTIONS[0].scaleY}`} translation={`${translations[0].x}px, ${translations[0].y}px`} ms={isDrifting ? translations[0].ms : undefined} $ease={isDrifting ? translations[0].ease : undefined} $isFlash={translations[0].isFlash} $isOff={translations[0].isOff}>
           <DoodadSpriteSheet
             src={"spritesheet/doo_dad_bars.png"}
             zIndex={110}
           />
         </DoodadTransform>
-        <DoodadTransform scale={`${STARTING_POSTIONS[1].scaleX}, ${STARTING_POSTIONS[1].scaleY}`} translation={`${translations[1].x}px, ${translations[1].y}px`} ms={isDrifting ? DRIFT.cutMs : undefined} $isFlash={translations[1].isFlash} $isOff={translations[1].isOff}>
+        <DoodadTransform scale={`${STARTING_POSTIONS[1].scaleX}, ${STARTING_POSTIONS[1].scaleY}`} translation={`${translations[1].x}px, ${translations[1].y}px`} ms={isDrifting ? translations[1].ms : undefined} $ease={isDrifting ? translations[1].ease : undefined} $isFlash={translations[1].isFlash} $isOff={translations[1].isOff}>
           <DoodadSpriteSheet
             src={"spritesheet/doo_dad_heartbeat.png"}
             zIndex={111}
           />
         </DoodadTransform>
-        <DoodadTransform scale={`${STARTING_POSTIONS[2].scaleX}, ${STARTING_POSTIONS[2].scaleY}`} translation={`${translations[2].x}px, ${translations[2].y}px`} ms={isDrifting ? DRIFT.cutMs : undefined} $isFlash={translations[2].isFlash} $isOff={translations[2].isOff}>
+        <DoodadTransform scale={`${STARTING_POSTIONS[2].scaleX}, ${STARTING_POSTIONS[2].scaleY}`} translation={`${translations[2].x}px, ${translations[2].y}px`} ms={isDrifting ? translations[2].ms : undefined} $ease={isDrifting ? translations[2].ease : undefined} $isFlash={translations[2].isFlash} $isOff={translations[2].isOff}>
           <DoodadSpriteSheet
             src={"spritesheet/doo_dad_vertices.png"}
             zIndex={112}
