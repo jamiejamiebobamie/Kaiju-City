@@ -163,7 +163,10 @@ const SpriteSheet = styled.div`
 // stepsAt: the head at its lowest, frames 4 and 9 of the walk's 10 (measured from kaiju-walk.png; Jamie, playtest 22)
 // mouth: lower and a touch forward (Jamie: they looked to come from the nose; at the lowest frames the head is ~5 lower)
 // lifeShare 0.32: 1.5x quicker (Jamie; was 0.48)
-const BREATH = { mouth: { x: 53, y: 33 }, loopSeconds: 5, stepsAt: [0.4, 0.9], perStep: 5, lifeShare: 0.32, pushShare: 0.1, walkPerSecond: 10, cloud: { width: 7, height: 5 }, headWidth: 11 };
+// backScale / backSpread: how fast they go back once they turn (Jamie, playtest 23: faster; were 0.85 and 26)
+// streak: each ember a capsule with a fading tail, not a round dot (Jamie, playtest 23): 'length' times as long as it's
+// tall going back; near round ('pushLength') while it's breathed out
+const BREATH = { mouth: { x: 53, y: 33 }, loopSeconds: 5, stepsAt: [0.4, 0.9], perStep: 5, lifeShare: 0.32, pushShare: 0.1, walkPerSecond: 10, cloud: { width: 7, height: 5 }, headWidth: 11, backScale: 1.4, backSpread: 42, streak: { length: 3.5, pushLength: 0.45 } };
 const BREATH_LIFE_SECONDS = BREATH.loopSeconds * BREATH.lifeShare;
 const BREATH_EMBERS = BREATH.stepsAt.flatMap((at, step) => Array.from({ length: BREATH.perStep }, (_, k) => {
   const random = n => ((Math.sin((step * 10 + k) * 12.9898 + n * 78.233) * 43758.5453) % 1 + 1) % 1;
@@ -184,36 +187,41 @@ const BREATH_EMBERS = BREATH.stepsAt.flatMap((at, step) => Array.from({ length: 
     lx: cx + push * 0.8, ly: cy - 1, // then it lifts a little as the head comes back up
     // left behind as it walks on, and (a middle way back to the first version: Jamie) drifting apart as they go: each its
     // own extra way back, some rising and some sinking
-    bx: cx + push - BREATH.walkPerSecond * hangSeconds * 0.85 - random(8) * 26, // spread wider as they go (Jamie)
+    bx: cx + push - BREATH.walkPerSecond * hangSeconds * BREATH.backScale - random(8) * BREATH.backSpread, // spread wider as they go (Jamie)
     by: cy + (random(9) - 0.6) * 10, // only a little up or down: they spread mostly back (Jamie; was 28)
     size: 1 + random(4) * 1.2,
     color: ["#d47bff", "#b04cff", "#f0c4ff"][Math.floor(random(5) * 3)]
   };
 }));
 
+// the ember's head is its left end (the way it goes back); its tail stretches out behind it as it picks up speed
+const { pushLength } = BREATH.streak;
 const breathPuff = keyframes`
-  0% { transform: translate(var(--cx), var(--cy)) scale(0.5); opacity: 0; animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1); }
+  0% { transform: translate(var(--cx), var(--cy)) scale(${0.5 * pushLength}, 0.5); opacity: 0; animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1); }
   2% { opacity: 1; }
-  ${BREATH.lifeShare * BREATH.pushShare * 100}% { transform: translate(var(--fx), var(--fy)) scale(1); animation-timing-function: ease-out; }
-  ${BREATH.lifeShare * BREATH.pushShare * 2 * 100}% { transform: translate(var(--lx), var(--ly)) scale(1); animation-timing-function: linear; }
+  ${BREATH.lifeShare * BREATH.pushShare * 100}% { transform: translate(var(--fx), var(--fy)) scale(${pushLength}, 1); animation-timing-function: ease-out; }
+  ${BREATH.lifeShare * BREATH.pushShare * 2 * 100}% { transform: translate(var(--lx), var(--ly)) scale(${pushLength}, 1); animation-timing-function: linear; }
+  ${BREATH.lifeShare * BREATH.pushShare * 3.5 * 100}% { transform: translate(calc(var(--lx) + (var(--bx) - var(--lx)) * 0.15), calc(var(--ly) + (var(--by) - var(--ly)) * 0.15)) scale(1, 0.9); animation-timing-function: linear; }
   ${BREATH.lifeShare * 100 * 0.7}% { opacity: 0.8; }
-  ${BREATH.lifeShare * 100}% { transform: translate(var(--bx), var(--by)) scale(0.6); opacity: 0; }
-  100% { transform: translate(var(--bx), var(--by)) scale(0.6); opacity: 0; }
+  ${BREATH.lifeShare * 100}% { transform: translate(var(--bx), var(--by)) scale(0.8, 0.5); opacity: 0; }
+  100% { transform: translate(var(--bx), var(--by)) scale(0.8, 0.5); opacity: 0; }
 `;
 
 const BreathEmber = styled.span`
   position: absolute;
   z-index: 1;
-  border-radius: 50%;
+  border-radius: 999px;
+  transform-origin: 0 50%;
   pointer-events: none;
   animation: ${breathPuff} ${BREATH.loopSeconds}s infinite;
 `;
 
 const Breath = () => BREATH_EMBERS.map(({ key, delay, cx, cy, fx, fy, lx, ly, bx, by, size, color }) => (
   <BreathEmber key={key} style={{
-    left: `${BREATH.mouth.x}px`, top: `${BREATH.mouth.y}px`, width: `${size}px`, height: `${size}px`,
-    background: `radial-gradient(circle, white 0%, ${color} 55%, transparent 100%)`,
-    boxShadow: `0 0 ${size * 2}px ${color}`,
+    left: `${BREATH.mouth.x}px`, top: `${BREATH.mouth.y}px`, width: `${size * BREATH.streak.length}px`, height: `${size}px`,
+    // a bright head, the tail thinning out to nothing
+    background: `linear-gradient(to right, white 0%, ${color} ${100 / BREATH.streak.length}%, ${color}88 55%, transparent 100%)`,
+    boxShadow: `0 0 ${size * 1.5}px ${color}88`,
     animationDelay: `${delay}s`, "--cx": `${cx}px`, "--cy": `${cy}px`, "--fx": `${fx}px`, "--fy": `${fy}px`, "--lx": `${lx}px`, "--ly": `${ly}px`, "--bx": `${bx}px`, "--by": `${by}px`
   }} />
 ));
