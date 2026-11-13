@@ -34,7 +34,8 @@
       "confirmed": {
         "name": "Ash Alchemist",
         "description": "The recipe calls for cremation.",
-        "at": 1793934262970
+        "at": 1793934262970,
+        "secondPass": true
       }
     },
     "Bubble,Death,Glass": {
@@ -71,7 +72,8 @@
       "confirmed": {
         "name": "Shadow Courier",
         "description": "Special delivery, from the other side.",
-        "at": 1793934285242
+        "at": 1793934285242,
+        "secondPass": true
       }
     },
     "Bubble,Death,Ice": {
@@ -108,7 +110,8 @@
       "confirmed": {
         "name": "Cryo Undertaker",
         "description": "Rest in permafrost.",
-        "at": 1793934308464
+        "at": 1793934308464,
+        "secondPass": true
       }
     },
     "Bubble,Death,Lightning": {
@@ -145,7 +148,8 @@
       "confirmed": {
         "name": "Necro Engineer",
         "description": "Raising the dead, one volt at a time.",
-        "at": 1793934331762
+        "at": 1793934331762,
+        "secondPass": true
       }
     },
     "Bubble,Death,Love": {
@@ -182,7 +186,8 @@
       "confirmed": {
         "name": "Plague Doctor 2.0",
         "description": "First, do some harm.",
-        "at": 1793934354909
+        "at": 1793934354909,
+        "secondPass": true
       }
     },
     "Bubble,Death,Metal": {
@@ -219,7 +224,8 @@
       "confirmed": {
         "name": "Tomb Guard",
         "description": "Nobody robs your graves.",
-        "at": 1793934381349
+        "at": 1793934381349,
+        "secondPass": true
       }
     },
     "Bubble,Death,Water": {
@@ -256,7 +262,8 @@
       "confirmed": {
         "name": "Drowned Sailor",
         "description": "You went down with the ship.",
-        "at": 1793934394478
+        "at": 1793934394478,
+        "secondPass": true
       }
     },
     "Bubble,Death,Wink": {
@@ -293,7 +300,8 @@
       "confirmed": {
         "name": "Grave Persuader",
         "description": "Every argument ends in a funeral.",
-        "at": 1793913854632
+        "at": 1793913854632,
+        "secondPass": true
       }
     },
     "Bubble,Death,Wood": {
@@ -330,7 +338,8 @@
       "confirmed": {
         "name": "Rot Gardener",
         "description": "Decay is just recycling.",
-        "at": 1793934413223
+        "at": 1793934413223,
+        "secondPass": true
       }
     },
     "Bubble,Fire,Glass": {
@@ -367,7 +376,8 @@
       "confirmed": {
         "name": "Plasma Courier",
         "description": "In and out before the blaze.",
-        "at": 1793934449529
+        "at": 1793934449529,
+        "secondPass": true
       }
     },
     "Bubble,Fire,Ice": {
@@ -404,7 +414,8 @@
       "confirmed": {
         "name": "Thermal Engineer",
         "description": "Don't touch that thermostat!",
-        "at": 1793934456550
+        "at": 1793934456550,
+        "secondPass": true
       }
     },
     "Bubble,Fire,Lightning": {
@@ -441,7 +452,8 @@
       "confirmed": {
         "name": "Reactor Tech",
         "description": "Meltdowns are a feature.",
-        "at": 1793934467377
+        "at": 1793934467377,
+        "secondPass": true
       }
     },
     "Bubble,Fire,Love": {
@@ -478,7 +490,8 @@
       "confirmed": {
         "name": "Ember Nurse",
         "description": "Cauterize first, comfort after.",
-        "at": 1793934497829
+        "at": 1793934497829,
+        "secondPass": true
       }
     },
     "Bubble,Fire,Metal": {
@@ -515,7 +528,8 @@
       "confirmed": {
         "name": "Forge Gunner",
         "description": "Steel, smelted on the spot.",
-        "at": 1793934523154
+        "at": 1793934523154,
+        "secondPass": true
       }
     },
     "Bubble,Fire,Water": {
@@ -552,7 +566,8 @@
       "confirmed": {
         "name": "Boiler Technician",
         "description": "Hot pipes, short temper.",
-        "at": 1793934540898
+        "at": 1793934540898,
+        "secondPass": true
       }
     },
     "Bubble,Fire,Wink": {
@@ -589,7 +604,8 @@
       "confirmed": {
         "name": "Smoke Charmer",
         "description": "Everyone leaves smelling of you.",
-        "at": 1793933941189
+        "at": 1793933941189,
+        "secondPass": true
       }
     },
     "Bubble,Fire,Wood": {
@@ -625,8 +641,9 @@
       ],
       "confirmed": {
         "name": "Ash Ranger",
-        "description": "Only you start forest fires.",
-        "at": 1793934592849
+        "description": "Only you can start forest fires.",
+        "at": 1793934592849,
+        "secondPass": true
       }
     },
     "Bubble,Glass,Ice": {
@@ -663,7 +680,8 @@
       "confirmed": {
         "name": "Cryo Courier",
         "description": "Deliveries arrive frozen solid.",
-        "at": 1793934624702
+        "at": 1793934624702,
+        "secondPass": true
       }
     },
     "Bubble,Glass,Lightning": {
@@ -700,7 +718,8 @@
       "confirmed": {
         "name": "Arc Runner",
         "description": "You ride the lightning.",
-        "at": 1793934663685
+        "at": 1793934663685,
+        "secondPass": true
       }
     },
     "Bubble,Glass,Love": {
@@ -737,7 +756,8 @@
       "confirmed": {
         "name": "Field Medic",
         "description": "Bandage, blink, repeat.",
-        "at": 1793934703808
+        "at": 1793934703808,
+        "secondPass": true
       }
     },
     "Bubble,Glass,Metal": {
@@ -774,7 +794,8 @@
       "confirmed": {
         "name": "Fortress Engineer",
         "description": "Ramparts, raised on demand.",
-        "at": 1793934726943
+        "at": 1793934726943,
+        "secondPass": true
       }
     },
     "Bubble,Glass,Water": {
@@ -811,7 +832,8 @@
       "confirmed": {
         "name": "Riptide Runner",
         "description": "Gone with the current.",
-        "at": 1793934741636
+        "at": 1793934741636,
+        "secondPass": true
       }
     },
     "Bubble,Glass,Wink": {
@@ -847,8 +869,9 @@
       ],
       "confirmed": {
         "name": "Mirage Broker",
-        "description": "Smoke, mirrors and a firm handshake.",
-        "at": 1793933959793
+        "description": "Selling smoke and mirrors.",
+        "at": 1793933959793,
+        "secondPass": true
       }
     },
     "Bubble,Glass,Wood": {
@@ -884,8 +907,9 @@
       ],
       "confirmed": {
         "name": "Crystal Gardener",
-        "description": "Glass greenhouses, wild vines.",
-        "at": 1793934757635
+        "description": "Glass greenhouses and wild vines.",
+        "at": 1793934757635,
+        "secondPass": true
       }
     },
     "Bubble,Ice,Lightning": {
@@ -922,7 +946,8 @@
       "confirmed": {
         "name": "Thunder Squall",
         "description": "Batten down. You're coming.",
-        "at": 1793934787749
+        "at": 1793934787749,
+        "secondPass": true
       }
     },
     "Bubble,Ice,Love": {
@@ -959,7 +984,8 @@
       "confirmed": {
         "name": "Cryo Medic",
         "description": "Cold hands, warm heart.",
-        "at": 1793934812645
+        "at": 1793934812645,
+        "secondPass": true
       }
     },
     "Bubble,Ice,Metal": {
@@ -996,7 +1022,8 @@
       "confirmed": {
         "name": "Polar Commander",
         "description": "You rule a frozen outpost.",
-        "at": 1793934838803
+        "at": 1793934838803,
+        "secondPass": true
       }
     },
     "Bubble,Ice,Water": {
@@ -1033,7 +1060,8 @@
       "confirmed": {
         "name": "Cryo Plumber",
         "description": "Frozen pipes are your specialty.",
-        "at": 1793934847220
+        "at": 1793934847220,
+        "secondPass": true
       }
     },
     "Bubble,Ice,Wink": {
@@ -1070,7 +1098,8 @@
       "confirmed": {
         "name": "Cryo Diplomat",
         "description": "Cold calls only.",
-        "at": 1793934117820
+        "at": 1793934117820,
+        "secondPass": true
       }
     },
     "Bubble,Ice,Wood": {
@@ -1107,7 +1136,8 @@
       "confirmed": {
         "name": "Winter Warden",
         "description": "Keeper of the frozen woods.",
-        "at": 1793934856950
+        "at": 1793934856950,
+        "secondPass": true
       }
     },
     "Bubble,Lightning,Love": {
@@ -1144,7 +1174,8 @@
       "confirmed": {
         "name": "Paddle Jockey",
         "description": "Charging. Stand back.",
-        "at": 1793934869556
+        "at": 1793934869556,
+        "secondPass": true
       }
     },
     "Bubble,Lightning,Metal": {
@@ -1181,7 +1212,8 @@
       "confirmed": {
         "name": "Shock Trooper",
         "description": "Charge, literally.",
-        "at": 1793934907782
+        "at": 1793934907782,
+        "secondPass": true
       }
     },
     "Bubble,Lightning,Water": {
@@ -1218,7 +1250,8 @@
       "confirmed": {
         "name": "Live Wire",
         "description": "Wet, wired, unpredictable.",
-        "at": 1793934922616
+        "at": 1793934922616,
+        "secondPass": true
       }
     },
     "Bubble,Lightning,Wink": {
@@ -1253,9 +1286,10 @@
         }
       ],
       "confirmed": {
-        "name": "Static Influencer",
-        "description": "Magnetic personality, literally.",
-        "at": 1793934176665
+        "name": "Digital Influencer",
+        "description": "An electric personality, literally.",
+        "at": 1793934176665,
+        "secondPass": true
       }
     },
     "Bubble,Lightning,Wood": {
@@ -1292,7 +1326,8 @@
       "confirmed": {
         "name": "Bio Electrician",
         "description": "Roots that carry current.",
-        "at": 1793934966229
+        "at": 1793934966229,
+        "secondPass": true
       }
     },
     "Bubble,Love,Metal": {
@@ -1329,7 +1364,8 @@
       "confirmed": {
         "name": "Life Support",
         "description": "Full defensive build.",
-        "at": 1793934997155
+        "at": 1793934997155,
+        "secondPass": true
       }
     },
     "Bubble,Love,Water": {
@@ -1366,7 +1402,8 @@
       "confirmed": {
         "name": "Spa Medic",
         "description": "Relax. That's medical advice.",
-        "at": 1793935008178
+        "at": 1793935008178,
+        "secondPass": true
       }
     },
     "Bubble,Love,Wink": {
@@ -1401,9 +1438,10 @@
         }
       ],
       "confirmed": {
-        "name": "Bliss Technician",
+        "name": "Behavior Tech",
         "description": "You calibrate their smiles.",
-        "at": 1793934190718
+        "at": 1793934190718,
+        "secondPass": true
       }
     },
     "Bubble,Love,Wood": {
@@ -1440,7 +1478,8 @@
       "confirmed": {
         "name": "Herbalist",
         "description": "Tea first, then surgery.",
-        "at": 1793935031467
+        "at": 1793935031467,
+        "secondPass": true
       }
     },
     "Bubble,Metal,Water": {
@@ -1477,7 +1516,8 @@
       "confirmed": {
         "name": "Deep Sea Diver",
         "description": "The helmet stays on.",
-        "at": 1793935044406
+        "at": 1793935044406,
+        "secondPass": true
       }
     },
     "Bubble,Metal,Wink": {
@@ -1513,8 +1553,9 @@
       ],
       "confirmed": {
         "name": "Peacekeeper",
-        "description": "The riot shield is for hugging.",
-        "at": 1793934203887
+        "description": "The riot shield is for your protection.",
+        "at": 1793934203887,
+        "secondPass": true
       }
     },
     "Bubble,Metal,Wood": {
@@ -1549,9 +1590,10 @@
         }
       ],
       "confirmed": {
-        "name": "Greenhouse Warden",
-        "description": "Please do not feed the specimens.",
-        "at": 1793935095075
+        "name": "Innercity Mutant",
+        "description": "You did what you had to to survive...",
+        "at": 1793935095075,
+        "secondPass": true
       }
     },
     "Bubble,Water,Wink": {
@@ -1588,7 +1630,8 @@
       "confirmed": {
         "name": "Tidal Hypnotist",
         "description": "They drift your way.",
-        "at": 1793934222346
+        "at": 1793934222346,
+        "secondPass": true
       }
     },
     "Bubble,Water,Wood": {
@@ -1624,8 +1667,9 @@
       ],
       "confirmed": {
         "name": "Bog Keeper",
-        "description": "You tend the marsh.",
-        "at": 1793935106111
+        "description": "aka Swamp Hag.",
+        "at": 1793935106111,
+        "secondPass": true
       }
     },
     "Bubble,Wink,Wood": {
@@ -1662,7 +1706,8 @@
       "confirmed": {
         "name": "Greenhouse Cultist",
         "description": "Grow with us, or get mulched.",
-        "at": 1793934236984
+        "at": 1793934236984,
+        "secondPass": true
       }
     },
     "Death,Fire,Glass": {
@@ -1699,7 +1744,8 @@
       "confirmed": {
         "name": "Hellfire Courier",
         "description": "Deliveries straight from the pit.",
-        "at": 1793935803892
+        "at": 1793935803892,
+        "secondPass": true
       }
     },
     "Death,Fire,Ice": {
@@ -1735,8 +1781,9 @@
       ],
       "confirmed": {
         "name": "Frostburn",
-        "description": "Cold fire, hot ice.",
-        "at": 1793935817869
+        "description": "Freeze-or burn.",
+        "at": 1793935817869,
+        "secondPass": true
       }
     },
     "Death,Fire,Lightning": {
@@ -1773,7 +1820,8 @@
       "confirmed": {
         "name": "Doom Engine",
         "description": "Your engine eats souls.",
-        "at": 1793935845564
+        "at": 1793935845564,
+        "secondPass": true
       }
     },
     "Death,Fire,Love": {
@@ -1810,7 +1858,8 @@
       "confirmed": {
         "name": "Chaos Surgeon",
         "description": "You kiss boo-boos as much as you cause them.",
-        "at": 1793935859453
+        "at": 1793935859453,
+        "secondPass": true
       }
     },
     "Death,Fire,Metal": {
@@ -1846,8 +1895,9 @@
       ],
       "confirmed": {
         "name": "Furnace Knight",
-        "description": "Armor glowing red.",
-        "at": 1793935867488
+        "description": "Glowing-red armor, from the kiln.",
+        "at": 1793935867488,
+        "secondPass": true
       }
     },
     "Death,Fire,Water": {
@@ -1884,7 +1934,8 @@
       "confirmed": {
         "name": "Cauldron Witch",
         "description": "Something wicked boils.",
-        "at": 1793935877300
+        "at": 1793935877300,
+        "secondPass": true
       }
     },
     "Death,Fire,Wink": {
@@ -1920,8 +1971,9 @@
       ],
       "confirmed": {
         "name": "Pyre Prophet",
-        "description": "Salvation, well done.",
-        "at": 1793935130975
+        "description": "Salvation served well done.",
+        "at": 1793935130975,
+        "secondPass": true
       }
     },
     "Death,Fire,Wood": {
@@ -1958,7 +2010,8 @@
       "confirmed": {
         "name": "Ash Druid",
         "description": "Keeper of the burned grove.",
-        "at": 1793935884385
+        "at": 1793935884385,
+        "secondPass": true
       }
     },
     "Death,Glass,Ice": {
@@ -1995,7 +2048,8 @@
       "confirmed": {
         "name": "Cryo Necromancer",
         "description": "Standard bastard.",
-        "at": 1793935896368
+        "at": 1793935896368,
+        "secondPass": true
       }
     },
     "Death,Glass,Lightning": {
@@ -2030,9 +2084,10 @@
         }
       ],
       "confirmed": {
-        "name": "Blink Assassin",
-        "description": "Strike first, exist later.",
-        "at": 1793935926205
+        "name": "Quantum Assassin",
+        "description": "Strike first, determine if you exist later.",
+        "at": 1793935926205,
+        "secondPass": true
       }
     },
     "Death,Glass,Love": {
@@ -2069,7 +2124,8 @@
       "confirmed": {
         "name": "Psychopomp Unit",
         "description": "Escort to the other side.",
-        "at": 1793935956881
+        "at": 1793935956881,
+        "secondPass": true
       }
     },
     "Death,Glass,Metal": {
@@ -2104,9 +2160,10 @@
         }
       ],
       "confirmed": {
-        "name": "Vault Phantom",
-        "description": "Haunting the locked rooms.",
-        "at": 1793936000905
+        "name": "Vault Diver",
+        "description": "Pillager of forgotten tech.",
+        "at": 1793936000905,
+        "secondPass": true
       }
     },
     "Death,Glass,Water": {
@@ -2143,7 +2200,8 @@
       "confirmed": {
         "name": "Abyss Walker",
         "description": "You stroll the ocean floor.",
-        "at": 1793936042751
+        "at": 1793936042751,
+        "secondPass": true
       }
     },
     "Death,Glass,Wink": {
@@ -2179,8 +2237,9 @@
       ],
       "confirmed": {
         "name": "Skin Walker",
-        "description": "You go places in other people.",
-        "at": 1793935172060
+        "description": "You're going places!",
+        "at": 1793935172060,
+        "secondPass": true
       }
     },
     "Death,Glass,Wood": {
@@ -2216,8 +2275,9 @@
       ],
       "confirmed": {
         "name": "Xeno Stalker",
-        "description": "Something in the ductwork.",
-        "at": 1793936057194
+        "description": "There's something in the ductwork.",
+        "at": 1793936057194,
+        "secondPass": true
       }
     },
     "Death,Ice,Lightning": {
@@ -2253,8 +2313,9 @@
       ],
       "confirmed": {
         "name": "Void Pirate",
-        "description": "Plunder in the cold dark.",
-        "at": 1793936071568
+        "description": "Plunderer of the cold dark.",
+        "at": 1793936071568,
+        "secondPass": true
       }
     },
     "Death,Ice,Love": {
@@ -2290,8 +2351,9 @@
       ],
       "confirmed": {
         "name": "Cryo Mortician",
-        "description": "Skilled in healing and icy death.",
-        "at": 1793936093238
+        "description": "In the end, all of your clients smile.",
+        "at": 1793936093238,
+        "secondPass": true
       }
     },
     "Death,Ice,Metal": {
@@ -2327,8 +2389,9 @@
       ],
       "confirmed": {
         "name": "Cryo Trooper",
-        "description": "Thawed and ready.",
-        "at": 1793936103725
+        "description": "So cool they call you absolute Kelvin!",
+        "at": 1793936103725,
+        "secondPass": true
       }
     },
     "Death,Ice,Water": {
@@ -2365,7 +2428,8 @@
       "confirmed": {
         "name": "Arctic Diver",
         "description": "Freezing water, frozen stare.",
-        "at": 1793936124303
+        "at": 1793936124303,
+        "secondPass": true
       }
     },
     "Death,Ice,Wink": {
@@ -2401,8 +2465,9 @@
       ],
       "confirmed": {
         "name": "Frost Siren",
-        "description": "They follow the song into the cold.",
-        "at": 1793935188414
+        "description": "They follow your song into the cold.",
+        "at": 1793935188414,
+        "secondPass": true
       }
     },
     "Death,Ice,Wood": {
@@ -2454,8 +2519,9 @@
       ],
       "confirmed": {
         "name": "Frost Undertaker",
-        "description": "You keep the dead fresh.",
-        "at": 1793937716420
+        "description": "You keep the dead on ice.",
+        "at": 1793937716420,
+        "secondPass": true
       }
     },
     "Death,Lightning,Love": {
@@ -2492,7 +2558,8 @@
       "confirmed": {
         "name": "Reanimator",
         "description": "It's alive! Mostly.",
-        "at": 1793936150265
+        "at": 1793936150265,
+        "secondPass": true
       }
     },
     "Death,Lightning,Metal": {
@@ -2528,8 +2595,9 @@
       ],
       "confirmed": {
         "name": "Tesla Lich",
-        "description": "Your tomb has a power plant.",
-        "at": 1793936159130
+        "description": "Your crypt is a power plant.",
+        "at": 1793936159130,
+        "secondPass": true
       }
     },
     "Death,Lightning,Water": {
@@ -2566,7 +2634,8 @@
       "confirmed": {
         "name": "Eel Wraith",
         "description": "Slippery and deadly.",
-        "at": 1793936166766
+        "at": 1793936166766,
+        "secondPass": true
       }
     },
     "Death,Lightning,Wink": {
@@ -2603,7 +2672,8 @@
       "confirmed": {
         "name": "Mind Jacker",
         "description": "Their nerves, your network.",
-        "at": 1793935199548
+        "at": 1793935199548,
+        "secondPass": true
       }
     },
     "Death,Lightning,Wood": {
@@ -2638,9 +2708,10 @@
         }
       ],
       "confirmed": {
-        "name": "Swamp Lord",
-        "description": "Lightning feeds your bog.",
-        "at": 1793936177013
+        "name": "Bayou Electrician",
+        "description": "Days since last workplace injury: 0.",
+        "at": 1793936177013,
+        "secondPass": true
       }
     },
     "Death,Love,Metal": {
@@ -2676,8 +2747,9 @@
       ],
       "confirmed": {
         "name": "Grave Knight",
-        "description": "Sworn to the cemetery.",
-        "at": 1793936196246
+        "description": "Sworn to your ancestral cemetery.",
+        "at": 1793936196246,
+        "secondPass": true
       }
     },
     "Death,Love,Water": {
@@ -2714,7 +2786,8 @@
       "confirmed": {
         "name": "Embalmer",
         "description": "Preserving, presenting, perfecting.",
-        "at": 1793936209472
+        "at": 1793936209472,
+        "secondPass": true
       }
     },
     "Death,Love,Wink": {
@@ -2750,8 +2823,9 @@
       ],
       "confirmed": {
         "name": "Last Rites Officer",
-        "description": "You hold the door to the other side.",
-        "at": 1793935243424
+        "description": "You hold the door, to the other side.",
+        "at": 1793935243424,
+        "secondPass": true
       }
     },
     "Death,Love,Wood": {
@@ -2787,8 +2861,9 @@
       ],
       "confirmed": {
         "name": "Grave Herbalist",
-        "description": "The best roots grow on graves.",
-        "at": 1793936232702
+        "description": "The best herbs grow over graves.",
+        "at": 1793936232702,
+        "secondPass": true
       }
     },
     "Death,Metal,Water": {
@@ -2825,7 +2900,8 @@
       "confirmed": {
         "name": "Sunken Mech",
         "description": "Still online down there.",
-        "at": 1793936246135
+        "at": 1793936246135,
+        "secondPass": true
       }
     },
     "Death,Metal,Wink": {
@@ -2860,9 +2936,10 @@
         }
       ],
       "confirmed": {
-        "name": "Steel Necromancer",
-        "description": "Raises the dead in armor.",
-        "at": 1793935228557
+        "name": "Death-Metal Tech",
+        "description": "Sound therapy.",
+        "at": 1793935228557,
+        "secondPass": true
       }
     },
     "Death,Metal,Wood": {
@@ -2899,7 +2976,8 @@
       "confirmed": {
         "name": "Briar Sentinel",
         "description": "Nobody gets through the hedge.",
-        "at": 1793936256472
+        "at": 1793936256472,
+        "secondPass": true
       }
     },
     "Death,Water,Wink": {
@@ -2936,7 +3014,8 @@
       "confirmed": {
         "name": "Kelp Wraith",
         "description": "Haunting the harbor floor.",
-        "at": 1793935254437
+        "at": 1793935254437,
+        "secondPass": true
       }
     },
     "Death,Water,Wood": {
@@ -2973,7 +3052,8 @@
       "confirmed": {
         "name": "Peat Mummy",
         "description": "Pickled by the bog.",
-        "at": 1793936270311
+        "at": 1793936270311,
+        "secondPass": true
       }
     },
     "Death,Wink,Wood": {
@@ -3008,9 +3088,10 @@
         }
       ],
       "confirmed": {
-        "name": "Rot Charmer",
-        "description": "They wilt for you.",
-        "at": 1793935287244
+        "name": "Techno Shaman",
+        "description": "Some yuppie's spirit guide, for a price.",
+        "at": 1793935287244,
+        "secondPass": true
       }
     },
     "Fire,Glass,Ice": {
@@ -3047,7 +3128,8 @@
       "confirmed": {
         "name": "Temperature Jumper",
         "description": "You warp the weather.",
-        "at": 1793936300123
+        "at": 1793936300123,
+        "secondPass": true
       }
     },
     "Fire,Glass,Lightning": {
@@ -3083,8 +3165,9 @@
       ],
       "confirmed": {
         "name": "Flash Trooper",
-        "description": "Blinding fast, blinding bright.",
-        "at": 1793936311052
+        "description": "Blindingly fast, blindingly bright.",
+        "at": 1793936311052,
+        "secondPass": true
       }
     },
     "Fire,Glass,Love": {
@@ -3121,7 +3204,8 @@
       "confirmed": {
         "name": "Blaze Angel",
         "description": "You descend in fire.",
-        "at": 1793936324031
+        "at": 1793936324031,
+        "secondPass": true
       }
     },
     "Fire,Glass,Metal": {
@@ -3158,7 +3242,8 @@
       "confirmed": {
         "name": "Rocket Knight",
         "description": "You arrive with a boom.",
-        "at": 1793936331551
+        "at": 1793936331551,
+        "secondPass": true
       }
     },
     "Fire,Glass,Water": {
@@ -3194,8 +3279,9 @@
       ],
       "confirmed": {
         "name": "Steam Jumper",
-        "description": "Hot mist, then gone.",
-        "at": 1793936347866
+        "description": "Steampunk LARP-ing taken too far.",
+        "at": 1793936347866,
+        "secondPass": true
       }
     },
     "Fire,Glass,Wink": {
@@ -3232,7 +3318,8 @@
       "confirmed": {
         "name": "Matchmaker",
         "description": "You light the spark and run.",
-        "at": 1793935300443
+        "at": 1793935300443,
+        "secondPass": true
       }
     },
     "Fire,Glass,Wood": {
@@ -3268,8 +3355,9 @@
       ],
       "confirmed": {
         "name": "Rogue Terraformer",
-        "description": "Worlds change, you leave.",
-        "at": 1793936356922
+        "description": "You do not have a permit for this...",
+        "at": 1793936356922,
+        "secondPass": true
       }
     },
     "Fire,Ice,Lightning": {
@@ -3305,8 +3393,9 @@
       ],
       "confirmed": {
         "name": "Tri-Elemental",
-        "description": "Fire, ice, lightning. Pick one.",
-        "at": 1793936388234
+        "description": "Born in a lab. Wielder of pure psychic energy.",
+        "at": 1793936388234,
+        "secondPass": true
       }
     },
     "Fire,Ice,Love": {
@@ -3343,7 +3432,8 @@
       "confirmed": {
         "name": "Thermokinetic",
         "description": "Your temperature is a treatment.",
-        "at": 1793936402723
+        "at": 1793936402723,
+        "secondPass": true
       }
     },
     "Fire,Ice,Metal": {
@@ -3380,7 +3470,8 @@
       "confirmed": {
         "name": "Elemental Armorer",
         "description": "Steel, tempered in fire and ice.",
-        "at": 1793936424102
+        "at": 1793936424102,
+        "secondPass": true
       }
     },
     "Fire,Ice,Water": {
@@ -3417,7 +3508,8 @@
       "confirmed": {
         "name": "Weather Maker",
         "description": "The forecast is your mood.",
-        "at": 1793936437918
+        "at": 1793936437918,
+        "secondPass": true
       }
     },
     "Fire,Ice,Wink": {
@@ -3452,9 +3544,10 @@
         }
       ],
       "confirmed": {
-        "name": "Steam Seducer",
-        "description": "You leave windows fogged.",
-        "at": 1793935318450
+        "name": "Steamy Seducer",
+        "description": "The name is a bit misleading, you've found.",
+        "at": 1793935318450,
+        "secondPass": true
       }
     },
     "Fire,Ice,Wood": {
@@ -3491,7 +3584,8 @@
       "confirmed": {
         "name": "Frontier Ranger",
         "description": "Fire, frost, forest: home.",
-        "at": 1793936454003
+        "at": 1793936454003,
+        "secondPass": true
       }
     },
     "Fire,Lightning,Love": {
@@ -3528,7 +3622,8 @@
       "confirmed": {
         "name": "Rookie Firebrand",
         "description": "Learning fast, burning faster.",
-        "at": 1793936486296
+        "at": 1793936486296,
+        "secondPass": true
       }
     },
     "Fire,Lightning,Metal": {
@@ -3565,7 +3660,8 @@
       "confirmed": {
         "name": "Battle Mech",
         "description": "Steel, sparks and smoke.",
-        "at": 1793936499064
+        "at": 1793936499064,
+        "secondPass": true
       }
     },
     "Fire,Lightning,Water": {
@@ -3602,7 +3698,8 @@
       "confirmed": {
         "name": "Tempest",
         "description": "You are the bad forecast.",
-        "at": 1793936508878
+        "at": 1793936508878,
+        "secondPass": true
       }
     },
     "Fire,Lightning,Wink": {
@@ -3638,8 +3735,9 @@
       ],
       "confirmed": {
         "name": "Rockstar Android",
-        "description": "Every show is a light show.",
-        "at": 1793935332227
+        "description": "Every show is a light show with you.",
+        "at": 1793935332227,
+        "secondPass": true
       }
     },
     "Fire,Lightning,Wood": {
@@ -3676,7 +3774,8 @@
       "confirmed": {
         "name": "Saboteur",
         "description": "You light fuses in forests.",
-        "at": 1793936525780
+        "at": 1793936525780,
+        "secondPass": true
       }
     },
     "Fire,Love,Metal": {
@@ -3712,8 +3811,9 @@
       ],
       "confirmed": {
         "name": "Forge Guardian",
-        "description": "Protecting with steel and flame.",
-        "at": 1793936540306
+        "description": "Protecting citizens with steel and flame.",
+        "at": 1793936540306,
+        "secondPass": true
       }
     },
     "Fire,Love,Water": {
@@ -3750,7 +3850,8 @@
       "confirmed": {
         "name": "Steam Therapist",
         "description": "Breathe in. Now scream.",
-        "at": 1793936557855
+        "at": 1793936557855,
+        "secondPass": true
       }
     },
     "Fire,Love,Wink": {
@@ -3787,7 +3888,8 @@
       "confirmed": {
         "name": "Flame Whisperer",
         "description": "Warm hands, warmer heart.",
-        "at": 1793935355301
+        "at": 1793935355301,
+        "secondPass": true
       }
     },
     "Fire,Love,Wood": {
@@ -3824,7 +3926,8 @@
       "confirmed": {
         "name": "Burn Ecologist",
         "description": "A controlled burn heals the land.",
-        "at": 1793936564520
+        "at": 1793936564520,
+        "secondPass": true
       }
     },
     "Fire,Metal,Water": {
@@ -3861,7 +3964,8 @@
       "confirmed": {
         "name": "Blacksmith",
         "description": "Hammer, heat, hiss.",
-        "at": 1793936579317
+        "at": 1793936579317,
+        "secondPass": true
       }
     },
     "Fire,Metal,Wink": {
@@ -3897,8 +4001,9 @@
       ],
       "confirmed": {
         "name": "Furnace Boss",
-        "description": "Your office has a smokestack.",
-        "at": 1793935364744
+        "description": "You're under a lot of pressure at work.",
+        "at": 1793935364744,
+        "secondPass": true
       }
     },
     "Fire,Metal,Wood": {
@@ -3935,7 +4040,8 @@
       "confirmed": {
         "name": "Forge Tech",
         "description": "Build it, burn it, rebuild it.",
-        "at": 1793936592668
+        "at": 1793936592668,
+        "secondPass": true
       }
     },
     "Fire,Water,Wink": {
@@ -3972,7 +4078,8 @@
       "confirmed": {
         "name": "Sauna Mogul",
         "description": "Everyone relaxes eventually.",
-        "at": 1793935388313
+        "at": 1793935388313,
+        "secondPass": true
       }
     },
     "Fire,Water,Wood": {
@@ -4009,7 +4116,8 @@
       "confirmed": {
         "name": "Cycle Keeper",
         "description": "Nature's loop, in your hands.",
-        "at": 1793936611130
+        "at": 1793936611130,
+        "secondPass": true
       }
     },
     "Fire,Wink,Wood": {
@@ -4046,7 +4154,8 @@
       "confirmed": {
         "name": "Bonfire Host",
         "description": "Gather round. Closer.",
-        "at": 1793935404033
+        "at": 1793935404033,
+        "secondPass": true
       }
     },
     "Glass,Ice,Lightning": {
@@ -4081,9 +4190,10 @@
         }
       ],
       "confirmed": {
-        "name": "Sky Watcher",
-        "description": "Eyes in the clouds.",
-        "at": 1793936619305
+        "name": "Meteorologist",
+        "description": "Your forecast is always right.",
+        "at": 1793936619305,
+        "secondPass": true
       }
     },
     "Glass,Ice,Love": {
@@ -4120,7 +4230,8 @@
       "confirmed": {
         "name": "Interloper",
         "description": "Never in one sector long.",
-        "at": 1793936629319
+        "at": 1793936629319,
+        "secondPass": true
       }
     },
     "Glass,Ice,Metal": {
@@ -4157,7 +4268,8 @@
       "confirmed": {
         "name": "Arctic Scout",
         "description": "You map the frozen frontier.",
-        "at": 1793936639433
+        "at": 1793936639433,
+        "secondPass": true
       }
     },
     "Glass,Ice,Water": {
@@ -4194,7 +4306,8 @@
       "confirmed": {
         "name": "Floe Drifter",
         "description": "Riding ice across the sea.",
-        "at": 1793936653497
+        "at": 1793936653497,
+        "secondPass": true
       }
     },
     "Glass,Ice,Wink": {
@@ -4231,7 +4344,8 @@
       "confirmed": {
         "name": "Frost Flirt",
         "description": "A wink, a chill, a vanishing act.",
-        "at": 1793935439257
+        "at": 1793935439257,
+        "secondPass": true
       }
     },
     "Glass,Ice,Wood": {
@@ -4268,7 +4382,8 @@
       "confirmed": {
         "name": "Tundra Trapper",
         "description": "Snares in the snow.",
-        "at": 1793936663802
+        "at": 1793936663802,
+        "secondPass": true
       }
     },
     "Glass,Lightning,Love": {
@@ -4305,7 +4420,8 @@
       "confirmed": {
         "name": "Orbital Medic",
         "description": "Beamed down, patched up.",
-        "at": 1793936678912
+        "at": 1793936678912,
+        "secondPass": true
       }
     },
     "Glass,Lightning,Metal": {
@@ -4342,7 +4458,8 @@
       "confirmed": {
         "name": "Gate Keeper",
         "description": "You guard the doorways.",
-        "at": 1793936689717
+        "at": 1793936689717,
+        "secondPass": true
       }
     },
     "Glass,Lightning,Water": {
@@ -4379,7 +4496,8 @@
       "confirmed": {
         "name": "Rain Jumper",
         "description": "You fall with the storm.",
-        "at": 1793936703972
+        "at": 1793936703972,
+        "secondPass": true
       }
     },
     "Glass,Lightning,Wink": {
@@ -4416,7 +4534,8 @@
       "confirmed": {
         "name": "Signal Siren",
         "description": "Every frequency is yours.",
-        "at": 1793935453954
+        "at": 1793935453954,
+        "secondPass": true
       }
     },
     "Glass,Lightning,Wood": {
@@ -4453,7 +4572,8 @@
       "confirmed": {
         "name": "Portal Ranger",
         "description": "Patrolling the in-between.",
-        "at": 1793936710330
+        "at": 1793936710330,
+        "secondPass": true
       }
     },
     "Glass,Love,Metal": {
@@ -4490,7 +4610,8 @@
       "confirmed": {
         "name": "Bulwark Medic",
         "description": "Behind your shield, they live.",
-        "at": 1793936720252
+        "at": 1793936720252,
+        "secondPass": true
       }
     },
     "Glass,Love,Water": {
@@ -4527,7 +4648,8 @@
       "confirmed": {
         "name": "Tide Medic",
         "description": "Saltwater and stitches.",
-        "at": 1793936730572
+        "at": 1793936730572,
+        "secondPass": true
       }
     },
     "Glass,Love,Wink": {
@@ -4564,7 +4686,8 @@
       "confirmed": {
         "name": "Flying Doctor",
         "description": "On call, everywhere.",
-        "at": 1793935471730
+        "at": 1793935471730,
+        "secondPass": true
       }
     },
     "Glass,Love,Wood": {
@@ -4601,7 +4724,8 @@
       "confirmed": {
         "name": "Intern",
         "description": "You're an intern. I doubt you'll win.",
-        "at": 1793936743120
+        "at": 1793936743120,
+        "secondPass": true
       }
     },
     "Glass,Metal,Water": {
@@ -4638,7 +4762,8 @@
       "confirmed": {
         "name": "Salvage Jumper",
         "description": "Wrecks, raided fast.",
-        "at": 1793936759764
+        "at": 1793936759764,
+        "secondPass": true
       }
     },
     "Glass,Metal,Wink": {
@@ -4673,9 +4798,10 @@
         }
       ],
       "confirmed": {
-        "name": "Heist Planner",
-        "description": "The plan has a plan.",
-        "at": 1793935480184
+        "name": "Manipulator",
+        "description": "You never get your hands dirty.",
+        "at": 1793935480184,
+        "secondPass": true
       }
     },
     "Glass,Metal,Wood": {
@@ -4712,7 +4838,8 @@
       "confirmed": {
         "name": "Outpost Builder",
         "description": "Shelters, raised anywhere.",
-        "at": 1793936778426
+        "at": 1793936778426,
+        "secondPass": true
       }
     },
     "Glass,Water,Wink": {
@@ -4749,7 +4876,8 @@
       "confirmed": {
         "name": "Tide Trickster",
         "description": "Low tide, high jinks.",
-        "at": 1793935506112
+        "at": 1793935506112,
+        "secondPass": true
       }
     },
     "Glass,Water,Wood": {
@@ -4786,7 +4914,8 @@
       "confirmed": {
         "name": "Canopy Phantom",
         "description": "The rainforest hides you.",
-        "at": 1793936805070
+        "at": 1793936805070,
+        "secondPass": true
       }
     },
     "Glass,Wink,Wood": {
@@ -4821,9 +4950,10 @@
         }
       ],
       "confirmed": {
-        "name": "Seed Courier",
-        "description": "Gardens, delivered.",
-        "at": 1793935524659
+        "name": "Techno Fairy",
+        "description": "Eventually, science advances to become magic.",
+        "at": 1793935524659,
+        "secondPass": true
       }
     },
     "Ice,Lightning,Love": {
@@ -4860,7 +4990,8 @@
       "confirmed": {
         "name": "Cold Fusion Priest",
         "description": "Austere, yet radiant.",
-        "at": 1793936821674
+        "at": 1793936821674,
+        "secondPass": true
       }
     },
     "Ice,Lightning,Metal": {
@@ -4897,7 +5028,8 @@
       "confirmed": {
         "name": "Stormcaller",
         "description": "You call the storms, but do they pick up?",
-        "at": 1793936825890
+        "at": 1793936825890,
+        "secondPass": true
       }
     },
     "Ice,Lightning,Water": {
@@ -4950,7 +5082,8 @@
       "confirmed": {
         "name": "Weather Officer",
         "description": "Rain, sleet and shock, on schedule.",
-        "at": 1793937697220
+        "at": 1793937697220,
+        "secondPass": true
       }
     },
     "Ice,Lightning,Wink": {
@@ -4987,7 +5120,8 @@
       "confirmed": {
         "name": "Frost Processor",
         "description": "Computing at sub-zero.",
-        "at": 1793935543030
+        "at": 1793935543030,
+        "secondPass": true
       }
     },
     "Ice,Lightning,Wood": {
@@ -5022,9 +5156,10 @@
         }
       ],
       "confirmed": {
-        "name": "Frost Druid",
-        "description": "The winter grove's guardian.",
-        "at": 1793936859070
+        "name": "Gaianaut",
+        "description": "Planet Earth's zy-goat!",
+        "at": 1793936859070,
+        "secondPass": true
       }
     },
     "Ice,Love,Metal": {
@@ -5061,7 +5196,8 @@
       "confirmed": {
         "name": "Polar Settler",
         "description": "Icy endeavours across the outer colonies.",
-        "at": 1793936873779
+        "at": 1793936873779,
+        "secondPass": true
       }
     },
     "Ice,Love,Water": {
@@ -5098,7 +5234,8 @@
       "confirmed": {
         "name": "Glacier Nurse",
         "description": "Slow, steady, healing.",
-        "at": 1793936886323
+        "at": 1793936886323,
+        "secondPass": true
       }
     },
     "Ice,Love,Wink": {
@@ -5135,7 +5272,8 @@
       "confirmed": {
         "name": "Winter Nurse",
         "description": "You break fevers.",
-        "at": 1793935554660
+        "at": 1793935554660,
+        "secondPass": true
       }
     },
     "Ice,Love,Wood": {
@@ -5172,7 +5310,8 @@
       "confirmed": {
         "name": "Cryo Botanist",
         "description": "Seeds on ice, saved for spring.",
-        "at": 1793936895756
+        "at": 1793936895756,
+        "secondPass": true
       }
     },
     "Ice,Metal,Water": {
@@ -5209,7 +5348,8 @@
       "confirmed": {
         "name": "Cryo Submariner",
         "description": "Under the ice shelf, silent.",
-        "at": 1793936905789
+        "at": 1793936905789,
+        "secondPass": true
       }
     },
     "Ice,Metal,Wink": {
@@ -5245,8 +5385,9 @@
       ],
       "confirmed": {
         "name": "Frost Ambassador",
-        "description": "A frosty handshake, steel resolve.",
-        "at": 1793935609978
+        "description": "Melting hearts, in the frozen north.",
+        "at": 1793935609978,
+        "secondPass": true
       }
     },
     "Ice,Metal,Wood": {
@@ -5283,7 +5424,8 @@
       "confirmed": {
         "name": "Frost Lumberjack",
         "description": "Timber!",
-        "at": 1793936913679
+        "at": 1793936913679,
+        "secondPass": true
       }
     },
     "Ice,Water,Wink": {
@@ -5320,7 +5462,8 @@
       "confirmed": {
         "name": "Ice Skater",
         "description": "Spin, slide, charm.",
-        "at": 1793935584899
+        "at": 1793935584899,
+        "secondPass": true
       }
     },
     "Ice,Water,Wood": {
@@ -5357,7 +5500,8 @@
       "confirmed": {
         "name": "Thaw Spirit",
         "description": "Melting snow, budding trees.",
-        "at": 1793936927944
+        "at": 1793936927944,
+        "secondPass": true
       }
     },
     "Ice,Wink,Wood": {
@@ -5394,7 +5538,8 @@
       "confirmed": {
         "name": "Winter Druid",
         "description": "Cold woods, kind keeper.",
-        "at": 1793935626296
+        "at": 1793935626296,
+        "secondPass": true
       }
     },
     "Lightning,Love,Metal": {
@@ -5431,7 +5576,8 @@
       "confirmed": {
         "name": "Railgun Medic",
         "description": "Not like the other medics.",
-        "at": 1793936936228
+        "at": 1793936936228,
+        "secondPass": true
       }
     },
     "Lightning,Love,Water": {
@@ -5468,7 +5614,8 @@
       "confirmed": {
         "name": "Rain Healer",
         "description": "Healing falls like rain.",
-        "at": 1793936952407
+        "at": 1793936952407,
+        "secondPass": true
       }
     },
     "Lightning,Love,Wink": {
@@ -5505,7 +5652,8 @@
       "confirmed": {
         "name": "Spark Therapist",
         "description": "Healing at high voltage.",
-        "at": 1793935638265
+        "at": 1793935638265,
+        "secondPass": true
       }
     },
     "Lightning,Love,Wood": {
@@ -5542,7 +5690,8 @@
       "confirmed": {
         "name": "Garden Scientist",
         "description": "Experiments that bloom.",
-        "at": 1793936971936
+        "at": 1793936971936,
+        "secondPass": true
       }
     },
     "Lightning,Metal,Water": {
@@ -5579,7 +5728,8 @@
       "confirmed": {
         "name": "Tesla Diver",
         "description": "Shocking depths.",
-        "at": 1793936984126
+        "at": 1793936984126,
+        "secondPass": true
       }
     },
     "Lightning,Metal,Wink": {
@@ -5616,7 +5766,8 @@
       "confirmed": {
         "name": "Machine Whisperer",
         "description": "Robots blush.",
-        "at": 1793935655122
+        "at": 1793935655122,
+        "secondPass": true
       }
     },
     "Lightning,Metal,Wood": {
@@ -5653,7 +5804,8 @@
       "confirmed": {
         "name": "Rail Ranger",
         "description": "Riding the power lines.",
-        "at": 1793937003929
+        "at": 1793937003929,
+        "secondPass": true
       }
     },
     "Lightning,Water,Wink": {
@@ -5690,7 +5842,8 @@
       "confirmed": {
         "name": "Tide Caller",
         "description": "The surf comes when you call.",
-        "at": 1793935662037
+        "at": 1793935662037,
+        "secondPass": true
       }
     },
     "Lightning,Water,Wood": {
@@ -5727,7 +5880,8 @@
       "confirmed": {
         "name": "Hydro Gardener",
         "description": "Water, power, growth.",
-        "at": 1793937020725
+        "at": 1793937020725,
+        "secondPass": true
       }
     },
     "Lightning,Wink,Wood": {
@@ -5764,7 +5918,8 @@
       "confirmed": {
         "name": "Bio-Synth Bard",
         "description": "The forest's favorite DJ.",
-        "at": 1793935671651
+        "at": 1793935671651,
+        "secondPass": true
       }
     },
     "Love,Metal,Water": {
@@ -5801,7 +5956,8 @@
       "confirmed": {
         "name": "Lighthouse Keeper",
         "description": "Guiding ships home.",
-        "at": 1793937071631
+        "at": 1793937071631,
+        "secondPass": true
       }
     },
     "Love,Metal,Wink": {
@@ -5836,9 +5992,10 @@
         }
       ],
       "confirmed": {
-        "name": "Caretaker Bot",
-        "description": "Beep. Hug. Repeat.",
-        "at": 1793935687502
+        "name": "Love Robot",
+        "description": "You were built for something else...",
+        "at": 1793935687502,
+        "secondPass": true
       }
     },
     "Love,Metal,Wood": {
@@ -5875,7 +6032,8 @@
       "confirmed": {
         "name": "Grove Paladin",
         "description": "The woods' champion.",
-        "at": 1793937094096
+        "at": 1793937094096,
+        "secondPass": true
       }
     },
     "Love,Water,Wink": {
@@ -5912,7 +6070,8 @@
       "confirmed": {
         "name": "Mermaid",
         "description": "YOU'RE A MERMAID!!",
-        "at": 1793935697604
+        "at": 1793935697604,
+        "secondPass": true
       }
     },
     "Love,Water,Wood": {
@@ -5949,7 +6108,8 @@
       "confirmed": {
         "name": "Wetland Healer",
         "description": "Restoring the marsh.",
-        "at": 1793937100597
+        "at": 1793937100597,
+        "secondPass": true
       }
     },
     "Love,Wink,Wood": {
@@ -5986,7 +6146,8 @@
       "confirmed": {
         "name": "Blossom Medic",
         "description": "Petals, poultices, peace.",
-        "at": 1793935723699
+        "at": 1793935723699,
+        "secondPass": true
       }
     },
     "Metal,Water,Wink": {
@@ -6023,7 +6184,8 @@
       "confirmed": {
         "name": "Submarine Captain",
         "description": "Charming at any depth.",
-        "at": 1793935747638
+        "at": 1793935747638,
+        "secondPass": true
       }
     },
     "Metal,Water,Wood": {
@@ -6060,7 +6222,8 @@
       "confirmed": {
         "name": "Swamp Walker",
         "description": "Mud can't slow you.",
-        "at": 1793937114070
+        "at": 1793937114070,
+        "secondPass": true
       }
     },
     "Metal,Wink,Wood": {
@@ -6096,8 +6259,9 @@
       ],
       "confirmed": {
         "name": "Mech Gardener",
-        "description": "You have a green thumb. It is steel.",
-        "at": 1793935785940
+        "description": "You have a green thumb. It's weathered copper.",
+        "at": 1793935785940,
+        "secondPass": true
       }
     },
     "Water,Wink,Wood": {
@@ -6134,7 +6298,8 @@
       "confirmed": {
         "name": "Bayou Charmer",
         "description": "Gators grin at you.",
-        "at": 1793935793814
+        "at": 1793935793814,
+        "secondPass": true
       }
     }
   }
