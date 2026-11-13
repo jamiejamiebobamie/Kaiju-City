@@ -42,6 +42,26 @@ describe('playtest 23', () => {
     expect(recruit.isDead).toBe(true);
   });
 
+  it('M14: the Mermaid never stands waiting by a stairway she has just used', () => {
+    const gm = makeGame(LEVELS.aquarium);
+    for (let k = 0; k < 4000 && gm.cutscene; k++) gm.stepPieces();
+    gm.getPieces().forEach(piece => { piece.decrementHealth = () => {}; }); // the fight goes on, so she roams a good while
+    const rival = gm.rivalPiece;
+    const ends = LEVELS.aquarium.tileLinks.flat().map(tile => gm.gameBoardManager.getCharXAndYFromTileIndex(tile));
+    const rowPx = gm.getGhostRowPx();
+    let still = 0, longest = 0, last = { ...rival.charLocation };
+    for (let k = 0; k < 4000; k++) {
+      gm.stepPieces();
+      const at = rival.charLocation;
+      const isByStairs = ends.some(end => Math.hypot(end.x - at.x, end.y - at.y) < 2 * rowPx);
+      const isStill = Math.hypot(at.x - last.x, at.y - last.y) < 0.01;
+      last = { ...at };
+      still = isByStairs && isStill && !gm.cutscene ? still + 1 : 0;
+      longest = Math.max(longest, still);
+    }
+    expect(longest).toBeLessThan(20); // two seconds at most (she stood ~14 s before)
+  }, 60000);
+
   it('M13: a recruit recruited, then fallen for good, leaves their battleground offering sparring', () => {
     storage.clear();
     const visit = LEVELS[getVisitLevelId('rooftop')];

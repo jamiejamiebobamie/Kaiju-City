@@ -592,8 +592,8 @@ export class GameBoardPieceBase {
         const linkedTile = this.gameManagerProxy.getLinkedTile(this.tileIndex);
         if (!!linkedTile && linkedTile.i == moveToTiles[0].i && linkedTile.j == moveToTiles[0].j) {
             if (this.getIsPortalResting()) return; // not now: it waits, and goes the long way next time
-            this.jumpToLinkedTile(linkedTile);
-            this.moveToTiles = moveToTiles.slice(1);
+            // the link wouldn't take them (resting): no path, so the next one is planned without it
+            this.moveToTiles = this.jumpToLinkedTile(linkedTile) ? moveToTiles.slice(1) : [];
             return;
         }
         this.moveToLocation = this.gameManagerProxy.getCharXAndYFromTileIndex(moveToTiles[0]) || this.moveToLocation;

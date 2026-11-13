@@ -111,8 +111,11 @@ export class GameManagerProxy {
         return this.props.getPathToClosestEnemy(pieceIndex);
     }
 
-    getPathFromTileToTile({ fromTile, toTile, avoidTiles, isAlwaysAvoid }) {
-        return this.props.getPathFromTileToTile({ fromTile, toTile, avoidTiles, isAlwaysAvoid });
+    // 'pieceIndex' passed on: without it the path ignored the piece's own rules, its resting stairways most of all (the
+    // Mermaid, sent to roam, was routed back up the stairs she had just taken, which wouldn't take her: she stood there
+    // till they rested no more. Jamie, playtest 23)
+    getPathFromTileToTile({ fromTile, toTile, avoidTiles, isAlwaysAvoid, pieceIndex = undefined }) {
+        return this.props.getPathFromTileToTile({ fromTile, toTile, avoidTiles, isAlwaysAvoid, pieceIndex });
     }
 
     getClosestEnemy(pieceIndex) {
