@@ -199,6 +199,43 @@ const GreenGraphDoodad = styled.div`
   transition: transform 1.5s;
   ${props => `transform: scale(${props.scale}) translate(${props.translation});`}
 
+  /* 'isStatic' (the character select, Jamie 2026-11-12): a bad TV signal. It crackles with snow, blurs and
+     brightens in fits, and shivers a pixel in place ('translate' adds to the transform above) */
+  ${props => props.$isStatic && `
+    animation: gridStaticShiver 1.1s steps(1) infinite;
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.28) 0 1px, transparent 1px 3px);
+    }
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.95' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.6 0 0 0 0 1 0 0 0 0 0.6 0 0 0 2.2 -1'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+      mix-blend-mode: screen;
+      opacity: 0.3;
+      animation: gridStaticSnow 0.24s steps(1) infinite;
+    }
+    @keyframes gridStaticShiver {
+      0% { translate: 0 0; filter: drop-shadow(0 0 5px #80EF80) blur(0.4px); }
+      14% { translate: 1px 0; filter: drop-shadow(0 0 5px #80EF80) blur(1.1px) brightness(1.35); }
+      18% { translate: 0 0; filter: drop-shadow(0 0 5px #80EF80) blur(0.3px); }
+      41% { translate: -1px 1px; filter: drop-shadow(0 0 4px #80EF80) blur(0.8px) brightness(0.8); }
+      45% { translate: 0 0; filter: drop-shadow(0 0 5px #80EF80) blur(0.4px); }
+      68% { translate: 2px 0; filter: drop-shadow(0 0 6px #80EF80) blur(1.5px) brightness(1.6); }
+      71% { translate: -1px -1px; filter: drop-shadow(0 0 5px #80EF80) blur(0.6px); }
+      75% { translate: 0 0; filter: drop-shadow(0 0 5px #80EF80) blur(0.4px); }
+      90% { translate: 0 1px; filter: drop-shadow(0 0 5px #80EF80) blur(0.9px) brightness(1.15); }
+    }
+    @keyframes gridStaticSnow {
+      0% { background-position: 0 0; opacity: 0.3; }
+      25% { background-position: -37px 21px; opacity: 0.45; }
+      50% { background-position: 19px -43px; opacity: 0.22; }
+      75% { background-position: -11px 57px; opacity: 0.5; }
+    }
+  `}
 `;
 
 const AlignSelfCenter = styled.div`
@@ -250,8 +287,10 @@ const FadeInOutEffect = styled.div`
 `;
 
 const DoodadTransform = styled.div`
-  transition: transform 1.5s;
+  transition: transform ${props => props.ms || 1500}ms ease-out, filter ${props => props.ms || 1500}ms;
   ${props => `transform: scale(${props.scale}) translate(${props.translation});`}
+  ${props => props.$isFlash && `filter: brightness(1.9);`}
+  ${props => props.$isOff && `opacity: 0;`}
 `;
 
 export const CircuitDiscSpriteSheet = styled.div`
@@ -302,12 +341,12 @@ const PopupSpan = ({ color, msg, textAlign, fontSize }) =>
     </BlinkFadeEffect>
   </StyledMsg>
 
-const useOpacityEffect = ({ show, opacity, setOpacity, activeInterval, fadeOutMs }) => useEffect(() => {
+const useOpacityEffect = ({ show, opacity, setOpacity, activeInterval, fadeInMs, fadeOutMs }) => useEffect(() => {
   const FADE_SPEED = 100; // 1 seconds to fade in or out
-  // a quick fade out: straight to 0, and the css transition (fadeOutMs) does the fade
-  if (!show && fadeOutMs) {
+  // a quick fade: straight to 1 or 0, and the css transition (fadeInMs, fadeOutMs) does the fade
+  if (show ? fadeInMs : fadeOutMs) {
     clearInterval(activeInterval.current);
-    setOpacity(0);
+    setOpacity(show ? 1 : 0);
     return;
   }
   if (!show && opacity > 0) {
@@ -370,25 +409,68 @@ const useTranslationEffect = ({ STARTING_POSTIONS, show, setTranslations, active
 }
 
 // 'hasDisc': false leaves out the circuit disc on the floor (the character select, Jamie 2026-11-12)
-// shown, the three doodads drift about their places, each on its own (not the green graph). Jamie, 2026-11-12
-const DRIFT = { everyMs: 1500, rangePx: 25, count: 3 };
+/*
+  Shown, the three doodads jump about their places (not the green graph), cut to the quick, uneven beat of a
+  title sequence (Jamie, 2026-11-12, after Batman Beyond's intro): hard, near-instant moves on short beats, a held
+  beat now and then, a flash on a cut, and now and then one blinks out for a beat.
+  Their pointer lines never reach the green graph: a move is held back 'gapPx' from its edge.
+*/
+const DRIFT = {
+  beatsMs: [120, 120, 240, 90, 90, 90, 360, 120, 240, 90, 480], // the rhythm, round and round
+  cutMs: 60, // a move's glide: next to a hard cut
+  rangePx: 45, // how far one jumps from its place (in the doodad's own pixels; on screen, x0.45)
+  flashChance: 0.35,
+  offChance: 0.12,
+  gapPx: 6, // on screen, between a pointer line's end and the green graph
+  count: 3
+};
+// where each doodad's pointer line ends on its sprite sheet (x, the furthest across its 4 frames): bars, heartbeat, vertices
+const POINTER_TIPS_X = [176, 171, 175];
+const GREEN_GRAPH = { width: 123, height: 194 };
+
+// x held back so the pointer line's end stays clear of the green graph (it's left or right of it from the start)
+const keepOffGraph = (x, start, tipX, graph) => {
+  const graphLeft = GREEN_GRAPH.width / 2 + graph.scaleX * (graph.x - GREEN_GRAPH.width / 2);
+  const graphRight = GREEN_GRAPH.width / 2 + graph.scaleX * (graph.x + GREEN_GRAPH.width / 2);
+  const screenX = tx => start.scaleX * (tipX + tx); // transform: scale() translate(), from the top left
+  const isLeft = screenX(start.x) < graphLeft;
+  const limit = isLeft ? graphLeft - DRIFT.gapPx : graphRight + DRIFT.gapPx;
+  const isClear = isLeft ? screenX(x) <= limit : screenX(x) >= limit;
+  return isClear ? x : limit / start.scaleX - tipX;
+};
+
 const useDriftEffect = ({ isOn, starts, setTranslations }) => useEffect(() => {
   if (!isOn) {
     setTranslations(starts);
     return;
   }
-  const drift = () => setTranslations(ts => ts.map((t, i) => {
-    if (i >= DRIFT.count || Math.random() < 0.3) return t; // now and then one stays put a beat
-    const start = starts[i];
-    return { ...start, x: start.x + (Math.random() * 2 - 1) * DRIFT.rangePx, y: start.y + (Math.random() * 2 - 1) * DRIFT.rangePx };
-  }));
-  drift();
-  const interval = setInterval(drift, DRIFT.everyMs);
-  return () => clearInterval(interval);
+  let beat = 0;
+  let timeout;
+  const cut = () => {
+    const moving = 1 + Math.floor(Math.random() * DRIFT.count); // one to all three on a cut
+    const order = [0, 1, 2].sort(() => Math.random() - 0.5).slice(0, moving);
+    setTranslations(ts => ts.map((t, i) => {
+      if (i >= DRIFT.count) return t;
+      if (!order.includes(i)) return { ...t, isFlash: false, isOff: false };
+      const start = starts[i];
+      const x = start.x + (Math.random() * 2 - 1) * DRIFT.rangePx;
+      return {
+        ...start,
+        x: keepOffGraph(x, start, POINTER_TIPS_X[i], starts[3]),
+        y: start.y + (Math.random() * 2 - 1) * DRIFT.rangePx,
+        isFlash: Math.random() < DRIFT.flashChance,
+        isOff: Math.random() < DRIFT.offChance
+      };
+    }));
+    timeout = setTimeout(cut, DRIFT.beatsMs[beat++ % DRIFT.beatsMs.length]);
+  };
+  cut();
+  return () => clearTimeout(timeout);
 }, [isOn]);
 
-// 'isDrifting': the doodads drift while shown. 'fadeOutMs': a quicker fade out than the 1 s fade in
-export const Doodads = ({ persistDisc, show, globalTranslation, isRed, opacity, setOpacity, hasPrompt = true, hasDisc = true, isDrifting = false, fadeOutMs = undefined }) => {
+// 'isDrifting': the doodads jump about while shown, and the green graph is a staticky TV picture.
+// 'fadeInMs', 'fadeOutMs': quicker fades than the 1 s ones
+export const Doodads = ({ persistDisc, show, globalTranslation, isRed, opacity, setOpacity, hasPrompt = true, hasDisc = true, isDrifting = false, fadeInMs = undefined, fadeOutMs = undefined }) => {
 
   const { isAvatarChangedOnce } = useContext(GlobalSettingsContext);
   const STARTING_POSTIONS = [
@@ -405,7 +487,7 @@ export const Doodads = ({ persistDisc, show, globalTranslation, isRed, opacity, 
 
   // turning-off for now...
   // useTranslationEffect({ STARTING_POSTIONS, show, setTranslations, activeInterval: activeTranslationInterval, accumulator });
-  useOpacityEffect({ show, opacity, setOpacity, activeInterval: activeOpacityInterval, fadeOutMs });
+  useOpacityEffect({ show, opacity, setOpacity, activeInterval: activeOpacityInterval, fadeInMs, fadeOutMs });
   useDriftEffect({ isOn: isDrifting && show, starts: STARTING_POSTIONS, setTranslations });
 
   return <DoodadsWrapper translation={globalTranslation}>
@@ -420,7 +502,7 @@ export const Doodads = ({ persistDisc, show, globalTranslation, isRed, opacity, 
           fontSize={'13px'}
         />
       </FadeInOutEffect>}
-    <FadeInOutEffect opacity={opacity} ms={!show && fadeOutMs ? fadeOutMs : undefined}>
+    <FadeInOutEffect opacity={opacity} ms={show ? fadeInMs : fadeOutMs}>
       {hasPrompt && <PopupSpan
         msg={'Click to change avatar'}
         color={'#80EF80'}
@@ -428,25 +510,25 @@ export const Doodads = ({ persistDisc, show, globalTranslation, isRed, opacity, 
         fontSize={'13px'}
       />}
       <BlinkFadeEffect high={69} low={40}>
-        <DoodadTransform scale={`${STARTING_POSTIONS[0].scaleX}, ${STARTING_POSTIONS[0].scaleY}`} translation={`${translations[0].x}px, ${translations[0].y}px`}>
+        <DoodadTransform scale={`${STARTING_POSTIONS[0].scaleX}, ${STARTING_POSTIONS[0].scaleY}`} translation={`${translations[0].x}px, ${translations[0].y}px`} ms={isDrifting ? DRIFT.cutMs : undefined} $isFlash={translations[0].isFlash} $isOff={translations[0].isOff}>
           <DoodadSpriteSheet
             src={"spritesheet/doo_dad_bars.png"}
             zIndex={110}
           />
         </DoodadTransform>
-        <DoodadTransform scale={`${STARTING_POSTIONS[1].scaleX}, ${STARTING_POSTIONS[1].scaleY}`} translation={`${translations[1].x}px, ${translations[1].y}px`}>
+        <DoodadTransform scale={`${STARTING_POSTIONS[1].scaleX}, ${STARTING_POSTIONS[1].scaleY}`} translation={`${translations[1].x}px, ${translations[1].y}px`} ms={isDrifting ? DRIFT.cutMs : undefined} $isFlash={translations[1].isFlash} $isOff={translations[1].isOff}>
           <DoodadSpriteSheet
             src={"spritesheet/doo_dad_heartbeat.png"}
             zIndex={111}
           />
         </DoodadTransform>
-        <DoodadTransform scale={`${STARTING_POSTIONS[2].scaleX}, ${STARTING_POSTIONS[2].scaleY}`} translation={`${translations[2].x}px, ${translations[2].y}px`}>
+        <DoodadTransform scale={`${STARTING_POSTIONS[2].scaleX}, ${STARTING_POSTIONS[2].scaleY}`} translation={`${translations[2].x}px, ${translations[2].y}px`} ms={isDrifting ? DRIFT.cutMs : undefined} $isFlash={translations[2].isFlash} $isOff={translations[2].isOff}>
           <DoodadSpriteSheet
             src={"spritesheet/doo_dad_vertices.png"}
             zIndex={112}
           />
         </DoodadTransform>
-        <GreenGraphDoodad scale={`${STARTING_POSTIONS[3].scaleX}, ${STARTING_POSTIONS[3].scaleY}`} translation={`${translations[3].x}px, ${translations[3].y}px`} zIndex={108} />
+        <GreenGraphDoodad $isStatic={isDrifting} scale={`${STARTING_POSTIONS[3].scaleX}, ${STARTING_POSTIONS[3].scaleY}`} translation={`${translations[3].x}px, ${translations[3].y}px`} zIndex={108} />
       </BlinkFadeEffect>
       {hasDisc && <BlinkFadeEffect high={20} low={59} time={400}><CircuitDiscSpriteSheet isRed={!!isRed} zIndex={107} /></BlinkFadeEffect>}
       {persistDisc && <BlinkFadeEffect high={59} low={30}><CircuitDiscSpriteSheet isRed={!!isRed} zIndex={106} /></BlinkFadeEffect>}
