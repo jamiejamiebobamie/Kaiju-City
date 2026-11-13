@@ -320,6 +320,41 @@ const CrtScreen = styled.div`
   }
 `;
 
+/*
+  The doodads see-through a little, with the green graph's snow on them (Jamie, 2026-11-12). The snow is an svg
+  filter, kept to the art's own shape (not the sheet's whole frame), and swapped between 4 seeds to crackle like
+  the graph's (0.24 s).
+*/
+const DOODAD_GRAIN = { opacity: 0.8, seeds: 4, snowMs: 240 };
+
+const DoodadGrainFilters = () =>
+  <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true">
+    {[...Array(DOODAD_GRAIN.seeds).keys()].map(seed =>
+      <filter key={seed} id={`doodadGrain${seed}`}>
+        <feTurbulence type="fractalNoise" baseFrequency="0.95" numOctaves="2" seed={seed + 1} result="noise" />
+        <feColorMatrix in="noise" values="0 0 0 0 0.6  0 0 0 0 1  0 0 0 0 0.6  0 0 0 1.1 -0.5" result="snow" />
+        <feComposite in="snow" in2="SourceAlpha" operator="in" result="snowOnArt" />
+        <feBlend in="snowOnArt" in2="SourceGraphic" mode="screen" />
+      </filter>
+    )}
+  </svg>;
+
+const Grainy = styled.div`
+  position: absolute;
+  width: 344px;
+  height: 256px;
+  ${props => props.$isOn && `
+    opacity: ${DOODAD_GRAIN.opacity};
+    animation: doodadSnow ${DOODAD_GRAIN.snowMs}ms steps(1) infinite;
+    @keyframes doodadSnow {
+      0% { filter: url(#doodadGrain0); }
+      25% { filter: url(#doodadGrain1); }
+      50% { filter: url(#doodadGrain2); }
+      75% { filter: url(#doodadGrain3); }
+    }
+  `}
+`;
+
 const CrtSparkle = styled.div`
   position: absolute;
   left: ${props => props.$x}px;
@@ -582,31 +617,38 @@ export const Doodads = ({ persistDisc, show, globalTranslation, isRed, opacity, 
         textAlign={'start'}
         fontSize={'13px'}
       />}
+      {isDrifting && <DoodadGrainFilters />}
       <BlinkFadeEffect high={69} low={40}>
         <DoodadTransform scale={`${STARTING_POSTIONS[0].scaleX}, ${STARTING_POSTIONS[0].scaleY}`} translation={`${translations[0].x}px, ${translations[0].y}px`} ms={isDrifting ? translations[0].ms : undefined} $ease={isDrifting ? translations[0].ease : undefined} $isFlash={translations[0].isFlash}>
           <CrtScreen $origin="105px 133px" $isOff={translations[0].isOff} $isReturning={translations[0].isReturning}>
-            <DoodadSpriteSheet
-              src={"spritesheet/doo_dad_bars.png"}
-              zIndex={110}
-            />
+            <Grainy $isOn={isDrifting}>
+              <DoodadSpriteSheet
+                src={"spritesheet/doo_dad_bars.png"}
+                zIndex={110}
+              />
+            </Grainy>
           </CrtScreen>
           <CrtSparkle $x={105} $y={133} $isOff={translations[0].isOff} />
         </DoodadTransform>
         <DoodadTransform scale={`${STARTING_POSTIONS[1].scaleX}, ${STARTING_POSTIONS[1].scaleY}`} translation={`${translations[1].x}px, ${translations[1].y}px`} ms={isDrifting ? translations[1].ms : undefined} $ease={isDrifting ? translations[1].ease : undefined} $isFlash={translations[1].isFlash}>
           <CrtScreen $origin="240px 183px" $isOff={translations[1].isOff} $isReturning={translations[1].isReturning}>
-            <DoodadSpriteSheet
-              src={"spritesheet/doo_dad_heartbeat.png"}
-              zIndex={111}
-            />
+            <Grainy $isOn={isDrifting}>
+              <DoodadSpriteSheet
+                src={"spritesheet/doo_dad_heartbeat.png"}
+                zIndex={111}
+              />
+            </Grainy>
           </CrtScreen>
           <CrtSparkle $x={240} $y={183} $isOff={translations[1].isOff} />
         </DoodadTransform>
         <DoodadTransform scale={`${STARTING_POSTIONS[2].scaleX}, ${STARTING_POSTIONS[2].scaleY}`} translation={`${translations[2].x}px, ${translations[2].y}px`} ms={isDrifting ? translations[2].ms : undefined} $ease={isDrifting ? translations[2].ease : undefined} $isFlash={translations[2].isFlash}>
           <CrtScreen $origin="243px 75px" $isOff={translations[2].isOff} $isReturning={translations[2].isReturning}>
-            <DoodadSpriteSheet
-              src={"spritesheet/doo_dad_vertices.png"}
-              zIndex={112}
-            />
+            <Grainy $isOn={isDrifting}>
+              <DoodadSpriteSheet
+                src={"spritesheet/doo_dad_vertices.png"}
+                zIndex={112}
+              />
+            </Grainy>
           </CrtScreen>
           <CrtSparkle $x={243} $y={75} $isOff={translations[2].isOff} />
         </DoodadTransform>
