@@ -826,6 +826,9 @@ export class GameManager {
     // the enemy zoom leaves these out: while the ghost boss's ring is up and the player is inside it, Ghost Girl (Jamie).
     // the ring is the fight then, not her.
     getIsCameraKeptOff = (player, piece) => {
+        // the Agents' fight: the one waiting up on the catwalk isn't the camera's, unless the player has gone up there
+        // (Jamie, playtest 24: the clones dropped either side, and the camera went to him as the closest)
+        if (piece && piece.isHeldOnCatwalk && player && player.getTileIndex()) return !this.getIsOnCatwalk(player.getTileIndex());
         // the Aquarium: the Mermaid up on the top floor, healing, while the player is down in the water (Jamie). the camera
         // stays the usual one, on the water and the creatures; her caret still shows where she is.
         if (this.level.aquariumFlood && this.isShattered && piece == this.rivalPiece && !!player) {
@@ -2401,6 +2404,19 @@ export class GameManager {
         else talk.msLeft = getSpeechMs(line.text);
     }
 
+    // a walking scene's talk cut short (a Lab option's number key, Jamie, playtest 24): what's left of the talks going now is
+    // not said. not over a recruit choice, or a scene. true if there was talk to cut
+    skipSceneTalks() {
+        if (this.cutscene || this.recruitScene || !this.level.isWalkingLevel) return false;
+        const going = this.talks.filter(({ lines, index, isWaiting, msLeft, isActive }) => isActive() && (index < lines.length || isWaiting || msLeft > 0));
+        going.forEach(talk => {
+            talk.index = talk.lines.length;
+            talk.isWaiting = false;
+            talk.msLeft = 0;
+        });
+        return going.length > 0;
+    }
+
     // a scene's own talk, not tied to a phase, has all been said
     getIsSceneTalkDone() {
         return this.talks.every(({ lines, index, isWaiting, isPhased }) => isPhased || (index >= lines.length && !isWaiting));
@@ -2812,6 +2828,12 @@ export class GameManager {
         if (!this.level.agentDrops || this.level.agentDrops.isCatwalkOpenToTeam || !piece.isNpc || piece.getTeamIndex() != this.gameBoardPiecesManager.getPlayerTeamIndex()) return true;
         return !this.getIsOnCatwalk(tileIndex);
     };
+
+    // the Lab: the catwalk and the floor below are apart (one way between them, the portal). anywhere else, one floor
+    getIsSameFloor = (piece, other) => {
+        if (!this.level.agentDrops || !piece || !other || !piece.isOnTiles || !other.isOnTiles) return true;
+        return this.getIsOnCatwalk(piece.getTileIndex()) == this.getIsOnCatwalk(other.getTileIndex());
+    }
 
     getIsOnCatwalk = ({ j }) => {
         return !!this.level.agentDrops && j <= this.level.agentDrops.catwalkLastRow;
@@ -3649,6 +3671,9 @@ export class GameManager {
             getIsContactDmg: this.gameBoardPiecesManager.getIsContactDmg,
             getPlayerPiece: this.gameBoardPiecesManager.getPlayerPiece,
             getControlledPiece: () => this.getControlledPiece(),
+            // a fight decided: no walking (powers are off too), as its Continue shows (Jamie, playtest 24)
+            getIsSameFloor: (piece, other) => this.getIsSameFloor(piece, other),
+            getIsFightOver: () => !this.level.isWalkingLevel && this.getGameResult() !== null,
             findPathFromTo: this.gameBoardManager.findPathFromTo,
             getPathToSafeTileAndAvoidEnemies: this.gameBoardManager.getPathToSafeTileAndAvoidEnemies,
             getPathToSafeTile: this.gameBoardManager.getPathToSafeTile,

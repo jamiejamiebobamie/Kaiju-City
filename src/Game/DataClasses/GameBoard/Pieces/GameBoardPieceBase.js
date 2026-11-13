@@ -656,6 +656,19 @@ export class GameBoardPieceBase {
         }
     }
 
+    /*
+        A power that costs its caster health for a while (Haunt's Blood Ritual: -1 each cast, for its passive's time), used by
+        a recruit fighting for the team (Ghost Girl): only while that cost so far is under half her real health, and
+        always at least once (Jamie, playtest 24: she kept dying in fights, her own power making her fragile).
+        4 health: two casts at a time; 3, 2 or 1: one.
+    */
+    getIsCostAffordable(ability) {
+        const { fieldToModify, modifierVal } = ability.gameBoardPieceAbilityData;
+        if (!this.isNpc || !this.isRecruit || fieldToModify != 'livesModifier' || !(modifierVal < 0)) return true;
+        const costSoFar = Math.max(-this.livesModifier, 0);
+        return costSoFar < Math.max(1, Math.floor(this.lives / 2));
+    }
+
     useAbilities(accTime) {
         let hasUsedOneAbility = this.getHasUsedOneAbility(accTime);
 
@@ -669,7 +682,7 @@ export class GameBoardPieceBase {
         // use abilities
         const isPowersOff = this.gameManagerProxy.getIsPowersOff(this);
         this.abilities.forEach(a => {
-            if (!isPowersOff && !hasUsedOneAbility && !a.getIsOnCooldown(accTime, this.isNpc)) {
+            if (!isPowersOff && !hasUsedOneAbility && !a.getIsOnCooldown(accTime, this.isNpc) && this.getIsCostAffordable(a)) {
                 const type = a.getType();
                 const desiredAIRange = a.getDesiredAIRange();
                 const isOffensivePowerAndTargetInRange =

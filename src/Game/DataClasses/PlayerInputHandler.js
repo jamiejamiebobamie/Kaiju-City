@@ -40,6 +40,7 @@ export class PlayerInputHandler {
     getPressedDir() {
         const piece = this.gameManagerProxy.getControlledPiece();
         if (piece && (piece.isHeld || piece.getIsRewardPulse())) return 'idle'; // still through a reward's glow (Jamie)
+        if (this.gameManagerProxy.getIsFightOver()) return 'idle';
         const pressedDir = this.getHeldDir();
         return piece && piece.isCharmed ? REVERSED_DIRS[pressedDir] : pressedDir;
     }

@@ -316,6 +316,14 @@ export class GameManagerProxy {
     }
 
     // who the player plays as (GameManager.updateTakeOver)
+    getIsSameFloor(piece, other) {
+        return !this.props.getIsSameFloor || this.props.getIsSameFloor(piece, other);
+    }
+
+    getIsFightOver() {
+        return !!this.props.getIsFightOver && this.props.getIsFightOver();
+    }
+
     getControlledPiece() {
         return this.props.getControlledPiece ? this.props.getControlledPiece() : this.props.getPlayerPiece();
     }

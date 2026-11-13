@@ -643,12 +643,15 @@ export class GameBoardManager {
             }).filter(tileIndex => this.getIsInBounds(tileIndex))
     };
 
-    getClosestEnemy = (pieceIndex) => {
+    // 'isSameFloorOnly': only those it could reach (the Lab's catwalk and floor are apart: GameManager.getIsSameFloor)
+    getClosestEnemy = (pieceIndex, isSameFloorOnly = false) => {
         // spurned, they go for the one who charmed them, near or far
         const { spurnedBy } = this.gameManagerProxy.getPiece(pieceIndex);
         const charmer = spurnedBy !== undefined && spurnedBy >= 0 ? this.gameManagerProxy.getPiece(spurnedBy) : undefined;
         if (charmer && !charmer.getIsDead() && charmer.getTeamIndex() != this.gameManagerProxy.getPieceTeamIndex(pieceIndex)) return charmer;
-        const otherTeamsPieces = this.gameManagerProxy.getOtherTeamsPieces(pieceIndex);
+        const self = this.gameManagerProxy.getPiece(pieceIndex);
+        const otherTeamsPieces = this.gameManagerProxy.getOtherTeamsPieces(pieceIndex)
+            .filter(piece => !isSameFloorOnly || this.gameManagerProxy.getIsSameFloor(self, piece));
         const tileIndex = this.gameManagerProxy.getPieceTileIndex(pieceIndex);
         const enemyPiece = this.getClosestPieceFromTileIndex(otherTeamsPieces, tileIndex);
         return enemyPiece;
@@ -660,7 +663,9 @@ export class GameBoardManager {
         The power goes its way, and meets it as it arrives.
     */
     getClosestAimTarget = (pieceIndex) => {
-        const onTiles = this.getClosestEnemy(pieceIndex);
+        // powers aim (and tracking ones chase) only on the caster's own floor: not from the Lab's floor at someone on the
+        // catwalk, or back down (Jamie, playtest 24)
+        const onTiles = this.getClosestEnemy(pieceIndex, true);
         if (onTiles && this.gameManagerProxy.getPiece(pieceIndex).spurnedBy == onTiles.pieceIndex) return onTiles; // spurned: the charmer
         const from = this.getCharXAndYFromTileIndex(this.gameManagerProxy.getPieceTileIndex(pieceIndex));
         const getDistance = piece => getDistanceToFrom(from, piece.charLocation);

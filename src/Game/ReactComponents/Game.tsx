@@ -210,6 +210,18 @@ const EndTitle = styled.div`
   animation: ${titleArrive} 1.4s ease-out both;
 `;
 
+// on the button Enter (and 1) presses: "[ENTER]" in yellow (Jamie, playtest 24). gameboy has no brackets: a monospace's
+const EnterHint = styled.span`
+  margin-left: 0.8em;
+  color: #ffd84a;
+  text-shadow: 0 0 0.3em rgba(255, 216, 74, 0.6);
+`;
+const HintBracket = styled.span`
+  font-family: "Courier New", Courier, monospace;
+  font-weight: bold;
+`;
+const EnterKeyHint = () => <EnterHint><HintBracket>[</HintBracket>ENTER<HintBracket>]</HintBracket></EnterHint>;
+
 const EndButtons = styled.div`
   display: flex;
   gap: 1cqw;
@@ -735,15 +747,20 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     if (unlockMessage) playUnlockDing();
   }, [unlockMessage]);
 
-  // a walking scene's hotspots: their number keys click them (Jamie), when no one is talking
+  // a walking scene's hotspots: their number keys click them (Jamie). in the middle of a scene's talk (the Lab Agent's
+  // welcome), the key cuts the talk short and goes to that option (Jamie, playtest 24): the numbers are the hotspots
+  // showing now, so 2 is "What is this?" with the Agent there and his nervous answer not yet given, else the color vat
+  const hotspotKeyCode = useRef(undefined); // that key's own release: not also a press of the log's Continue (1)
   useEffect(() => {
     if (!level.isWalkingLevel) return;
     const onKey = event => {
       const match = /^(Digit|Numpad)([1-9])$/.exec(event.code);
-      if (!match || isCutscene || recruitScene || isTalking || isDialogueWaiting || labScreen || isPaused) return;
+      if (!match || event.repeat || isCutscene || recruitScene || labScreen || isPaused) return;
       const hotspot = getActiveHotspots(level, activePhases)[Number(match[2]) - 1];
       if (!hotspot) return;
+      if ((isTalking || isDialogueWaiting) && gameManager.current) gameManager.current.skipSceneTalks();
       event.preventDefault();
+      hotspotKeyCode.current = event.code;
       openLabScreen(hotspot.action);
     };
     window.addEventListener("keydown", onKey);
@@ -1161,6 +1178,10 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   useKeyPress({
     keyCodes: [1, 2, 3, 4].flatMap(n => [`Digit${n}`, `Numpad${n}`]),
     keyUpCallback: code => {
+      if (hotspotKeyCode.current == code) {
+        hotspotKeyCode.current = undefined;
+        return;
+      }
       const button = document.querySelector<HTMLElement>(`[data-choice-key="${code.slice(-1)}"]`);
       if (button) button.click();
       else if (code.endsWith("1") && gameManager.current && gameManager.current.cutscene) gameManager.current.advanceDialogue(); // 1 moves a scene on, as Enter does
@@ -1558,7 +1579,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               {matchEnd && (
                 <EndScreen>
                   {matchEnd.isFinale ? <FinaleCredits title={matchEnd.title} onDone={handleClickHome} /> : <EndTitle>{matchEnd.title}</EndTitle>}
-                  {(!level.rival || level.isTraining || winner !== GameResult.PlayerWon) && <EndButtons>{matchEnd.buttons.map(({ text, onClick }, index) => <EndButton key={text} data-enter={index == 0 ? "" : undefined} onClick={onClick}>{text}</EndButton>)}</EndButtons>}
+                  {(!level.rival || level.isTraining || winner !== GameResult.PlayerWon) && <EndButtons>{matchEnd.buttons.map(({ text, onClick }, index) => <EndButton key={text} data-enter={index == 0 ? "" : undefined} data-choice-key={index == 0 ? 1 : undefined} onClick={onClick}>{text}{index == 0 && <EnterKeyHint />}</EndButton>)}</EndButtons>}
                 </EndScreen>
               )}
               {isWiping && <ScreenClip><BlackWipe /></ScreenClip>}
@@ -1581,7 +1602,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 </Toast>
               ))}</CardStack></FadeToBlack>}
               {campaignIndex !== null && level.isWalkingLevel && !level.sites && !level.exit && !level.walkIn && !isEditingTiles && (
-                <ContinueButton data-enter onClick={() => showSection(campaignIndex + 1)}>Continue</ContinueButton>
+                <ContinueButton data-enter data-choice-key={1} onClick={() => showSection(campaignIndex + 1)}>Continue<EnterKeyHint /></ContinueButton>
               )}
               {!isAutoRecruits && !level.isWalkingLevel && !isEditingTiles && !recruitScene && winner === null && !matchEnd && getCallableRecruits().length > 0 && (
                 <RecruitCalls key={matchCount} recruits={getCallableRecruits()} onCall={avatar => !!gameManager.current && gameManager.current.callRecruit(avatar)} isDisabled={isPaused} />

@@ -947,6 +947,8 @@ LEVELS.labBeforeTrap = {
   visitScene: 'lab.beforeTrap',
   visitLines: getDialogueTexts('lab.beforeTrap'),
   sceneElements: LEVELS.labIntro.sceneElements.filter(({ id }) => !['agentWelcome', 'agentNervous', 'specimenTank'].includes(id))
+    // the Agent's not here: the way out is the way to look for him (Jamie, playtest 24)
+    .map(element => element.id == 'exit' ? { ...element, label: 'Search for Agent' } : element)
 };
 
 LEVELS.labTrap = {
