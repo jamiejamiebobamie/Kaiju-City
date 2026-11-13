@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useRef, useState } from "react";
 import styled, { css, keyframes } from "styled-components";
 import { GlobalSettingsContext } from "Home";
 import { SpeedBlurFilter, slideAway } from "Components/SlideAway";
+import { Doodads } from "Components/AvatarSelection";
 
 /*
   The start of the game (Jamie, playtest 21; the UI epic's mock-ups will restyle it): the guy and the girl, side by
@@ -56,8 +57,27 @@ const idle = keyframes`
   to { background-position: 0 0; }
 `;
 
+// the sprite and, behind it, the old home screen's art: on hover the three doodads and the circuit-disc grid, all
+// glowing green (Jamie, 2026-11-12: "just want to see")
+const SpriteBox = styled.div`
+  position: relative;
+  width: 152px;
+  height: 230px;
+  ${props => leaveLayer("-170vw", props.$isLeaving)}
+`;
+
+const DoodadHolder = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+`;
+
 // the sprite sheet's standing frame; hovered, its idle animation (as on the old screen)
 const Sprite = styled.div`
+  position: relative;
   width: 152px;
   height: 230px;
   background: url(${props => props.$sheet});
@@ -66,7 +86,6 @@ const Sprite = styled.div`
   ${props => !props.$isLocked && css`${Choice}:hover & { animation: ${idle} 1.2s steps(6) -0.4s infinite; }`}
   /* picked: facing front, glowing brighter (the idle cycle turns them round) */
   ${props => props.$isChosen && css`filter: drop-shadow(0 0 8px ${props.$color}) drop-shadow(0 0 3px white);`}
-  ${props => leaveLayer("-170vw", props.$isLeaving)}
 `;
 
 const KeyNumber = styled.span`
@@ -108,6 +127,23 @@ const Prompt = styled.div`
   visibility: ${props => props.$isHidden ? "hidden" : "visible"};
 `;
 
+const ChoiceAvatar = ({ id, sheet, keyName, chosen, isLeaving, onChoose }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const [doodadOpacity, setDoodadOpacity] = useState(0);
+  return (
+    <Choice $isLocked={!!chosen} onClick={onChoose} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} aria-label={id}>
+      <SpriteBox $isLeaving={isLeaving}>
+        <DoodadHolder>
+          <Doodads hasPrompt={false} show={isHovered && !chosen} persistDisc={false} globalTranslation="0px, 0px" opacity={doodadOpacity} setOpacity={setDoodadOpacity} />
+        </DoodadHolder>
+        <Sprite $sheet={sheet} $color={CHOICE.colors[id]} $isChosen={chosen == id} $isLocked={!!chosen} />
+      </SpriteBox>
+      <KeyNumber $isHidden={!!chosen}>{keyName}</KeyNumber>
+      <Label $isShown={!!chosen} $isLeaving={isLeaving} style={{ "--color": CHOICE.colors[id] }}>{chosen ? (chosen == id ? "Player" : "Teammate") : ""}</Label>
+    </Choice>
+  );
+};
+
 export const AvatarChoice = ({ onChoose }) => {
   const { setSelectedAvatar } = useContext(GlobalSettingsContext);
   const [chosen, setChosen] = useState(undefined);
@@ -140,11 +176,7 @@ export const AvatarChoice = ({ onChoose }) => {
       <SpeedBlurFilter />
       <Row>
         {AVATARS.map(({ id, sheet, key }) => (
-          <Choice key={id} $isLocked={!!chosen} onClick={() => choose(id)} aria-label={id}>
-            <Sprite $sheet={sheet} $color={CHOICE.colors[id]} $isChosen={chosen == id} $isLocked={!!chosen} $isLeaving={isLeaving} />
-            <KeyNumber $isHidden={!!chosen}>{key}</KeyNumber>
-            <Label $isShown={!!chosen} $isLeaving={isLeaving} style={{ "--color": CHOICE.colors[id] }}>{chosen ? (chosen == id ? "Player" : "Teammate") : ""}</Label>
-          </Choice>
+          <ChoiceAvatar key={id} id={id} sheet={sheet} keyName={key} chosen={chosen} isLeaving={isLeaving} onChoose={() => choose(id)} />
         ))}
       </Row>
       <Prompt $isHidden={!!chosen}>Choose your character</Prompt>
