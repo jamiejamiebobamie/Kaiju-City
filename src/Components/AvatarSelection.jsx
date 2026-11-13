@@ -290,7 +290,64 @@ const DoodadTransform = styled.div`
   transition: transform ${props => props.ms || 1500}ms ${props => props.$ease || 'ease-out'}, filter 220ms;
   ${props => `transform: scale(${props.scale}) translate(${props.translation});`}
   ${props => props.$isFlash && `filter: brightness(1.9);`}
-  ${props => props.$isOff && `opacity: 0;`}
+`;
+
+/*
+  A doodad's blink out (Jamie, 2026-11-12): an old TV switched off, so it reads as meant. The picture squashes to a
+  bright horizontal line, the line shrinks to a dot, a sparkle flares on the dot and fades, then black. Back on, the
+  same the other way, quicker. 'origin': the middle of the doodad's art on its sheet.
+*/
+const CRT = { offMs: 520, onMs: 240 };
+
+const CrtScreen = styled.div`
+  position: absolute;
+  width: 344px;
+  height: 256px;
+  transform-origin: ${props => props.$origin};
+  ${props => props.$isOff && `animation: crtOff ${CRT.offMs}ms ease-in forwards;`}
+  ${props => props.$isReturning && `animation: crtOn ${CRT.onMs}ms ease-out both;`}
+
+  @keyframes crtOff {
+    0% { transform: scale(1, 1); filter: brightness(1); opacity: 1; }
+    35% { transform: scale(1.04, 0.03); filter: brightness(3); opacity: 1; }
+    62% { transform: scale(0.02, 0.03); filter: brightness(4); opacity: 1; }
+    72%, 100% { transform: scale(0, 0); opacity: 0; }
+  }
+  @keyframes crtOn {
+    0% { transform: scale(0.02, 0.03); filter: brightness(4); opacity: 1; }
+    45% { transform: scale(1.04, 0.03); filter: brightness(3); }
+    100% { transform: scale(1, 1); filter: brightness(1); }
+  }
+`;
+
+const CrtSparkle = styled.div`
+  position: absolute;
+  left: ${props => props.$x}px;
+  top: ${props => props.$y}px;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  opacity: 0;
+  ${props => props.$isOff && `animation: crtSparkle ${CRT.offMs}ms linear forwards;`}
+
+  /* a bright dot, with a star's thin rays across it */
+  &::before, &::after {
+    content: '';
+    position: absolute;
+    left: -40px;
+    top: -2px;
+    width: 80px;
+    height: 4px;
+    background: radial-gradient(closest-side, white, #80EF80 45%, transparent);
+  }
+  &::after { transform: rotate(90deg); }
+  box-shadow: 0 0 8px 6px white, 0 0 22px 12px #80EF80;
+
+  @keyframes crtSparkle {
+    0%, 55% { opacity: 0; transform: scale(0.2) rotate(0deg); }
+    66% { opacity: 1; transform: scale(1.3) rotate(25deg); }
+    100% { opacity: 0; transform: scale(0) rotate(70deg); }
+  }
 `;
 
 export const CircuitDiscSpriteSheet = styled.div`
@@ -424,7 +481,8 @@ const DRIFT = {
   driftPx: 8, // how far the others drift on a beat
   maxMoving: 2, // doodads jumping on one beat
   flashChance: 0.18,
-  offChance: 0.04,
+  offChance: 0.06, // a jumping doodad switching off like a TV (CRT, above)
+  offHoldMs: 260, // black, after the switch off, before the next beat brings it back
   gapPx: 6, // on screen, between a pointer line's end and the green graph
   count: 3
 };
@@ -451,25 +509,30 @@ const useDriftEffect = ({ isOn, starts, setTranslations }) => useEffect(() => {
   let beat = 0;
   let timeout;
   const cut = () => {
-    const ms = DRIFT.beatsMs[beat++ % DRIFT.beatsMs.length];
     const moving = 1 + Math.floor(Math.random() * DRIFT.maxMoving); // one or two jump on a beat
     const order = [0, 1, 2].sort(() => Math.random() - 0.5).slice(0, moving);
+    const offs = order.filter(() => Math.random() < DRIFT.offChance);
+    const beatMs = DRIFT.beatsMs[beat++ % DRIFT.beatsMs.length];
+    const ms = offs.length ? Math.max(beatMs, CRT.offMs + DRIFT.offHoldMs) : beatMs; // the switch off seen through, and a beat of black
     const within = (value, start) => Math.max(start - DRIFT.rangePx, Math.min(start + DRIFT.rangePx, value));
+    const picks = starts.map(() => ({ x: Math.random() * 2 - 1, y: Math.random() * 2 - 1, isFlash: Math.random() < DRIFT.flashChance }));
     setTranslations(ts => ts.map((t, i) => {
       if (i >= DRIFT.count) return t;
       const start = starts[i];
       const isJump = order.includes(i);
       const reach = isJump ? DRIFT.rangePx : DRIFT.driftPx;
       const from = isJump ? start : t; // a jump goes anywhere about its place; a drift, from where it is
-      const x = within(from.x + (Math.random() * 2 - 1) * reach, start.x);
+      const x = within(from.x + picks[i].x * reach, start.x);
+      const isOff = offs.includes(i);
       return {
         ...t,
         x: keepOffGraph(x, start, POINTER_TIPS_X[i], starts[3]),
-        y: within(from.y + (Math.random() * 2 - 1) * reach, start.y),
+        y: within(from.y + picks[i].y * reach, start.y),
         ms,
         ease: isJump ? DRIFT.jumpEase : 'linear',
-        isFlash: isJump && Math.random() < DRIFT.flashChance,
-        isOff: isJump && Math.random() < DRIFT.offChance
+        isFlash: isJump && !isOff && picks[i].isFlash,
+        isOff,
+        isReturning: !!t.isOff && !isOff // switched back on
       };
     }));
     timeout = setTimeout(cut, ms);
@@ -520,23 +583,32 @@ export const Doodads = ({ persistDisc, show, globalTranslation, isRed, opacity, 
         fontSize={'13px'}
       />}
       <BlinkFadeEffect high={69} low={40}>
-        <DoodadTransform scale={`${STARTING_POSTIONS[0].scaleX}, ${STARTING_POSTIONS[0].scaleY}`} translation={`${translations[0].x}px, ${translations[0].y}px`} ms={isDrifting ? translations[0].ms : undefined} $ease={isDrifting ? translations[0].ease : undefined} $isFlash={translations[0].isFlash} $isOff={translations[0].isOff}>
-          <DoodadSpriteSheet
-            src={"spritesheet/doo_dad_bars.png"}
-            zIndex={110}
-          />
+        <DoodadTransform scale={`${STARTING_POSTIONS[0].scaleX}, ${STARTING_POSTIONS[0].scaleY}`} translation={`${translations[0].x}px, ${translations[0].y}px`} ms={isDrifting ? translations[0].ms : undefined} $ease={isDrifting ? translations[0].ease : undefined} $isFlash={translations[0].isFlash}>
+          <CrtScreen $origin="105px 133px" $isOff={translations[0].isOff} $isReturning={translations[0].isReturning}>
+            <DoodadSpriteSheet
+              src={"spritesheet/doo_dad_bars.png"}
+              zIndex={110}
+            />
+          </CrtScreen>
+          <CrtSparkle $x={105} $y={133} $isOff={translations[0].isOff} />
         </DoodadTransform>
-        <DoodadTransform scale={`${STARTING_POSTIONS[1].scaleX}, ${STARTING_POSTIONS[1].scaleY}`} translation={`${translations[1].x}px, ${translations[1].y}px`} ms={isDrifting ? translations[1].ms : undefined} $ease={isDrifting ? translations[1].ease : undefined} $isFlash={translations[1].isFlash} $isOff={translations[1].isOff}>
-          <DoodadSpriteSheet
-            src={"spritesheet/doo_dad_heartbeat.png"}
-            zIndex={111}
-          />
+        <DoodadTransform scale={`${STARTING_POSTIONS[1].scaleX}, ${STARTING_POSTIONS[1].scaleY}`} translation={`${translations[1].x}px, ${translations[1].y}px`} ms={isDrifting ? translations[1].ms : undefined} $ease={isDrifting ? translations[1].ease : undefined} $isFlash={translations[1].isFlash}>
+          <CrtScreen $origin="240px 183px" $isOff={translations[1].isOff} $isReturning={translations[1].isReturning}>
+            <DoodadSpriteSheet
+              src={"spritesheet/doo_dad_heartbeat.png"}
+              zIndex={111}
+            />
+          </CrtScreen>
+          <CrtSparkle $x={240} $y={183} $isOff={translations[1].isOff} />
         </DoodadTransform>
-        <DoodadTransform scale={`${STARTING_POSTIONS[2].scaleX}, ${STARTING_POSTIONS[2].scaleY}`} translation={`${translations[2].x}px, ${translations[2].y}px`} ms={isDrifting ? translations[2].ms : undefined} $ease={isDrifting ? translations[2].ease : undefined} $isFlash={translations[2].isFlash} $isOff={translations[2].isOff}>
-          <DoodadSpriteSheet
-            src={"spritesheet/doo_dad_vertices.png"}
-            zIndex={112}
-          />
+        <DoodadTransform scale={`${STARTING_POSTIONS[2].scaleX}, ${STARTING_POSTIONS[2].scaleY}`} translation={`${translations[2].x}px, ${translations[2].y}px`} ms={isDrifting ? translations[2].ms : undefined} $ease={isDrifting ? translations[2].ease : undefined} $isFlash={translations[2].isFlash}>
+          <CrtScreen $origin="243px 75px" $isOff={translations[2].isOff} $isReturning={translations[2].isReturning}>
+            <DoodadSpriteSheet
+              src={"spritesheet/doo_dad_vertices.png"}
+              zIndex={112}
+            />
+          </CrtScreen>
+          <CrtSparkle $x={243} $y={75} $isOff={translations[2].isOff} />
         </DoodadTransform>
         <GreenGraphDoodad $isStatic={isDrifting} scale={`${STARTING_POSTIONS[3].scaleX}, ${STARTING_POSTIONS[3].scaleY}`} translation={`${translations[3].x}px, ${translations[3].y}px`} zIndex={108} />
       </BlinkFadeEffect>
