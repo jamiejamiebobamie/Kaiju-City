@@ -13,6 +13,7 @@ import { Doodads } from "Components/AvatarSelection";
 */
 const CHOICE = {
   lockInMs: 1500, // the labels' flash, before the slide
+  doodadFadeOutMs: 250, // the doodads' fade on hover out and on a pick (in: 1 s)
   slideMs: 1100,
   colors: { guy: "#55AAff", girl: "#fa8072" },
   textColor: "#e25cff"
@@ -136,7 +137,7 @@ const ChoiceAvatar = ({ id, sheet, keyName, figureOffset, chosen, isLeaving, onC
     <Choice $isLocked={!!chosen} onClick={onChoose} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} aria-label={id}>
       <SpriteBox $isLeaving={isLeaving}>
         <DoodadHolder>
-          <Doodads hasPrompt={false} show={isHovered && !chosen} persistDisc={false} hasDisc={false} globalTranslation={`${figureOffset}px, 0px`} opacity={doodadOpacity} setOpacity={setDoodadOpacity} />
+          <Doodads hasPrompt={false} show={isHovered && !chosen} persistDisc={false} hasDisc={false} isDrifting fadeOutMs={CHOICE.doodadFadeOutMs} globalTranslation={`${figureOffset}px, 0px`} opacity={doodadOpacity} setOpacity={setDoodadOpacity} />
         </DoodadHolder>
         <Sprite $sheet={sheet} $color={CHOICE.colors[id]} $isChosen={chosen == id} $isLocked={!!chosen} />
       </SpriteBox>

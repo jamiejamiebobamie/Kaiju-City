@@ -245,7 +245,7 @@ const PopupMsg = styled.span`
 `;
 
 const FadeInOutEffect = styled.div`
-    transition: opacity 1s;
+    transition: opacity ${props => props.ms || 1000}ms;
     ${props => `opacity: ${props.opacity};`} 
 `;
 
@@ -302,8 +302,14 @@ const PopupSpan = ({ color, msg, textAlign, fontSize }) =>
     </BlinkFadeEffect>
   </StyledMsg>
 
-const useOpacityEffect = ({ show, opacity, setOpacity, activeInterval }) => useEffect(() => {
+const useOpacityEffect = ({ show, opacity, setOpacity, activeInterval, fadeOutMs }) => useEffect(() => {
   const FADE_SPEED = 100; // 1 seconds to fade in or out
+  // a quick fade out: straight to 0, and the css transition (fadeOutMs) does the fade
+  if (!show && fadeOutMs) {
+    clearInterval(activeInterval.current);
+    setOpacity(0);
+    return;
+  }
   if (!show && opacity > 0) {
     clearInterval(activeInterval.current);
     activeInterval.current = setInterval(() => {
@@ -364,7 +370,25 @@ const useTranslationEffect = ({ STARTING_POSTIONS, show, setTranslations, active
 }
 
 // 'hasDisc': false leaves out the circuit disc on the floor (the character select, Jamie 2026-11-12)
-export const Doodads = ({ persistDisc, show, globalTranslation, isRed, opacity, setOpacity, hasPrompt = true, hasDisc = true }) => {
+// shown, the three doodads drift about their places, each on its own (not the green graph). Jamie, 2026-11-12
+const DRIFT = { everyMs: 1500, rangePx: 25, count: 3 };
+const useDriftEffect = ({ isOn, starts, setTranslations }) => useEffect(() => {
+  if (!isOn) {
+    setTranslations(starts);
+    return;
+  }
+  const drift = () => setTranslations(ts => ts.map((t, i) => {
+    if (i >= DRIFT.count || Math.random() < 0.3) return t; // now and then one stays put a beat
+    const start = starts[i];
+    return { ...start, x: start.x + (Math.random() * 2 - 1) * DRIFT.rangePx, y: start.y + (Math.random() * 2 - 1) * DRIFT.rangePx };
+  }));
+  drift();
+  const interval = setInterval(drift, DRIFT.everyMs);
+  return () => clearInterval(interval);
+}, [isOn]);
+
+// 'isDrifting': the doodads drift while shown. 'fadeOutMs': a quicker fade out than the 1 s fade in
+export const Doodads = ({ persistDisc, show, globalTranslation, isRed, opacity, setOpacity, hasPrompt = true, hasDisc = true, isDrifting = false, fadeOutMs = undefined }) => {
 
   const { isAvatarChangedOnce } = useContext(GlobalSettingsContext);
   const STARTING_POSTIONS = [
@@ -381,7 +405,8 @@ export const Doodads = ({ persistDisc, show, globalTranslation, isRed, opacity, 
 
   // turning-off for now...
   // useTranslationEffect({ STARTING_POSTIONS, show, setTranslations, activeInterval: activeTranslationInterval, accumulator });
-  useOpacityEffect({ show, opacity, setOpacity, activeInterval: activeOpacityInterval });
+  useOpacityEffect({ show, opacity, setOpacity, activeInterval: activeOpacityInterval, fadeOutMs });
+  useDriftEffect({ isOn: isDrifting && show, starts: STARTING_POSTIONS, setTranslations });
 
   return <DoodadsWrapper translation={globalTranslation}>
     {hasPrompt &&
@@ -395,7 +420,7 @@ export const Doodads = ({ persistDisc, show, globalTranslation, isRed, opacity, 
           fontSize={'13px'}
         />
       </FadeInOutEffect>}
-    <FadeInOutEffect opacity={opacity}>
+    <FadeInOutEffect opacity={opacity} ms={!show && fadeOutMs ? fadeOutMs : undefined}>
       {hasPrompt && <PopupSpan
         msg={'Click to change avatar'}
         color={'#80EF80'}
