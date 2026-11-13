@@ -332,7 +332,7 @@ const DoodadGrainFilters = () =>
     {[...Array(DOODAD_GRAIN.seeds).keys()].map(seed =>
       <filter key={seed} id={`doodadGrain${seed}`}>
         <feTurbulence type="fractalNoise" baseFrequency="0.95" numOctaves="2" seed={seed + 1} result="noise" />
-        <feColorMatrix in="noise" values="0 0 0 0 0.6  0 0 0 0 1  0 0 0 0 0.6  0 0 0 1.1 -0.5" result="snow" />
+        <feColorMatrix in="noise" values="0 0 0 0 0.6  0 0 0 0 1  0 0 0 0 0.6  0 0 0 0.55 -0.25" result="snow" />
         <feComposite in="snow" in2="SourceAlpha" operator="in" result="snowOnArt" />
         <feBlend in="snowOnArt" in2="SourceGraphic" mode="screen" />
       </filter>
@@ -545,7 +545,13 @@ const useDriftEffect = ({ isOn, starts, setTranslations }) => useEffect(() => {
   let timeout;
   const cut = () => {
     const moving = 1 + Math.floor(Math.random() * DRIFT.maxMoving); // one or two jump on a beat
-    const order = [0, 1, 2].sort(() => Math.random() - 0.5).slice(0, moving);
+    // a fair shuffle (sort with a random compare favoured the first two: the bottom left one jumped least)
+    const order = [0, 1, 2];
+    for (let k = order.length - 1; k > 0; k--) {
+      const r = Math.floor(Math.random() * (k + 1));
+      [order[k], order[r]] = [order[r], order[k]];
+    }
+    order.length = moving;
     const offs = order.filter(() => Math.random() < DRIFT.offChance);
     const beatMs = DRIFT.beatsMs[beat++ % DRIFT.beatsMs.length];
     const ms = offs.length ? Math.max(beatMs, CRT.offMs + DRIFT.offHoldMs) : beatMs; // the switch off seen through, and a beat of black
