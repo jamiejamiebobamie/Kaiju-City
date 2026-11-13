@@ -98,6 +98,8 @@ const Sprite = styled.div`
 */
 const SPARKS = {
   color: "#80EF80",
+  pulseColor: "#e6ffe6", // the number's pulse, up to a brighter greenish white (Jamie)
+  pulseMs: 1400, // one way
   everyMs: [350, 1300], // between bursts (a random wait in this range)
   perBurst: [2, 5],
   lifeMs: 700,
@@ -115,6 +117,11 @@ const numberCrackle = keyframes`
   64% { text-shadow: 0 0 4px ${SPARKS.color}, 0 0 9px ${SPARKS.color}; translate: 0 0; }
 `;
 
+const numberPulse = keyframes`
+  from { color: ${SPARKS.color}; }
+  to { color: ${SPARKS.pulseColor}; }
+`;
+
 const KeyNumber = styled.span`
   position: relative;
   display: inline-block;
@@ -125,7 +132,7 @@ const KeyNumber = styled.span`
   visibility: ${props => props.$isHidden ? "hidden" : "visible"};
   ${props => props.$isElectric && css`
     color: ${SPARKS.color};
-    animation: ${numberCrackle} 0.9s steps(1) infinite;
+    animation: ${numberCrackle} 0.9s steps(1) infinite, ${numberPulse} ${SPARKS.pulseMs}ms ease-in-out infinite alternate;
   `}
 `;
 
