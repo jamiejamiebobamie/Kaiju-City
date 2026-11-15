@@ -171,19 +171,18 @@ const KeyText = styled.div`
 `;
 
 /*
-  The ghosts of the words (Jamie, 2026-11-15), like a fighter pilot's HUD, its squares marking where it fires: a lead
-  ghost glides round a square about the words, along its edges (never a circle), holding at each corner as if that's
-  where it means to be, then easing on to the next. A string of echoes follows it, each a moment behind, so they stack
-  into overlapping boxes at a corner and stretch out along an edge. As the lead lands on a corner, one fires on
-  outward from it and fades.
+  The ghosts of the words (Jamie, 2026-11-15), like a fighter pilot's HUD, its squares marking where it fires: ghosts
+  fire out of the words all the time, one after another, each sliding off and fading. Where they're fired at is a
+  target gliding round a square about the words, along its edges (never a circle): it holds at each corner, as if
+  that's where it means to be, so a run of shots goes there, overlapping like the HUD's boxes; then it eases on along
+  the edge to the next corner.
 */
 const GHOSTS = {
   box: { x: 150, y: 75 }, // the square's corners, from the words
-  holdShare: 0.45, // of each corner's stretch, held at the corner; the rest, gliding to the next
-  echoes: 6,
-  echoLagSeconds: 0.07, // each echo this far behind the one ahead
-  leadOpacity: 0.4,
-  fire: { reach: 1.45, share: 0.8, opacity: 0.35 } // a corner's shot: how far out (times the corner), over what share of the hold
+  holdShare: 0.45, // of each corner's stretch, the target held at the corner; the rest, gliding to the next
+  shots: 22, // fired in one lap
+  travelShare: 0.2, // a shot's flight, of the lap
+  opacity: 0.4 // a shot's, as it leaves the words
 };
 const GHOST_CORNERS = [
   { x: GHOSTS.box.x, y: -GHOSTS.box.y }, // up right
@@ -191,18 +190,25 @@ const GHOST_CORNERS = [
   { x: -GHOSTS.box.x, y: GHOSTS.box.y }, // down left
   { x: GHOSTS.box.x, y: GHOSTS.box.y } // down right
 ];
-const cornerShare = 100 / GHOST_CORNERS.length;
 
-const glide = keyframes`${GHOST_CORNERS.map(({ x, y }, k) => `
-  ${k * cornerShare}% { transform: translate(${x}px, ${y}px); animation-timing-function: linear; }
-  ${k * cornerShare + cornerShare * GHOSTS.holdShare}% { transform: translate(${x}px, ${y}px); animation-timing-function: cubic-bezier(0.6, 0, 0.25, 1); }`).join("")}
-  100% { transform: translate(${GHOST_CORNERS[0].x}px, ${GHOST_CORNERS[0].y}px); }
-`;
+// the target, a share of the way round the lap: held at a corner, then eased (slow, quick, slow) along to the next
+const getGhostTarget = share => {
+  const along = share * GHOST_CORNERS.length;
+  const k = Math.floor(along) % GHOST_CORNERS.length;
+  const into = along - Math.floor(along);
+  const from = GHOST_CORNERS[k];
+  if (into < GHOSTS.holdShare) return from;
+  const to = GHOST_CORNERS[(k + 1) % GHOST_CORNERS.length];
+  const glide = (into - GHOSTS.holdShare) / (1 - GHOSTS.holdShare);
+  const eased = glide * glide * (3 - 2 * glide);
+  return { x: from.x + (to.x - from.x) * eased, y: from.y + (to.y - from.y) * eased };
+};
+const GHOST_SHOTS = [...Array(GHOSTS.shots).keys()].map(k => ({ share: k / GHOSTS.shots, ...getGhostTarget(k / GHOSTS.shots) }));
 
-const fireOut = keyframes`
-  0% { transform: translate(var(--cx), var(--cy)) scale(1); opacity: ${GHOSTS.fire.opacity}; }
-  ${cornerShare * GHOSTS.holdShare * GHOSTS.fire.share}% { transform: translate(calc(var(--cx) * ${GHOSTS.fire.reach}), calc(var(--cy) * ${GHOSTS.fire.reach})) scale(1.12); opacity: 0; }
-  100% { transform: translate(calc(var(--cx) * ${GHOSTS.fire.reach}), calc(var(--cy) * ${GHOSTS.fire.reach})) scale(1.12); opacity: 0; }
+const trail = keyframes`
+  0% { transform: translate(0, 0); opacity: ${GHOSTS.opacity}; }
+  ${GHOSTS.travelShare * 100}% { transform: translate(var(--dx), var(--dy)); opacity: 0; }
+  100% { transform: translate(var(--dx), var(--dy)); opacity: 0; }
 `;
 
 const Phantom = styled.span`
@@ -211,11 +217,7 @@ const Phantom = styled.span`
   top: 0;
   color: ${PRESS_KEY.trailColor};
   text-shadow: none;
-  animation: ${glide} ${PRESS_KEY.trailSeconds}s infinite;
-`;
-
-const Shot = styled(Phantom)`
-  animation: ${fireOut} ${PRESS_KEY.trailSeconds}s ease-out infinite;
+  animation: ${trail} ${PRESS_KEY.trailSeconds}s ease-out infinite;
 `;
 
 // pressed (Jamie): the ghosts hold where they are and fade out quickly, and don't come back while the words go white
@@ -329,13 +331,8 @@ export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
       <KeyText $isLeaving={isLeaving}>
         {/* three, a moment apart: a trail */}
         <Trails $isLeaving={isLeaving}>
-          {/* the lead (k 0) and its echoes, each a moment behind and fainter */}
-          {[...Array(GHOSTS.echoes + 1).keys()].map(k => (
-            <Phantom key={`echo ${k}`} style={{ opacity: GHOSTS.leadOpacity * (1 - k / (GHOSTS.echoes + 1)), animationDelay: `${k * GHOSTS.echoLagSeconds}s` }}><KeyWords /></Phantom>
-          ))}
-          {/* a shot out from each corner as the lead lands there */}
-          {GHOST_CORNERS.map(({ x, y }, k) => (
-            <Shot key={`shot ${k}`} style={{ "--cx": `${x}px`, "--cy": `${y}px`, animationDelay: `${(k / GHOST_CORNERS.length - 1) * PRESS_KEY.trailSeconds}s` }}><KeyWords /></Shot>
+          {GHOST_SHOTS.map(({ share, x, y }, k) => (
+            <Phantom key={k} style={{ "--dx": `${x}px`, "--dy": `${y}px`, animationDelay: `${(share - 1) * PRESS_KEY.trailSeconds}s` }}><KeyWords /></Phantom>
           ))}
         </Trails>
         <span style={{ position: "relative" }}><KeyWords /></span>
