@@ -105,11 +105,7 @@ const SPARKS = {
   sparkColor: "#ffb020", // the sparks: yellow-orange, against the green number (Jamie; was electric blue #2fc8ff)
   pulseColor: "#e6ffe6", // the number's pulse, up to a brighter greenish white (Jamie)
   pulseMs: 1400, // one way
-  everyMs: [1600, 4000], // between bursts (a random wait in this range; less often again: Jamie, was 0.8 to 2.4 s)
-  perBurst: [2, 5],
-  lifeMs: 1300, // (longer: Jamie, was 0.7 s; the grid's too)
-  spreadPx: 40, // how far across a spark can fly (was 26)
-  fallPx: [40, 80] // how far down it falls (further: was 22 to 46)
+  lifeMs: 1000 // a spark's flight (shorter than the wait between bursts, so one burst is over before the next)
 };
 
 const numberCrackle = keyframes`
@@ -145,15 +141,19 @@ const KeyNumber = styled.span`
   `}
 `;
 
-// a spark's flight: out and up a little, then falling, shrinking and fading
-// a hard launch (Jamie: forceful): most of the throw across and the hop come in the first instant, then the spark
-// slows across and falls, shrinking and fading
-const sparkFall = keyframes`
-  0% { transform: translate(0, 0) scale(1); opacity: 1; }
-  10% { transform: translate(calc(var(--dx) * 0.5), var(--hop, -6px)) scale(1); opacity: 1; }
-  30% { transform: translate(calc(var(--dx) * 0.78), calc(var(--hop, -6px) * 0.6)) scale(0.9); opacity: 1; }
-  100% { transform: translate(var(--dx), var(--dy)) scale(0.3); opacity: 0; }
-`;
+/*
+  A spark flies like a welder's or a grinder's (Jamie, 2026-11-15): thrown hard across and slowing, often up in an arc
+  first ('--arc', its height), then pulled down, faster and faster, as by gravity; shrinking and fading at the end.
+  '--dx': how far across in all, '--dy': how far down by the end.
+*/
+const SPARK_STEPS = [0, 0.05, 0.12, 0.2, 0.3, 0.42, 0.56, 0.7, 0.85, 1];
+const sparkFall = keyframes`${SPARK_STEPS.map(time => {
+  const across = 1 - Math.pow(1 - time, 3); // out fast, slowing
+  const arc = 6.75 * time * Math.pow(1 - time, 2); // up and back down, highest a third of the way in
+  const fall = time * time; // gravity
+  const opacity = time < 0.65 ? 1 : 1 - (time - 0.65) / 0.35;
+  return `${(time * 100).toFixed(1)}% { transform: translate(calc(var(--dx) * ${across.toFixed(3)}), calc(var(--arc, 0px) * ${(-arc).toFixed(3)} + var(--dy) * ${fall.toFixed(3)})) scale(${(1 - 0.65 * time).toFixed(2)}); opacity: ${opacity.toFixed(2)}; }`;
+}).join("\n")}`;
 
 const Spark = styled.span`
   position: absolute;
@@ -171,51 +171,28 @@ const Spark = styled.span`
 `;
 
 const between = ([low, high]) => low + Math.random() * (high - low);
+const pick = share => Math.random() < share;
 let sparkId = 0; // across hovers, so a spark still falling keeps its key
 
-// 'everyMs': the wait between bursts (a range); 'getOrigin': where a burst starts (by default, the number's foot);
-// 'look': the burst's own numbers over SPARKS' (how many, how far across and down, the hop, and how scattered they start)
-const useSparks = (isOn, everyMs = SPARKS.everyMs, getOrigin = undefined, firstMs = 150, look = {}) => {
-  const { perBurst, spreadPx, fallPx, hopPx, scatterPx } = { hopPx: [8, 14], scatterPx: 0, ...SPARKS, ...look };
-  const [sparks, setSparks] = useState([]);
-  useEffect(() => {
-    if (!isOn) return;
-    let timeout;
-    const burst = () => {
-      const count = Math.round(between(perBurst));
-      const origin = getOrigin ? getOrigin() : undefined;
-      const born = Array.from({ length: count }, () => ({
-        id: sparkId++,
-        origin,
-        dx: (Math.random() * 2 - 1) * spreadPx,
-        dy: between(fallPx),
-        hop: -between(hopPx),
-        ox: (Math.random() * 2 - 1) * scatterPx,
-        oy: (Math.random() * 2 - 1) * scatterPx
-      }));
-      setSparks(all => [...all, ...born]);
-      setTimeout(() => setSparks(all => all.filter(spark => !born.includes(spark))), SPARKS.lifeMs);
-      timeout = setTimeout(burst, between(everyMs));
-    };
-    timeout = setTimeout(burst, firstMs); // the first: the number's soon after the hover
-    return () => clearTimeout(timeout);
-  }, [isOn]);
-  return sparks;
-};
-
 /*
-  Sparks off the green grid behind a hovered avatar too (Jamie, 2026-11-15): now and then, every 1.5 to 4 seconds at
-  random, a burst from a random spot on the grid, falling as the number's do. (In the sprite box's pixels: the grid,
-  as the doodads draw it, measured.)
+  The number's sparks and the grid's are on one timer (Jamie): a burst at a time, from one or the other, and the next
+  only once it is over. (The grid's spots: in the sprite box's pixels, the grid as the doodads draw it, measured.)
 */
-// more violent than the number's (Jamie): flung harder sideways, spread wide, more of them, more often
+const SPARK_TIMER = { everyMs: [1300, 3000], firstMs: [300, 900], numberShare: 0.3 };
+
+// the number's: off its foot, thrown either way, some arcing up
+const NUMBER_SPARKS = { perBurst: [2, 5], acrossPx: [20, 70], fallPx: [110, 180], arcShare: 0.5, arcPx: [8, 22] };
+
+// the grid's: only off its edges, flung outward onto the black, never across the figure (Jamie). Off the top, nearly
+// always an arc up first; off the sides, sometimes
 const GRID_SPARKS = {
-  everyMs: [1400, 3200], // (less often: Jamie; was 0.7 to 2 s, and before that 1.5 to 4)
-  look: { perBurst: [4, 8], spreadPx: 130, fallPx: [55, 130], hopPx: [12, 30], scatterPx: 10 }, // (harder: spread was 90, hop 8 to 22)
+  perBurst: [4, 8],
+  acrossPx: [70, 190],
+  fallPx: [150, 260],
+  scatterPx: 10,
   grid: { left: 34, top: 42, right: 120, bottom: 191 },
-  // only from the grid's edges, flung outward onto the black, never across the figure (Jamie): which edge, how often
-  edges: [{ side: "left", share: 0.4 }, { side: "right", share: 0.4 }, { side: "top", share: 0.2 }],
-  minOutPx: 35 // at least this far out, sideways, so a spark clears the grid
+  edges: [{ side: "left", share: 0.38 }, { side: "right", share: 0.38 }, { side: "top", share: 0.24 }],
+  arcs: { top: { share: 0.85, px: [30, 75] }, side: { share: 0.45, px: [10, 38] } }
 };
 
 // a spot on one of the grid's edges, and which way is out from there
@@ -231,26 +208,62 @@ const getGridEdgeSpot = offsetX => {
   return { x: (side == "left" ? grid.left : grid.right) + offsetX, y: between([grid.top, grid.bottom - 30]), side, out: side == "left" ? -1 : 1 };
 };
 
-const GridSparks = ({ isOn, offsetX }) => {
-  const sparks = useSparks(isOn, GRID_SPARKS.everyMs, () => getGridEdgeSpot(offsetX), between(GRID_SPARKS.everyMs) / 2, GRID_SPARKS.look);
-  return sparks.map(({ id, dx, dy, hop, ox, oy, origin }) => {
-    // outward only: away from the grid, and the scatter kept to the outside of its edge
-    const outX = origin.out * Math.max(GRID_SPARKS.minOutPx, Math.abs(dx));
-    const left = origin.side == "top" ? origin.x + ox : origin.x + origin.out * Math.abs(ox);
-    const top = origin.side == "top" ? origin.y - Math.abs(oy) : origin.y + oy;
-    return <Spark key={id} style={{ left: `${left}px`, top: `${top}px`, "--dx": `${outX}px`, "--dy": `${dy}px`, "--hop": `${hop}px` }} />;
+const makeNumberBurst = () => Array.from({ length: Math.round(between(NUMBER_SPARKS.perBurst)) }, () => ({
+  id: sparkId++,
+  source: "number",
+  dx: (pick(0.5) ? -1 : 1) * between(NUMBER_SPARKS.acrossPx),
+  dy: between(NUMBER_SPARKS.fallPx),
+  arc: pick(NUMBER_SPARKS.arcShare) ? between(NUMBER_SPARKS.arcPx) : 0
+}));
+
+const makeGridBurst = offsetX => {
+  const spot = getGridEdgeSpot(offsetX);
+  const arcs = spot.side == "top" ? GRID_SPARKS.arcs.top : GRID_SPARKS.arcs.side;
+  return Array.from({ length: Math.round(between(GRID_SPARKS.perBurst)) }, () => {
+    const scatterX = between([0, GRID_SPARKS.scatterPx]);
+    const scatterY = (Math.random() * 2 - 1) * GRID_SPARKS.scatterPx;
+    return {
+      id: sparkId++,
+      source: "grid",
+      // the scatter kept to the outside of its edge
+      left: spot.side == "top" ? spot.x + (Math.random() * 2 - 1) * GRID_SPARKS.scatterPx : spot.x + spot.out * scatterX,
+      top: spot.side == "top" ? spot.y - Math.abs(scatterY) : spot.y + scatterY,
+      dx: spot.out * between(GRID_SPARKS.acrossPx),
+      dy: between(GRID_SPARKS.fallPx),
+      arc: pick(arcs.share) ? between(arcs.px) : 0
+    };
   });
 };
 
-const ElectricNumber = ({ isElectric, isHidden, children }) => {
-  const sparks = useSparks(isElectric && !isHidden);
-  return (
-    <KeyNumber $isHidden={isHidden} $isElectric={isElectric && !isHidden}>
-      {children}
-      {sparks.map(({ id, dx, dy }) => <Spark key={id} style={{ "--dx": `${dx}px`, "--dy": `${dy}px` }} />)}
-    </KeyNumber>
-  );
+const useSparkBursts = (isOn, offsetX) => {
+  const [sparks, setSparks] = useState([]);
+  useEffect(() => {
+    if (!isOn) return;
+    let timeout;
+    const burst = () => {
+      const born = pick(SPARK_TIMER.numberShare) ? makeNumberBurst() : makeGridBurst(offsetX);
+      setSparks(all => [...all, ...born]);
+      setTimeout(() => setSparks(all => all.filter(spark => !born.includes(spark))), SPARKS.lifeMs);
+      timeout = setTimeout(burst, between(SPARK_TIMER.everyMs));
+    };
+    timeout = setTimeout(burst, between(SPARK_TIMER.firstMs));
+    return () => clearTimeout(timeout);
+  }, [isOn]);
+  return sparks;
 };
+
+const getSparkStyle = ({ dx, dy, arc }) => ({ "--dx": `${dx}px`, "--dy": `${dy}px`, "--arc": `${arc}px` });
+
+const GridSparks = ({ sparks }) => sparks.filter(({ source }) => source == "grid").map(spark => (
+  <Spark key={spark.id} style={{ left: `${spark.left}px`, top: `${spark.top}px`, ...getSparkStyle(spark) }} />
+));
+
+const ElectricNumber = ({ isElectric, isHidden, sparks, children }) => (
+  <KeyNumber $isHidden={isHidden} $isElectric={isElectric && !isHidden}>
+    {children}
+    {sparks.filter(({ source }) => source == "number").map(spark => <Spark key={spark.id} style={getSparkStyle(spark)} />)}
+  </KeyNumber>
+);
 
 // locked in: a white flash on the way in, quick at first, then slower, then still (no words for it: Jamie)
 const lockIn = keyframes`
@@ -287,17 +300,18 @@ const Prompt = styled.div`
 const ChoiceAvatar = ({ id, sheet, keyName, figureOffset, chosen, isLeaving, onChoose }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [doodadOpacity, setDoodadOpacity] = useState(0);
+  const sparks = useSparkBursts(isHovered && !chosen, figureOffset);
   return (
     <Choice $isLocked={!!chosen} onClick={onChoose} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} aria-label={id}>
       <SpriteBox $isLeaving={isLeaving}>
         {/* the grid's sparks under everything here: the grid, the three readouts and the figure (Jamie) */}
-        <GridSparks isOn={isHovered && !chosen} offsetX={figureOffset} />
+        <GridSparks sparks={sparks} />
         <DoodadHolder>
           <Doodads hasPrompt={false} show={isHovered && !chosen} persistDisc={false} hasDisc={false} isDrifting fadeInMs={CHOICE.doodadFadeInMs} fadeOutMs={CHOICE.doodadFadeOutMs} globalTranslation={`${figureOffset}px, 0px`} opacity={doodadOpacity} setOpacity={setDoodadOpacity} />
         </DoodadHolder>
         <Sprite $sheet={sheet} $color={CHOICE.colors[id]} $isChosen={chosen == id} $isLocked={!!chosen} />
       </SpriteBox>
-      <ElectricNumber isElectric={isHovered} isHidden={!!chosen}>{keyName}</ElectricNumber>
+      <ElectricNumber isElectric={isHovered} isHidden={!!chosen} sparks={sparks}>{keyName}</ElectricNumber>
       <Label $isShown={!!chosen} $isLeaving={isLeaving} style={{ "--color": CHOICE.colors[id] }}>{chosen ? (chosen == id ? "Player" : "Teammate") : ""}</Label>
     </Choice>
   );
