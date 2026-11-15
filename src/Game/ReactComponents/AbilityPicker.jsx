@@ -28,7 +28,8 @@ const PICK_COUNT = 3;
 
 const STAGE = { width: 1000, height: 1000 };
 const LOOK = {
-  figureHeight: 270, // the avatar, head to feet
+  figureHeight: 540, // the avatar, head to feet (twice what it was: Jamie, 2026-11-15; the halo kept its size)
+  haloRadius: 405, // the halo, from the upper torso (was 1.5 times the avatar's height, 270)
   torso: { x: 500, y: 485 }, // the upper torso: the halo's middle
   headDrop: 0.28, // the upper torso, down from the top of the head (of the figure's height)
   haloStartDegrees: -35, // low on the avatar's right (0 is right, counter-clockwise; was -65: Jamie, the lowest higher)
@@ -41,7 +42,7 @@ const LOOK = {
   beadMs: 1700, // a bead's run from the pendant to the avatar
   colors: { trace: "#1f3a29", traceHover: "#7fae8c", stub: "#15281c", pad: "#2d5a3c" }
 };
-const HALO_RADIUS = 1.5 * LOOK.figureHeight;
+const HALO_RADIUS = LOOK.haloRadius;
 
 // where the picker's figure stands, as shares of its square stage: the avatar select slides the chosen one here, so the
 // two read as one monitor (Jamie)
