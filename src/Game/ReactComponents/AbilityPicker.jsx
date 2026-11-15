@@ -54,17 +54,43 @@ const polar = (degrees, radius) => {
   return { x: LOOK.torso.x + radius * Math.cos(radians), y: LOOK.torso.y - radius * Math.sin(radians) };
 };
 
-// a trace from a pendant: radially in to the bend, then a 45 degree run and a straight run to its end behind the avatar
+/*
+  A trace from a pendant, jagged like a circuit board's (Jamie): radially in, with a sideways jog on the way, to the
+  bend; then down to its end behind the avatar in a staircase of straight and 45 degree runs.
+*/
+const JAG = { jogPx: 16, jogAt: 0.35, steps: 3 };
+
 const getTrace = (degrees, index, count) => {
   const start = polar(degrees, HALO_RADIUS - LOOK.pendantSize / 2 - 10);
   const bend = polar(degrees, HALO_RADIUS * LOOK.bendAt);
   const across = count > 1 ? 1 - (2 * index) / (count - 1) : 0; // the right end of the halo ends on the right
   const end = { x: LOOK.torso.x + across * LOOK.endSpread * LOOK.figureHeight, y: LOOK.torso.y + LOOK.endDrop * LOOK.figureHeight };
-  const dx = end.x - bend.x;
-  const dy = end.y - bend.y;
-  const diagonal = Math.min(Math.abs(dx), Math.abs(dy));
-  const corner = { x: bend.x + Math.sign(dx) * diagonal, y: bend.y + Math.sign(dy) * diagonal };
-  return { start, end, d: `M ${start.x} ${start.y} L ${bend.x} ${bend.y} L ${corner.x} ${corner.y} L ${end.x} ${end.y}` };
+  // the jog: off to one side at 45 degrees, then on in, parallel
+  const inward = { x: (bend.x - start.x), y: (bend.y - start.y) };
+  const length = Math.hypot(inward.x, inward.y);
+  const along = { x: inward.x / length, y: inward.y / length };
+  const side = (index % 2 ? 1 : -1) * JAG.jogPx;
+  const across90 = { x: -along.y * side, y: along.x * side };
+  const jogFrom = { x: start.x + inward.x * JAG.jogAt, y: start.y + inward.y * JAG.jogAt };
+  const jogTo = { x: jogFrom.x + along.x * Math.abs(side) + across90.x, y: jogFrom.y + along.y * Math.abs(side) + across90.y };
+  const bent = { x: bend.x + across90.x, y: bend.y + across90.y };
+  const points = [start, jogFrom, jogTo, bent];
+  // the staircase down: each step a straight run on the longer axis, then a 45 degree run
+  const dx = end.x - bent.x;
+  const dy = end.y - bent.y;
+  const minor = Math.min(Math.abs(dx), Math.abs(dy));
+  const major = Math.max(Math.abs(dx), Math.abs(dy)) - minor;
+  const isVertical = Math.abs(dy) >= Math.abs(dx);
+  let at = { ...bent };
+  for (let step = 0; step < JAG.steps; step++) {
+    const straight = major / JAG.steps;
+    at = isVertical ? { x: at.x, y: at.y + Math.sign(dy) * straight } : { x: at.x + Math.sign(dx) * straight, y: at.y };
+    points.push(at);
+    const slant = minor / JAG.steps;
+    at = { x: at.x + Math.sign(dx) * slant, y: at.y + Math.sign(dy) * slant };
+    points.push(at);
+  }
+  return { start, end, d: `M ${points.map(({ x, y }) => `${x.toFixed(1)} ${y.toFixed(1)}`).join(' L ')}` };
 };
 
 // the board around the halo, between the pendants: short dim traces with ring pads, as on the old disc (no meaning)
@@ -176,6 +202,77 @@ const Pendant = styled.button`
   `}
 `;
 
+const spin = keyframes`
+  to { transform: rotate(360deg); }
+`;
+
+// picked: a light that circles the pendant's outside, round and round
+const Orbit = styled.span`
+  position: absolute;
+  inset: -22%;
+  border-radius: 50%;
+  pointer-events: none;
+  background: conic-gradient(from 0deg, transparent 0deg 220deg, ${props => props.$color} 310deg, white 345deg, transparent 360deg);
+  -webkit-mask: radial-gradient(closest-side, transparent 74%, black 80%, black 88%, transparent 100%);
+  mask: radial-gradient(closest-side, transparent 74%, black 80%, black 88%, transparent 100%);
+  animation: ${spin} 1.8s linear infinite;
+  filter: blur(${unit(1)});
+`;
+
+const sheenSweep = keyframes`
+  0% { transform: rotate(-90deg); opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: rotate(270deg); opacity: 0; }
+`;
+
+const lockFlash = keyframes`
+  0% { opacity: 0.95; transform: scale(0.85); }
+  100% { opacity: 0; transform: scale(1.35); }
+`;
+
+// the moment it's picked, "locked in" (Jamie): a white flash, and a sheen that slides round the pendant's rim
+const LockIn = styled.span`
+  position: absolute;
+  inset: -6%;
+  border-radius: 50%;
+  pointer-events: none;
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg, transparent 0deg 300deg, rgba(255, 255, 255, 0.9) 345deg, white 352deg, transparent 360deg);
+    -webkit-mask: radial-gradient(closest-side, transparent 80%, black 86%, black 96%, transparent 100%);
+    mask: radial-gradient(closest-side, transparent 80%, black 86%, black 96%, transparent 100%);
+    animation: ${sheenSweep} 520ms cubic-bezier(0.3, 0.6, 0.4, 1) forwards;
+  }
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle, white, ${props => props.$color} 45%, transparent 70%);
+    animation: ${lockFlash} 380ms ease-out forwards;
+  }
+`;
+
+// dev only: which powers hang in the halo, to see how it looks with more or fewer (Jamie)
+const DevPanel = styled.div`
+  position: absolute;
+  left: ${pctX(16)};
+  top: ${pctY(16)};
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  font: 11px monospace;
+  color: #9fbfa8;
+  background: rgba(10, 16, 12, 0.85);
+  border: 1px solid #2d5a3c;
+  label { display: flex; gap: 6px; align-items: center; cursor: pointer; }
+`;
+
 const Info = styled.div`
   position: absolute;
   left: ${pctX(930)};
@@ -198,19 +295,26 @@ const Part = styled.div`
   align-items: ${props => props.$align == "right" ? "flex-end" : "flex-start"};
 `;
 
+const TITLE_SIZE = 36;
+
 const TitleRow = styled.div`
   display: flex;
   align-items: center;
   gap: ${unit(28)};
   font-family: gameboy;
-  font-size: ${unit(36)};
+  font-size: ${unit(TITLE_SIZE)};
   color: white;
 `;
 
-// the class's three icons, kept together beside its name
-const IconGroup = styled.span`
+// the class's three icons, over its name (Jamie): spaced apart, and half the name's height above it
+const IconGroup = styled.div`
   display: flex;
-  gap: ${unit(14)};
+  gap: ${unit(30)};
+  margin-bottom: ${unit(TITLE_SIZE / 2 - 10)}; /* (the part's own gap makes up the rest) */
+`;
+
+const ClassText = styled.div`
+  padding-left: ${unit(48)};
 `;
 
 const Icon = styled.i`
@@ -270,13 +374,18 @@ export const AbilityPicker = ({
   setIsTeammate = undefined
 }) => {
   const { settingsManager, selectedAvatar } = useContext(GlobalSettingsContext);
-  // the open powers only (Jamie: locked ones are hidden)
-  const [powers] = useState(() => {
-    settingsManager.initAbilityStatusData();
-    return Object.values(settingsManager.getAbilityAndTileStatusData())
-      .filter(({ element }) => !OUT_OF_PLAY_POWERS.includes(element) && getIsSkillOpen(element));
-  });
   const [hovered, setHovered] = useState(undefined); // the index of the hovered (or key-chosen) pendant
+  // every power in play; the halo shows the open ones only (Jamie: locked ones are hidden)
+  const [allPowers] = useState(() => {
+    settingsManager.initAbilityStatusData();
+    return Object.values(settingsManager.getAbilityAndTileStatusData()).filter(({ element }) => !OUT_OF_PLAY_POWERS.includes(element));
+  });
+  // dev: shown or hidden by hand, over whether it's open
+  const [devShown, setDevShown] = useState({});
+  const [isDevOpen, setIsDevOpen] = useState(false);
+  const powers = useMemo(() => allPowers.filter(({ element }) => devShown[element] ?? getIsSkillOpen(element)), [allPowers, devShown]);
+  useEffect(() => setHovered(undefined), [powers.length]);
+  const [lockIns, setLockIns] = useState({}); // each power's count of being picked, to play its lock-in again
 
   const angles = useMemo(() => powers.map((_, k) => powers.length > 1
     ? LOOK.haloStartDegrees + (k * (LOOK.haloEndDegrees - LOOK.haloStartDegrees)) / (powers.length - 1)
@@ -291,6 +400,7 @@ export const AbilityPicker = ({
     const isPicked = pickedAbilities.includes(element);
     if (!isPicked && pickedAbilities.length >= PICK_COUNT) return;
     const picked = (isPicked ? pickedAbilities.filter(other => other != element) : [...pickedAbilities, element]).sort((a, b) => a.localeCompare(b));
+    if (!isPicked) setLockIns(counts => ({ ...counts, [element]: (counts[element] || 0) + 1 }));
     setPickedAbilities(picked);
     settingsManager.setSortedPlayerChosenAbilityElementsString(picked);
   };
@@ -345,13 +455,11 @@ export const AbilityPicker = ({
     if (playerClass) {
       return (
         <Part $align="left">
-          <TitleRow>
-            {playerClass[0]}
-            <IconGroup>
-              {pickedPowers.map(({ element, activeIcon, color }) => <Icon key={element} className={`fa ${activeIcon}`} style={{ color }} />)}
-            </IconGroup>
-          </TitleRow>
-          <div style={{ color: getClassTint(pickedPowers.map(({ color }) => color)) }}>{playerClass[1]}</div>
+          <IconGroup>
+            {pickedPowers.map(({ element, activeIcon, color }) => <Icon key={element} className={`fa ${activeIcon}`} style={{ color }} />)}
+          </IconGroup>
+          <TitleRow>{playerClass[0]}</TitleRow>
+          <ClassText style={{ color: getClassTint(pickedPowers.map(({ color }) => color)) }}>{playerClass[1]}</ClassText>
         </Part>
       );
     }
@@ -419,11 +527,24 @@ export const AbilityPicker = ({
               onMouseEnter={() => setHovered(k)}
               onMouseLeave={() => setHovered(undefined)}
             >
+              {getIsPicked(power) && <Orbit $color={power.color} />}
+              {getIsPicked(power) && lockIns[power.getElementUppercase()] && <LockIn key={lockIns[power.getElementUppercase()]} $color={power.color} />}
               <i className={`fa ${power.activeIcon}`} style={{ color: power.color }} />
             </Pendant>
           );
         })}
         <Info>{getInfo()}</Info>
+        {import.meta.env.DEV && (
+          <DevPanel>
+            <label><input type="checkbox" checked={isDevOpen} onChange={() => setIsDevOpen(!isDevOpen)} />dev: powers in the halo ({powers.length})</label>
+            {isDevOpen && allPowers.map(({ element, activeName }) => (
+              <label key={element}>
+                <input type="checkbox" checked={devShown[element] ?? getIsSkillOpen(element)} onChange={event => setDevShown(shown => ({ ...shown, [element]: event.target.checked }))} />
+                {activeName || element}{getIsSkillOpen(element) ? '' : ' (locked)'}
+              </label>
+            ))}
+          </DevPanel>
+        )}
         <Buttons>
           <MetalButton disabled={!isReady} onClick={handleClickPlay}>{playLabel || "Play!"}</MetalButton>
           {!onBack && <MetalButton onClick={handleClickHome}>Back</MetalButton>}
