@@ -105,10 +105,10 @@ const SPARKS = {
   sparkColor: "#ffb020", // the sparks: yellow-orange, against the green number (Jamie; was electric blue #2fc8ff)
   pulseColor: "#e6ffe6", // the number's pulse, up to a brighter greenish white (Jamie)
   pulseMs: 1400, // one way
-  everyMs: [800, 2400], // between bursts (a random wait in this range; less often: Jamie, was 0.35 to 1.3 s)
+  everyMs: [1600, 4000], // between bursts (a random wait in this range; less often again: Jamie, was 0.8 to 2.4 s)
   perBurst: [2, 5],
   lifeMs: 1300, // (longer: Jamie, was 0.7 s; the grid's too)
-  spreadPx: 26, // how far across a spark can fly
+  spreadPx: 40, // how far across a spark can fly (was 26)
   fallPx: [40, 80] // how far down it falls (further: was 22 to 46)
 };
 
@@ -146,9 +146,12 @@ const KeyNumber = styled.span`
 `;
 
 // a spark's flight: out and up a little, then falling, shrinking and fading
+// a hard launch (Jamie: forceful): most of the throw across and the hop come in the first instant, then the spark
+// slows across and falls, shrinking and fading
 const sparkFall = keyframes`
   0% { transform: translate(0, 0) scale(1); opacity: 1; }
-  25% { transform: translate(calc(var(--dx) * 0.45), var(--hop, -6px)) scale(1); opacity: 1; }
+  10% { transform: translate(calc(var(--dx) * 0.5), var(--hop, -6px)) scale(1); opacity: 1; }
+  30% { transform: translate(calc(var(--dx) * 0.78), calc(var(--hop, -6px) * 0.6)) scale(0.9); opacity: 1; }
   100% { transform: translate(var(--dx), var(--dy)) scale(0.3); opacity: 0; }
 `;
 
@@ -164,7 +167,7 @@ const Spark = styled.span`
   background: #fff4c2;
   box-shadow: 0 0 3px 1px ${SPARKS.sparkColor}, 0 0 7px 2px ${SPARKS.sparkColor};
   pointer-events: none;
-  animation: ${sparkFall} ${SPARKS.lifeMs}ms cubic-bezier(0.3, 0, 0.8, 1) forwards;
+  animation: ${sparkFall} ${SPARKS.lifeMs}ms linear forwards;
 `;
 
 const between = ([low, high]) => low + Math.random() * (high - low);
@@ -173,7 +176,7 @@ let sparkId = 0; // across hovers, so a spark still falling keeps its key
 // 'everyMs': the wait between bursts (a range); 'getOrigin': where a burst starts (by default, the number's foot);
 // 'look': the burst's own numbers over SPARKS' (how many, how far across and down, the hop, and how scattered they start)
 const useSparks = (isOn, everyMs = SPARKS.everyMs, getOrigin = undefined, firstMs = 150, look = {}) => {
-  const { perBurst, spreadPx, fallPx, hopPx, scatterPx } = { hopPx: [6, 6], scatterPx: 0, ...SPARKS, ...look };
+  const { perBurst, spreadPx, fallPx, hopPx, scatterPx } = { hopPx: [8, 14], scatterPx: 0, ...SPARKS, ...look };
   const [sparks, setSparks] = useState([]);
   useEffect(() => {
     if (!isOn) return;
@@ -208,7 +211,7 @@ const useSparks = (isOn, everyMs = SPARKS.everyMs, getOrigin = undefined, firstM
 // more violent than the number's (Jamie): flung harder sideways, spread wide, more of them, more often
 const GRID_SPARKS = {
   everyMs: [1400, 3200], // (less often: Jamie; was 0.7 to 2 s, and before that 1.5 to 4)
-  look: { perBurst: [4, 8], spreadPx: 90, fallPx: [55, 130], hopPx: [8, 22], scatterPx: 10 },
+  look: { perBurst: [4, 8], spreadPx: 130, fallPx: [55, 130], hopPx: [12, 30], scatterPx: 10 }, // (harder: spread was 90, hop 8 to 22)
   grid: { left: 34, top: 42, right: 120, bottom: 191 },
   // only from the grid's edges, flung outward onto the black, never across the figure (Jamie): which edge, how often
   edges: [{ side: "left", share: 0.4 }, { side: "right", share: 0.4 }, { side: "top", share: 0.2 }],
