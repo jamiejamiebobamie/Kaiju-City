@@ -148,7 +148,7 @@ const KeyNumber = styled.span`
 // a spark's flight: out and up a little, then falling, shrinking and fading
 const sparkFall = keyframes`
   0% { transform: translate(0, 0) scale(1); opacity: 1; }
-  25% { transform: translate(calc(var(--dx) * 0.45), -6px) scale(1); opacity: 1; }
+  25% { transform: translate(calc(var(--dx) * 0.45), var(--hop, -6px)) scale(1); opacity: 1; }
   100% { transform: translate(var(--dx), var(--dy)) scale(0.3); opacity: 0; }
 `;
 
@@ -170,20 +170,25 @@ const Spark = styled.span`
 const between = ([low, high]) => low + Math.random() * (high - low);
 let sparkId = 0; // across hovers, so a spark still falling keeps its key
 
-// 'everyMs': the wait between bursts (a range); 'getOrigin': where a burst starts (by default, the number's foot)
-const useSparks = (isOn, everyMs = SPARKS.everyMs, getOrigin = undefined, firstMs = 150) => {
+// 'everyMs': the wait between bursts (a range); 'getOrigin': where a burst starts (by default, the number's foot);
+// 'look': the burst's own numbers over SPARKS' (how many, how far across and down, the hop, and how scattered they start)
+const useSparks = (isOn, everyMs = SPARKS.everyMs, getOrigin = undefined, firstMs = 150, look = {}) => {
+  const { perBurst, spreadPx, fallPx, hopPx, scatterPx } = { hopPx: [6, 6], scatterPx: 0, ...SPARKS, ...look };
   const [sparks, setSparks] = useState([]);
   useEffect(() => {
     if (!isOn) return;
     let timeout;
     const burst = () => {
-      const count = Math.round(between(SPARKS.perBurst));
+      const count = Math.round(between(perBurst));
       const origin = getOrigin ? getOrigin() : undefined;
       const born = Array.from({ length: count }, () => ({
         id: sparkId++,
         origin,
-        dx: (Math.random() * 2 - 1) * SPARKS.spreadPx,
-        dy: between(SPARKS.fallPx)
+        dx: (Math.random() * 2 - 1) * spreadPx,
+        dy: between(fallPx),
+        hop: -between(hopPx),
+        ox: (Math.random() * 2 - 1) * scatterPx,
+        oy: (Math.random() * 2 - 1) * scatterPx
       }));
       setSparks(all => [...all, ...born]);
       setTimeout(() => setSparks(all => all.filter(spark => !born.includes(spark))), SPARKS.lifeMs);
@@ -200,13 +205,18 @@ const useSparks = (isOn, everyMs = SPARKS.everyMs, getOrigin = undefined, firstM
   random, a burst from a random spot on the grid, falling as the number's do. (In the sprite box's pixels: the grid,
   as the doodads draw it, measured.)
 */
-const GRID_SPARKS = { everyMs: [1500, 4000], grid: { left: 34, top: 42, right: 120, bottom: 191 } };
+// more violent than the number's (Jamie): flung harder sideways, spread wide, more of them, more often
+const GRID_SPARKS = {
+  everyMs: [700, 2000], // (was 1.5 to 4 s)
+  look: { perBurst: [4, 8], spreadPx: 90, fallPx: [30, 80], hopPx: [8, 22], scatterPx: 10 },
+  grid: { left: 34, top: 42, right: 120, bottom: 191 }
+};
 
 const GridSparks = ({ isOn, offsetX }) => {
   const { grid } = GRID_SPARKS;
-  const sparks = useSparks(isOn, GRID_SPARKS.everyMs, () => ({ x: between([grid.left, grid.right]) + offsetX, y: between([grid.top, grid.bottom]) }), between(GRID_SPARKS.everyMs) / 2);
-  return sparks.map(({ id, dx, dy, origin }) => (
-    <Spark key={id} style={{ left: `${origin.x}px`, top: `${origin.y}px`, zIndex: 2, "--dx": `${dx}px`, "--dy": `${dy}px` }} />
+  const sparks = useSparks(isOn, GRID_SPARKS.everyMs, () => ({ x: between([grid.left, grid.right]) + offsetX, y: between([grid.top, grid.bottom]) }), between(GRID_SPARKS.everyMs) / 2, GRID_SPARKS.look);
+  return sparks.map(({ id, dx, dy, hop, ox, oy, origin }) => (
+    <Spark key={id} style={{ left: `${origin.x + ox}px`, top: `${origin.y + oy}px`, zIndex: 2, "--dx": `${dx}px`, "--dy": `${dy}px`, "--hop": `${hop}px` }} />
   ));
 };
 
