@@ -235,7 +235,7 @@ const GridSparks = ({ isOn, offsetX }) => {
     const outX = origin.out * Math.max(GRID_SPARKS.minOutPx, Math.abs(dx));
     const left = origin.side == "top" ? origin.x + ox : origin.x + origin.out * Math.abs(ox);
     const top = origin.side == "top" ? origin.y - Math.abs(oy) : origin.y + oy;
-    return <Spark key={id} style={{ left: `${left}px`, top: `${top}px`, zIndex: 2, "--dx": `${outX}px`, "--dy": `${dy}px`, "--hop": `${hop}px` }} />;
+    return <Spark key={id} style={{ left: `${left}px`, top: `${top}px`, "--dx": `${outX}px`, "--dy": `${dy}px`, "--hop": `${hop}px` }} />;
   });
 };
 
@@ -287,11 +287,12 @@ const ChoiceAvatar = ({ id, sheet, keyName, figureOffset, chosen, isLeaving, onC
   return (
     <Choice $isLocked={!!chosen} onClick={onChoose} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} aria-label={id}>
       <SpriteBox $isLeaving={isLeaving}>
+        {/* the grid's sparks under everything here: the grid, the three readouts and the figure (Jamie) */}
+        <GridSparks isOn={isHovered && !chosen} offsetX={figureOffset} />
         <DoodadHolder>
           <Doodads hasPrompt={false} show={isHovered && !chosen} persistDisc={false} hasDisc={false} isDrifting fadeInMs={CHOICE.doodadFadeInMs} fadeOutMs={CHOICE.doodadFadeOutMs} globalTranslation={`${figureOffset}px, 0px`} opacity={doodadOpacity} setOpacity={setDoodadOpacity} />
         </DoodadHolder>
         <Sprite $sheet={sheet} $color={CHOICE.colors[id]} $isChosen={chosen == id} $isLocked={!!chosen} />
-        <GridSparks isOn={isHovered && !chosen} offsetX={figureOffset} />
       </SpriteBox>
       <ElectricNumber isElectric={isHovered} isHidden={!!chosen}>{keyName}</ElectricNumber>
       <Label $isShown={!!chosen} $isLeaving={isLeaving} style={{ "--color": CHOICE.colors[id] }}>{chosen ? (chosen == id ? "Player" : "Teammate") : ""}</Label>
