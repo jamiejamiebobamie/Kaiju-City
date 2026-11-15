@@ -38,7 +38,7 @@ const LOOK = {
   // (215 to 325 degrees) and the board's lines out of it.
   haloStartDegrees: -35, // low on the avatar's right (0 is right, counter-clockwise; was -65: Jamie, the lowest higher)
   haloEndDegrees: 215, // low on its left (was 245)
-  radiusJitter: 0.2, // each pendant nearer or further than the circle, by up to this share of it (Jamie)
+  radiusJitter: 0.1, // each pendant nearer or further than the circle, by up to this share of it (Jamie)
   pendantSize: 90,
   bendAt: 0.55, // where a trace bends, of the halo's radius from the middle
   endSpread: 0.13, // the traces' ends behind the avatar, spread across (of the figure's height)
@@ -94,6 +94,10 @@ const PickPrompt = styled.div`
   text-shadow: 0 0 ${(8 / STAGE.height) * 100}cqh #ffb020;
   pointer-events: none;
 `;
+
+// the chosen avatar's highlight on the avatar select (its color's glow, a white edge, in the sprite's own pixels),
+// kept here so the picker's avatar looks the same (Jamie)
+const CHOSEN_GLOW = { colors: { guy: "#55AAff", girl: "#fa8072" }, colorPx: 8, whitePx: 3 };
 
 // where each avatar's figure stands in its sprite sheet frame (152 x 230, measured): its middle and its head
 const FRAME = { width: 152, height: 230, rows: 6, standingRow: 2 };
@@ -742,7 +746,10 @@ export const AbilityPicker = ({
   const figure = FIGURES[selectedAvatar] || FIGURES.guy;
   const scale = LOOK.figureHeight / (figure.feet - figure.head);
   const headTop = LOOK.torso.y - LOOK.headDrop * LOOK.figureHeight + figureDrop;
-  const avatarColor = (PIECES_INFO[selectedAvatar] || PIECES_INFO.guy).color;
+  const avatarColor = CHOSEN_GLOW.colors[selectedAvatar] || (PIECES_INFO[selectedAvatar] || PIECES_INFO.guy).color;
+  // the same highlight as on the avatar select once chosen, at the same size on screen, so it carries on unbroken
+  // through the hand-over (Jamie): its glow and white edge grow with the figure, as the avatar select's did
+  const glowScale = LOOK.figureHeight / (figure.feet - figure.head);
 
   const getInfo = () => {
     const power = hovered !== undefined ? powers[hovered] : undefined;
@@ -863,7 +870,7 @@ export const AbilityPicker = ({
             width: pctX(FRAME.width * scale),
             height: pctY(FRAME.height * scale),
             backgroundImage: `url(/${figure.sheet})`,
-            filter: `drop-shadow(0 0 ${unit(6)} ${avatarColor})`
+            filter: `drop-shadow(0 0 ${unit(CHOSEN_GLOW.colorPx * glowScale)} ${avatarColor}) drop-shadow(0 0 ${unit(CHOSEN_GLOW.whitePx * glowScale)} white)`
           }}
         />
         <FadingIn style={{ pointerEvents: "none" }}>
