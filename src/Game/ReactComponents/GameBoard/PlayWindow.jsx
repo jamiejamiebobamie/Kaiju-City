@@ -76,6 +76,33 @@ const TvCasing = styled.div`
     0 1cqw 2.5cqw rgba(0, 0, 0, 0.8);
 `;
 
+/*
+  The casing's plastic (Jamie, 2026-11-15: it looked flat): lit from above, so a little lighter along the top and
+  darker toward the bottom; a soft diagonal sheen across it; and a fine grain, like molded plastic. Only on the ring
+  of the casing, not over the screen.
+*/
+export const CASING_SHEEN = `
+  background:
+    linear-gradient(125deg, transparent 28%, rgba(255, 255, 255, 0.08) 40%, rgba(255, 255, 255, 0.025) 47%, transparent 56%),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.07), transparent 30%, transparent 62%, rgba(0, 0, 0, 0.28)),
+    ${url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0.9 -0.32'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>")};
+  background-size: auto, auto, 140px 140px;
+`;
+
+const CasingSheen = styled.div`
+  position: absolute;
+  inset: -${TV_LOOK.casingWidth}cqw;
+  z-index: 2147483000;
+  pointer-events: none;
+  padding: ${TV_LOOK.casingWidth}cqw;
+  border-radius: ${TV_LOOK.casingRadius}cqw;
+  ${CASING_SHEEN}
+  /* the ring only: the whole box, less its middle (the screen) */
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+`;
+
 // fills the corners outside the rounded glass with the casing's color
 const ScreenCorners = styled.div`
   position: absolute;
@@ -440,6 +467,7 @@ export const PlayWindow = ({ playWindow, setPlayWindow, isAdjusting, isOpen, isC
         <>
           <ScreenCorners />
           <TvCasing />
+          <CasingSheen />
           <BrandName>KAIJU-VISION</BrandName>
           <SirenLight isOn={isSiren} />
         </>

@@ -6,7 +6,7 @@ import { getSciFiClass } from "../DataClasses/sciFiClasses";
 import { getIsSkillOpen, OUT_OF_PLAY_POWERS } from "../DataClasses/Avatars";
 import { PIECES_INFO } from "Utils/gameState";
 import { CrtScreen, ScaleToFit } from "Components/CrtPower";
-import { TV_LOOK } from "./GameBoard/PlayWindow";
+import { CASING_SHEEN, TV_LOOK } from "./GameBoard/PlayWindow";
 
 /*
   The ability picker (Jamie, UI epic, 2026-11-14). On black: the player's avatar on the left, and around it, like a
@@ -38,7 +38,7 @@ const LOOK = {
   // (215 to 325 degrees) and the board's lines out of it.
   haloStartDegrees: -35, // low on the avatar's right (0 is right, counter-clockwise; was -65: Jamie, the lowest higher)
   haloEndDegrees: 215, // low on its left (was 245)
-  radiusJitter: 0.1, // each pendant nearer or further than the circle, by up to this share of it (Jamie)
+  radiusJitter: 0.75, // each pendant nearer or further than the circle, by up to this share of it (Jamie)
   pendantSize: 90,
   bendAt: 0.55, // where a trace bends, of the halo's radius from the middle
   endSpread: 0.13, // the traces' ends behind the avatar, spread across (of the figure's height)
@@ -384,6 +384,15 @@ const MiniMonitor = styled.div`
   background: ${TV_LOOK.casing};
   box-shadow: inset 0 0.2cqw 0 ${TV_LOOK.casingLight}, 0 0.25cqw 0 ${TV_LOOK.casingLight}, 0 0 0 0.15cqw #080808, 0 1cqw 2.5cqw rgba(0, 0, 0, 0.8);
   animation: ${flyIn} ${MINI_TIMING.flyMs}ms cubic-bezier(0.2, 0.9, 0.3, 1) ${MINI_TIMING.flyDelayMs}ms both;
+  /* the same plastic as the big one's (its screen lies over this) */
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    ${CASING_SHEEN}
+  }
 `;
 
 const MiniScreen = styled.div`
