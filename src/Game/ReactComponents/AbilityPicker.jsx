@@ -201,16 +201,27 @@ const Part = styled.div`
 const TitleRow = styled.div`
   display: flex;
   align-items: center;
-  gap: ${unit(14)};
+  gap: ${unit(28)};
   font-family: gameboy;
-  font-size: ${unit(28)};
+  font-size: ${unit(36)};
   color: white;
 `;
 
+// the class's three icons, kept together beside its name
+const IconGroup = styled.span`
+  display: flex;
+  gap: ${unit(14)};
+`;
+
 const Icon = styled.i`
-  font-size: ${unit(34)};
+  font-size: ${unit(46)};
   filter: drop-shadow(0 0 ${unit(5)} currentColor);
 `;
+
+const TINT = { turnDegrees: 28, saturation: 0.7, lightness: 80 };
+const getTint = (color, turn) => `hsl(from ${color} calc(h + ${turn}) calc(s * ${TINT.saturation}) ${TINT.lightness}%)`;
+// the class: the three colors mixed, made light
+const getClassTint = colors => !colors.length ? '#d9dade' : `color-mix(in oklab, ${colors.reduce((mix, color, k) => k ? `color-mix(in oklab, ${mix}, ${color} ${Math.round(100 / (k + 1))}%)` : color)} 45%, #eef0f4)`;
 
 const Effect = styled.div`
   color: ${props => props.$color};
@@ -320,12 +331,12 @@ export const AbilityPicker = ({
         <>
           <Part $align="left">
             <TitleRow><Icon className={`fa ${power.activeIcon}`} style={{ color: power.color }} />{power.activeName}</TitleRow>
-            <div>{power.activeDesc}</div>
-            {power.activeEffect1 && <div>{power.activeEffect1}</div>}
+            <div style={{ color: getTint(power.color, -TINT.turnDegrees) }}>{power.activeDesc}</div>
+            {power.activeEffect1 && <Effect $color={power.color}>{power.activeEffect1}</Effect>}
           </Part>
           <Part $align="right">
             <TitleRow>{power.passiveName}<Icon className={`fa ${power.passiveIcon}`} style={{ color: power.color }} /></TitleRow>
-            <div>{power.passiveDesc}</div>
+            <div style={{ color: getTint(power.color, TINT.turnDegrees) }}>{power.passiveDesc}</div>
             {power.passiveEffect1 && <Effect $color={power.color}>{power.passiveEffect1}</Effect>}
           </Part>
         </>
@@ -336,9 +347,11 @@ export const AbilityPicker = ({
         <Part $align="left">
           <TitleRow>
             {playerClass[0]}
-            {pickedPowers.map(({ element, activeIcon, color }) => <Icon key={element} className={`fa ${activeIcon}`} style={{ color }} />)}
+            <IconGroup>
+              {pickedPowers.map(({ element, activeIcon, color }) => <Icon key={element} className={`fa ${activeIcon}`} style={{ color }} />)}
+            </IconGroup>
           </TitleRow>
-          <div>{playerClass[1]}</div>
+          <div style={{ color: getClassTint(pickedPowers.map(({ color }) => color)) }}>{playerClass[1]}</div>
         </Part>
       );
     }
