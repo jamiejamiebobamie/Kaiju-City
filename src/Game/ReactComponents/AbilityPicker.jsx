@@ -28,7 +28,8 @@ const PICK_COUNT = 3;
 
 const STAGE = { width: 1000, height: 1000 };
 const LOOK = {
-  figureHeight: 540, // the avatar, head to feet (twice what it was: Jamie, 2026-11-15; the halo kept its size)
+  figureHeight: 450, // the avatar, head to feet (Jamie's, 2026-11-15; was 270, then 540; the halo kept its size)
+  figureDrop: 0, // the avatar moved down from the halo's middle (negative: up), in stage units; the dev panel's slider
   haloRadius: 405, // the halo, from the upper torso (was 1.5 times the avatar's height, 270)
   torso: { x: 500, y: 485 }, // the upper torso: the halo's middle
   headDrop: 0.28, // the upper torso, down from the top of the head (of the figure's height)
@@ -51,7 +52,7 @@ const HALO_RADIUS = LOOK.haloRadius;
 // two read as one monitor (Jamie)
 export const PICKER_FIGURE = {
   x: LOOK.torso.x / STAGE.width, // its middle
-  headY: (LOOK.torso.y - LOOK.headDrop * LOOK.figureHeight) / STAGE.height, // the top of its head
+  get headY() { return (LOOK.torso.y - LOOK.headDrop * LOOK.figureHeight + LOOK.figureDrop) / STAGE.height; }, // the top of its head
   height: LOOK.figureHeight / STAGE.height
 };
 
@@ -66,6 +67,19 @@ const FadingIn = styled.div`
   position: absolute;
   inset: 0;
   animation: ${fadeIn} ${ARRIVAL.fadeMs}ms ease-out both;
+`;
+
+// the count of powers picked, "0/3" to "3/3", at the lower left (Jamie)
+const PickCount = styled.div`
+  position: absolute;
+  left: ${(40 / STAGE.width) * 100}%;
+  bottom: ${(36 / STAGE.height) * 100}%;
+  font-family: gameboy;
+  font-size: ${(26 / STAGE.height) * 100}cqh;
+  letter-spacing: ${(2 / STAGE.height) * 100}cqh;
+  color: #ffd24a;
+  text-shadow: 0 0 ${(8 / STAGE.height) * 100}cqh #ffb020;
+  pointer-events: none;
 `;
 
 // "Pick three abilities", in yellow at the lower right of the screen, always (Jamie)
@@ -626,15 +640,6 @@ const Effect = styled.div`
   filter: brightness(1.2);
 `;
 
-const Prompt = styled.div`
-  align-self: center;
-  font-family: gameboy;
-  font-size: 1.3cqw;
-  letter-spacing: 0.1cqw;
-  color: #e25cff;
-  text-shadow: 0 0 0.35cqw #e25cff;
-`;
-
 const Buttons = styled.div`
   display: flex;
   gap: 0.6cqw;
@@ -674,6 +679,12 @@ export const AbilityPicker = ({
   // dev: shown or hidden by hand, over whether it's open
   const [devShown, setDevShown] = useState({});
   const [isDevOpen, setIsDevOpen] = useState(false);
+  // dev: the avatar's height on the screen (Jamie); kept in LOOK, so the avatar select hands over to the same spot
+  const [figureDrop, setFigureDrop] = useState(LOOK.figureDrop);
+  const moveFigure = drop => {
+    LOOK.figureDrop = drop;
+    setFigureDrop(drop);
+  };
   const powers = useMemo(() => allPowers.filter(({ element }) => devShown[element] ?? getIsSkillOpen(element)), [allPowers, devShown]);
   useEffect(() => setHovered(undefined), [powers.length]);
   const [lockIns, setLockIns] = useState({}); // each power's count of being picked, to play its lock-in again
@@ -730,7 +741,7 @@ export const AbilityPicker = ({
 
   const figure = FIGURES[selectedAvatar] || FIGURES.guy;
   const scale = LOOK.figureHeight / (figure.feet - figure.head);
-  const headTop = LOOK.torso.y - LOOK.headDrop * LOOK.figureHeight;
+  const headTop = LOOK.torso.y - LOOK.headDrop * LOOK.figureHeight + figureDrop;
   const avatarColor = (PIECES_INFO[selectedAvatar] || PIECES_INFO.guy).color;
 
   const getInfo = () => {
@@ -765,7 +776,7 @@ export const AbilityPicker = ({
         </Part>
       );
     }
-    return <Prompt>Choose {PICK_COUNT} powers</Prompt>;
+    return null; // (no "Choose 3 powers" here: Jamie; "Pick three abilities" is on the main screen)
   };
 
   const beside = (
@@ -788,6 +799,10 @@ export const AbilityPicker = ({
       </MiniMonitor>
       {import.meta.env.DEV && (
         <DevPanel>
+          <label>
+            dev: avatar up/down {figureDrop}
+            <input type="range" min={-300} max={300} step={5} value={figureDrop} onChange={event => moveFigure(Number(event.target.value))} onKeyDown={event => event.stopPropagation()} />
+          </label>
           <label><input type="checkbox" checked={isDevOpen} onChange={() => setIsDevOpen(!isDevOpen)} />dev: powers in the halo ({powers.length})</label>
           {isDevOpen && allPowers.map(({ element, activeName }) => (
             <label key={element}>
@@ -879,6 +894,7 @@ export const AbilityPicker = ({
           );
         })}
         <PickPrompt>Pick three abilities</PickPrompt>
+        <PickCount>{pickedAbilities.length}/{PICK_COUNT}</PickCount>
         </FadingIn>
       </Stage>
     </ScaleToFit>
