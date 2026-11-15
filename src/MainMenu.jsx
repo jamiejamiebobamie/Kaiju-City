@@ -181,8 +181,8 @@ const KeyText = styled.div`
 // (a shot or so on the way), and the same at the next
 const GHOSTS = {
   box: { x: 150, y: 75 }, // the square's corners, from the words
-  perCorner: 3, // shots at each corner
-  shotGapSeconds: 0.22, // between them
+  perCorner: 5, // shots at each corner (more: Jamie; was 3)
+  shotGapSeconds: 0.32, // between them (further apart: Jamie; was 0.22)
   pauseSeconds: 0.6, // after the last, before it moves on
   glideSeconds: 0.35, // to the next corner
   glideShots: 1, // fired on the way
