@@ -4,7 +4,8 @@ import styled, { css, keyframes } from "styled-components";
 /*
   "[Press any key]" on the landing, and its effects (Jamie, 2026-11-15), after arcade attract screens ("insert coin",
   "press start"). Four of them, each its own mock-up, or all at once ('mix') with a panel to switch each off and tune
-  its numbers. Pick with ?press=<id> on the landing's address; 'hud' (the ghosts) is the default.
+  its numbers. Pick with ?press=<id> on the landing's address; with none, Jamie's tuned mix (no panel); ?press=mix
+  shows the panel.
 */
 export const PRESS_EFFECTS = [
   { id: "hud", label: "HUD lock-on: ghosts fired at a square's corners" },
@@ -16,7 +17,9 @@ export const PRESS_EFFECTS = [
 
 const COLORS = { purple: "#e25cff", green: "#80EF80" };
 
-// every effect's numbers; the panel tunes them ('on' switches one off)
+// every effect's numbers; the panel tunes them ('on' switches one off). Jamie's tuned mix (2026-11-15), the landing's
+// own: the HUD ghosts faint, the words barely swaying, a near-constant blink with wide color splits, the chase on,
+// no zoom
 export const PRESS_DEFAULTS = {
   hud: {
     on: true,
@@ -27,22 +30,24 @@ export const PRESS_DEFAULTS = {
     glideSeconds: 0.35, // to the next corner
     glideShots: 1, // fired on the way
     travelSeconds: 1.25, // a shot's flight
-    opacity: 0.4, // a shot's, as it leaves the words
-    swayShare: 0.04, // the words' own square, of the box's size
-    swayLaps: 6 // the words' laps to the shots' one (more: quicker)
+    opacity: 0.15, // a shot's, as it leaves the words
+    swayShare: 0.02, // the words' own square, of the box's size
+    swayLaps: 12 // the words' laps to the shots' one (more: quicker)
   },
-  blink: { on: true, onMs: 700, offMs: 320, splitPx: 3, scan: true },
+  blink: { on: true, onMs: 700, offMs: 32, splitPx: 32, scan: false },
   chase: { on: true, stepMs: 140, waveMs: 1100, bars: true },
-  zoom: { on: true, everyMs: 450, copies: 4, scale: 2.4, pump: true }
+  zoom: { on: false, everyMs: 700, copies: 0, scale: 1.5, pump: false }
 };
 
+// with no ?press=, the tuned mix, without its panel
 export const getPressEffect = () => {
   const id = new URLSearchParams(window.location.search).get("press");
-  return PRESS_EFFECTS.some(effect => effect.id == id) ? id : "hud";
+  return PRESS_EFFECTS.some(effect => effect.id == id) ? id : "mix";
 };
+export const getIsPressPanel = () => new URLSearchParams(window.location.search).get("press") == "mix";
 
 // the effect's settings: one effect on, or (mix) all of them, tunable
-export const usePressSettings = effect => useState(() => Object.fromEntries(Object.entries(PRESS_DEFAULTS).map(([id, values]) => [id, { ...values, on: effect == "mix" || effect == id }])));
+export const usePressSettings = effect => useState(() => Object.fromEntries(Object.entries(PRESS_DEFAULTS).map(([id, values]) => [id, { ...values, on: effect == "mix" ? values.on : effect == id }])));
 
 const KeyLine = styled.div`
   flex: 1;

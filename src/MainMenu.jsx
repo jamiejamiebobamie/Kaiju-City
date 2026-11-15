@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
 import styled, { css, keyframes } from "styled-components";
 import { SpeedBlurFilter, slideAway } from "./Components/SlideAway";
-import { getPressEffect, PressKeyPanel, PressKeyRow, usePressSettings } from "./Components/PressKeyEffects";
+import { getIsPressPanel, getPressEffect, PressKeyPanel, PressKeyRow, usePressSettings } from "./Components/PressKeyEffects";
 import {
   Wrapper,
   ButtonGroup,
@@ -244,7 +244,7 @@ export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
     <PressAnyKey $isLeaving={isLeaving}>
       <PressKeyRow settings={pressSettings} isLeaving={isLeaving} />
     </PressAnyKey>
-    {pressEffect == "mix" && <PressKeyPanel settings={pressSettings} setSettings={setPressSettings} />}
+    {getIsPressPanel() && <PressKeyPanel settings={pressSettings} setSettings={setPressSettings} />}
     {toolScreen == "colors" && <IrradiationVat avatar={selectedAvatar} startColor={getAvatarColor(selectedAvatar) || PIECES_INFO[selectedAvatar].color} onIrradiate={color => saveAvatarColor(selectedAvatar, color)} onClose={() => setToolScreen(undefined)} />}
   </ShiftingWrapper>
 }
