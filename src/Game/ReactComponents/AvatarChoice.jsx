@@ -209,15 +209,34 @@ const useSparks = (isOn, everyMs = SPARKS.everyMs, getOrigin = undefined, firstM
 const GRID_SPARKS = {
   everyMs: [700, 2000], // (was 1.5 to 4 s)
   look: { perBurst: [4, 8], spreadPx: 90, fallPx: [30, 80], hopPx: [8, 22], scatterPx: 10 },
-  grid: { left: 34, top: 42, right: 120, bottom: 191 }
+  grid: { left: 34, top: 42, right: 120, bottom: 191 },
+  // only from the grid's edges, flung outward onto the black, never across the figure (Jamie): which edge, how often
+  edges: [{ side: "left", share: 0.4 }, { side: "right", share: 0.4 }, { side: "top", share: 0.2 }],
+  minOutPx: 35 // at least this far out, sideways, so a spark clears the grid
+};
+
+// a spot on one of the grid's edges, and which way is out from there
+const getGridEdgeSpot = offsetX => {
+  const { grid, edges } = GRID_SPARKS;
+  let roll = Math.random();
+  const { side } = edges.find(({ share }) => (roll -= share) < 0) || edges[0];
+  const middle = (grid.left + grid.right) / 2;
+  if (side == "top") {
+    const x = between([grid.left, grid.right]);
+    return { x: x + offsetX, y: grid.top, side, out: x < middle ? -1 : 1 };
+  }
+  return { x: (side == "left" ? grid.left : grid.right) + offsetX, y: between([grid.top, grid.bottom - 30]), side, out: side == "left" ? -1 : 1 };
 };
 
 const GridSparks = ({ isOn, offsetX }) => {
-  const { grid } = GRID_SPARKS;
-  const sparks = useSparks(isOn, GRID_SPARKS.everyMs, () => ({ x: between([grid.left, grid.right]) + offsetX, y: between([grid.top, grid.bottom]) }), between(GRID_SPARKS.everyMs) / 2, GRID_SPARKS.look);
-  return sparks.map(({ id, dx, dy, hop, ox, oy, origin }) => (
-    <Spark key={id} style={{ left: `${origin.x + ox}px`, top: `${origin.y + oy}px`, zIndex: 2, "--dx": `${dx}px`, "--dy": `${dy}px`, "--hop": `${hop}px` }} />
-  ));
+  const sparks = useSparks(isOn, GRID_SPARKS.everyMs, () => getGridEdgeSpot(offsetX), between(GRID_SPARKS.everyMs) / 2, GRID_SPARKS.look);
+  return sparks.map(({ id, dx, dy, hop, ox, oy, origin }) => {
+    // outward only: away from the grid, and the scatter kept to the outside of its edge
+    const outX = origin.out * Math.max(GRID_SPARKS.minOutPx, Math.abs(dx));
+    const left = origin.side == "top" ? origin.x + ox : origin.x + origin.out * Math.abs(ox);
+    const top = origin.side == "top" ? origin.y - Math.abs(oy) : origin.y + oy;
+    return <Spark key={id} style={{ left: `${left}px`, top: `${top}px`, zIndex: 2, "--dx": `${outX}px`, "--dy": `${dy}px`, "--hop": `${hop}px` }} />;
+  });
 };
 
 const ElectricNumber = ({ isElectric, isHidden, children }) => {
