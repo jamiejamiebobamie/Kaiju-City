@@ -169,7 +169,10 @@ const SpriteSheet = styled.div`
 // flit (Jamie: an ember is light, fragile): it flutters up and down a little ('flutter', in its frame's units) as it goes
 // back. a few ('spinShare') turn once counter-clockwise ('spinDegrees'), just as they start back, then not again
 // (Jamie, playtest 24: not all of them, not all the time)
-const BREATH = { mouth: { x: 53, y: 33 }, loopSeconds: 5, stepsAt: [0.4, 0.9], perStep: 5, lifeShare: 0.32, pushShare: 0.1, walkPerSecond: 10, cloud: { width: 7, height: 5 }, headWidth: 11, backScale: 1.4, backSpread: 42, streak: { length: 2, pushLength: 0.6 }, spinDegrees: 360, spinShare: 0.25, flutter: 2.5 };
+// whip (Jamie, 2026-11-15): the turn is whiplash, not a spin on the way back. As the Kaiju's body (head, shoulders,
+// arms) passes them, they're jolted: a sharp kick back and a little up, and the few that turn flick round all at once,
+// right at the turn ('endsAt': a short stretch after it, in push lengths); then they drift back without turning
+const BREATH = { mouth: { x: 53, y: 33 }, loopSeconds: 5, stepsAt: [0.4, 0.9], perStep: 5, lifeShare: 0.32, pushShare: 0.1, walkPerSecond: 10, cloud: { width: 7, height: 5 }, headWidth: 11, backScale: 1.4, backSpread: 42, streak: { length: 2, pushLength: 0.6 }, spinDegrees: 360, spinShare: 0.25, flutter: 2.5, whip: { endsAt: 2.45, liftPx: 1.2 } };
 const BREATH_LIFE_SECONDS = BREATH.loopSeconds * BREATH.lifeShare;
 const BREATH_EMBERS = BREATH.stepsAt.flatMap((at, step) => Array.from({ length: BREATH.perStep }, (_, k) => {
   const random = n => ((Math.sin((step * 10 + k) * 12.9898 + n * 78.233) * 43758.5453) % 1 + 1) % 1;
@@ -205,7 +208,8 @@ const breathPuff = keyframes`
   0% { transform: translate(var(--cx), var(--cy)) rotate(0deg) scale(${0.5 * pushLength}, 0.5); opacity: 0; animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1); }
   2% { opacity: 1; }
   ${BREATH.lifeShare * BREATH.pushShare * 100}% { transform: translate(var(--fx), var(--fy)) rotate(0deg) scale(${pushLength}, 1); animation-timing-function: ease-out; }
-  ${BREATH.lifeShare * BREATH.pushShare * 2 * 100}% { transform: translate(var(--lx), var(--ly)) rotate(0deg) scale(${pushLength}, 1); animation-timing-function: linear; }
+  ${BREATH.lifeShare * BREATH.pushShare * 2 * 100}% { transform: translate(var(--lx), var(--ly)) rotate(0deg) scale(${pushLength}, 1); animation-timing-function: cubic-bezier(0.1, 0.9, 0.2, 1); }
+  ${BREATH.lifeShare * BREATH.pushShare * BREATH.whip.endsAt * 100}% { transform: translate(calc(var(--lx) + (var(--bx) - var(--lx)) * 0.07), calc(var(--ly) + (var(--by) - var(--ly)) * 0.07 - ${BREATH.whip.liftPx}px)) rotate(var(--spin)) scale(1, 0.9); animation-timing-function: ease-in-out; }
   ${BREATH.lifeShare * BREATH.pushShare * 3.5 * 100}% { transform: translate(calc(var(--lx) + (var(--bx) - var(--lx)) * 0.15), calc(var(--ly) + (var(--by) - var(--ly)) * 0.15 + var(--wy))) rotate(var(--spin)) scale(1, 0.9); animation-timing-function: ease-in-out; }
   ${BREATH.lifeShare * 100 * 0.5}% { transform: translate(calc(var(--lx) + (var(--bx) - var(--lx)) * 0.45), calc(var(--ly) + (var(--by) - var(--ly)) * 0.45 - var(--wy))) rotate(var(--spin)) scale(0.95, 0.8); animation-timing-function: ease-in-out; }
   ${BREATH.lifeShare * 100 * 0.7}% { opacity: 0.7; transform: translate(calc(var(--lx) + (var(--bx) - var(--lx)) * 0.7), calc(var(--ly) + (var(--by) - var(--ly)) * 0.7 + var(--wy))) rotate(var(--spin)) scale(0.9, 0.7); animation-timing-function: ease-in-out; }
