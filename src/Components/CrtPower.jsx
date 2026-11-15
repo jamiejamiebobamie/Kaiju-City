@@ -34,7 +34,9 @@ export const PoweredPicture = styled.div`
   position: absolute;
   inset: 0;
   ${props => props.$isClipped && css`overflow: hidden; border-radius: inherit;`}
-  ${props => props.$state == "dead" && css`visibility: hidden;`}
+  /* (not visibility: a child setting its own visibility would show through the dead glass. Jamie found the avatar
+     select's words showing before the switch-on) */
+  ${props => props.$state == "dead" && css`opacity: 0; pointer-events: none;`}
   ${props => props.$state == "turningOn" && css`animation: ${crtOn} ${CRT.onMs}ms ease-out both;`}
   ${props => props.$state == "turningOff" && css`animation: ${crtOff} ${CRT.offMs}ms ease-in forwards;`}
 `;
