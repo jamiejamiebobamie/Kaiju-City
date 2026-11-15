@@ -202,11 +202,38 @@ const Pendant = styled.button`
   `}
 `;
 
-const spin = keyframes`
-  to { transform: rotate(360deg); }
+/*
+  The confirm burst, played once as a power is picked (Jamie: a "confirmed" effect, like spending a talent point in
+  WoW): a ring of light sweeps once round the pendant's outside while rays burst out from it, turning as they go,
+  and both fade.
+*/
+const CONFIRM_MS = 750;
+
+const orbitOnce = keyframes`
+  0% { transform: rotate(0deg) scale(0.9); opacity: 1; }
+  70% { opacity: 1; }
+  100% { transform: rotate(360deg) scale(1.08); opacity: 0; }
 `;
 
-// picked: a light that circles the pendant's outside, round and round
+const raysBurst = keyframes`
+  0% { transform: rotate(0deg) scale(0.5); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: rotate(75deg) scale(1.7); opacity: 0; }
+`;
+
+const ConfirmRays = styled.span`
+  position: absolute;
+  inset: -40%;
+  border-radius: 50%;
+  pointer-events: none;
+  background: repeating-conic-gradient(from 0deg, ${props => props.$color} 0deg 5deg, transparent 5deg 22deg, white 22deg 24deg, transparent 24deg 36deg);
+  -webkit-mask: radial-gradient(closest-side, transparent 38%, black 50%, transparent 100%);
+  mask: radial-gradient(closest-side, transparent 38%, black 50%, transparent 100%);
+  animation: ${raysBurst} ${CONFIRM_MS}ms ease-out forwards;
+  filter: blur(${unit(0.6)});
+`;
+
+// the ring of light that sweeps once round the pendant (in the burst above)
 const Orbit = styled.span`
   position: absolute;
   inset: -22%;
@@ -215,7 +242,7 @@ const Orbit = styled.span`
   background: conic-gradient(from 0deg, transparent 0deg 220deg, ${props => props.$color} 310deg, white 345deg, transparent 360deg);
   -webkit-mask: radial-gradient(closest-side, transparent 74%, black 80%, black 88%, transparent 100%);
   mask: radial-gradient(closest-side, transparent 74%, black 80%, black 88%, transparent 100%);
-  animation: ${spin} 1.8s linear infinite;
+  animation: ${orbitOnce} ${CONFIRM_MS}ms cubic-bezier(0.25, 0.6, 0.35, 1) forwards;
   filter: blur(${unit(1)});
 `;
 
@@ -527,8 +554,13 @@ export const AbilityPicker = ({
               onMouseEnter={() => setHovered(k)}
               onMouseLeave={() => setHovered(undefined)}
             >
-              {getIsPicked(power) && <Orbit $color={power.color} />}
-              {getIsPicked(power) && lockIns[power.getElementUppercase()] && <LockIn key={lockIns[power.getElementUppercase()]} $color={power.color} />}
+              {getIsPicked(power) && lockIns[power.getElementUppercase()] && (
+                <React.Fragment key={lockIns[power.getElementUppercase()]}>
+                  <ConfirmRays $color={power.color} />
+                  <Orbit $color={power.color} />
+                  <LockIn $color={power.color} />
+                </React.Fragment>
+              )}
               <i className={`fa ${power.activeIcon}`} style={{ color: power.color }} />
             </Pendant>
           );
