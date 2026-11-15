@@ -25,7 +25,7 @@ import { PIECES_INFO } from "Utils/gameState";
 // trailSeconds: 3 (was 6, livelier: Jamie)
 // trailSeconds 5 (slower again: Jamie, playtest 22); confirmMs: the confirm's blinks, white and slow fade, which runs on
 // under the clouds as they come
-const PRESS_KEY = { topShare: 0.68, leaveMs: 1500, confirmMs: 2800, trailSeconds: 5, color: "#e25cff", trailColor: "#80EF80" }; // the trail: the character select's green (Jamie, 2026-11-14; was pink #ff5cc8)
+const PRESS_KEY = { topShare: 0.68, leaveMs: 1500, confirmMs: 2800, trailSeconds: 6.5, color: "#e25cff", trailColor: "#80EF80" }; // the trail: the character select's green (Jamie, 2026-11-14; was pink #ff5cc8)
 
 /*
   Embers (Jamie): glowing purple pixels drifting down all over the landing page, swaying as they fall and flickering,
@@ -172,21 +172,25 @@ const KeyText = styled.div`
   each sliding off from the words and fading; where they fire to goes round a box (up right, up left, down left, down
   right, along its edges), so the trails draw a box round the words, not a circle. Far enough to come clear of them.
 */
-const GHOSTS = { count: 18, travelShare: 0.3, box: { x: 70, y: 34 } };
+// (Jamie, later the same day): the box's corners are where the trail wants to be: it holds at each for a beat (two
+// firings there in a row), then one on the way along the edge to the next. Fewer firings and further out, so fewer
+// overlap and the words read clearly
+const GHOSTS = { holdAtCorner: 2, alongEdge: 1, travelShare: 0.2, box: { x: 110, y: 55 } };
 
-// the box's edge, from 0 to 1 round it: from the top right, along the top, down the left, along the bottom, up the right
-const getBoxPoint = share => {
+// where each firing goes, in turn: up right, up left, down left, down right (held at each), and along the edges between
+const getGhostTargets = () => {
   const { x, y } = GHOSTS.box;
-  const sides = [2 * x, 2 * y, 2 * x, 2 * y];
-  let along = share * sides.reduce((sum, side) => sum + side, 0);
-  if (along < sides[0]) return { x: x - along, y: -y };
-  along -= sides[0];
-  if (along < sides[1]) return { x: -x, y: -y + along };
-  along -= sides[1];
-  if (along < sides[2]) return { x: -x + along, y };
-  along -= sides[2];
-  return { x, y: y - along };
+  const corners = [{ x, y: -y }, { x: -x, y: -y }, { x: -x, y }, { x, y }];
+  return corners.flatMap((corner, k) => {
+    const next = corners[(k + 1) % corners.length];
+    const along = [...Array(GHOSTS.alongEdge).keys()].map(step => {
+      const share = (step + 1) / (GHOSTS.alongEdge + 1);
+      return { x: corner.x + (next.x - corner.x) * share, y: corner.y + (next.y - corner.y) * share };
+    });
+    return [...Array(GHOSTS.holdAtCorner).fill(corner), ...along];
+  });
 };
+const GHOST_TARGETS = getGhostTargets();
 
 const trail = keyframes`
   0% { transform: translate(0, 0); opacity: 0.6; }
@@ -314,10 +318,9 @@ export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
       <KeyText $isLeaving={isLeaving}>
         {/* three, a moment apart: a trail */}
         <Trails $isLeaving={isLeaving}>
-          {[...Array(GHOSTS.count).keys()].map(k => {
-            const { x, y } = getBoxPoint(k / GHOSTS.count);
-            return <Phantom key={k} style={{ "--dx": `${x}px`, "--dy": `${y}px`, animationDelay: `${(k / GHOSTS.count - 1) * PRESS_KEY.trailSeconds}s` }}><KeyWords /></Phantom>;
-          })}
+          {GHOST_TARGETS.map(({ x, y }, k) => (
+            <Phantom key={k} style={{ "--dx": `${x}px`, "--dy": `${y}px`, animationDelay: `${(k / GHOST_TARGETS.length - 1) * PRESS_KEY.trailSeconds}s` }}><KeyWords /></Phantom>
+          ))}
         </Trails>
         <span style={{ position: "relative" }}><KeyWords /></span>
       </KeyText>
