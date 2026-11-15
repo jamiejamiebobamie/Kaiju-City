@@ -47,7 +47,7 @@ const dots = keyframes`
 const Loading = styled.div`
   position: absolute;
   z-index: 9;
-  top: calc(20% + 380px);
+  top: min(calc(20% + 460px), calc(100% - 60px)); /* lower (Jamie, 2026-11-15; was 20% + 380px), but on screen */
   align-self: center;
   font-family: gameboy;
   font-size: 20px;
