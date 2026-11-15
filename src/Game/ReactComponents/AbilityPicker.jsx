@@ -31,8 +31,9 @@ const LOOK = {
   figureHeight: 270, // the avatar, head to feet
   torso: { x: 500, y: 485 }, // the upper torso: the halo's middle
   headDrop: 0.28, // the upper torso, down from the top of the head (of the figure's height)
-  haloStartDegrees: -65, // low on the avatar's right (0 is right, counter-clockwise)
-  haloEndDegrees: 245, // low on its left
+  haloStartDegrees: -35, // low on the avatar's right (0 is right, counter-clockwise; was -65: Jamie, the lowest higher)
+  haloEndDegrees: 215, // low on its left (was 245)
+  radiusJitter: 0.1, // each pendant nearer or further than the circle, by up to this share of it (Jamie)
   pendantSize: 78,
   bendAt: 0.55, // where a trace bends, of the halo's radius from the middle
   endSpread: 0.13, // the traces' ends behind the avatar, spread across (of the figure's height)
@@ -63,7 +64,7 @@ const FadingIn = styled.div`
   animation: ${fadeIn} ${ARRIVAL.fadeMs}ms ease-out both;
 `;
 
-// "Pick three abilities", in yellow at the lower right of the screen, until three are picked (Jamie)
+// "Pick three abilities", in yellow at the lower right of the screen, always (Jamie)
 const PickPrompt = styled.div`
   position: absolute;
   right: ${(40 / STAGE.width) * 100}%;
@@ -99,16 +100,17 @@ const polar = (degrees, radius) => {
 */
 const JAG = { jogPx: 16, jogAt: 0.35, steps: 3 };
 
-const getTrace = (degrees, index, count) => {
-  const start = polar(degrees, HALO_RADIUS - LOOK.pendantSize / 2 - 10);
-  const bend = polar(degrees, HALO_RADIUS * LOOK.bendAt);
-  const across = count > 1 ? 1 - (2 * index) / (count - 1) : 0; // the right end of the halo ends on the right
-  const end = { x: LOOK.torso.x + across * LOOK.endSpread * LOOK.figureHeight, y: LOOK.torso.y + LOOK.endDrop * LOOK.figureHeight };
+// 'radius': where it starts (from the middle); 'across': where it ends behind the avatar, from -1 (left) to 1 (right);
+// 'jog': which way its jog goes; 'endDrop': how far below the upper torso it ends (of the figure's height)
+const getTrace = ({ degrees, radius, across, jog, endDrop = LOOK.endDrop }) => {
+  const start = polar(degrees, radius);
+  const bend = polar(degrees, Math.min(radius - 30, HALO_RADIUS * LOOK.bendAt));
+  const end = { x: LOOK.torso.x + across * LOOK.endSpread * LOOK.figureHeight, y: LOOK.torso.y + endDrop * LOOK.figureHeight };
   // the jog: off to one side at 45 degrees, then on in, parallel
   const inward = { x: (bend.x - start.x), y: (bend.y - start.y) };
   const length = Math.hypot(inward.x, inward.y);
   const along = { x: inward.x / length, y: inward.y / length };
-  const side = (index % 2 ? 1 : -1) * JAG.jogPx;
+  const side = jog * JAG.jogPx;
   const across90 = { x: -along.y * side, y: along.x * side };
   const jogFrom = { x: start.x + inward.x * JAG.jogAt, y: start.y + inward.y * JAG.jogAt };
   const jogTo = { x: jogFrom.x + along.x * Math.abs(side) + across90.x, y: jogFrom.y + along.y * Math.abs(side) + across90.y };
@@ -132,20 +134,22 @@ const getTrace = (degrees, index, count) => {
   return { start, end, d: `M ${points.map(({ x, y }) => `${x.toFixed(1)} ${y.toFixed(1)}`).join(' L ')}` };
 };
 
-// the board around the halo, between the pendants: short dim traces with ring pads, as on the old disc (no meaning)
+// where on the halo an angle is, as 'across' for its trace's end: the halo's right end ends on the right
+const getAcross = degrees => 1 - (2 * (degrees - LOOK.haloStartDegrees)) / (LOOK.haloEndDegrees - LOOK.haloStartDegrees);
+
+// each pendant's own distance from the middle: nearer or further than the circle, the same every time
+const getPendantRadius = k => HALO_RADIUS * (1 + LOOK.radiusJitter * Math.sin(k * 2.39 + 0.7));
+
+// the board between the pendants: dim lines from a ring pad, all the way in to behind the avatar like the pendants'
+// own (Jamie), ending a little lower so they lie among them
 const getStubs = angles => {
   const stubs = [];
   const gaps = angles.slice(1).map((angle, k) => [angles[k], angle]);
-  gaps.push([LOOK.haloEndDegrees, LOOK.haloStartDegrees + 360]); // the gap under the avatar
   gaps.forEach(([from, to], k) => [1 / 3, 2 / 3].forEach((share, j) => {
     const degrees = from + (to - from) * share;
-    const inner = HALO_RADIUS * (0.62 + 0.06 * ((k + j) % 3));
-    const outer = HALO_RADIUS * (0.8 + 0.05 * ((k * 2 + j) % 3));
-    const a = polar(degrees, inner);
-    const b = polar(degrees, outer);
-    const turn = ((k + j) % 2 ? 1 : -1) * 14; // a short kink at the outer end
-    const c = polar(degrees + turn * (360 / (2 * Math.PI * outer)) * 1.4, outer + 14);
-    stubs.push({ key: `${k}-${j}`, d: `M ${a.x} ${a.y} L ${b.x} ${b.y} L ${c.x} ${c.y}`, pad: c });
+    const radius = HALO_RADIUS * (0.78 + 0.06 * ((k * 2 + j) % 3));
+    const trace = getTrace({ degrees, radius, across: getAcross(degrees) * 0.85, jog: (k + j) % 2 ? 1 : -1, endDrop: LOOK.endDrop + 0.08 });
+    stubs.push({ key: `${k}-${j}`, d: trace.d, pad: trace.start, end: trace.end });
   }));
   return stubs;
 };
@@ -547,6 +551,16 @@ const Info = styled.div`
   color: #d9dade;
 `;
 
+const PartHeader = styled.div`
+  align-self: flex-start;
+  text-align: left;
+  font-family: gameboy;
+  font-size: 0.85cqw;
+  letter-spacing: 0.08cqw;
+  color: white;
+  opacity: 0.85;
+`;
+
 const Part = styled.div`
   display: flex;
   flex-direction: column;
@@ -575,7 +589,6 @@ const IconGroup = styled.div`
 `;
 
 const ClassText = styled.div`
-  padding-left: 1.8cqw;
   margin-top: 1cqw; /* more room under the name (Jamie) */
 `;
 
@@ -672,7 +685,7 @@ export const AbilityPicker = ({
   const angles = useMemo(() => powers.map((_, k) => powers.length > 1
     ? LOOK.haloStartDegrees + (k * (LOOK.haloEndDegrees - LOOK.haloStartDegrees)) / (powers.length - 1)
     : 90), [powers]);
-  const traces = useMemo(() => angles.map((degrees, k) => getTrace(degrees, k, angles.length)), [angles]);
+  const traces = useMemo(() => angles.map((degrees, k) => getTrace({ degrees, radius: getPendantRadius(k) - LOOK.pendantSize / 2 - 10, across: getAcross(degrees), jog: k % 2 ? 1 : -1 })), [angles]);
   const stubs = useMemo(() => getStubs(angles), [angles]);
 
   const getIsPicked = power => pickedAbilities.includes(power.getElementUppercase());
@@ -722,11 +735,13 @@ export const AbilityPicker = ({
       return (
         <>
           <Part $align="left">
+            <PartHeader>Active Ability:</PartHeader>
             <FitTitleRow text={power.activeName}><Icon className={`fa ${power.activeIcon}`} style={{ color: power.color }} />{power.activeName}</FitTitleRow>
             <div style={{ color: getTint(power.color, -TINT.turnDegrees) }}>{power.activeDesc}</div>
             {power.activeEffect1 && <Effect $color={power.color}>{power.activeEffect1}</Effect>}
           </Part>
           <Part $align="right">
+            <PartHeader>Passive Ability:</PartHeader>
             <FitTitleRow text={power.passiveName}>{power.passiveName}<Icon className={`fa ${power.passiveIcon}`} style={{ color: power.color }} /></FitTitleRow>
             <div style={{ color: getTint(power.color, TINT.turnDegrees) }}>{power.passiveDesc}</div>
             {power.passiveEffect1 && <Effect $color={power.color}>{power.passiveEffect1}</Effect>}
@@ -737,6 +752,7 @@ export const AbilityPicker = ({
     if (playerClass) {
       return (
         <Part $align="left">
+          <PartHeader style={{ color: "#ffd24a", opacity: 1 }}>Class:</PartHeader>
           <IconGroup>
             {pickedPowers.map(({ element, activeIcon, color }) => <Icon key={element} className={`fa ${activeIcon}`} style={{ color }} />)}
           </IconGroup>
@@ -794,10 +810,11 @@ export const AbilityPicker = ({
             </filter>
           </defs>
           {/* the board: dim stubs between the pendants */}
-          {stubs.map(({ key, d, pad }) => (
+          {stubs.map(({ key, d, pad, end }) => (
             <g key={key}>
-              <path d={d} fill="none" stroke={LOOK.colors.stub} strokeWidth="2" />
-              <circle cx={pad.x} cy={pad.y} r="5" fill="none" stroke={LOOK.colors.stub} strokeWidth="2" />
+              <path d={d} fill="none" stroke={LOOK.colors.stub} strokeWidth="2" strokeLinejoin="round" />
+              <circle cx={pad.x} cy={pad.y} r="5" fill="black" stroke={LOOK.colors.stub} strokeWidth="2" />
+              <circle cx={end.x} cy={end.y} r="4" fill="none" stroke={LOOK.colors.stub} strokeWidth="2" />
             </g>
           ))}
           {/* each pendant's trace, unpicked first so the lit ones lie on top */}
@@ -832,7 +849,7 @@ export const AbilityPicker = ({
         />
         <FadingIn style={{ pointerEvents: "none" }}>
         {powers.map((power, k) => {
-          const at = polar(angles[k], HALO_RADIUS);
+          const at = polar(angles[k], getPendantRadius(k));
           return (
             <Pendant
               key={power.element}
@@ -857,7 +874,7 @@ export const AbilityPicker = ({
             </Pendant>
           );
         })}
-        {!isReady && <PickPrompt>Pick three abilities</PickPrompt>}
+        <PickPrompt>Pick three abilities</PickPrompt>
         </FadingIn>
       </Stage>
     </ScaleToFit>
