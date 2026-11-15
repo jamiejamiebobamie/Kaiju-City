@@ -288,6 +288,135 @@ const ShiftingWrapper = styled(Wrapper)`
 
 const KeyWords = () => <><Bracket>[</Bracket>Press any key<Bracket>]</Bracket></>;
 
+/*
+  Mock-ups of "[Press any key]" effects (Jamie, 2026-11-15), in the spirit of arcade attract screens ("insert coin",
+  "press start"). Pick one with ?press=<id> on the landing's address; 'hud' (the ghosts) is the one built first.
+*/
+export const PRESS_EFFECTS = [
+  { id: "hud", label: "HUD lock-on: ghosts fired at a square's corners" },
+  { id: "blink", label: "Classic blink: hard on/off, color-split edges and a scan line" },
+  { id: "chase", label: "Marquee chase: a wave of color running along the letters" },
+  { id: "zoom", label: "Zoom echo: copies zoom out from the words, the words pumping in time" }
+];
+const getPressEffect = () => {
+  const id = new URLSearchParams(window.location.search).get("press");
+  return PRESS_EFFECTS.some(effect => effect.id == id) ? id : "hud";
+};
+
+// 2. classic blink: on, then gone, on a hard beat; at each switch-on a magenta and a cyan copy split off the edges
+// for an instant, and a bright scan line runs down the letters
+const BLINK = { onMs: 700, offMs: 320, splitPx: 3 };
+const blinkBeat = keyframes`
+  0%, ${(BLINK.onMs / (BLINK.onMs + BLINK.offMs)) * 100}% { opacity: 1; }
+  ${(BLINK.onMs / (BLINK.onMs + BLINK.offMs)) * 100 + 0.01}%, 100% { opacity: 0; }
+`;
+const splitOn = keyframes`
+  0% { transform: translate(var(--split), 0); opacity: 0.9; }
+  12% { transform: translate(calc(var(--split) * 0.3), 0); opacity: 0.5; }
+  25%, 100% { transform: translate(0, 0); opacity: 0; }
+`;
+const scanDown = keyframes`
+  0% { top: -20%; opacity: 0.9; }
+  40% { top: 110%; opacity: 0.9; }
+  41%, 100% { top: 110%; opacity: 0; }
+`;
+const BlinkBox = styled.span`
+  position: relative;
+  display: inline-block;
+  animation: ${blinkBeat} ${BLINK.onMs + BLINK.offMs}ms steps(1) infinite;
+  ${props => props.$isLeaving && css`animation: none;`}
+`;
+const SplitCopy = styled.span`
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--tint);
+  text-shadow: none;
+  -webkit-text-stroke: 0;
+  mix-blend-mode: screen;
+  animation: ${splitOn} ${BLINK.onMs + BLINK.offMs}ms ease-out infinite;
+`;
+const ScanLine = styled.span`
+  position: absolute;
+  left: -4%;
+  right: -4%;
+  height: 3px;
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.85), transparent);
+  pointer-events: none;
+  animation: ${scanDown} ${BLINK.onMs + BLINK.offMs}ms linear infinite;
+`;
+const BlinkWords = ({ isLeaving }) => (
+  <BlinkBox $isLeaving={isLeaving}>
+    {!isLeaving && <SplitCopy style={{ "--tint": "#ff3df0", "--split": `-${BLINK.splitPx}px` }}><KeyWords /></SplitCopy>}
+    {!isLeaving && <SplitCopy style={{ "--tint": "#3df6ff", "--split": `${BLINK.splitPx}px` }}><KeyWords /></SplitCopy>}
+    <span style={{ position: "relative" }}><KeyWords /></span>
+    {!isLeaving && <ScanLine />}
+  </BlinkBox>
+);
+
+// 3. marquee chase: like the bulbs round an arcade marquee, a wave of color runs along the letters, over and over;
+// each letter steps through the colors a moment after the one before
+const CHASE = { colors: ["#e25cff", "#80EF80", "#ffffff", "#ffd24a"], stepMs: 140, waveMs: 1100 };
+const chaseColors = keyframes`${CHASE.colors.map((color, k) => `
+  ${(k * 100) / CHASE.colors.length}% { color: ${color}; text-shadow: 0 0 ${k == 2 ? 12 : 7}px ${color}; }`).join("")}
+  100% { color: ${CHASE.colors[0]}; text-shadow: 0 0 7px ${CHASE.colors[0]}; }
+`;
+const ChaseLetter = styled.span`
+  animation: ${chaseColors} ${CHASE.waveMs}ms steps(1) infinite;
+  ${props => props.$isLeaving && css`animation: none;`}
+`;
+const ChaseWords = ({ isLeaving }) => {
+  const letters = "Press any key".split("");
+  return (
+    <span style={{ position: "relative" }}>
+      <ChaseLetter $isLeaving={isLeaving}><Bracket>[</Bracket></ChaseLetter>
+      {letters.map((letter, k) => (
+        <ChaseLetter key={k} $isLeaving={isLeaving} style={{ animationDelay: `${-(k + 1) * CHASE.stepMs}ms` }}>{letter == " " ? "\u00a0" : letter}</ChaseLetter>
+      ))}
+      <ChaseLetter $isLeaving={isLeaving} style={{ animationDelay: `${-(letters.length + 1) * CHASE.stepMs}ms` }}><Bracket>]</Bracket></ChaseLetter>
+    </span>
+  );
+};
+
+// 4. zoom echo: copies of the words zoom out from them and fade, one after another, like a title rushing at the
+// screen; the words themselves pump a little, in time with each one leaving
+const ZOOM = { everyMs: 450, copies: 4, scale: 2.4 };
+const zoomOut = keyframes`
+  0% { transform: scale(1); opacity: 0.55; }
+  100% { transform: scale(${ZOOM.scale}); opacity: 0; }
+`;
+const pump = keyframes`
+  0% { transform: scale(1.07); }
+  35% { transform: scale(0.99); }
+  100% { transform: scale(1); }
+`;
+const ZoomCopy = styled.span`
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: ${PRESS_KEY.trailColor};
+  text-shadow: none;
+  -webkit-text-stroke: 0;
+  transform-origin: 50% 50%;
+  animation: ${zoomOut} ${ZOOM.everyMs * ZOOM.copies}ms ease-out infinite;
+`;
+const PumpingWords = styled.span`
+  position: relative;
+  display: inline-block;
+  animation: ${pump} ${ZOOM.everyMs}ms ease-out infinite;
+  ${props => props.$isLeaving && css`animation: none;`}
+`;
+const ZoomWords = ({ isLeaving }) => (
+  <>
+    <Trails $isLeaving={isLeaving}>
+      {[...Array(ZOOM.copies).keys()].map(k => (
+        <ZoomCopy key={k} style={{ animationDelay: `${-k * ZOOM.everyMs}ms` }}><KeyWords /></ZoomCopy>
+      ))}
+    </Trails>
+    <PumpingWords $isLeaving={isLeaving}><KeyWords /></PumpingWords>
+  </>
+);
+
 export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
   const { selectedAvatar, isLandingShifting, setIsLandingShifting } = useContext(GlobalSettingsContext);
   const [isShiftingIn] = useState(!!isLandingShifting);
@@ -297,6 +426,7 @@ export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
     return () => clearTimeout(settled);
   }, []);
   const [toolScreen, setToolScreen] = useState(undefined);
+  const [pressEffect] = useState(getPressEffect);
 
   // the rest are tools found in the Lab
   const toolButtons = [
@@ -367,13 +497,19 @@ export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
     <PressAnyKey $isLeaving={isLeaving}>
       <KeyLine />
       <KeyText $isLeaving={isLeaving}>
-        {/* three, a moment apart: a trail */}
-        <Trails $isLeaving={isLeaving}>
-          {GHOST_SHOTS.map(({ time, x, y }, k) => (
-            <Phantom key={k} style={{ "--sx": `${getSwayAt(time).x.toFixed(2)}px`, "--sy": `${getSwayAt(time).y.toFixed(2)}px`, "--dx": `${x}px`, "--dy": `${y}px`, animationDelay: `${time - GHOST_LAP}s` }}><KeyWords /></Phantom>
-          ))}
-        </Trails>
-        <SwayingWords><KeyWords /></SwayingWords>
+        {pressEffect == "hud" && (
+          <>
+            <Trails $isLeaving={isLeaving}>
+              {GHOST_SHOTS.map(({ time, x, y }, k) => (
+                <Phantom key={k} style={{ "--sx": `${getSwayAt(time).x.toFixed(2)}px`, "--sy": `${getSwayAt(time).y.toFixed(2)}px`, "--dx": `${x}px`, "--dy": `${y}px`, animationDelay: `${time - GHOST_LAP}s` }}><KeyWords /></Phantom>
+              ))}
+            </Trails>
+            <SwayingWords><KeyWords /></SwayingWords>
+          </>
+        )}
+        {pressEffect == "blink" && <BlinkWords isLeaving={isLeaving} />}
+        {pressEffect == "chase" && <ChaseWords isLeaving={isLeaving} />}
+        {pressEffect == "zoom" && <ZoomWords isLeaving={isLeaving} />}
       </KeyText>
       <KeyLine />
     </PressAnyKey>
