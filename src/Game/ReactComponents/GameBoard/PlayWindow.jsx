@@ -85,7 +85,7 @@ export const CASING_SHEEN = `
   background:
     linear-gradient(125deg, transparent 28%, rgba(255, 255, 255, 0.08) 40%, rgba(255, 255, 255, 0.025) 47%, transparent 56%),
     linear-gradient(to bottom, rgba(255, 255, 255, 0.07), transparent 30%, transparent 62%, rgba(0, 0, 0, 0.28)),
-    ${url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0.9 -0.32'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>")};
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0.9 -0.32'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>");
   background-size: auto, auto, 140px 140px;
 `;
 
