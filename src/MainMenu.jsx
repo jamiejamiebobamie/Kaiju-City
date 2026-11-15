@@ -177,11 +177,16 @@ const KeyText = styled.div`
   that's where it means to be, so a run of shots goes there, overlapping like the HUD's boxes; then it eases on along
   the edge to the next corner.
 */
+// a set rhythm at each corner (Jamie): a run of shots there, a pause with none, then a quick glide to the next corner
+// (a shot or so on the way), and the same at the next
 const GHOSTS = {
   box: { x: 150, y: 75 }, // the square's corners, from the words
-  holdShare: 0.7, // of each corner's stretch, the target held at the corner; the rest, gliding to the next (longer holds, quicker glides: Jamie; was 0.45)
-  shots: 22, // fired in one lap
-  travelShare: 0.2, // a shot's flight, of the lap
+  perCorner: 3, // shots at each corner
+  shotGapSeconds: 0.22, // between them
+  pauseSeconds: 0.6, // after the last, before it moves on
+  glideSeconds: 0.35, // to the next corner
+  glideShots: 1, // fired on the way
+  travelSeconds: 1.25, // a shot's flight
   opacity: 0.4 // a shot's, as it leaves the words
 };
 const GHOST_CORNERS = [
@@ -190,24 +195,26 @@ const GHOST_CORNERS = [
   { x: -GHOSTS.box.x, y: GHOSTS.box.y }, // down left
   { x: GHOSTS.box.x, y: GHOSTS.box.y } // down right
 ];
+const GHOST_STRETCH = (GHOSTS.perCorner - 1) * GHOSTS.shotGapSeconds + GHOSTS.pauseSeconds + GHOSTS.glideSeconds;
+const GHOST_LAP = GHOST_STRETCH * GHOST_CORNERS.length; // in seconds
 
-// the target, a share of the way round the lap: held at a corner, then eased (slow, quick, slow) along to the next
-const getGhostTarget = share => {
-  const along = share * GHOST_CORNERS.length;
-  const k = Math.floor(along) % GHOST_CORNERS.length;
-  const into = along - Math.floor(along);
-  const from = GHOST_CORNERS[k];
-  if (into < GHOSTS.holdShare) return from;
-  const to = GHOST_CORNERS[(k + 1) % GHOST_CORNERS.length];
-  const glide = (into - GHOSTS.holdShare) / (1 - GHOSTS.holdShare);
-  const eased = glide * glide * (3 - 2 * glide);
-  return { x: from.x + (to.x - from.x) * eased, y: from.y + (to.y - from.y) * eased };
-};
-const GHOST_SHOTS = [...Array(GHOSTS.shots).keys()].map(k => ({ share: k / GHOSTS.shots, ...getGhostTarget(k / GHOSTS.shots) }));
+// every shot in a lap: when it's fired, and where to
+const GHOST_SHOTS = GHOST_CORNERS.flatMap((corner, k) => {
+  const start = k * GHOST_STRETCH;
+  const next = GHOST_CORNERS[(k + 1) % GHOST_CORNERS.length];
+  const atCorner = [...Array(GHOSTS.perCorner).keys()].map(j => ({ time: start + j * GHOSTS.shotGapSeconds, ...corner }));
+  const glideStart = start + (GHOSTS.perCorner - 1) * GHOSTS.shotGapSeconds + GHOSTS.pauseSeconds;
+  const onTheWay = [...Array(GHOSTS.glideShots).keys()].map(j => {
+    const glide = (j + 1) / (GHOSTS.glideShots + 1);
+    const eased = glide * glide * (3 - 2 * glide);
+    return { time: glideStart + glide * GHOSTS.glideSeconds, x: corner.x + (next.x - corner.x) * eased, y: corner.y + (next.y - corner.y) * eased };
+  });
+  return [...atCorner, ...onTheWay];
+});
 
 const trail = keyframes`
   0% { transform: translate(0, 0); opacity: ${GHOSTS.opacity}; }
-  ${GHOSTS.travelShare * 100}% { transform: translate(var(--dx), var(--dy)); opacity: 0; }
+  ${(GHOSTS.travelSeconds / GHOST_LAP) * 100}% { transform: translate(var(--dx), var(--dy)); opacity: 0; }
   100% { transform: translate(var(--dx), var(--dy)); opacity: 0; }
 `;
 
@@ -217,7 +224,7 @@ const Phantom = styled.span`
   top: 0;
   color: ${PRESS_KEY.trailColor};
   text-shadow: none;
-  animation: ${trail} ${PRESS_KEY.trailSeconds}s ease-out infinite;
+  animation: ${trail} ${GHOST_LAP}s ease-out infinite;
 `;
 
 // pressed (Jamie): the ghosts hold where they are and fade out quickly, and don't come back while the words go white
@@ -331,8 +338,8 @@ export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
       <KeyText $isLeaving={isLeaving}>
         {/* three, a moment apart: a trail */}
         <Trails $isLeaving={isLeaving}>
-          {GHOST_SHOTS.map(({ share, x, y }, k) => (
-            <Phantom key={k} style={{ "--dx": `${x}px`, "--dy": `${y}px`, animationDelay: `${(share - 1) * PRESS_KEY.trailSeconds}s` }}><KeyWords /></Phantom>
+          {GHOST_SHOTS.map(({ time, x, y }, k) => (
+            <Phantom key={k} style={{ "--dx": `${x}px`, "--dy": `${y}px`, animationDelay: `${time - GHOST_LAP}s` }}><KeyWords /></Phantom>
           ))}
         </Trails>
         <span style={{ position: "relative" }}><KeyWords /></span>
