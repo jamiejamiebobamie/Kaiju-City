@@ -402,10 +402,77 @@ const WireLayer = styled.svg`
     animation: ${wireDraw} ${MINI_TIMING.wiresMs}ms cubic-bezier(0.4, 0.1, 0.3, 1) both;
   }
   rect { animation: ${plugIn} ${MINI_TIMING.wiresMs}ms linear both; }
+  .arc path { stroke-dasharray: none; animation: none; fill: none; stroke-linecap: round; stroke-linejoin: round; }
 `;
 
-const Wires = ({ delayMs }) => (
+/*
+  Electric arcs (Jamie, after the sentient wires in the anime movie X): as a wire's end nears the big monitor, bolts
+  of current jump from it to the casing, crackling (redrawn every few hundredths of a second), and a last burst as
+  it plugs in.
+*/
+const ARCS = { fromShare: 0.6, afterMs: 380, everyMs: 55, bolts: 2, spreadY: 2.6, jag: 0.7, color: "#a8f4ff" };
+
+// a jagged bolt from one point to another, in a few kinked runs
+const getBolt = (from, to) => {
+  const steps = 5;
+  const points = [from];
+  for (let k = 1; k < steps; k++) {
+    const share = k / steps;
+    points.push({
+      x: from.x + (to.x - from.x) * share + (Math.random() - 0.5) * ARCS.jag,
+      y: from.y + (to.y - from.y) * share + (Math.random() - 0.5) * ARCS.jag * 2
+    });
+  }
+  points.push(to);
+  return `M ${points.map(({ x, y }) => `${x.toFixed(2)} ${y.toFixed(2)}`).join(" L ")}`;
+};
+
+const useArcs = (delayMs, pathRefs) => {
+  const [bolts, setBolts] = useState([]);
+  useEffect(() => {
+    const start = performance.now();
+    const lastMs = delayMs + (WIRES.length - 1) * 140 + MINI_TIMING.wiresMs + ARCS.afterMs;
+    const interval = setInterval(() => {
+      const now = performance.now() - start;
+      const next = [];
+      WIRES.forEach((wire, k) => {
+        const progress = (now - (delayMs + k * 140)) / MINI_TIMING.wiresMs;
+        if (progress < ARCS.fromShare || progress > 1 + ARCS.afterMs / MINI_TIMING.wiresMs) return;
+        // the wire's end: where its drawing has got to, then the plug
+        const path = pathRefs.current[k];
+        let tip = wire.to;
+        if (progress < 1 && path && path.getTotalLength) {
+          const drawn = 1 - Math.pow(1 - progress, 2.2);
+          const point = path.getPointAtLength(path.getTotalLength() * drawn);
+          tip = { x: point.x, y: point.y };
+        }
+        for (let b = 0; b < ARCS.bolts; b++) {
+          const to = { x: wire.to.x - 0.05, y: wire.to.y + (Math.random() - 0.5) * ARCS.spreadY };
+          next.push({ key: `${k}-${b}`, d: getBolt(tip, to) });
+        }
+      });
+      setBolts(next);
+      if (now > lastMs) {
+        setBolts([]);
+        clearInterval(interval);
+      }
+    }, ARCS.everyMs);
+    return () => clearInterval(interval);
+  }, []);
+  return bolts;
+};
+
+const Wires = ({ delayMs }) => {
+  const pathRefs = useRef([]);
+  const bolts = useArcs(delayMs, pathRefs);
+  return (
   <WireLayer viewBox="0 0 100 56.25" preserveAspectRatio="none" aria-hidden="true">
+    <defs>
+      <filter id="arcGlow" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="0.25" result="blur" />
+        <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+      </filter>
+    </defs>
     {WIRES.map((wire, k) => {
       const style = { animationDelay: `${delayMs + k * 140}ms` };
       const slither = (
@@ -414,22 +481,29 @@ const Wires = ({ delayMs }) => (
       );
       return (
         <g key={k}>
-          <path d={getWirePath(wire)} pathLength="100" stroke={wire.color} strokeWidth="0.75" style={style}>{slither}</path>
+          <path ref={element => { pathRefs.current[k] = element; }} d={getWirePath(wire)} pathLength="100" stroke={wire.color} strokeWidth="0.75" style={style}>{slither}</path>
           <path d={getWirePath(wire)} pathLength="100" stroke="#3b3d41" strokeWidth="0.16" style={style} transform="translate(-0.12 -0.12)">{slither}</path>
           <rect x={wire.to.x - 0.2} y={wire.to.y - 0.55} width="1.3" height="1.1" rx="0.2" fill="#2a2b2e" stroke="#4a4542" strokeWidth="0.1" style={style} />
         </g>
       );
     })}
+    {bolts.map(({ key, d }) => (
+      <g key={key} className="arc" filter="url(#arcGlow)">
+        <path d={d} stroke={ARCS.color} strokeWidth="0.32" opacity="0.55" />
+        <path d={d} stroke="white" strokeWidth="0.1" />
+      </g>
+    ))}
   </WireLayer>
-);
+  );
+};
 
 const Info = styled.div`
   position: absolute;
   inset: 1.4cqw 1.3cqw;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 1.6cqw;
+  justify-content: space-evenly; /* the active and the passive as far apart as the screen allows (Jamie) */
+  gap: 1.2cqw;
   font-size: 0.95cqw;
   line-height: 1.5;
   color: #d9dade;
@@ -448,6 +522,7 @@ const TITLE_SIZE = 1.45; // cqw
 const TitleRow = styled.div`
   display: flex;
   align-items: center;
+  white-space: nowrap;
   gap: 1.1cqw;
   font-family: gameboy;
   font-size: ${TITLE_SIZE}cqw;
@@ -463,7 +538,23 @@ const IconGroup = styled.div`
 
 const ClassText = styled.div`
   padding-left: 1.8cqw;
+  margin-top: 1cqw; /* more room under the name (Jamie) */
 `;
+
+// a title kept to one line (Jamie): too long for the screen, its words get smaller until it fits
+const FitTitleRow = ({ text, children }) => {
+  const ref = useRef(null);
+  const [size, setSize] = useState(TITLE_SIZE);
+  useLayoutEffect(() => {
+    const row = ref.current;
+    if (!row || !row.parentElement) return;
+    row.style.fontSize = `${TITLE_SIZE}cqw`;
+    const room = row.parentElement.clientWidth;
+    const needed = row.scrollWidth;
+    setSize(needed > room ? Math.max(0.6, TITLE_SIZE * (room / needed) * 0.97) : TITLE_SIZE);
+  }, [text]);
+  return <TitleRow ref={ref} style={{ fontSize: `${size}cqw` }}>{children}</TitleRow>;
+};
 
 const Icon = styled.i`
   font-size: 1.9cqw;
@@ -593,12 +684,12 @@ export const AbilityPicker = ({
       return (
         <>
           <Part $align="left">
-            <TitleRow><Icon className={`fa ${power.activeIcon}`} style={{ color: power.color }} />{power.activeName}</TitleRow>
+            <FitTitleRow text={power.activeName}><Icon className={`fa ${power.activeIcon}`} style={{ color: power.color }} />{power.activeName}</FitTitleRow>
             <div style={{ color: getTint(power.color, -TINT.turnDegrees) }}>{power.activeDesc}</div>
             {power.activeEffect1 && <Effect $color={power.color}>{power.activeEffect1}</Effect>}
           </Part>
           <Part $align="right">
-            <TitleRow>{power.passiveName}<Icon className={`fa ${power.passiveIcon}`} style={{ color: power.color }} /></TitleRow>
+            <FitTitleRow text={power.passiveName}>{power.passiveName}<Icon className={`fa ${power.passiveIcon}`} style={{ color: power.color }} /></FitTitleRow>
             <div style={{ color: getTint(power.color, TINT.turnDegrees) }}>{power.passiveDesc}</div>
             {power.passiveEffect1 && <Effect $color={power.color}>{power.passiveEffect1}</Effect>}
           </Part>
@@ -611,7 +702,7 @@ export const AbilityPicker = ({
           <IconGroup>
             {pickedPowers.map(({ element, activeIcon, color }) => <Icon key={element} className={`fa ${activeIcon}`} style={{ color }} />)}
           </IconGroup>
-          <TitleRow>{playerClass[0]}</TitleRow>
+          <FitTitleRow text={playerClass[0]}>{playerClass[0]}</FitTitleRow>
           <ClassText style={{ color: getClassTint(pickedPowers.map(({ color }) => color)) }}>{playerClass[1]}</ClassText>
         </Part>
       );

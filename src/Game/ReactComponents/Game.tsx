@@ -60,6 +60,14 @@ const GameArea = styled.div`
 */
 const MONITOR_SHIFT = { ms: 950, deadBeatMs: 350, endDeadMs: 700 };
 
+// with nothing beside it (no HUDs, no side screen, no dialogue panel), the monitor stands in the middle of the frame;
+// when something comes in beside it, it eases aside (Jamie, UI epic)
+const getCenteredWindow = window => {
+  const width = window.right - window.left;
+  const left = (1 - width) / 2;
+  return { ...window, left, right: left + width };
+};
+
 const shiftIn = keyframes`
   from { transform: translateX(105%); }
   to { transform: translateX(0); }
@@ -1333,11 +1341,17 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     <DevShowButton onClick={() => setIsDevHidden(false)} title="Show dev options (F2)">dev</DevShowButton>
   );
 
+  // what stands beside the monitor in a game: the HUDs, the dialogue panel, the Lab's color vat
+  const isHudsShowing = !isEditingTiles && !isLogClosing && (!level.isWalkingLevel || isRewarding) && !isCutscene && !recruitScene && !(matchEnd && matchEnd.isFinale);
+  const isLogShowing = labScreen != "colors" && (isCutscene || !!recruitScene || isTalking);
+  const isBesideShowing = isHudsShowing || isLogShowing || labScreen == "colors";
+  const gameWindow = isBesideShowing || isAdjustingWindow ? playWindow : getCenteredWindow(playWindow);
+
   // the screens before a game (the avatar select and the power picker) are on the Kaiju-Vision monitor (Jamie, 2026-11-14)
   const onMonitor = (content: React.ReactNode) => (
     <GameArea>
       <GameFrame data-game-frame $shift={monitorShift == 'in' ? 'in' : undefined}>
-        <PlayWindow playWindow={playWindow} setPlayWindow={updatePlayWindow} isAdjusting={false} isOpen={false} isPoweredOn={isMonitorOn} isClipped>
+        <PlayWindow playWindow={isChoosingAvatar ? getCenteredWindow(playWindow) : playWindow} setPlayWindow={updatePlayWindow} isAdjusting={false} isOpen={false} isPoweredOn={isMonitorOn} isClipped>
           {content}
         </PlayWindow>
       </GameFrame>
@@ -1390,7 +1404,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
         <GameArea>
           <GameFrame data-game-frame>
             {/* the alarm only when the call sends the team into a Kaiju fight */}
-            <PlayWindow playWindow={playWindow} setPlayWindow={updatePlayWindow} isAdjusting={false} isOpen={false} isSiren={isRadioAlarm} buttons={getBezelButtons({
+            <PlayWindow playWindow={getCenteredWindow(playWindow)} setPlayWindow={updatePlayWindow} isAdjusting={false} isOpen={false} isSiren={isRadioAlarm} buttons={getBezelButtons({
               // blank through the call (Jamie, playtest 24): the Kaiju count only once the fight's "Defeat the Kaiju" has shown
               ticker: <ObjectiveTicker text="" isKaijuCount={false} count={0} toWin={0} />
             })}>
@@ -1598,7 +1612,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
             </PhaseToggles>
           )}
           <GameFrame data-game-frame $shift={monitorShift == 'out' ? 'out' : undefined}>
-            <PlayWindow isPoweredOn={isMonitorOn} playWindow={playWindow} setPlayWindow={updatePlayWindow} isAdjusting={isAdjustingWindow} isOpen={isWindowOpen} isCut={!!recruitScene} isSiren={!!level.kaijuEntry && winner === null && !isPaused} buttons={!isEditingTiles && getBezelButtons({
+            <PlayWindow isPoweredOn={isMonitorOn} playWindow={gameWindow} setPlayWindow={updatePlayWindow} isAdjusting={isAdjustingWindow} isOpen={isWindowOpen} isCut={!!recruitScene} isSiren={!!level.kaijuEntry && winner === null && !isPaused} buttons={!isEditingTiles && getBezelButtons({
               isPauseOff: winner !== null,
               // the objective's display: always there (Jamie), running the objective, or the Kaiju count
               ticker: !isWindowOpen && <ObjectiveTicker text={objectiveText || ""} isKaijuCount={isObjectiveKaijuCount} count={kaijuKillCount} toWin={kaijuToWin} />

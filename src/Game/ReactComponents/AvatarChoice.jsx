@@ -28,7 +28,7 @@ const AVATARS = [
 ];
 
 // inside the Kaiju-Vision screen (Jamie, 2026-11-14), on a square design scaled to fit it
-const DESIGN_SIZE = 900;
+const DESIGN_SIZE = 640; // (was 900: smaller here is bigger on the screen. Jamie: larger in the monitor)
 
 const Screen = styled.div`
   position: absolute;
@@ -102,6 +102,7 @@ const Sprite = styled.div`
 */
 const SPARKS = {
   color: "#80EF80",
+  sparkColor: "#2fc8ff", // the sparks: electric blue, against the green number (Jamie)
   pulseColor: "#e6ffe6", // the number's pulse, up to a brighter greenish white (Jamie)
   pulseMs: 1400, // one way
   everyMs: [350, 1300], // between bursts (a random wait in this range)
@@ -161,7 +162,7 @@ const Spark = styled.span`
   margin: -1.5px;
   border-radius: 50%;
   background: white;
-  box-shadow: 0 0 3px 1px ${SPARKS.color}, 0 0 7px 2px ${SPARKS.color};
+  box-shadow: 0 0 3px 1px ${SPARKS.sparkColor}, 0 0 7px 2px ${SPARKS.sparkColor};
   pointer-events: none;
   animation: ${sparkFall} ${SPARKS.lifeMs}ms cubic-bezier(0.3, 0, 0.8, 1) forwards;
 `;
