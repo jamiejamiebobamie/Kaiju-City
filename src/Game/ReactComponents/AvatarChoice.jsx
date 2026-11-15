@@ -170,26 +170,44 @@ const Spark = styled.span`
 const between = ([low, high]) => low + Math.random() * (high - low);
 let sparkId = 0; // across hovers, so a spark still falling keeps its key
 
-const useSparks = isOn => {
+// 'everyMs': the wait between bursts (a range); 'getOrigin': where a burst starts (by default, the number's foot)
+const useSparks = (isOn, everyMs = SPARKS.everyMs, getOrigin = undefined, firstMs = 150) => {
   const [sparks, setSparks] = useState([]);
   useEffect(() => {
     if (!isOn) return;
     let timeout;
     const burst = () => {
       const count = Math.round(between(SPARKS.perBurst));
+      const origin = getOrigin ? getOrigin() : undefined;
       const born = Array.from({ length: count }, () => ({
         id: sparkId++,
+        origin,
         dx: (Math.random() * 2 - 1) * SPARKS.spreadPx,
         dy: between(SPARKS.fallPx)
       }));
       setSparks(all => [...all, ...born]);
       setTimeout(() => setSparks(all => all.filter(spark => !born.includes(spark))), SPARKS.lifeMs);
-      timeout = setTimeout(burst, between(SPARKS.everyMs));
+      timeout = setTimeout(burst, between(everyMs));
     };
-    timeout = setTimeout(burst, 150); // the first, soon after the hover
+    timeout = setTimeout(burst, firstMs); // the first: the number's soon after the hover
     return () => clearTimeout(timeout);
   }, [isOn]);
   return sparks;
+};
+
+/*
+  Sparks off the green grid behind a hovered avatar too (Jamie, 2026-11-15): now and then, every 1.5 to 4 seconds at
+  random, a burst from a random spot on the grid, falling as the number's do. (In the sprite box's pixels: the grid,
+  as the doodads draw it, measured.)
+*/
+const GRID_SPARKS = { everyMs: [1500, 4000], grid: { left: 34, top: 42, right: 120, bottom: 191 } };
+
+const GridSparks = ({ isOn, offsetX }) => {
+  const { grid } = GRID_SPARKS;
+  const sparks = useSparks(isOn, GRID_SPARKS.everyMs, () => ({ x: between([grid.left, grid.right]) + offsetX, y: between([grid.top, grid.bottom]) }), between(GRID_SPARKS.everyMs) / 2);
+  return sparks.map(({ id, dx, dy, origin }) => (
+    <Spark key={id} style={{ left: `${origin.x}px`, top: `${origin.y}px`, zIndex: 2, "--dx": `${dx}px`, "--dy": `${dy}px` }} />
+  ));
 };
 
 const ElectricNumber = ({ isElectric, isHidden, children }) => {
@@ -244,6 +262,7 @@ const ChoiceAvatar = ({ id, sheet, keyName, figureOffset, chosen, isLeaving, onC
           <Doodads hasPrompt={false} show={isHovered && !chosen} persistDisc={false} hasDisc={false} isDrifting fadeInMs={CHOICE.doodadFadeInMs} fadeOutMs={CHOICE.doodadFadeOutMs} globalTranslation={`${figureOffset}px, 0px`} opacity={doodadOpacity} setOpacity={setDoodadOpacity} />
         </DoodadHolder>
         <Sprite $sheet={sheet} $color={CHOICE.colors[id]} $isChosen={chosen == id} $isLocked={!!chosen} />
+        <GridSparks isOn={isHovered && !chosen} offsetX={figureOffset} />
       </SpriteBox>
       <ElectricNumber isElectric={isHovered} isHidden={!!chosen}>{keyName}</ElectricNumber>
       <Label $isShown={!!chosen} $isLeaving={isLeaving} style={{ "--color": CHOICE.colors[id] }}>{chosen ? (chosen == id ? "Player" : "Teammate") : ""}</Label>
