@@ -28,18 +28,18 @@ const PICK_COUNT = 3;
 
 const STAGE = { width: 1000, height: 1000 };
 const LOOK = {
-  figureHeight: 450, // the avatar, head to feet (Jamie's, 2026-11-15; was 270, then 540; the halo kept its size)
-  figureDrop: 0, // the avatar moved down from the halo's middle (negative: up), in stage units; the dev panel's slider
-  haloRadius: 405, // the halo, from the upper torso (was 1.5 times the avatar's height, 270)
-  torso: { x: 500, y: 485 }, // the upper torso: the halo's middle
+  figureHeight: 400, // the avatar, head to feet (Jamie's, 2026-11-15; was 270, then 540; the halo kept its size)
+  figureDrop: -50, // the avatar moved down from the halo's middle (negative: up), in stage units; the dev panel's slider
+  haloRadius: 380, // the halo, from the upper torso (was 1.5 times the avatar's height, 270)
+  torso: { x: 500, y: 450 }, // the upper torso: the halo's middle
   headDrop: 0.28, // the upper torso, down from the top of the head (of the figure's height)
   // the area below the avatar stays clear (Jamie): its legs reach down past the lowest pendants (feet at 874, the
   // lowest pendants at about 720), and no pendant, line or pad is ever under it. Keep the arc's gap at the bottom wide
   // (215 to 325 degrees) and the board's lines out of it.
   haloStartDegrees: -35, // low on the avatar's right (0 is right, counter-clockwise; was -65: Jamie, the lowest higher)
   haloEndDegrees: 215, // low on its left (was 245)
-  radiusJitter: 0.1, // each pendant nearer or further than the circle, by up to this share of it (Jamie)
-  pendantSize: 78,
+  radiusJitter: 0.2, // each pendant nearer or further than the circle, by up to this share of it (Jamie)
+  pendantSize: 90,
   bendAt: 0.55, // where a trace bends, of the halo's radius from the middle
   endSpread: 0.13, // the traces' ends behind the avatar, spread across (of the figure's height)
   endDrop: 0.06, // and how far below the upper torso
@@ -598,11 +598,12 @@ const TitleRow = styled.div`
   color: white;
 `;
 
-// the class's three icons, over its name (Jamie): spaced apart, and half the name's height above it
+// the class's three icons, under its description, at the right (Jamie): spaced apart
 const IconGroup = styled.div`
+  align-self: flex-end;
   display: flex;
   gap: 1.2cqw;
-  margin-bottom: ${TITLE_SIZE / 2 - 0.5}cqw; /* (the part's own gap makes up the rest) */
+  margin-top: ${TITLE_SIZE / 2 - 0.5}cqw; /* (the part's own gap makes up the rest) */
 `;
 
 const ClassText = styled.div`
@@ -767,11 +768,11 @@ export const AbilityPicker = ({
       return (
         <Part $align="left">
           <PartHeader>Class:</PartHeader>
+          <FitTitleRow text={playerClass[0]}>{playerClass[0]}</FitTitleRow>
+          <ClassText style={{ color: getClassTint(pickedPowers.map(({ color }) => color)) }}>{playerClass[1]}</ClassText>
           <IconGroup>
             {pickedPowers.map(({ element, activeIcon, color }) => <Icon key={element} className={`fa ${activeIcon}`} style={{ color }} />)}
           </IconGroup>
-          <FitTitleRow text={playerClass[0]}>{playerClass[0]}</FitTitleRow>
-          <ClassText style={{ color: getClassTint(pickedPowers.map(({ color }) => color)) }}>{playerClass[1]}</ClassText>
         </Part>
       );
     }
