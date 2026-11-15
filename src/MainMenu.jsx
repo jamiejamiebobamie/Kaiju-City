@@ -179,7 +179,7 @@ const KeyText = styled.div`
 */
 const GHOSTS = {
   box: { x: 150, y: 75 }, // the square's corners, from the words
-  holdShare: 0.45, // of each corner's stretch, the target held at the corner; the rest, gliding to the next
+  holdShare: 0.7, // of each corner's stretch, the target held at the corner; the rest, gliding to the next (longer holds, quicker glides: Jamie; was 0.45)
   shots: 22, // fired in one lap
   travelShare: 0.2, // a shot's flight, of the lap
   opacity: 0.4 // a shot's, as it leaves the words
