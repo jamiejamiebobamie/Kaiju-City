@@ -167,21 +167,31 @@ const KeyText = styled.div`
   /* no blink (Jamie: its dark beat was too dark); the ghost trail carries the life */
 `;
 
-// a ghost of the words, sliding off behind them and fading into the background: up right, up left, down left, down
-// right, a pause at each, and round again (Jamie); far enough to come clear of the words (playtest 22)
+/*
+  The ghosts of the words (Jamie, 2026-11-15: like an arcade attract screen): firing all the time, one after another,
+  each sliding off from the words and fading; where they fire to goes round a box (up right, up left, down left, down
+  right, along its edges), so the trails draw a box round the words, not a circle. Far enough to come clear of them.
+*/
+const GHOSTS = { count: 18, travelShare: 0.3, box: { x: 70, y: 34 } };
+
+// the box's edge, from 0 to 1 round it: from the top right, along the top, down the left, along the bottom, up the right
+const getBoxPoint = share => {
+  const { x, y } = GHOSTS.box;
+  const sides = [2 * x, 2 * y, 2 * x, 2 * y];
+  let along = share * sides.reduce((sum, side) => sum + side, 0);
+  if (along < sides[0]) return { x: x - along, y: -y };
+  along -= sides[0];
+  if (along < sides[1]) return { x: -x, y: -y + along };
+  along -= sides[1];
+  if (along < sides[2]) return { x: -x + along, y };
+  along -= sides[2];
+  return { x, y: y - along };
+};
+
 const trail = keyframes`
   0% { transform: translate(0, 0); opacity: 0.6; }
-  12% { transform: translate(70px, -34px); opacity: 0.3; }
-  25% { transform: translate(70px, -34px); opacity: 0; }
-  25.01% { transform: translate(0, 0); opacity: 0.6; }
-  37% { transform: translate(-70px, -34px); opacity: 0.3; }
-  50% { transform: translate(-70px, -34px); opacity: 0; }
-  50.01% { transform: translate(0, 0); opacity: 0.6; }
-  62% { transform: translate(-70px, 34px); opacity: 0.3; }
-  75% { transform: translate(-70px, 34px); opacity: 0; }
-  75.01% { transform: translate(0, 0); opacity: 0.6; }
-  87% { transform: translate(70px, 34px); opacity: 0.3; }
-  100% { transform: translate(70px, 34px); opacity: 0; }
+  ${GHOSTS.travelShare * 100}% { transform: translate(var(--dx), var(--dy)); opacity: 0; }
+  100% { transform: translate(var(--dx), var(--dy)); opacity: 0; }
 `;
 
 const Phantom = styled.span`
@@ -304,7 +314,10 @@ export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
       <KeyText $isLeaving={isLeaving}>
         {/* three, a moment apart: a trail */}
         <Trails $isLeaving={isLeaving}>
-          {[1, 2, 3].map(n => <Phantom key={n} style={{ animationDelay: `${(n - 1) * 0.08}s`, filter: `opacity(${1 - (n - 1) * 0.3})` }}><KeyWords /></Phantom>)}
+          {[...Array(GHOSTS.count).keys()].map(k => {
+            const { x, y } = getBoxPoint(k / GHOSTS.count);
+            return <Phantom key={k} style={{ "--dx": `${x}px`, "--dy": `${y}px`, animationDelay: `${(k / GHOSTS.count - 1) * PRESS_KEY.trailSeconds}s` }}><KeyWords /></Phantom>;
+          })}
         </Trails>
         <span style={{ position: "relative" }}><KeyWords /></span>
       </KeyText>
