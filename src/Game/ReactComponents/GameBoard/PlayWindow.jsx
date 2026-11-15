@@ -413,7 +413,7 @@ const getHandleSpot = fraction => `calc(${fraction * 100}% - ${fraction * WINDOW
 // 'isSiren': the red alarm glow around the screen, for a Kaiju fight
 // 'isPoweredOn' (Jamie, 2026-11-14): off, the screen is dead glass; switched on or off, the picture opens or closes like an
 // old TV's. 'isClipped': the picture kept inside the glass (the screens before the game: they slide about in it)
-export const PlayWindow = ({ playWindow, setPlayWindow, isAdjusting, isOpen, isCut = false, buttons = null, isSiren = false, isPoweredOn = true, isClipped = false, children }) => {
+export const PlayWindow = ({ playWindow, setPlayWindow, isAdjusting, isOpen, isCut = false, buttons = null, isSiren = false, isPoweredOn = true, isClipped = false, hasGlare = false, children }) => {
   const windowRef = useRef(null);
   const { left, top, right, bottom } = isOpen ? FULL_WINDOW : playWindow;
 
@@ -433,7 +433,7 @@ export const PlayWindow = ({ playWindow, setPlayWindow, isAdjusting, isOpen, isC
       borderRadius: `${TV_LOOK.screenRadius}cqw`,
       transition: isAdjusting || isCut ? "none" : `left ${WIDE_SHOT.pullMs}ms ease-in-out, top ${WIDE_SHOT.pullMs}ms ease-in-out, width ${WIDE_SHOT.pullMs}ms ease-in-out, height ${WIDE_SHOT.pullMs}ms ease-in-out`
     }}>
-      <CrtScreen isOn={isPoweredOn} isClipped={isClipped}>{children}</CrtScreen>
+      <CrtScreen isOn={isPoweredOn} isClipped={isClipped} hasGlare={hasGlare}>{children}</CrtScreen>
       {isSiren && !isOpen && <SirenEdge />}
       <ScreenGlass><RollingBar /></ScreenGlass>
       {!isOpen && (

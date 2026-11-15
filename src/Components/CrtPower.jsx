@@ -41,15 +41,28 @@ export const PoweredPicture = styled.div`
   ${props => props.$state == "turningOff" && css`animation: ${crtOff} ${CRT.offMs}ms ease-in forwards;`}
 `;
 
-// the dead screen: dark glass, a soft reflection across it
+// the glass's reflection: a soft band of light across it
+const REFLECTION = "linear-gradient(125deg, transparent 20%, rgba(255, 255, 255, 0.05) 32%, transparent 44%)";
+
+// the dead screen: dark glass, the reflection across it
 export const DeadGlass = styled.div`
   position: absolute;
   inset: 0;
   pointer-events: none;
   border-radius: inherit;
   background:
-    linear-gradient(125deg, transparent 20%, rgba(255, 255, 255, 0.05) 32%, transparent 44%),
+    ${REFLECTION},
     radial-gradient(ellipse at 35% 30%, #1a1c1f, #070708 70%);
+`;
+
+// the same reflection kept over the picture once it's on (Jamie: the avatar select and the power picker)
+const Glare = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 2147482985; /* over the picture's own layers, under the monitor's glass and casing */
+  pointer-events: none;
+  border-radius: inherit;
+  background: ${REFLECTION};
 `;
 
 const Sparkle = styled.div`
@@ -94,13 +107,15 @@ export const useCrtPower = isOn => {
 };
 
 // a screen's picture, behind dead glass until it is switched on
-export const CrtScreen = ({ isOn, isClipped = false, children }) => {
+// 'hasGlare': the glass's reflection stays over the picture once it's on
+export const CrtScreen = ({ isOn, isClipped = false, hasGlare = false, children }) => {
   const state = useCrtPower(isOn);
   return (
     <>
       {state != "on" && <DeadGlass />}
       <PoweredPicture $state={state} $isClipped={isClipped}>{children}</PoweredPicture>
       {state == "turningOff" && <Sparkle />}
+      {hasGlare && state != "dead" && <Glare />}
     </>
   );
 };

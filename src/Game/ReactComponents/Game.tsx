@@ -1361,7 +1361,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const onMonitor = (content: React.ReactNode) => (
     <GameArea>
       <GameFrame data-game-frame $shift={monitorShift == 'in' ? 'in' : undefined}>
-        <PlayWindow playWindow={isChoosingAvatar || !isPickerAside ? getCenteredWindow(playWindow) : playWindow} setPlayWindow={updatePlayWindow} isAdjusting={false} isOpen={false} isPoweredOn={isMonitorOn} isClipped>
+        <PlayWindow playWindow={isChoosingAvatar || !isPickerAside ? getCenteredWindow(playWindow) : playWindow} setPlayWindow={updatePlayWindow} isAdjusting={false} isOpen={false} isPoweredOn={isMonitorOn} isClipped hasGlare>
           {content}
         </PlayWindow>
       </GameFrame>
