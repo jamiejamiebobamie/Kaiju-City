@@ -102,7 +102,7 @@ const Sprite = styled.div`
 */
 const SPARKS = {
   color: "#80EF80",
-  sparkColor: "#2fc8ff", // the sparks: electric blue, against the green number (Jamie)
+  sparkColor: "#ffb020", // the sparks: yellow-orange, against the green number (Jamie; was electric blue #2fc8ff)
   pulseColor: "#e6ffe6", // the number's pulse, up to a brighter greenish white (Jamie)
   pulseMs: 1400, // one way
   everyMs: [350, 1300], // between bursts (a random wait in this range)
@@ -161,7 +161,7 @@ const Spark = styled.span`
   height: 3px;
   margin: -1.5px;
   border-radius: 50%;
-  background: white;
+  background: #fff4c2;
   box-shadow: 0 0 3px 1px ${SPARKS.sparkColor}, 0 0 7px 2px ${SPARKS.sparkColor};
   pointer-events: none;
   animation: ${sparkFall} ${SPARKS.lifeMs}ms cubic-bezier(0.3, 0, 0.8, 1) forwards;
