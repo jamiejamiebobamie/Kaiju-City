@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
 import styled, { css, keyframes } from "styled-components";
 import { SpeedBlurFilter, slideAway } from "./Components/SlideAway";
+import { getPressEffect, PressKeyPanel, PressKeyRow, usePressSettings } from "./Components/PressKeyEffects";
 import {
   Wrapper,
   ButtonGroup,
@@ -149,131 +150,6 @@ const PressAnyKey = styled.div`
   ${props => props.$isLeaving && css`animation: ${leaveFlash} ${PRESS_KEY.confirmMs}ms linear forwards;`}
 `;
 
-const KeyLine = styled.div`
-  flex: 1;
-  height: 2px;
-  background: ${PRESS_KEY.color};
-  box-shadow: 0 0 6px ${PRESS_KEY.color};
-`;
-
-const KeyText = styled.div`
-  position: relative;
-  font-family: gameboy;
-  font-size: 22px;
-  letter-spacing: 3px;
-  white-space: nowrap;
-  color: ${PRESS_KEY.color};
-  /* a neon green border round the purple words (Jamie, 2026-11-15), under the fill so the letters keep their shape */
-  -webkit-text-stroke: 2px ${PRESS_KEY.trailColor};
-  paint-order: stroke fill;
-  text-shadow: 0 0 8px ${PRESS_KEY.color}, 0 0 3px ${PRESS_KEY.trailColor};
-  /* no blink (Jamie: its dark beat was too dark); the ghost trail carries the life */
-`;
-
-/*
-  The ghosts of the words (Jamie, 2026-11-15), like a fighter pilot's HUD, its squares marking where it fires: ghosts
-  fire out of the words all the time, one after another, each sliding off and fading. Where they're fired at is a
-  target gliding round a square about the words, along its edges (never a circle): it holds at each corner, as if
-  that's where it means to be, so a run of shots goes there, overlapping like the HUD's boxes; then it eases on along
-  the edge to the next corner.
-*/
-// a set rhythm at each corner (Jamie): a run of shots there, a pause with none, then a quick glide to the next corner
-// (a shot or so on the way), and the same at the next
-const GHOSTS = {
-  box: { x: 150, y: 75 }, // the square's corners, from the words
-  perCorner: 5, // shots at each corner (more: Jamie; was 3)
-  shotGapSeconds: 0.32, // between them (further apart: Jamie; was 0.22)
-  pauseSeconds: 0.6, // after the last, before it moves on
-  glideSeconds: 0.35, // to the next corner
-  glideShots: 1, // fired on the way
-  travelSeconds: 1.25, // a shot's flight
-  opacity: 0.4 // a shot's, as it leaves the words
-};
-const GHOST_CORNERS = [
-  { x: GHOSTS.box.x, y: -GHOSTS.box.y }, // up right
-  { x: -GHOSTS.box.x, y: -GHOSTS.box.y }, // up left
-  { x: -GHOSTS.box.x, y: GHOSTS.box.y }, // down left
-  { x: GHOSTS.box.x, y: GHOSTS.box.y } // down right
-];
-const GHOST_STRETCH = (GHOSTS.perCorner - 1) * GHOSTS.shotGapSeconds + GHOSTS.pauseSeconds + GHOSTS.glideSeconds;
-const GHOST_LAP = GHOST_STRETCH * GHOST_CORNERS.length; // in seconds
-
-// every shot in a lap: when it's fired, and where to
-const GHOST_SHOTS = GHOST_CORNERS.flatMap((corner, k) => {
-  const start = k * GHOST_STRETCH;
-  const next = GHOST_CORNERS[(k + 1) % GHOST_CORNERS.length];
-  const atCorner = [...Array(GHOSTS.perCorner).keys()].map(j => ({ time: start + j * GHOSTS.shotGapSeconds, ...corner }));
-  const glideStart = start + (GHOSTS.perCorner - 1) * GHOSTS.shotGapSeconds + GHOSTS.pauseSeconds;
-  const onTheWay = [...Array(GHOSTS.glideShots).keys()].map(j => {
-    const glide = (j + 1) / (GHOSTS.glideShots + 1);
-    const eased = glide * glide * (3 - 2 * glide);
-    return { time: glideStart + glide * GHOSTS.glideSeconds, x: corner.x + (next.x - corner.x) * eased, y: corner.y + (next.y - corner.y) * eased };
-  });
-  return [...atCorner, ...onTheWay];
-});
-
-const trail = keyframes`
-  0% { transform: translate(var(--sx, 0px), var(--sy, 0px)); opacity: ${GHOSTS.opacity}; }
-  ${(GHOSTS.travelSeconds / GHOST_LAP) * 100}% { transform: translate(var(--dx), var(--dy)); opacity: 0; }
-  100% { transform: translate(var(--dx), var(--dy)); opacity: 0; }
-`;
-
-/*
-  The words themselves move (Jamie): round a little square of their own, corner to corner, smooth and quick, with no
-  holds, apart from the shots' rhythm. Their lap divides the shots' lap exactly ('lapsPerGhostLap'), so where the
-  words are when each shot fires is known, and every shot leaves from the words where they are.
-*/
-const SWAY = { share: 0.04, lapsPerGhostLap: 6 }; // 'share': the square's size, of the box's
-const SWAY_SECONDS = GHOST_LAP / SWAY.lapsPerGhostLap;
-const SWAY_CORNERS = GHOST_CORNERS.map(({ x, y }) => ({ x: x * SWAY.share, y: y * SWAY.share }));
-
-// where the words are at a time in the lap (eased from corner to corner, as the css below)
-const getSwayAt = time => {
-  const along = ((time % SWAY_SECONDS) / SWAY_SECONDS) * SWAY_CORNERS.length;
-  const k = Math.floor(along) % SWAY_CORNERS.length;
-  const into = along - Math.floor(along);
-  const eased = into * into * (3 - 2 * into);
-  const from = SWAY_CORNERS[k];
-  const to = SWAY_CORNERS[(k + 1) % SWAY_CORNERS.length];
-  return { x: from.x + (to.x - from.x) * eased, y: from.y + (to.y - from.y) * eased };
-};
-
-const wordsSway = keyframes`${SWAY_CORNERS.map(({ x, y }, k) => `
-  ${(k * 100) / SWAY_CORNERS.length}% { transform: translate(${x.toFixed(2)}px, ${y.toFixed(2)}px); animation-timing-function: ease-in-out; }`).join("")}
-  100% { transform: translate(${SWAY_CORNERS[0].x.toFixed(2)}px, ${SWAY_CORNERS[0].y.toFixed(2)}px); }
-`;
-
-const SwayingWords = styled.span`
-  position: relative;
-  display: inline-block;
-  animation: ${wordsSway} ${SWAY_SECONDS}s infinite;
-`;
-
-const Phantom = styled.span`
-  position: absolute;
-  left: 0;
-  top: 0;
-  color: ${PRESS_KEY.trailColor};
-  text-shadow: none;
-  animation: ${trail} ${GHOST_LAP}s ease-out infinite;
-`;
-
-// pressed (Jamie): the ghosts hold where they are and fade out quickly, and don't come back while the words go white
-const Trails = styled.span`
-  transition: opacity 0.35s ease-out;
-  ${props => props.$isLeaving && css`
-    opacity: 0;
-    & > * { animation-play-state: paused; }
-  `}
-`;
-
-// gameboy has no brackets: these are a monospace's, as the dialogue's [ENTER]
-const Bracket = styled.span`
-  font-family: "Courier New", Courier, monospace;
-  font-weight: bold;
-  font-size: 1.4em;
-  line-height: 0;
-`;
 // back from the monitor at the end of the game (Jamie, 2026-11-14): the view shifts right, so the landing slides in
 // from the right
 const LANDING_SHIFT_MS = 950;
@@ -286,137 +162,6 @@ const ShiftingWrapper = styled(Wrapper)`
   ${props => props.$isShiftingIn && css`animation: ${landingShiftIn} ${LANDING_SHIFT_MS}ms cubic-bezier(0.2, 0.7, 0.3, 1) both;`}
 `;
 
-const KeyWords = () => <><Bracket>[</Bracket>Press any key<Bracket>]</Bracket></>;
-
-/*
-  Mock-ups of "[Press any key]" effects (Jamie, 2026-11-15), in the spirit of arcade attract screens ("insert coin",
-  "press start"). Pick one with ?press=<id> on the landing's address; 'hud' (the ghosts) is the one built first.
-*/
-export const PRESS_EFFECTS = [
-  { id: "hud", label: "HUD lock-on: ghosts fired at a square's corners" },
-  { id: "blink", label: "Classic blink: hard on/off, color-split edges and a scan line" },
-  { id: "chase", label: "Marquee chase: a wave of color running along the letters" },
-  { id: "zoom", label: "Zoom echo: copies zoom out from the words, the words pumping in time" }
-];
-const getPressEffect = () => {
-  const id = new URLSearchParams(window.location.search).get("press");
-  return PRESS_EFFECTS.some(effect => effect.id == id) ? id : "hud";
-};
-
-// 2. classic blink: on, then gone, on a hard beat; at each switch-on a magenta and a cyan copy split off the edges
-// for an instant, and a bright scan line runs down the letters
-const BLINK = { onMs: 700, offMs: 320, splitPx: 3 };
-const blinkBeat = keyframes`
-  0%, ${(BLINK.onMs / (BLINK.onMs + BLINK.offMs)) * 100}% { opacity: 1; }
-  ${(BLINK.onMs / (BLINK.onMs + BLINK.offMs)) * 100 + 0.01}%, 100% { opacity: 0; }
-`;
-const splitOn = keyframes`
-  0% { transform: translate(var(--split), 0); opacity: 0.9; }
-  12% { transform: translate(calc(var(--split) * 0.3), 0); opacity: 0.5; }
-  25%, 100% { transform: translate(0, 0); opacity: 0; }
-`;
-const scanDown = keyframes`
-  0% { top: -20%; opacity: 0.9; }
-  40% { top: 110%; opacity: 0.9; }
-  41%, 100% { top: 110%; opacity: 0; }
-`;
-const BlinkBox = styled.span`
-  position: relative;
-  display: inline-block;
-  animation: ${blinkBeat} ${BLINK.onMs + BLINK.offMs}ms steps(1) infinite;
-  ${props => props.$isLeaving && css`animation: none;`}
-`;
-const SplitCopy = styled.span`
-  position: absolute;
-  left: 0;
-  top: 0;
-  color: var(--tint);
-  text-shadow: none;
-  -webkit-text-stroke: 0;
-  mix-blend-mode: screen;
-  animation: ${splitOn} ${BLINK.onMs + BLINK.offMs}ms ease-out infinite;
-`;
-const ScanLine = styled.span`
-  position: absolute;
-  left: -4%;
-  right: -4%;
-  height: 3px;
-  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.85), transparent);
-  pointer-events: none;
-  animation: ${scanDown} ${BLINK.onMs + BLINK.offMs}ms linear infinite;
-`;
-const BlinkWords = ({ isLeaving }) => (
-  <BlinkBox $isLeaving={isLeaving}>
-    {!isLeaving && <SplitCopy style={{ "--tint": "#ff3df0", "--split": `-${BLINK.splitPx}px` }}><KeyWords /></SplitCopy>}
-    {!isLeaving && <SplitCopy style={{ "--tint": "#3df6ff", "--split": `${BLINK.splitPx}px` }}><KeyWords /></SplitCopy>}
-    <span style={{ position: "relative" }}><KeyWords /></span>
-    {!isLeaving && <ScanLine />}
-  </BlinkBox>
-);
-
-// 3. marquee chase: like the bulbs round an arcade marquee, a wave of color runs along the letters, over and over;
-// each letter steps through the colors a moment after the one before
-const CHASE = { colors: ["#e25cff", "#80EF80", "#ffffff", "#ffd24a"], stepMs: 140, waveMs: 1100 };
-const chaseColors = keyframes`${CHASE.colors.map((color, k) => `
-  ${(k * 100) / CHASE.colors.length}% { color: ${color}; text-shadow: 0 0 ${k == 2 ? 12 : 7}px ${color}; }`).join("")}
-  100% { color: ${CHASE.colors[0]}; text-shadow: 0 0 7px ${CHASE.colors[0]}; }
-`;
-const ChaseLetter = styled.span`
-  animation: ${chaseColors} ${CHASE.waveMs}ms steps(1) infinite;
-  ${props => props.$isLeaving && css`animation: none;`}
-`;
-const ChaseWords = ({ isLeaving }) => {
-  const letters = "Press any key".split("");
-  return (
-    <span style={{ position: "relative" }}>
-      <ChaseLetter $isLeaving={isLeaving}><Bracket>[</Bracket></ChaseLetter>
-      {letters.map((letter, k) => (
-        <ChaseLetter key={k} $isLeaving={isLeaving} style={{ animationDelay: `${-(k + 1) * CHASE.stepMs}ms` }}>{letter == " " ? "\u00a0" : letter}</ChaseLetter>
-      ))}
-      <ChaseLetter $isLeaving={isLeaving} style={{ animationDelay: `${-(letters.length + 1) * CHASE.stepMs}ms` }}><Bracket>]</Bracket></ChaseLetter>
-    </span>
-  );
-};
-
-// 4. zoom echo: copies of the words zoom out from them and fade, one after another, like a title rushing at the
-// screen; the words themselves pump a little, in time with each one leaving
-const ZOOM = { everyMs: 450, copies: 4, scale: 2.4 };
-const zoomOut = keyframes`
-  0% { transform: scale(1); opacity: 0.55; }
-  100% { transform: scale(${ZOOM.scale}); opacity: 0; }
-`;
-const pump = keyframes`
-  0% { transform: scale(1.07); }
-  35% { transform: scale(0.99); }
-  100% { transform: scale(1); }
-`;
-const ZoomCopy = styled.span`
-  position: absolute;
-  left: 0;
-  top: 0;
-  color: ${PRESS_KEY.trailColor};
-  text-shadow: none;
-  -webkit-text-stroke: 0;
-  transform-origin: 50% 50%;
-  animation: ${zoomOut} ${ZOOM.everyMs * ZOOM.copies}ms ease-out infinite;
-`;
-const PumpingWords = styled.span`
-  position: relative;
-  display: inline-block;
-  animation: ${pump} ${ZOOM.everyMs}ms ease-out infinite;
-  ${props => props.$isLeaving && css`animation: none;`}
-`;
-const ZoomWords = ({ isLeaving }) => (
-  <>
-    <Trails $isLeaving={isLeaving}>
-      {[...Array(ZOOM.copies).keys()].map(k => (
-        <ZoomCopy key={k} style={{ animationDelay: `${-k * ZOOM.everyMs}ms` }}><KeyWords /></ZoomCopy>
-      ))}
-    </Trails>
-    <PumpingWords $isLeaving={isLeaving}><KeyWords /></PumpingWords>
-  </>
-);
-
 export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
   const { selectedAvatar, isLandingShifting, setIsLandingShifting } = useContext(GlobalSettingsContext);
   const [isShiftingIn] = useState(!!isLandingShifting);
@@ -426,7 +171,9 @@ export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
     return () => clearTimeout(settled);
   }, []);
   const [toolScreen, setToolScreen] = useState(undefined);
+  // "[Press any key]"'s effect, picked with ?press= (Jamie's mock-ups); 'mix' has a panel to switch and tune them
   const [pressEffect] = useState(getPressEffect);
+  const [pressSettings, setPressSettings] = usePressSettings(pressEffect);
 
   // the rest are tools found in the Lab
   const toolButtons = [
@@ -495,24 +242,9 @@ export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
     <SceneSlide $isLeaving={isLeaving}><Logo /></SceneSlide>
     {navButtons}
     <PressAnyKey $isLeaving={isLeaving}>
-      <KeyLine />
-      <KeyText $isLeaving={isLeaving}>
-        {pressEffect == "hud" && (
-          <>
-            <Trails $isLeaving={isLeaving}>
-              {GHOST_SHOTS.map(({ time, x, y }, k) => (
-                <Phantom key={k} style={{ "--sx": `${getSwayAt(time).x.toFixed(2)}px`, "--sy": `${getSwayAt(time).y.toFixed(2)}px`, "--dx": `${x}px`, "--dy": `${y}px`, animationDelay: `${time - GHOST_LAP}s` }}><KeyWords /></Phantom>
-              ))}
-            </Trails>
-            <SwayingWords><KeyWords /></SwayingWords>
-          </>
-        )}
-        {pressEffect == "blink" && <BlinkWords isLeaving={isLeaving} />}
-        {pressEffect == "chase" && <ChaseWords isLeaving={isLeaving} />}
-        {pressEffect == "zoom" && <ZoomWords isLeaving={isLeaving} />}
-      </KeyText>
-      <KeyLine />
+      <PressKeyRow settings={pressSettings} isLeaving={isLeaving} />
     </PressAnyKey>
+    {pressEffect == "mix" && <PressKeyPanel settings={pressSettings} setSettings={setPressSettings} />}
     {toolScreen == "colors" && <IrradiationVat avatar={selectedAvatar} startColor={getAvatarColor(selectedAvatar) || PIECES_INFO[selectedAvatar].color} onIrradiate={color => saveAvatarColor(selectedAvatar, color)} onClose={() => setToolScreen(undefined)} />}
   </ShiftingWrapper>
 }
