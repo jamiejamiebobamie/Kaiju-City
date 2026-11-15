@@ -25,7 +25,7 @@ import { PIECES_INFO } from "Utils/gameState";
 // trailSeconds: 3 (was 6, livelier: Jamie)
 // trailSeconds 5 (slower again: Jamie, playtest 22); confirmMs: the confirm's blinks, white and slow fade, which runs on
 // under the clouds as they come
-const PRESS_KEY = { topShare: 0.68, leaveMs: 1500, confirmMs: 2800, trailSeconds: 5, color: "#e25cff", trailColor: "#ff5cc8" };
+const PRESS_KEY = { topShare: 0.68, leaveMs: 1500, confirmMs: 2800, trailSeconds: 5, color: "#e25cff", trailColor: "#80EF80" }; // the trail: the character select's green (Jamie, 2026-11-14; was pink #ff5cc8)
 
 /*
   Embers (Jamie): glowing purple pixels drifting down all over the landing page, swaying as they fall and flickering,
