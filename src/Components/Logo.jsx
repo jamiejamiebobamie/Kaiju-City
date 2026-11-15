@@ -172,7 +172,7 @@ const SpriteSheet = styled.div`
 // whip (Jamie, 2026-11-15): the turn is whiplash, not a spin on the way back. As the Kaiju's body (head, shoulders,
 // arms) passes them, they're jolted: a sharp kick back and a little up, and the few that turn flick round all at once,
 // right at the turn ('endsAt': a short stretch after it, in push lengths); then they drift back without turning
-const BREATH = { mouth: { x: 53, y: 33 }, loopSeconds: 5, stepsAt: [0.4, 0.9], perStep: 5, lifeShare: 0.32, pushShare: 0.1, walkPerSecond: 10, cloud: { width: 7, height: 5 }, headWidth: 11, backScale: 1.4, backSpread: 42, streak: { length: 2, pushLength: 0.6 }, spinDegrees: 360, spinShare: 0.25, flutter: 2.5, whip: { endsAt: 2.45, liftPx: 1.2 } };
+const BREATH = { mouth: { x: 53, y: 33 }, loopSeconds: 5, stepsAt: [0.4, 0.9], perStep: 5, lifeShare: 0.32, pushShare: 0.1, walkPerSecond: 10, cloud: { width: 7, height: 5 }, headWidth: 11, backScale: 1.4, backSpread: 42, streak: { length: 2, pushLength: 0.6 }, spinDegrees: 360, spinShare: 0, /* no turning for now (Jamie, 2026-11-15: still too busy; 0.25 to bring a few back) */ flutter: 2.5, whip: { endsAt: 2.45, liftPx: 1.2 } };
 const BREATH_LIFE_SECONDS = BREATH.loopSeconds * BREATH.lifeShare;
 const BREATH_EMBERS = BREATH.stepsAt.flatMap((at, step) => Array.from({ length: BREATH.perStep }, (_, k) => {
   const random = n => ((Math.sin((step * 10 + k) * 12.9898 + n * 78.233) * 43758.5453) % 1 + 1) % 1;
