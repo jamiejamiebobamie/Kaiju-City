@@ -213,31 +213,40 @@ const GHOST_SHOTS = GHOST_CORNERS.flatMap((corner, k) => {
 });
 
 const trail = keyframes`
-  0% { transform: translate(0, 0); opacity: ${GHOSTS.opacity}; }
+  0% { transform: translate(var(--sx, 0px), var(--sy, 0px)); opacity: ${GHOSTS.opacity}; }
   ${(GHOSTS.travelSeconds / GHOST_LAP) * 100}% { transform: translate(var(--dx), var(--dy)); opacity: 0; }
   100% { transform: translate(var(--dx), var(--dy)); opacity: 0; }
 `;
 
 /*
-  The words themselves sway with the shots (Jamie): a little way toward the corner being fired at, held there while
-  it fires, then a quick glide to the next corner's way, in step with the lap ('swayShare': of the box's size).
+  The words themselves move (Jamie): round a little square of their own, corner to corner, smooth and quick, with no
+  holds, apart from the shots' rhythm. Their lap divides the shots' lap exactly ('lapsPerGhostLap'), so where the
+  words are when each shot fires is known, and every shot leaves from the words where they are.
 */
-const SWAY_SHARE = 0.04;
-const wordsSway = keyframes`${GHOST_CORNERS.map(({ x, y }, k) => {
-  const start = (k * GHOST_STRETCH / GHOST_LAP) * 100;
-  const glideStart = ((k * GHOST_STRETCH + (GHOSTS.perCorner - 1) * GHOSTS.shotGapSeconds + GHOSTS.pauseSeconds) / GHOST_LAP) * 100;
-  const spot = `translate(${(x * SWAY_SHARE).toFixed(1)}px, ${(y * SWAY_SHARE).toFixed(1)}px)`;
-  return `
-  ${start.toFixed(2)}% { transform: ${spot}; animation-timing-function: linear; }
-  ${glideStart.toFixed(2)}% { transform: ${spot}; animation-timing-function: ease-in-out; }`;
-}).join("")}
-  100% { transform: translate(${(GHOST_CORNERS[0].x * SWAY_SHARE).toFixed(1)}px, ${(GHOST_CORNERS[0].y * SWAY_SHARE).toFixed(1)}px); }
+const SWAY = { share: 0.04, lapsPerGhostLap: 6 }; // 'share': the square's size, of the box's
+const SWAY_SECONDS = GHOST_LAP / SWAY.lapsPerGhostLap;
+const SWAY_CORNERS = GHOST_CORNERS.map(({ x, y }) => ({ x: x * SWAY.share, y: y * SWAY.share }));
+
+// where the words are at a time in the lap (eased from corner to corner, as the css below)
+const getSwayAt = time => {
+  const along = ((time % SWAY_SECONDS) / SWAY_SECONDS) * SWAY_CORNERS.length;
+  const k = Math.floor(along) % SWAY_CORNERS.length;
+  const into = along - Math.floor(along);
+  const eased = into * into * (3 - 2 * into);
+  const from = SWAY_CORNERS[k];
+  const to = SWAY_CORNERS[(k + 1) % SWAY_CORNERS.length];
+  return { x: from.x + (to.x - from.x) * eased, y: from.y + (to.y - from.y) * eased };
+};
+
+const wordsSway = keyframes`${SWAY_CORNERS.map(({ x, y }, k) => `
+  ${(k * 100) / SWAY_CORNERS.length}% { transform: translate(${x.toFixed(2)}px, ${y.toFixed(2)}px); animation-timing-function: ease-in-out; }`).join("")}
+  100% { transform: translate(${SWAY_CORNERS[0].x.toFixed(2)}px, ${SWAY_CORNERS[0].y.toFixed(2)}px); }
 `;
 
 const SwayingWords = styled.span`
   position: relative;
   display: inline-block;
-  animation: ${wordsSway} ${GHOST_LAP}s infinite;
+  animation: ${wordsSway} ${SWAY_SECONDS}s infinite;
 `;
 
 const Phantom = styled.span`
@@ -361,7 +370,7 @@ export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
         {/* three, a moment apart: a trail */}
         <Trails $isLeaving={isLeaving}>
           {GHOST_SHOTS.map(({ time, x, y }, k) => (
-            <Phantom key={k} style={{ "--dx": `${x}px`, "--dy": `${y}px`, animationDelay: `${time - GHOST_LAP}s` }}><KeyWords /></Phantom>
+            <Phantom key={k} style={{ "--sx": `${getSwayAt(time).x.toFixed(2)}px`, "--sy": `${getSwayAt(time).y.toFixed(2)}px`, "--dx": `${x}px`, "--dy": `${y}px`, animationDelay: `${time - GHOST_LAP}s` }}><KeyWords /></Phantom>
           ))}
         </Trails>
         <SwayingWords><KeyWords /></SwayingWords>
