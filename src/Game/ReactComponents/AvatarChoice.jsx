@@ -105,11 +105,11 @@ const SPARKS = {
   sparkColor: "#ffb020", // the sparks: yellow-orange, against the green number (Jamie; was electric blue #2fc8ff)
   pulseColor: "#e6ffe6", // the number's pulse, up to a brighter greenish white (Jamie)
   pulseMs: 1400, // one way
-  everyMs: [350, 1300], // between bursts (a random wait in this range)
+  everyMs: [800, 2400], // between bursts (a random wait in this range; less often: Jamie, was 0.35 to 1.3 s)
   perBurst: [2, 5],
-  lifeMs: 700,
+  lifeMs: 1300, // (longer: Jamie, was 0.7 s; the grid's too)
   spreadPx: 26, // how far across a spark can fly
-  fallPx: [22, 46] // how far down it falls
+  fallPx: [40, 80] // how far down it falls (further: was 22 to 46)
 };
 
 const numberCrackle = keyframes`
@@ -207,8 +207,8 @@ const useSparks = (isOn, everyMs = SPARKS.everyMs, getOrigin = undefined, firstM
 */
 // more violent than the number's (Jamie): flung harder sideways, spread wide, more of them, more often
 const GRID_SPARKS = {
-  everyMs: [700, 2000], // (was 1.5 to 4 s)
-  look: { perBurst: [4, 8], spreadPx: 90, fallPx: [30, 80], hopPx: [8, 22], scatterPx: 10 },
+  everyMs: [1400, 3200], // (less often: Jamie; was 0.7 to 2 s, and before that 1.5 to 4)
+  look: { perBurst: [4, 8], spreadPx: 90, fallPx: [55, 130], hopPx: [8, 22], scatterPx: 10 },
   grid: { left: 34, top: 42, right: 120, bottom: 191 },
   // only from the grid's edges, flung outward onto the black, never across the figure (Jamie): which edge, how often
   edges: [{ side: "left", share: 0.4 }, { side: "right", share: 0.4 }, { side: "top", share: 0.2 }],
