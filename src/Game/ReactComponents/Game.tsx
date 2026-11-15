@@ -31,7 +31,7 @@ import { FullscreenPage } from "Components/FullscreenPage.jsx";
 import { GameManager, GameResult } from '../DataClasses/GameManager';
 import { getActiveHotspots } from "./GameBoard/SceneElements";
 import { getIsDetourLevel } from "../DataClasses/Objectives";
-import { FIRST_PLAY_POWERS, getIsFirstPlay } from "../DataClasses/Avatars";
+import { FIRST_PLAY_POWERS, getIsFirstPlay, markPlaythroughStarted } from "../DataClasses/Avatars";
 import { addUnlock, clearRecruitChoices, getBattlegroundUnlockId, getRecruitChoices, getUnlocks, getWonBattlegrounds, resetUnlocks, saveRecruitChoice } from '../DataClasses/Unlocks';
 
 // the map walks show the battlegrounds already won on, from whatever was saved
@@ -1298,10 +1298,12 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const screen = (
     !isPlayingGame && isChoosingAvatar ?
       <AvatarChoice onChoose={(player, teammate) => {
+        // a first play skips the power picker: Discharge, Wildfire and Dispel to start (Jamie); every replay after it shows it
+        const isFirstPlay = getIsFirstPlay();
+        markPlaythroughStarted();
         chooseTeam(player, teammate);
         startNewPlaythrough();
-        // a first play skips the power picker: Discharge, Wildfire and Dispel to start (Jamie)
-        if (getIsFirstPlay()) {
+        if (isFirstPlay) {
           settingsManager.setSortedPlayerChosenAbilityElementsString(FIRST_PLAY_POWERS);
           setPickedAbilities(FIRST_PLAY_POWERS);
           setIsSkippingPicker(true);

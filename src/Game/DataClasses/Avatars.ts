@@ -33,9 +33,12 @@ export const getSkillUnlock = (element: string) => SKILL_UNLOCKS.find(skill => s
 
 export const getIsSkillOpen = (element: string) => !getSkillUnlock(element) || getUnlocks().includes(getSkillId(element));
 
-// a first play (Jamie): no power opened in any play before. it skips the picker, with these to start
+// a first play (Jamie): no playthrough started before, and no power opened. it skips the picker, with these to start.
+// every new game after it opens the picker (Jamie, 2026-11-14), as the Lab's power option does
 export const FIRST_PLAY_POWERS = ['Bubble', 'Fire', 'Lightning'];
-export const getIsFirstPlay = () => !SKILL_UNLOCKS.some(({ element }) => getUnlocks().includes(getSkillId(element)));
+const PLAYED_BEFORE_KEY = 'kaijuPlayedBefore';
+export const getIsFirstPlay = () => !storage.getItem(PLAYED_BEFORE_KEY) && !SKILL_UNLOCKS.some(({ element }) => getUnlocks().includes(getSkillId(element)));
+export const markPlaythroughStarted = () => storage.setItem(PLAYED_BEFORE_KEY, 'yes');
 
 // a power opened by the story itself (the Street's Teleport)
 export const unlockSkill = (element: string) => addUnlock(getSkillId(element));
