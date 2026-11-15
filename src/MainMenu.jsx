@@ -163,7 +163,10 @@ const KeyText = styled.div`
   letter-spacing: 3px;
   white-space: nowrap;
   color: ${PRESS_KEY.color};
-  text-shadow: 0 0 8px ${PRESS_KEY.color};
+  /* a neon green border round the purple words (Jamie, 2026-11-15), under the fill so the letters keep their shape */
+  -webkit-text-stroke: 2px ${PRESS_KEY.trailColor};
+  paint-order: stroke fill;
+  text-shadow: 0 0 8px ${PRESS_KEY.color}, 0 0 3px ${PRESS_KEY.trailColor};
   /* no blink (Jamie: its dark beat was too dark); the ghost trail carries the life */
 `;
 
@@ -193,7 +196,7 @@ const getGhostTargets = () => {
 const GHOST_TARGETS = getGhostTargets();
 
 const trail = keyframes`
-  0% { transform: translate(0, 0); opacity: 0.6; }
+  0% { transform: translate(0, 0); opacity: 0.4; } /* fainter from the start (Jamie; was 0.6) */
   ${GHOSTS.travelShare * 100}% { transform: translate(var(--dx), var(--dy)); opacity: 0; }
   100% { transform: translate(var(--dx), var(--dy)); opacity: 0; }
 `;
