@@ -41,28 +41,41 @@ export const PoweredPicture = styled.div`
   ${props => props.$state == "turningOff" && css`animation: ${crtOff} ${CRT.offMs}ms ease-in forwards;`}
 `;
 
-// the glass's reflection: a soft band of light across it
-const REFLECTION = "linear-gradient(125deg, transparent 20%, rgba(255, 255, 255, 0.05) 32%, transparent 44%)";
+/*
+  Off must look darker than on (Jamie, 2026-11-15: the dead glass was brighter than the powered picture, so switching
+  on made the screen go darker). Dead: near black, only a faint reflection. On: the reflection, and a faint glow of
+  lit phosphor from the middle over the picture, so switching on brightens it.
+*/
+const REFLECTION = opacity => `linear-gradient(125deg, transparent 20%, rgba(255, 255, 255, ${opacity}) 32%, transparent 44%)`;
 
-// the dead screen: dark glass, the reflection across it
+// the dead screen: near-black glass, a faint reflection across it
 export const DeadGlass = styled.div`
   position: absolute;
   inset: 0;
   pointer-events: none;
   border-radius: inherit;
   background:
-    ${REFLECTION},
-    radial-gradient(ellipse at 35% 30%, #1a1c1f, #070708 70%);
+    ${REFLECTION(0.03)},
+    radial-gradient(ellipse at 35% 30%, #08090a, #020203 70%);
 `;
 
 // the same reflection kept over the picture once it's on (Jamie: the avatar select and the power picker)
+const glowUp = keyframes`
+  from { opacity: 0; }
+  to { opacity: 1; }
+`;
+
 const Glare = styled.div`
   position: absolute;
   inset: 0;
   z-index: 2147482985; /* over the picture's own layers, under the monitor's glass and casing */
   pointer-events: none;
   border-radius: inherit;
-  background: ${REFLECTION};
+  background:
+    ${REFLECTION(0.05)},
+    radial-gradient(ellipse at 50% 45%, rgba(170, 190, 210, 0.07), transparent 70%);
+  mix-blend-mode: screen;
+  animation: ${glowUp} ${CRT.onMs}ms ease-out both;
 `;
 
 const Sparkle = styled.div`
