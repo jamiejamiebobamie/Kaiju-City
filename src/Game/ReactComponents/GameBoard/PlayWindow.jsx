@@ -78,21 +78,23 @@ const TvCasing = styled.div`
 
 /*
   The casing's plastic (Jamie, 2026-11-15: it looked flat): lit from above, so a little lighter along the top and
-  darker toward the bottom; a soft diagonal sheen across it; and a fine grain, like molded plastic. Only on the ring
-  of the casing, not over the screen.
+  darker toward the bottom; a soft diagonal sheen across it; and a fine grain, like molded plastic. It IS the casing's
+  ring (its own color under it all), drawn over the corners' fill, under the name, siren and buttons; not over the
+  screen. (Its first try lay under the corners' fill, with a light grain: a border round the border. Jamie)
 */
 export const CASING_SHEEN = `
   background:
-    linear-gradient(125deg, transparent 28%, rgba(255, 255, 255, 0.08) 40%, rgba(255, 255, 255, 0.025) 47%, transparent 56%),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.07), transparent 30%, transparent 62%, rgba(0, 0, 0, 0.28)),
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0.9 -0.32'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>");
-  background-size: auto, auto, 140px 140px;
+    linear-gradient(125deg, transparent 30%, rgba(255, 255, 255, 0.06) 40%, rgba(255, 255, 255, 0.02) 46%, transparent 54%),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.06), transparent 25%, transparent 65%, rgba(0, 0, 0, 0.3)),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='1.3' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='1 0 0 0 0  1 0 0 0 0  1 0 0 0 0  0 0 0 0 0.07'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>"),
+    ${TV_LOOK.casing};
+  background-size: auto, auto, 120px 120px, auto;
 `;
 
 const CasingSheen = styled.div`
   position: absolute;
   inset: -${TV_LOOK.casingWidth}cqw;
-  z-index: 2147483000;
+  z-index: 2147483001; /* the corners' fill's, drawn after it: over it, under the name, siren and buttons (…002) */
   pointer-events: none;
   padding: ${TV_LOOK.casingWidth}cqw;
   border-radius: ${TV_LOOK.casingRadius}cqw;
