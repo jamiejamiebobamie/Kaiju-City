@@ -575,8 +575,7 @@ const PartHeader = styled.div`
   font-family: gameboy;
   font-size: 0.85cqw;
   letter-spacing: 0.08cqw;
-  color: white;
-  opacity: 0.85;
+  color: #ffd24a; /* yellow, as "Class:" (Jamie) */
 `;
 
 const Part = styled.div`
@@ -750,13 +749,13 @@ export const AbilityPicker = ({
       return (
         <>
           <Part $align="left">
-            <PartHeader>Active Ability:</PartHeader>
+            <PartHeader>Active:</PartHeader>
             <FitTitleRow text={power.activeName}><Icon className={`fa ${power.activeIcon}`} style={{ color: power.color }} />{power.activeName}</FitTitleRow>
             <div style={{ color: getTint(power.color, -TINT.turnDegrees) }}>{power.activeDesc}</div>
             {power.activeEffect1 && <Effect $color={power.color}>{power.activeEffect1}</Effect>}
           </Part>
           <Part $align="right">
-            <PartHeader>Passive Ability:</PartHeader>
+            <PartHeader>Passive:</PartHeader>
             <FitTitleRow text={power.passiveName}>{power.passiveName}<Icon className={`fa ${power.passiveIcon}`} style={{ color: power.color }} /></FitTitleRow>
             <div style={{ color: getTint(power.color, TINT.turnDegrees) }}>{power.passiveDesc}</div>
             {power.passiveEffect1 && <Effect $color={power.color}>{power.passiveEffect1}</Effect>}
@@ -767,7 +766,7 @@ export const AbilityPicker = ({
     if (playerClass) {
       return (
         <Part $align="left">
-          <PartHeader style={{ color: "#ffd24a", opacity: 1 }}>Class:</PartHeader>
+          <PartHeader>Class:</PartHeader>
           <IconGroup>
             {pickedPowers.map(({ element, activeIcon, color }) => <Icon key={element} className={`fa ${activeIcon}`} style={{ color }} />)}
           </IconGroup>
