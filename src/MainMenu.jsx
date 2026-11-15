@@ -175,7 +175,7 @@ const KeyText = styled.div`
 // (Jamie, later the same day): the box's corners are where the trail wants to be: it holds at each for a beat (two
 // firings there in a row), then one on the way along the edge to the next. Fewer firings and further out, so fewer
 // overlap and the words read clearly
-const GHOSTS = { holdAtCorner: 2, alongEdge: 1, travelShare: 0.2, box: { x: 110, y: 55 } };
+const GHOSTS = { holdAtCorner: 3, alongEdge: 2, travelShare: 0.2, box: { x: 150, y: 75 } }; // (Jamie, again: further, more firings, a longer hold; were 2, 1 and 110 x 55)
 
 // where each firing goes, in turn: up right, up left, down left, down right (held at each), and along the edges between
 const getGhostTargets = () => {
