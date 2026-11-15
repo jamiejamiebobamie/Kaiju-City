@@ -37,6 +37,12 @@ export const Home = ({ triggerTransition }) => {
   const [selectedDifficulty, setSelectedDifficulty] = useState(Difficulty.Hard);
   const [isAvatarChangedOnce, setIsAvatarChangedOnce] = useState(false);
   const [currPage, setCurrPage] = useState(PAGES.Home);
+  // the landing slides in from the right when the view shifts back to it from the monitor (the end of the game)
+  const [isLandingShifting, setIsLandingShifting] = useState(false);
+  const handleShiftHome = () => {
+    setIsLandingShifting(true);
+    handleClickHome();
+  };
 
   const handleClickHome = () => {
     setCurrPage(PAGES.Home)
@@ -75,7 +81,9 @@ export const Home = ({ triggerTransition }) => {
               isAvatarChangedOnce,
               setIsAvatarChangedOnce,
               selectedDifficulty,
-              setSelectedDifficulty
+              setSelectedDifficulty,
+              isLandingShifting,
+              setIsLandingShifting
             }}>
     {currPage == PAGES.Settings ? (
         <Settings
@@ -87,10 +95,11 @@ export const Home = ({ triggerTransition }) => {
         <Game
           triggerTransition={triggerTransition}
           handleClickHome={() => triggerTransition(handleClickHome)}
+          handleShiftHome={handleShiftHome}
         />
       ) : (
         <MainMenu
-          handleClickGame={() => triggerTransition(handleClickGame)}
+          handleClickGame={handleClickGame /* no clouds: the landing slides off left, and the monitor slides in (Jamie) */}
           handleClickSettings={() => triggerTransition(handleClickSettings)}
         />
       )}

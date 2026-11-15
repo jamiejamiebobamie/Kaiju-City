@@ -4,10 +4,11 @@ import { AQUARIUM_FLOOD } from 'Game/DataClasses/AquariumFlood';
 import { GIANT_KAIJU } from 'Game/DataClasses/GiantKaiju';
 import { Credits, CREDITS_TIMING } from './Credits';
 import { createPortal } from "react-dom";
-import styled, { keyframes } from "styled-components";
+import styled, { css, keyframes } from "styled-components";
 import { useSnapshot } from "valtio";
 import { GlobalSettingsContext } from "Home";
 import { GameBoard } from "./GameBoard/GameBoard";
+import { CRT } from "Components/CrtPower";
 import { BezelButton, KaijuCounter, FULL_WINDOW, loadPlayWindow, ObjectiveTicker, PlayWindow, PORTRAIT_WINDOW, savePlayWindow } from "./GameBoard/PlayWindow";
 import { UI } from "./UI/UI";
 import { RadioCall } from "./RadioCall";
@@ -52,8 +53,25 @@ const GameArea = styled.div`
   background: #0b0c0e;
 `;
 
+/*
+  The Kaiju-Vision monitor is a thing in the world (Jamie, 2026-11-14): from the landing, the view shifts right onto
+  it (the frame slides in from the right) while it is still dead; then it switches on. After the credits it
+  switches off, a beat dead, then the view shifts right again, back to the landing (the frame slides off left).
+*/
+const MONITOR_SHIFT = { ms: 950, deadBeatMs: 350, endDeadMs: 700 };
+
+const shiftIn = keyframes`
+  from { transform: translateX(105%); }
+  to { transform: translateX(0); }
+`;
+
+const shiftOut = keyframes`
+  from { transform: translateX(0); }
+  to { transform: translateX(-105%); }
+`;
+
 // everything in the game sits in this box, and scales with it
-const GameFrame = styled.div`
+const GameFrame = styled.div<{ $shift?: 'in' | 'out' }>`
   position: relative;
   aspect-ratio: 16 / 9;
   min-width: 0;
@@ -64,6 +82,8 @@ const GameFrame = styled.div`
   container-type: inline-size;
   background: #000;
   transition: transform 0.9s ease-in, opacity 0.9s ease-in;
+  ${props => props.$shift == 'in' && css`animation: ${shiftIn} ${MONITOR_SHIFT.ms}ms cubic-bezier(0.2, 0.7, 0.3, 1) both;`}
+  ${props => props.$shift == 'out' && css`animation: ${shiftOut} ${MONITOR_SHIFT.ms}ms ease-in forwards;`}
   @media (orientation: portrait) {
     aspect-ratio: auto;
     height: 100dvh;
@@ -527,7 +547,8 @@ const FinaleCredits = ({ title, onDone }) => {
   return isRolling ? createPortal(<Credits onDone={onDone} />, document.querySelector("[data-play-screen]") || document.body) : <EndTitle>{title}</EndTitle>;
 };
 
-export const Game = ({ handleClickHome, triggerTransition }) => {
+// 'handleShiftHome': back to the landing with the view's shift, not the clouds (the end of the game)
+export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = undefined }) => {
   const { selectedAvatar, setSelectedAvatar, selectedTeammate, setSelectedTeammate, selectedDifficulty, settingsManager } = useContext(GlobalSettingsContext);
   const { objectiveText, isObjectiveKaijuCount, objectiveCount } = useSnapshot(gameUiStore);
   const { takeOverCount, takeOverText } = useSnapshot(gameUiStore);
@@ -559,6 +580,23 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
   const isPausedForControls = useRef(false);
   const [kaijuSpeedMode, setKaijuSpeedModeState] = useState(getKaijuSpeedMode); // dev playtest
   const [isChoosingAvatar, setIsChoosingAvatar] = useState(!startingLevelId); // a new campaign starts with the guy or the girl
+  // the monitor: dead as the view shifts onto it from the landing, then switched on; switched off after the credits
+  const [isMonitorOn, setIsMonitorOn] = useState(!!startingLevelId);
+  const [monitorShift, setMonitorShift] = useState<'in' | 'out' | undefined>(startingLevelId ? undefined : 'in');
+  useEffect(() => {
+    if (startingLevelId) return;
+    const on = setTimeout(() => setIsMonitorOn(true), MONITOR_SHIFT.ms + MONITOR_SHIFT.deadBeatMs);
+    const settled = setTimeout(() => setMonitorShift(undefined), MONITOR_SHIFT.ms);
+    return () => { clearTimeout(on); clearTimeout(settled); };
+  }, []);
+  // the end's bookend: switched off, dead a beat, then the shift back to the landing
+  const endWithMonitorOff = () => {
+    setIsMonitorOn(false);
+    setTimeout(() => setMonitorShift('out'), CRT.offMs + MONITOR_SHIFT.endDeadMs);
+    setTimeout(() => (handleShiftHome || handleClickHome)(), CRT.offMs + MONITOR_SHIFT.endDeadMs + MONITOR_SHIFT.ms);
+  };
+  // dev (Jamie, 2026-11-14): the power picker right after the avatar select, even on a first play, to see it
+  const [isDevPickerFirstPlay, setIsDevPickerFirstPlay] = useState(!!import.meta.env.DEV);
   // a first play goes from the avatar choice straight into the game: the power picker isn't shown on the way (Jamie, playtest 18)
   const [isSkippingPicker, setIsSkippingPicker] = useState(false);
   const isPickingPowersInLab = useRef(false);
@@ -1295,15 +1333,31 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
     <DevShowButton onClick={() => setIsDevHidden(false)} title="Show dev options (F2)">dev</DevShowButton>
   );
 
+  // the screens before a game (the avatar select and the power picker) are on the Kaiju-Vision monitor (Jamie, 2026-11-14)
+  const onMonitor = (content: React.ReactNode) => (
+    <GameArea>
+      <GameFrame data-game-frame $shift={monitorShift == 'in' ? 'in' : undefined}>
+        <PlayWindow playWindow={playWindow} setPlayWindow={updatePlayWindow} isAdjusting={false} isOpen={false} isPoweredOn={isMonitorOn} isClipped>
+          {content}
+        </PlayWindow>
+      </GameFrame>
+    </GameArea>
+  );
+
   const screen = (
-    !isPlayingGame && isChoosingAvatar ?
-      <AvatarChoice onChoose={(player, teammate) => {
+    !isPlayingGame && isChoosingAvatar ? onMonitor(
+      <AvatarChoice isReady={isMonitorOn} onChoose={(player, teammate) => {
         // a first play skips the power picker: Discharge, Wildfire and Dispel to start (Jamie); every replay after it shows it
         const isFirstPlay = getIsFirstPlay();
         markPlaythroughStarted();
         chooseTeam(player, teammate);
         startNewPlaythrough();
-        if (isFirstPlay) {
+        if (isFirstPlay && isDevPickerFirstPlay) {
+          // dev: the picker, with the first play's powers picked already
+          settingsManager.setSortedPlayerChosenAbilityElementsString(FIRST_PLAY_POWERS);
+          setPickedAbilities(FIRST_PLAY_POWERS);
+        }
+        if (isFirstPlay && !isDevPickerFirstPlay) {
           settingsManager.setSortedPlayerChosenAbilityElementsString(FIRST_PLAY_POWERS);
           setPickedAbilities(FIRST_PLAY_POWERS);
           setIsSkippingPicker(true);
@@ -1311,8 +1365,8 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
           handleClickPlay();
           return;
         }
-        triggerTransition(() => setIsChoosingAvatar(false));
-      }} />
+        setIsChoosingAvatar(false); // the picker comes up on the same monitor
+      }} />)
     : !isPlayingGame && isSkippingPicker ? null
     : !isPlayingGame ?
       <>
@@ -1321,7 +1375,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
           {levelOptions}
         </LevelPicker>
       )}
-      <AbilityPicker
+      {onMonitor(<AbilityPicker
         handleClickHome={handleClickHome}
         pickedAbilities={pickedAbilities}
         setPickedAbilities={setPickedAbilities}
@@ -1330,7 +1384,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
         onBack={isLabPicker ? returnToLab : undefined}
         isTeammate={isTeammate}
         setIsTeammate={setIsTeammate}
-      />
+      />)}
       </>
       : radioLines ?
         <GameArea>
@@ -1504,6 +1558,9 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
                 <input type="checkbox" checked={isMonitorAlways} onChange={() => setIsMonitorAlways(!isMonitorAlways)} /> Monitor always
               </label>
               <label>
+                <input type="checkbox" checked={isDevPickerFirstPlay} onChange={() => setIsDevPickerFirstPlay(!isDevPickerFirstPlay)} /> Picker on first play
+              </label>
+              <label>
                 <input type="checkbox" checked={isClickThrough} onChange={() => { setIsClickThrough(!isClickThrough); setClickThrough(!isClickThrough); }} /> Click through
               </label>
               <label>
@@ -1540,8 +1597,8 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               )}
             </PhaseToggles>
           )}
-          <GameFrame data-game-frame>
-            <PlayWindow playWindow={playWindow} setPlayWindow={updatePlayWindow} isAdjusting={isAdjustingWindow} isOpen={isWindowOpen} isCut={!!recruitScene} isSiren={!!level.kaijuEntry && winner === null && !isPaused} buttons={!isEditingTiles && getBezelButtons({
+          <GameFrame data-game-frame $shift={monitorShift == 'out' ? 'out' : undefined}>
+            <PlayWindow isPoweredOn={isMonitorOn} playWindow={playWindow} setPlayWindow={updatePlayWindow} isAdjusting={isAdjustingWindow} isOpen={isWindowOpen} isCut={!!recruitScene} isSiren={!!level.kaijuEntry && winner === null && !isPaused} buttons={!isEditingTiles && getBezelButtons({
               isPauseOff: winner !== null,
               // the objective's display: always there (Jamie), running the objective, or the Kaiju count
               ticker: !isWindowOpen && <ObjectiveTicker text={objectiveText || ""} isKaijuCount={isObjectiveKaijuCount} count={kaijuKillCount} toWin={kaijuToWin} />
@@ -1580,7 +1637,7 @@ export const Game = ({ handleClickHome, triggerTransition }) => {
               </SlideAway></SlideClip>
               {matchEnd && (
                 <EndScreen>
-                  {matchEnd.isFinale ? <FinaleCredits title={matchEnd.title} onDone={handleClickHome} /> : <EndTitle>{matchEnd.title}</EndTitle>}
+                  {matchEnd.isFinale ? <FinaleCredits title={matchEnd.title} onDone={endWithMonitorOff} /> : <EndTitle>{matchEnd.title}</EndTitle>}
                   {(!level.rival || level.isTraining || winner !== GameResult.PlayerWon) && <EndButtons>{matchEnd.buttons.map(({ text, onClick }, index) => <EndButton key={text} data-enter={index == 0 ? "" : undefined} data-choice-key={index == 0 ? 1 : undefined} onClick={onClick}>{text}{index == 0 && <EnterKeyHint />}</EndButton>)}</EndButtons>}
                 </EndScreen>
               )}

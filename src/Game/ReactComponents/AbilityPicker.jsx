@@ -1,9 +1,12 @@
-import React, { useState, useContext, useEffect, useMemo, useRef } from "react";
+import React, { useState, useContext, useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import styled, { css, keyframes } from "styled-components";
 import { GlobalSettingsContext } from 'Home';
 import { getSciFiClass } from "../DataClasses/sciFiClasses";
 import { getIsSkillOpen, OUT_OF_PLAY_POWERS } from "../DataClasses/Avatars";
 import { PIECES_INFO } from "Utils/gameState";
+import { CrtScreen, ScaleToFit } from "Components/CrtPower";
+import { TV_LOOK } from "./GameBoard/PlayWindow";
 
 /*
   The ability picker (Jamie, UI epic, 2026-11-14). On black: the player's avatar on the left, and around it, like a
@@ -17,14 +20,16 @@ import { PIECES_INFO } from "Utils/gameState";
   icon by its title; with three picked and nothing hovered, the class, its three icons by its name; otherwise,
   "Choose 3 powers".
   Keys: the arrows move round the halo, Space or Enter picks or drops.
-  Laid out on a 1600 x 900 stage, scaled to the screen.
+  Inside the Kaiju-Vision monitor (Jamie, 2026-11-14): the halo fills its screen, laid out on a 1000 x 1000 stage
+  scaled to fit. The words and the Play and Back buttons are on a mini-monitor beside it, which flies in from out of
+  shot, switches on, and puts out wires that slither across and plug into the big monitor.
 */
 const PICK_COUNT = 3;
 
-const STAGE = { width: 1600, height: 900 };
+const STAGE = { width: 1000, height: 1000 };
 const LOOK = {
-  figureHeight: 250, // the avatar, head to feet
-  torso: { x: 470, y: 470 }, // the upper torso: the halo's middle
+  figureHeight: 270, // the avatar, head to feet
+  torso: { x: 500, y: 485 }, // the upper torso: the halo's middle
   headDrop: 0.28, // the upper torso, down from the top of the head (of the figure's height)
   haloStartDegrees: -65, // low on the avatar's right (0 is right, counter-clockwise)
   haloEndDegrees: 245, // low on its left
@@ -111,21 +116,12 @@ const getStubs = angles => {
   return stubs;
 };
 
-const Backdrop = styled.div`
-  position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: black;
-  color: #d9dade;
-`;
-
 const Stage = styled.div`
   position: relative;
-  width: min(100vw, calc(100vh * ${STAGE.width / STAGE.height}));
-  aspect-ratio: ${STAGE.width} / ${STAGE.height};
+  width: ${STAGE.width}px;
+  height: ${STAGE.height}px;
   container-type: size;
+  color: #d9dade;
 `;
 
 const Board = styled.svg`
@@ -286,9 +282,9 @@ const LockIn = styled.span`
 // dev only: which powers hang in the halo, to see how it looks with more or fewer (Jamie)
 const DevPanel = styled.div`
   position: absolute;
-  left: ${pctX(16)};
-  top: ${pctY(16)};
-  z-index: 2;
+  left: 0.6cqw;
+  top: 0.6cqw;
+  z-index: 4;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -300,53 +296,178 @@ const DevPanel = styled.div`
   label { display: flex; gap: 6px; align-items: center; cursor: pointer; }
 `;
 
+/*
+  The mini-monitor (Jamie): a little set of the same make as Kaiju-Vision, to the right of it. It flies in from out of
+  shot, then switches on like the big one; then its wires slither out and plug into the big monitor's side.
+  Sizes in cqw of the game frame (100 wide, 56.25 high).
+*/
+const MINI = { left: 69, top: 6.5, width: 28, height: 37.5, casing: 1.3, chin: 4.2 };
+const MINI_TIMING = { flyDelayMs: 150, flyMs: 850, onAtMs: 1050, wiresAtMs: 1250, wiresMs: 1100 };
+
+const flyIn = keyframes`
+  0% { transform: translate(40cqw, -16cqw) rotate(16deg) scale(0.8); opacity: 0; }
+  12% { opacity: 1; }
+  72% { transform: translate(-0.9cqw, 0.5cqw) rotate(-1.6deg) scale(1.01); }
+  100% { transform: none; opacity: 1; }
+`;
+
+const MiniMonitor = styled.div`
+  position: absolute;
+  left: ${MINI.left}cqw;
+  top: ${MINI.top}cqw;
+  width: ${MINI.width}cqw;
+  height: ${MINI.height}cqw;
+  z-index: 3;
+  border-radius: 2cqw;
+  background: ${TV_LOOK.casing};
+  box-shadow: inset 0 0.2cqw 0 ${TV_LOOK.casingLight}, 0 0.25cqw 0 ${TV_LOOK.casingLight}, 0 0 0 0.15cqw #080808, 0 1cqw 2.5cqw rgba(0, 0, 0, 0.8);
+  animation: ${flyIn} ${MINI_TIMING.flyMs}ms cubic-bezier(0.2, 0.9, 0.3, 1) ${MINI_TIMING.flyDelayMs}ms both;
+`;
+
+const MiniScreen = styled.div`
+  position: absolute;
+  left: ${MINI.casing}cqw;
+  right: ${MINI.casing}cqw;
+  top: ${MINI.casing}cqw;
+  bottom: ${MINI.chin}cqw;
+  border-radius: 1.1cqw;
+  overflow: hidden;
+  background: #030404;
+  box-shadow: inset 0 0 1cqw rgba(0, 0, 0, 0.9);
+`;
+
+// the glass, as the big one's: a darker edge and fine scan lines
+const MiniGlass = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at center, transparent 58%, rgba(0, 0, 0, ${TV_LOOK.vignetteOpacity}) 100%),
+    repeating-linear-gradient(to bottom, rgba(0, 0, 0, ${TV_LOOK.scanLineOpacity}) 0 1px, transparent 1px 3px);
+`;
+
+const MiniChin = styled.div`
+  position: absolute;
+  left: ${MINI.casing + 0.4}cqw;
+  right: ${MINI.casing}cqw;
+  bottom: 0;
+  height: ${MINI.chin}cqw;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`;
+
+const MiniBrand = styled.div`
+  font-family: gameboy;
+  font-size: 0.7cqw;
+  letter-spacing: 0.3cqw;
+  color: #6d6a66;
+`;
+
+/*
+  The wires (Jamie): out of the mini-monitor's underside, slithering across (wavy as they go, settling as they
+  land), to plug into the big monitor's side. In the frame's units.
+*/
+const WIRES = [
+  { from: { x: 74, y: 44 }, to: { x: 64.9, y: 43 }, sag: 9, color: "#0e0f10" },
+  { from: { x: 79, y: 44 }, to: { x: 64.9, y: 47 }, sag: 11, color: "#121a14" },
+  { from: { x: 84.5, y: 44 }, to: { x: 64.9, y: 50.5 }, sag: 10, color: "#0e0f10" }
+];
+const getWirePath = ({ from, to, sag }, wave = 0) =>
+  `M ${from.x} ${from.y} C ${from.x + wave} ${from.y + sag}, ${to.x + 6 - wave} ${to.y + wave * 0.6}, ${to.x} ${to.y}`;
+
+const wireDraw = keyframes`
+  from { stroke-dashoffset: 100; }
+  to { stroke-dashoffset: 0; }
+`;
+
+const plugIn = keyframes`
+  0%, 85% { opacity: 0; }
+  100% { opacity: 1; }
+`;
+
+const WireLayer = styled.svg`
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+  overflow: visible;
+  path {
+    fill: none;
+    stroke-linecap: round;
+    stroke-dasharray: 100 100;
+    animation: ${wireDraw} ${MINI_TIMING.wiresMs}ms cubic-bezier(0.4, 0.1, 0.3, 1) both;
+  }
+  rect { animation: ${plugIn} ${MINI_TIMING.wiresMs}ms linear both; }
+`;
+
+const Wires = ({ delayMs }) => (
+  <WireLayer viewBox="0 0 100 56.25" preserveAspectRatio="none" aria-hidden="true">
+    {WIRES.map((wire, k) => {
+      const style = { animationDelay: `${delayMs + k * 140}ms` };
+      const slither = (
+        <animate attributeName="d" dur={`${MINI_TIMING.wiresMs / 1000}s`} begin={`${(delayMs + k * 140) / 1000}s`} fill="freeze"
+          values={`${getWirePath(wire, 5)};${getWirePath(wire, -4)};${getWirePath(wire, 2)};${getWirePath(wire, 0)}`} />
+      );
+      return (
+        <g key={k}>
+          <path d={getWirePath(wire)} pathLength="100" stroke={wire.color} strokeWidth="0.75" style={style}>{slither}</path>
+          <path d={getWirePath(wire)} pathLength="100" stroke="#3b3d41" strokeWidth="0.16" style={style} transform="translate(-0.12 -0.12)">{slither}</path>
+          <rect x={wire.to.x - 0.2} y={wire.to.y - 0.55} width="1.3" height="1.1" rx="0.2" fill="#2a2b2e" stroke="#4a4542" strokeWidth="0.1" style={style} />
+        </g>
+      );
+    })}
+  </WireLayer>
+);
+
 const Info = styled.div`
   position: absolute;
-  left: ${pctX(930)};
-  top: ${pctY(150)};
-  width: ${pctX(600)};
-  height: ${pctY(560)};
+  inset: 1.4cqw 1.3cqw;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: ${unit(40)};
-  font-size: ${unit(20)};
-  line-height: 1.55;
+  gap: 1.6cqw;
+  font-size: 0.95cqw;
+  line-height: 1.5;
+  color: #d9dade;
 `;
 
 const Part = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${unit(10)};
+  gap: 0.5cqw;
   text-align: ${props => props.$align};
   align-items: ${props => props.$align == "right" ? "flex-end" : "flex-start"};
 `;
 
-const TITLE_SIZE = 36;
+const TITLE_SIZE = 1.45; // cqw
 
 const TitleRow = styled.div`
   display: flex;
   align-items: center;
-  gap: ${unit(28)};
+  gap: 1.1cqw;
   font-family: gameboy;
-  font-size: ${unit(TITLE_SIZE)};
+  font-size: ${TITLE_SIZE}cqw;
   color: white;
 `;
 
 // the class's three icons, over its name (Jamie): spaced apart, and half the name's height above it
 const IconGroup = styled.div`
   display: flex;
-  gap: ${unit(30)};
-  margin-bottom: ${unit(TITLE_SIZE / 2 - 10)}; /* (the part's own gap makes up the rest) */
+  gap: 1.2cqw;
+  margin-bottom: ${TITLE_SIZE / 2 - 0.5}cqw; /* (the part's own gap makes up the rest) */
 `;
 
 const ClassText = styled.div`
-  padding-left: ${unit(48)};
+  padding-left: 1.8cqw;
 `;
 
 const Icon = styled.i`
-  font-size: ${unit(46)};
-  filter: drop-shadow(0 0 ${unit(5)} currentColor);
+  font-size: 1.9cqw;
+  filter: drop-shadow(0 0 0.2cqw currentColor);
 `;
 
 const TINT = { turnDegrees: 28, saturation: 0.7, lightness: 80 };
@@ -362,28 +483,25 @@ const Effect = styled.div`
 const Prompt = styled.div`
   align-self: center;
   font-family: gameboy;
-  font-size: ${unit(30)};
-  letter-spacing: ${unit(2)};
+  font-size: 1.3cqw;
+  letter-spacing: 0.1cqw;
   color: #e25cff;
-  text-shadow: 0 0 ${unit(8)} #e25cff;
+  text-shadow: 0 0 0.35cqw #e25cff;
 `;
 
 const Buttons = styled.div`
-  position: absolute;
-  right: ${pctX(70)};
-  bottom: ${pctY(50)};
   display: flex;
-  gap: ${unit(14)};
+  gap: 0.6cqw;
 `;
 
 const MetalButton = styled.button`
-  padding: ${unit(12)} ${unit(26)};
+  padding: 0.45cqw 1cqw;
   font-family: gameboy;
-  font-size: ${unit(18)};
+  font-size: 0.75cqw;
   cursor: pointer;
   color: #d9dade;
   background: linear-gradient(#3a3d43, #16171a);
-  border: ${unit(2)} solid #8d9097;
+  border: 0.1cqw solid #8d9097;
   &:disabled {
     cursor: default;
     opacity: 0.35;
@@ -413,6 +531,14 @@ export const AbilityPicker = ({
   const powers = useMemo(() => allPowers.filter(({ element }) => devShown[element] ?? getIsSkillOpen(element)), [allPowers, devShown]);
   useEffect(() => setHovered(undefined), [powers.length]);
   const [lockIns, setLockIns] = useState({}); // each power's count of being picked, to play its lock-in again
+  const anchorRef = useRef(null);
+  const [frame, setFrame] = useState(null);
+  useLayoutEffect(() => setFrame(anchorRef.current && anchorRef.current.closest("[data-game-frame]")), []);
+  const [isMiniOn, setIsMiniOn] = useState(false);
+  useEffect(() => {
+    const timeout = setTimeout(() => setIsMiniOn(true), MINI_TIMING.onAtMs);
+    return () => clearTimeout(timeout);
+  }, []);
 
   const angles = useMemo(() => powers.map((_, k) => powers.length > 1
     ? LOOK.haloStartDegrees + (k * (LOOK.haloEndDegrees - LOOK.haloStartDegrees)) / (powers.length - 1)
@@ -493,9 +619,43 @@ export const AbilityPicker = ({
     return <Prompt>Choose {PICK_COUNT} powers</Prompt>;
   };
 
+  const beside = (
+    <>
+      <Wires delayMs={MINI_TIMING.wiresAtMs} />
+      <MiniMonitor>
+        <MiniScreen>
+          <CrtScreen isOn={isMiniOn}>
+            <Info>{getInfo()}</Info>
+          </CrtScreen>
+          <MiniGlass />
+        </MiniScreen>
+        <MiniChin>
+          <MiniBrand>K-V MINI</MiniBrand>
+          <Buttons>
+            <MetalButton disabled={!isReady} onClick={handleClickPlay}>{playLabel || "Play!"}</MetalButton>
+            {!onBack && <MetalButton onClick={handleClickHome}>Back</MetalButton>}
+          </Buttons>
+        </MiniChin>
+      </MiniMonitor>
+      {import.meta.env.DEV && (
+        <DevPanel>
+          <label><input type="checkbox" checked={isDevOpen} onChange={() => setIsDevOpen(!isDevOpen)} />dev: powers in the halo ({powers.length})</label>
+          {isDevOpen && allPowers.map(({ element, activeName }) => (
+            <label key={element}>
+              <input type="checkbox" checked={devShown[element] ?? getIsSkillOpen(element)} onChange={event => setDevShown(shown => ({ ...shown, [element]: event.target.checked }))} />
+              {activeName || element}{getIsSkillOpen(element) ? '' : ' (locked)'}
+            </label>
+          ))}
+        </DevPanel>
+      )}
+    </>
+  );
+
   return (
-    <Backdrop>
+    <>
+    <ScaleToFit width={STAGE.width} height={STAGE.height}>
       <Stage>
+        <span ref={anchorRef} />
         <Board viewBox={`0 0 ${STAGE.width} ${STAGE.height}`} preserveAspectRatio="none" aria-hidden="true">
           <defs>
             <filter id="pickerGlow" x="-20%" y="-20%" width="140%" height="140%">
@@ -565,23 +725,9 @@ export const AbilityPicker = ({
             </Pendant>
           );
         })}
-        <Info>{getInfo()}</Info>
-        {import.meta.env.DEV && (
-          <DevPanel>
-            <label><input type="checkbox" checked={isDevOpen} onChange={() => setIsDevOpen(!isDevOpen)} />dev: powers in the halo ({powers.length})</label>
-            {isDevOpen && allPowers.map(({ element, activeName }) => (
-              <label key={element}>
-                <input type="checkbox" checked={devShown[element] ?? getIsSkillOpen(element)} onChange={event => setDevShown(shown => ({ ...shown, [element]: event.target.checked }))} />
-                {activeName || element}{getIsSkillOpen(element) ? '' : ' (locked)'}
-              </label>
-            ))}
-          </DevPanel>
-        )}
-        <Buttons>
-          <MetalButton disabled={!isReady} onClick={handleClickPlay}>{playLabel || "Play!"}</MetalButton>
-          {!onBack && <MetalButton onClick={handleClickHome}>Back</MetalButton>}
-        </Buttons>
       </Stage>
-    </Backdrop>
+    </ScaleToFit>
+    {frame && createPortal(beside, frame)}
+    </>
   );
 };

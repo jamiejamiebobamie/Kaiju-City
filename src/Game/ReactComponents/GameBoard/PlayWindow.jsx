@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import styled, { keyframes } from "styled-components";
 import { WIDE_SHOT } from "Game/DataClasses/Camera";
 import SAVED_WINDOW from "Game/DataClasses/playWindow.json";
+import { CrtScreen } from "Components/CrtPower";
 
 /*
   A dev tool for trying out smaller play areas: the part of the game frame the board fills.
@@ -49,7 +50,7 @@ const Outline = styled.div`
 `;
 
 // an 80s-90s television around the window: a thick plastic casing, a rounded glass screen, scan lines and a rolling bar
-const TV_LOOK = {
+export const TV_LOOK = {
   casingWidth: 2.6, // in cqw
   casingRadius: 3.2,
   screenRadius: 1.8,
@@ -410,7 +411,9 @@ const getHandleSpot = fraction => `calc(${fraction * 100}% - ${fraction * WINDOW
 // 'playWindow' is the window as set. 'isOpen' opens it up to the whole frame for a wide shot.
 // 'buttons' sit on the casing. with the window open there is no casing, and they show over the picture.
 // 'isSiren': the red alarm glow around the screen, for a Kaiju fight
-export const PlayWindow = ({ playWindow, setPlayWindow, isAdjusting, isOpen, isCut = false, buttons = null, isSiren = false, children }) => {
+// 'isPoweredOn' (Jamie, 2026-11-14): off, the screen is dead glass; switched on or off, the picture opens or closes like an
+// old TV's. 'isClipped': the picture kept inside the glass (the screens before the game: they slide about in it)
+export const PlayWindow = ({ playWindow, setPlayWindow, isAdjusting, isOpen, isCut = false, buttons = null, isSiren = false, isPoweredOn = true, isClipped = false, children }) => {
   const windowRef = useRef(null);
   const { left, top, right, bottom } = isOpen ? FULL_WINDOW : playWindow;
 
@@ -427,9 +430,10 @@ export const PlayWindow = ({ playWindow, setPlayWindow, isAdjusting, isOpen, isC
       top: `${top * 100}%`,
       width: `${(right - left) * 100}%`,
       height: `${(bottom - top) * 100}%`,
+      borderRadius: `${TV_LOOK.screenRadius}cqw`,
       transition: isAdjusting || isCut ? "none" : `left ${WIDE_SHOT.pullMs}ms ease-in-out, top ${WIDE_SHOT.pullMs}ms ease-in-out, width ${WIDE_SHOT.pullMs}ms ease-in-out, height ${WIDE_SHOT.pullMs}ms ease-in-out`
     }}>
-      {children}
+      <CrtScreen isOn={isPoweredOn} isClipped={isClipped}>{children}</CrtScreen>
       {isSiren && !isOpen && <SirenEdge />}
       <ScreenGlass><RollingBar /></ScreenGlass>
       {!isOpen && (

@@ -209,10 +209,28 @@ const Bracket = styled.span`
   font-size: 1.4em;
   line-height: 0;
 `;
+// back from the monitor at the end of the game (Jamie, 2026-11-14): the view shifts right, so the landing slides in
+// from the right
+const LANDING_SHIFT_MS = 950;
+const landingShiftIn = keyframes`
+  from { transform: translateX(105%); }
+  to { transform: translateX(0); }
+`;
+
+const ShiftingWrapper = styled(Wrapper)`
+  ${props => props.$isShiftingIn && css`animation: ${landingShiftIn} ${LANDING_SHIFT_MS}ms cubic-bezier(0.2, 0.7, 0.3, 1) both;`}
+`;
+
 const KeyWords = () => <><Bracket>[</Bracket>Press any key<Bracket>]</Bracket></>;
 
 export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
-  const { selectedAvatar } = useContext(GlobalSettingsContext);
+  const { selectedAvatar, isLandingShifting, setIsLandingShifting } = useContext(GlobalSettingsContext);
+  const [isShiftingIn] = useState(!!isLandingShifting);
+  useEffect(() => {
+    if (!isShiftingIn) return;
+    const settled = setTimeout(() => setIsLandingShifting(false), LANDING_SHIFT_MS);
+    return () => clearTimeout(settled);
+  }, []);
   const [toolScreen, setToolScreen] = useState(undefined);
 
   // the rest are tools found in the Lab
@@ -276,7 +294,7 @@ export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
     </ButtonsWrapper> */}
   </ButtonGroup>);
 
-  return <Wrapper>
+  return <ShiftingWrapper $isShiftingIn={isShiftingIn}>
     <SpeedBlurFilter />
     <EmberSlide $isLeaving={isLeaving}><Embers /></EmberSlide>
     <SceneSlide $isLeaving={isLeaving}><Logo /></SceneSlide>
@@ -293,5 +311,5 @@ export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
       <KeyLine />
     </PressAnyKey>
     {toolScreen == "colors" && <IrradiationVat avatar={selectedAvatar} startColor={getAvatarColor(selectedAvatar) || PIECES_INFO[selectedAvatar].color} onIrradiate={color => saveAvatarColor(selectedAvatar, color)} onClose={() => setToolScreen(undefined)} />}
-  </Wrapper>
+  </ShiftingWrapper>
 }

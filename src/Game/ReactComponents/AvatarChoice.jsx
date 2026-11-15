@@ -3,6 +3,7 @@ import styled, { css, keyframes } from "styled-components";
 import { GlobalSettingsContext } from "Home";
 import { SpeedBlurFilter, slideAway } from "Components/SlideAway";
 import { Doodads } from "Components/AvatarSelection";
+import { ScaleToFit } from "Components/CrtPower";
 
 /*
   The start of the game (Jamie, playtest 21; the UI epic's mock-ups will restyle it): the guy and the girl, side by
@@ -26,8 +27,11 @@ const AVATARS = [
   { id: "girl", sheet: "spritesheet/teammate.png", key: "2", figureOffset: -4 }
 ];
 
+// inside the Kaiju-Vision screen (Jamie, 2026-11-14), on a square design scaled to fit it
+const DESIGN_SIZE = 900;
+
 const Screen = styled.div`
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 5;
   display: flex;
@@ -246,14 +250,17 @@ const ChoiceAvatar = ({ id, sheet, keyName, figureOffset, chosen, isLeaving, onC
   );
 };
 
-export const AvatarChoice = ({ onChoose }) => {
+// 'isReady': the monitor is on, so a pick can be made (not while it is still dead or warming up)
+export const AvatarChoice = ({ onChoose, isReady = true }) => {
+  const isReadyRef = useRef(isReady);
+  isReadyRef.current = isReady;
   const { setSelectedAvatar } = useContext(GlobalSettingsContext);
   const [chosen, setChosen] = useState(undefined);
   const [isLeaving, setIsLeaving] = useState(false);
   const chosenRef = useRef(undefined);
 
   const choose = player => {
-    if (chosenRef.current) return;
+    if (chosenRef.current || !isReadyRef.current) return;
     chosenRef.current = player;
     setChosen(player);
     setSelectedAvatar(player);
@@ -274,14 +281,16 @@ export const AvatarChoice = ({ onChoose }) => {
   }, []);
 
   return (
-    <Screen>
-      <SpeedBlurFilter />
-      <Row>
-        {AVATARS.map(({ id, sheet, key, figureOffset }) => (
-          <ChoiceAvatar key={id} id={id} sheet={sheet} keyName={key} figureOffset={figureOffset} chosen={chosen} isLeaving={isLeaving} onChoose={() => choose(id)} />
-        ))}
-      </Row>
-      <Prompt $isHidden={!!chosen}>Choose your character</Prompt>
-    </Screen>
+    <ScaleToFit width={DESIGN_SIZE} height={DESIGN_SIZE}>
+      <Screen>
+        <SpeedBlurFilter />
+        <Row>
+          {AVATARS.map(({ id, sheet, key, figureOffset }) => (
+            <ChoiceAvatar key={id} id={id} sheet={sheet} keyName={key} figureOffset={figureOffset} chosen={chosen} isLeaving={isLeaving} onChoose={() => choose(id)} />
+          ))}
+        </Row>
+        <Prompt $isHidden={!!chosen}>Choose your character</Prompt>
+      </Screen>
+    </ScaleToFit>
   );
 };
