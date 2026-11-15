@@ -42,6 +42,40 @@ const LOOK = {
 };
 const HALO_RADIUS = 1.5 * LOOK.figureHeight;
 
+// where the picker's figure stands, as shares of its square stage: the avatar select slides the chosen one here, so the
+// two read as one monitor (Jamie)
+export const PICKER_FIGURE = {
+  x: LOOK.torso.x / STAGE.width, // its middle
+  headY: (LOOK.torso.y - LOOK.headDrop * LOOK.figureHeight) / STAGE.height, // the top of its head
+  height: LOOK.figureHeight / STAGE.height
+};
+
+// the picker's own things fade in round the figure, which is already there (handed over from the avatar select)
+const fadeIn = keyframes`
+  from { opacity: 0; }
+  to { opacity: 1; }
+`;
+const ARRIVAL = { fadeMs: 700 };
+
+const FadingIn = styled.div`
+  position: absolute;
+  inset: 0;
+  animation: ${fadeIn} ${ARRIVAL.fadeMs}ms ease-out both;
+`;
+
+// "Pick three abilities", in yellow at the lower right of the screen, until three are picked (Jamie)
+const PickPrompt = styled.div`
+  position: absolute;
+  right: ${(40 / STAGE.width) * 100}%;
+  bottom: ${(36 / STAGE.height) * 100}%;
+  font-family: gameboy;
+  font-size: ${(26 / STAGE.height) * 100}cqh;
+  letter-spacing: ${(2 / STAGE.height) * 100}cqh;
+  color: #ffd24a;
+  text-shadow: 0 0 ${(8 / STAGE.height) * 100}cqh #ffb020;
+  pointer-events: none;
+`;
+
 // where each avatar's figure stands in its sprite sheet frame (152 x 230, measured): its middle and its head
 const FRAME = { width: 152, height: 230, rows: 6, standingRow: 2 };
 const FIGURES = {
@@ -174,6 +208,7 @@ const PENDANT_LOOKS = {
 // a pendant: a round bezel with its power's icon, hung on its trace
 const Pendant = styled.button`
   position: absolute;
+  pointer-events: auto;
   width: ${unit(LOOK.pendantSize)};
   height: ${unit(LOOK.pendantSize)};
   padding: 0;
@@ -302,7 +337,8 @@ const DevPanel = styled.div`
   Sizes in cqw of the game frame (100 wide, 56.25 high).
 */
 const MINI = { left: 69, top: 6.5, width: 28, height: 37.5, casing: 1.3, chin: 4.2 };
-const MINI_TIMING = { flyDelayMs: 150, flyMs: 850, onAtMs: 1050, wiresAtMs: 1250, wiresMs: 1100 };
+// (Jamie: after the picker's things fade in, the big monitor eases aside as the mini-monitor flies in, then the wires)
+export const MINI_TIMING = { flyDelayMs: 500, flyMs: 850, onAtMs: 1400, wiresAtMs: 1600, wiresMs: 1100 };
 
 const flyIn = keyframes`
   0% { transform: translate(40cqw, -16cqw) rotate(16deg) scale(0.8); opacity: 0; }
@@ -503,6 +539,8 @@ const Info = styled.div`
   display: flex;
   flex-direction: column;
   justify-content: space-evenly; /* the active and the passive as far apart as the screen allows (Jamie) */
+  /* the class: from a quarter of the way down the screen (Jamie) */
+  ${props => props.$isClass && css`justify-content: flex-start; padding-top: ${(MINI.height - MINI.casing - MINI.chin) / 4 - 1.4}cqw;`}
   gap: 1.2cqw;
   font-size: 0.95cqw;
   line-height: 1.5;
@@ -716,7 +754,7 @@ export const AbilityPicker = ({
       <MiniMonitor>
         <MiniScreen>
           <CrtScreen isOn={isMiniOn}>
-            <Info>{getInfo()}</Info>
+            <Info $isClass={hovered === undefined && !!playerClass}>{getInfo()}</Info>
           </CrtScreen>
           <MiniGlass />
         </MiniScreen>
@@ -747,6 +785,7 @@ export const AbilityPicker = ({
     <ScaleToFit width={STAGE.width} height={STAGE.height}>
       <Stage>
         <span ref={anchorRef} />
+        <FadingIn>
         <Board viewBox={`0 0 ${STAGE.width} ${STAGE.height}`} preserveAspectRatio="none" aria-hidden="true">
           <defs>
             <filter id="pickerGlow" x="-20%" y="-20%" width="140%" height="140%">
@@ -780,6 +819,7 @@ export const AbilityPicker = ({
               );
             })}
         </Board>
+        </FadingIn>
         <Avatar
           style={{
             left: pctX(LOOK.torso.x - figure.middle * scale),
@@ -790,6 +830,7 @@ export const AbilityPicker = ({
             filter: `drop-shadow(0 0 ${unit(6)} ${avatarColor})`
           }}
         />
+        <FadingIn style={{ pointerEvents: "none" }}>
         {powers.map((power, k) => {
           const at = polar(angles[k], HALO_RADIUS);
           return (
@@ -816,6 +857,8 @@ export const AbilityPicker = ({
             </Pendant>
           );
         })}
+        {!isReady && <PickPrompt>Pick three abilities</PickPrompt>}
+        </FadingIn>
       </Stage>
     </ScaleToFit>
     {frame && createPortal(beside, frame)}

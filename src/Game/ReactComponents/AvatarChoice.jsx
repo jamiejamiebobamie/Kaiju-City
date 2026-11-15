@@ -1,9 +1,10 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
+import React, { useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import styled, { css, keyframes } from "styled-components";
 import { GlobalSettingsContext } from "Home";
 import { SpeedBlurFilter, slideAway } from "Components/SlideAway";
 import { Doodads } from "Components/AvatarSelection";
 import { ScaleToFit } from "Components/CrtPower";
+import { PICKER_FIGURE } from "./AbilityPicker";
 
 /*
   The start of the game (Jamie, playtest 21; the UI epic's mock-ups will restyle it): the guy and the girl, side by
@@ -297,13 +298,43 @@ const Prompt = styled.div`
   visibility: ${props => props.$isHidden ? "hidden" : "visible"};
 `;
 
+/*
+  On to the power picker, on the same monitor (Jamie): everything but the chosen avatar slides off left, and the
+  chosen one slides (and grows) to where the picker's figure stands, so the picker comes in round it. The figures'
+  spots in their sprite frames, measured: the middle, the top of the head, the feet.
+*/
+const FIGURE_SPOTS = { guy: { middle: 81, head: 47, feet: 186 }, girl: { middle: 72.5, head: 49, feet: 182 } };
+const FRAME_WIDTH = 152;
+
+const getHandOver = box => {
+  const spot = FIGURE_SPOTS[box.dataset.avatar];
+  const screen = box.closest("[data-play-screen]");
+  if (!spot || !screen) return undefined;
+  const now = box.getBoundingClientRect();
+  const k = now.width / FRAME_WIDTH; // the box's pixels, on screen
+  const area = screen.getBoundingClientRect();
+  const stage = Math.min(area.width, area.height); // the picker's square stage, fitted to the screen
+  const target = { x: area.left + (area.width - stage) / 2 + PICKER_FIGURE.x * stage, y: area.top + (area.height - stage) / 2 + PICKER_FIGURE.headY * stage };
+  const scale = (PICKER_FIGURE.height * stage) / ((spot.feet - spot.head) * k);
+  return {
+    transformOrigin: `${spot.middle}px ${spot.head}px`,
+    transform: `translate(${(target.x - (now.left + spot.middle * k)) / k}px, ${(target.y - (now.top + spot.head * k)) / k}px) scale(${scale})`
+  };
+};
+
 const ChoiceAvatar = ({ id, sheet, keyName, figureOffset, chosen, isLeaving, onChoose }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const boxRef = useRef(null);
+  const [handOver, setHandOver] = useState(undefined);
+  const isHandedOver = isLeaving && chosen == id;
+  useLayoutEffect(() => {
+    if (isHandedOver && boxRef.current) setHandOver(getHandOver(boxRef.current));
+  }, [isHandedOver]);
   const [doodadOpacity, setDoodadOpacity] = useState(0);
   const sparks = useSparkBursts(isHovered && !chosen, figureOffset);
   return (
     <Choice $isLocked={!!chosen} onClick={onChoose} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} aria-label={id}>
-      <SpriteBox $isLeaving={isLeaving}>
+      <SpriteBox ref={boxRef} data-avatar={id} $isLeaving={isLeaving && !isHandedOver} style={isHandedOver && handOver ? { ...handOver, transition: `transform ${CHOICE.slideMs}ms cubic-bezier(0.4, 0, 0.2, 1)` } : undefined}>
         {/* the grid's sparks under everything here: the grid, the three readouts and the figure (Jamie) */}
         <GridSparks sparks={sparks} />
         <DoodadHolder>

@@ -25,7 +25,7 @@ import { ChoiceButton } from "./GameBoard/GameBoard";
 import { DEFAULT_AGGRESSION } from "Game/DataClasses/npcBrain/brain";
 import { getKaijuSpeedMode, KaijuSpeedMode, setKaijuSpeedMode } from "../DataClasses/KaijuSpeedTest";
 import { getAvatarColor, saveAvatarColor, saveTeamAvatars, unlockEverything, unlockRecruitSkill, unlockSkill, unlockTool } from "../DataClasses/Avatars";
-import { AbilityPicker } from "./AbilityPicker";
+import { AbilityPicker, MINI_TIMING } from "./AbilityPicker";
 import { useKeyPress } from "Utils/utils";
 import { ABILITY_KEY_CODES, GAME_TICK, PIECES_INFO, TILE_STATUSES_AND_ABILITY_DATA } from "Utils/gameState";
 import { FullscreenPage } from "Components/FullscreenPage.jsx";
@@ -662,6 +662,16 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const [matchCount, setMatchCount] = useState(0); // the board starts fresh with each match
   const [pickedAbilities, setPickedAbilities] = useState([]);
   const [isPlayingGame, setIsPlayingGame] = useState(false);
+  // the picker: the monitor stays in the middle while its things fade in, then eases aside as the mini-monitor flies in
+  const [isPickerAside, setIsPickerAside] = useState(false);
+  useEffect(() => {
+    if (isChoosingAvatar || isPlayingGame) {
+      setIsPickerAside(false);
+      return;
+    }
+    const aside = setTimeout(() => setIsPickerAside(true), MINI_TIMING.flyDelayMs);
+    return () => clearTimeout(aside);
+  }, [isChoosingAvatar, isPlayingGame]);
   useEffect(() => { if (isPlayingGame) setIsSkippingPicker(false); }, [isPlayingGame]);
   const [fullScreenPageData, setFullScreenPageData] = useState(undefined);
   const [radioLines, setRadioLines] = useState(undefined);
@@ -1351,7 +1361,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const onMonitor = (content: React.ReactNode) => (
     <GameArea>
       <GameFrame data-game-frame $shift={monitorShift == 'in' ? 'in' : undefined}>
-        <PlayWindow playWindow={isChoosingAvatar ? getCenteredWindow(playWindow) : playWindow} setPlayWindow={updatePlayWindow} isAdjusting={false} isOpen={false} isPoweredOn={isMonitorOn} isClipped>
+        <PlayWindow playWindow={isChoosingAvatar || !isPickerAside ? getCenteredWindow(playWindow) : playWindow} setPlayWindow={updatePlayWindow} isAdjusting={false} isOpen={false} isPoweredOn={isMonitorOn} isClipped>
           {content}
         </PlayWindow>
       </GameFrame>
