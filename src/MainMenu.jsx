@@ -218,6 +218,28 @@ const trail = keyframes`
   100% { transform: translate(var(--dx), var(--dy)); opacity: 0; }
 `;
 
+/*
+  The words themselves sway with the shots (Jamie): a little way toward the corner being fired at, held there while
+  it fires, then a quick glide to the next corner's way, in step with the lap ('swayShare': of the box's size).
+*/
+const SWAY_SHARE = 0.04;
+const wordsSway = keyframes`${GHOST_CORNERS.map(({ x, y }, k) => {
+  const start = (k * GHOST_STRETCH / GHOST_LAP) * 100;
+  const glideStart = ((k * GHOST_STRETCH + (GHOSTS.perCorner - 1) * GHOSTS.shotGapSeconds + GHOSTS.pauseSeconds) / GHOST_LAP) * 100;
+  const spot = `translate(${(x * SWAY_SHARE).toFixed(1)}px, ${(y * SWAY_SHARE).toFixed(1)}px)`;
+  return `
+  ${start.toFixed(2)}% { transform: ${spot}; animation-timing-function: linear; }
+  ${glideStart.toFixed(2)}% { transform: ${spot}; animation-timing-function: ease-in-out; }`;
+}).join("")}
+  100% { transform: translate(${(GHOST_CORNERS[0].x * SWAY_SHARE).toFixed(1)}px, ${(GHOST_CORNERS[0].y * SWAY_SHARE).toFixed(1)}px); }
+`;
+
+const SwayingWords = styled.span`
+  position: relative;
+  display: inline-block;
+  animation: ${wordsSway} ${GHOST_LAP}s infinite;
+`;
+
 const Phantom = styled.span`
   position: absolute;
   left: 0;
@@ -342,7 +364,7 @@ export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
             <Phantom key={k} style={{ "--dx": `${x}px`, "--dy": `${y}px`, animationDelay: `${time - GHOST_LAP}s` }}><KeyWords /></Phantom>
           ))}
         </Trails>
-        <span style={{ position: "relative" }}><KeyWords /></span>
+        <SwayingWords><KeyWords /></SwayingWords>
       </KeyText>
       <KeyLine />
     </PressAnyKey>
