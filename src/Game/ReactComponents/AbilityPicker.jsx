@@ -32,6 +32,9 @@ const LOOK = {
   haloRadius: 405, // the halo, from the upper torso (was 1.5 times the avatar's height, 270)
   torso: { x: 500, y: 485 }, // the upper torso: the halo's middle
   headDrop: 0.28, // the upper torso, down from the top of the head (of the figure's height)
+  // the area below the avatar stays clear (Jamie): its legs reach down past the lowest pendants (feet at 874, the
+  // lowest pendants at about 720), and no pendant, line or pad is ever under it. Keep the arc's gap at the bottom wide
+  // (215 to 325 degrees) and the board's lines out of it.
   haloStartDegrees: -35, // low on the avatar's right (0 is right, counter-clockwise; was -65: Jamie, the lowest higher)
   haloEndDegrees: 215, // low on its left (was 245)
   radiusJitter: 0.1, // each pendant nearer or further than the circle, by up to this share of it (Jamie)
