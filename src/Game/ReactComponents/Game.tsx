@@ -9,7 +9,6 @@ import { useSnapshot } from "valtio";
 import { GlobalSettingsContext } from "Home";
 import { GameBoard } from "./GameBoard/GameBoard";
 import { CRT } from "Components/CrtPower";
-import { TV_LOOK } from "./GameBoard/PlayWindow";
 import { BezelButton, KaijuCounter, FULL_WINDOW, loadPlayWindow, ObjectiveTicker, PlayWindow, PORTRAIT_WINDOW, savePlayWindow } from "./GameBoard/PlayWindow";
 import { UI } from "./UI/UI";
 import { RadioCall } from "./RadioCall";
@@ -665,6 +664,13 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const [isPlayingGame, setIsPlayingGame] = useState(false);
   // the picker: the monitor stays in the middle while its things fade in, then eases aside as the mini-monitor flies in
   const [isPickerAside, setIsPickerAside] = useState(false);
+  // the console's coming (Jamie): the monitor eases aside for it, from the avatar select on
+  const [isConsoleIn, setIsConsoleIn] = useState(false);
+  useEffect(() => {
+    if (!isMonitorOn || isConsoleIn || isPlayingGame) return;
+    const aside = setTimeout(() => setIsConsoleIn(true), MINI_TIMING.consoleDelayMs);
+    return () => clearTimeout(aside);
+  }, [isMonitorOn, isPlayingGame]);
   // where the picker came from, for its Back (Jamie): the avatar select, back there; else home
   const [pickerFrom, setPickerFrom] = useState<'avatar' | 'home'>('home');
   useEffect(() => {
@@ -1370,7 +1376,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   // one and the same monitor through both (its bezel buttons, display and light as in a game: Jamie), with the
   // Play!/Back console beside it from the avatar select on
   const isPreGame = !isPlayingGame && (isChoosingAvatar || !isSkippingPicker);
-  const preGameWindow = isChoosingAvatar || !isPickerAside ? getCenteredWindow(playWindow) : playWindow;
+  const preGameWindow = isConsoleIn ? playWindow : getCenteredWindow(playWindow);
   const goBackFromPicker = isLabPicker ? returnToLab : pickerFrom == 'avatar' ? () => setIsChoosingAvatar(true) : handleClickHome;
   const preGameMonitor = (
     <GameArea>
@@ -1417,8 +1423,6 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
         </PlayWindow>
         {isMonitorOn && (
           <PlayConsole
-            isAside={!isChoosingAvatar && isPickerAside}
-            monitorRight={preGameWindow.right * 100 + TV_LOOK.casingWidth}
             isReady={!isChoosingAvatar && pickedAbilities.length == 3}
             playLabel={isLabPicker ? "Back to Lab" : "Play!"}
             onPlay={handleClickPlay}

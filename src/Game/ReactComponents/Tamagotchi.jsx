@@ -18,7 +18,7 @@ const TAMA = {
   glow: "0 0 0.35cqw #ffb020",
   tickMs: 100,
   nameSize: 2.1, // cqw (twice what it was: Jamie), smaller for a long name
-  groundY: 0.7, // where it walks, of the screen's height (from the top)
+  groundY: 0.76, // where it walks, of the LCD's height (from the top; lower: Jamie)
   kaijuHeight: 7, // cqw
   walkPerSecond: 0.05, // of the screen's width: lazy
   hurryPerSecond: 0.14, // to food
@@ -193,13 +193,25 @@ const act = (pet, label) => {
   return pet;
 };
 
+// the side screen around it: black (Jamie, as a tamagotchi's case)
 const Screen = styled.div`
   position: absolute;
   inset: 0;
+  background: black;
+`;
+
+// the backlit LCD: a softly lit square holding the name, the Kaiju and the meter (Jamie)
+const Lcd = styled.div`
+  position: absolute;
+  inset: 6% 7%;
   overflow: hidden;
+  border-radius: 0.6cqw;
   color: ${TAMA.color};
   font-family: gameboy;
   text-shadow: ${TAMA.glow};
+  background: radial-gradient(ellipse at 50% 45%, rgba(255, 210, 74, 0.11), rgba(255, 190, 60, 0.04) 75%);
+  border: 0.12cqw solid rgba(255, 210, 74, 0.35);
+  box-shadow: 0 0 0.8cqw rgba(255, 190, 60, 0.25), inset 0 0 1.2cqw rgba(255, 190, 60, 0.12);
   /* an old LCD's dot grid over it all */
   &::after {
     content: "";
@@ -214,7 +226,7 @@ const Screen = styled.div`
 
 const Name = styled.div`
   position: absolute;
-  top: 14%; /* down a tenth of the screen (Jamie; was 4%) */
+  top: 9%; /* (a little up again: Jamie) */
   left: 0;
   right: 0;
   text-align: center;
@@ -239,11 +251,11 @@ const Body = styled.div`
 const Bubble = styled.div`
   position: absolute;
   transform: translate(-50%, -100%);
-  padding: 0.45cqw 0.7cqw;
-  font-size: 0.95cqw; /* (bigger: Jamie; was 0.62) */
-  line-height: 1.35;
+  padding: 0.5cqw 0.8cqw;
+  font-size: 1.2cqw; /* (bigger again: Jamie) */
+  line-height: 1.3;
   width: max-content;
-  max-width: 12cqw; /* two lines, so it fits the screen */
+  max-width: 14cqw; /* two lines, so it fits the screen */
   text-align: center;
   background: #050402;
   border: 0.14cqw solid ${TAMA.color};
@@ -261,9 +273,11 @@ const Bubble = styled.div`
   }
 `;
 
+// food: yellow like the rest of the LCD (one-color screens: Claude's suggestion, Jamie unsure; was faded green #80EF80)
+const FOOD_COLOR = TAMA.color;
 const pelletGlow = keyframes`
-  from { opacity: 0.45; box-shadow: 0 0 0.2cqw #80EF80; }
-  to { opacity: 0.7; box-shadow: 0 0 0.45cqw #80EF80; }
+  from { opacity: 0.55; box-shadow: 0 0 0.2cqw ${FOOD_COLOR}; }
+  to { opacity: 0.9; box-shadow: 0 0 0.45cqw ${FOOD_COLOR}; }
 `;
 
 const Pellet = styled.div`
@@ -271,18 +285,24 @@ const Pellet = styled.div`
   width: 0.5cqw;
   height: 0.5cqw;
   transform: translate(-50%, -100%);
-  background: #80EF80;
+  background: ${FOOD_COLOR};
   animation: ${pelletGlow} 0.6s ease-in-out infinite alternate;
 `;
 
+// a swirled pile, glowing brown, three stacked lumps and a curl on top (no face: Jamie)
+const POOP_BROWN = "#a86a32";
 const Poop = styled.div`
   position: absolute;
+  width: 1.7cqw;
+  height: 1.5cqw;
   transform: translate(-50%, -100%);
-  font-size: 1.6cqw;
-  line-height: 1;
-  opacity: 0.45;
-  text-shadow: none;
-  filter: grayscale(1) sepia(1) saturate(5) hue-rotate(10deg) brightness(1.5) drop-shadow(0 0 0.2cqw #ffb020);
+  opacity: 0.8;
+  filter: drop-shadow(0 0 0.3cqw #c27a30);
+  background:
+    radial-gradient(ellipse 50% 32% at 50% 82%, ${POOP_BROWN} 98%, transparent),
+    radial-gradient(ellipse 36% 26% at 50% 55%, ${POOP_BROWN} 98%, transparent),
+    radial-gradient(ellipse 22% 20% at 50% 32%, ${POOP_BROWN} 98%, transparent),
+    radial-gradient(ellipse 10% 14% at 58% 14%, ${POOP_BROWN} 98%, transparent);
 `;
 
 const heartUp = keyframes`
@@ -367,7 +387,7 @@ const Meter = styled.div`
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 5%;
+  bottom: 7%; /* (a little up: Jamie) */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -417,9 +437,11 @@ export const Tamagotchi = ({ actRef }) => {
   const maskPosition = `${(pet.frame / (SHEET.frames - 1)) * 100}% ${(row / (SHEET.rows - 1)) * 100}%`;
   return (
     <Screen>
-      <Name style={{ fontSize: `${Math.min(TAMA.nameSize, 21 / pet.name.length)}cqw` }}>{pet.name.toUpperCase()}</Name>
+      <Lcd>
+      {/* its name: an egg's is not known yet (Jamie): "???" until it hatches with its own */}
+      <Name style={{ fontSize: `${Math.min(TAMA.nameSize, 21 / pet.name.length)}cqw` }}>{pet.mode == "egg" ? "???" : pet.name.toUpperCase()}</Name>
       {pet.pellets.map(({ id, x, y: pelletY }) => <Pellet key={id} style={{ left: `${x * 100}%`, top: `${pelletY * 100}%` }} />)}
-      {pet.poops.map(({ id, x }) => <Poop key={id} style={{ left: `${x * 100}%`, top: y }}>💩</Poop>)}
+      {pet.poops.map(({ id, x }) => <Poop key={id} style={{ left: `${x * 100}%`, top: y }} />)}
       {pet.mode == "burn" && <Flames style={{ left: `${pet.x * 100}%`, top: y }} />}
       {pet.mode == "egg" && <Egg style={{ left: `${pet.x * 100}%`, top: y }} />}
       {pet.mode != "burn" && pet.mode != "egg" && (
@@ -435,6 +457,7 @@ export const Tamagotchi = ({ actRef }) => {
         <MeterBox>{[...Array(TAMA.happinessMax).keys()].map(k => <Block key={k} $isOn={k < pet.happiness} />)}</MeterBox>
         <MeterFace>☺</MeterFace>
       </Meter>
+      </Lcd>
     </Screen>
   );
 };

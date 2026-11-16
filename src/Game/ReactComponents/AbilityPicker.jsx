@@ -32,7 +32,7 @@ const LOOK = {
   figureHeight: 400, // the avatar, head to feet (Jamie's, 2026-11-15; was 270, then 540; the halo kept its size)
   figureDrop: -50, // the avatar moved down from the halo's middle (negative: up), in stage units; the dev panel's slider
   haloRadius: { fewest: { count: 6, radius: 300 }, most: { count: 10, radius: 320 } }, // by the open powers (Jamie)
-  torso: { x: 500, y: 450 }, // the upper torso: the halo's middle
+  torso: { x: 500, y: 500 }, // the upper torso: the halo's middle
   headDrop: 0.28, // the upper torso, down from the top of the head (of the figure's height)
   // the area below the avatar stays clear (Jamie): its legs reach down past the lowest pendants (feet at 874, the
   // lowest pendants at about 720), and no pendant, line or pad is ever under it. Keep the arc's gap at the bottom wide
@@ -378,9 +378,9 @@ const DevPanel = styled.div`
 */
 // 'brow': the top border, tall enough for its buttons (Jamie: swapped with the bottom's); the console sits below it
 const MINI = { left: 69, top: 2.2, width: 28, height: 34, casing: 1.3, brow: 4.2 };
-// (less tall, a thicker rim jutting out round a recessed face: Jamie). It's there from the avatar select on, so it
-// stands right of the monitor in the middle ('left'), and moves under the side monitor once that's in ('leftAside')
-const CONSOLE = { left: 77, leftAside: 72.5, top: 40.5, width: 22, height: 10, rim: 1.2, moveMs: 700 };
+// (less tall, a thicker rim jutting out round a recessed face: Jamie). Under the side monitor's place: the big monitor
+// eases aside for it as it comes, from the avatar select on (Jamie)
+const CONSOLE = { left: 71, top: 40.5, width: 24, height: 10, rim: 1.2 };
 // (Jamie: after the picker's things fade in, the big monitor eases aside as the mini-monitor flies in, then the wires)
 export const MINI_TIMING = { flyDelayMs: 500, flyMs: 850, onAtMs: 1400, wiresAtMs: 1600, wiresMs: 1100, consoleDelayMs: 750 };
 
@@ -476,7 +476,7 @@ const consoleRise = keyframes`
 
 const Console = styled.div`
   position: absolute;
-  transition: left ${CONSOLE.moveMs}ms ease-in-out;
+  left: ${CONSOLE.left}cqw;
   top: ${CONSOLE.top}cqw;
   width: ${CONSOLE.width}cqw;
   height: ${CONSOLE.height}cqw;
@@ -502,7 +502,7 @@ const ConsoleFace = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 1.4cqw;
+  gap: 1cqw;
   /* the buttons' middle three quarters of the way down (Jamie): the face's lower half, centered */
   padding-top: ${(CONSOLE.height - 2 * CONSOLE.rim) / 2}cqw;
   border-radius: 0.7cqw;
@@ -522,12 +522,14 @@ const readyBlink = keyframes`
   0%, 55% { background: radial-gradient(circle at 40% 35%, #ffb3a8, #ff2a1a 55%, #8a0c05); box-shadow: 0 0 0.6cqw 0.15cqw #ff3a20; }
   56%, 100% { background: radial-gradient(circle at 40% 35%, #5a1a16, #2a0705 70%); box-shadow: none; }
 `;
+// (larger, up and to the right: where Jamie marked it, about 78% across and 28% down the face)
+const READY_LIGHT = { size: 1.35, across: 0.78, down: 0.28 };
 const ReadyLight = styled.span`
   position: absolute;
-  left: calc(${(5 / 6) * 100}% - 0.45cqw);
-  top: ${(CONSOLE.height - 2 * CONSOLE.rim) * 0.4 - 0.45}cqw; /* its middle two fifths of the way down (Jamie) */
-  width: 0.9cqw;
-  height: 0.9cqw;
+  left: calc(${READY_LIGHT.across * 100}% - ${READY_LIGHT.size / 2}cqw);
+  top: ${(CONSOLE.height - 2 * CONSOLE.rim) * READY_LIGHT.down - READY_LIGHT.size / 2}cqw;
+  width: ${READY_LIGHT.size}cqw;
+  height: ${READY_LIGHT.size}cqw;
   border-radius: 50%;
   border: 0.1cqw solid #1a1b1d;
   background: radial-gradient(circle at 40% 35%, #5a1a16, #2a0705 70%);
@@ -615,15 +617,15 @@ const getBolt = (from, to) => {
   return `M ${points.map(({ x, y }) => `${x.toFixed(2)} ${y.toFixed(2)}`).join(" L ")}`;
 };
 
-const useArcs = (delayMs, pathRefs) => {
+const useArcs = (delayMs, pathRefs, wires) => {
   const [bolts, setBolts] = useState([]);
   useEffect(() => {
     const start = performance.now();
-    const lastMs = delayMs + (WIRES.length - 1) * 140 + MINI_TIMING.wiresMs + ARCS.afterMs;
+    const lastMs = delayMs + (wires.length - 1) * 140 + MINI_TIMING.wiresMs + ARCS.afterMs;
     const interval = setInterval(() => {
       const now = performance.now() - start;
       const next = [];
-      WIRES.forEach((wire, k) => {
+      wires.forEach((wire, k) => {
         const progress = (now - (delayMs + k * 140)) / MINI_TIMING.wiresMs;
         if (progress < ARCS.fromShare || progress > 1 + ARCS.afterMs / MINI_TIMING.wiresMs) return;
         // the wire's end: where its drawing has got to, then the plug
@@ -650,9 +652,10 @@ const useArcs = (delayMs, pathRefs) => {
   return bolts;
 };
 
-const Wires = ({ delayMs }) => {
+// 'wires': the side monitor's by default; the console has its own one
+const Wires = ({ delayMs, wires = WIRES }) => {
   const pathRefs = useRef([]);
-  const bolts = useArcs(delayMs, pathRefs);
+  const bolts = useArcs(delayMs, pathRefs, wires);
   return (
   <WireLayer viewBox="0 0 100 56.25" preserveAspectRatio="none" aria-hidden="true">
     <defs>
@@ -661,7 +664,7 @@ const Wires = ({ delayMs }) => {
         <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
       </filter>
     </defs>
-    {WIRES.map((wire, k) => {
+    {wires.map((wire, k) => {
       const style = { animationDelay: `${delayMs + k * 140}ms` };
       const slither = (
         <animate attributeName="d" dur={`${MINI_TIMING.wiresMs / 1000}s`} begin={`${(delayMs + k * 140) / 1000}s`} fill="freeze"
@@ -728,12 +731,14 @@ const TitleRow = styled.div`
   color: white;
 `;
 
-// the class's three icons, under its description, at the right (Jamie): spaced apart
+// the class's three icons: larger, in the side screen's bottom right corner (Jamie), spaced apart
 const IconGroup = styled.div`
-  align-self: flex-end;
+  position: absolute;
+  right: 0.3cqw;
+  bottom: 0.2cqw;
   display: flex;
-  gap: 1.2cqw;
-  margin-top: ${TITLE_SIZE / 2 - 0.5}cqw; /* (the part's own gap makes up the rest) */
+  gap: 1.3cqw;
+  i { font-size: 2.6cqw; }
 `;
 
 const ClassText = styled.div`
@@ -772,9 +777,9 @@ const Effect = styled.div`
 
 // (narrower than they were, clear of the screws: Jamie)
 const MetalButton = styled.button`
-  padding: 0.6cqw 1.3cqw;
+  padding: 0.55cqw 1cqw;
   font-family: gameboy;
-  font-size: 1.2cqw;
+  font-size: 1.1cqw;
   cursor: pointer;
   border-radius: 0.45cqw;
   ${RUBBER_BUTTON}
@@ -784,45 +789,18 @@ const MetalButton = styled.button`
   }
 `;
 
-const consoleWireDraw = keyframes`
-  from { stroke-dashoffset: 100; }
-  to { stroke-dashoffset: 0; }
-`;
-const ConsoleWireLayer = styled.svg`
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 2;
-  pointer-events: none;
-  overflow: visible;
-`;
-const ConsoleWirePath = styled.path`
-  fill: none;
-  stroke-linecap: round;
-  stroke-dasharray: 100 100;
-  transition: d ${CONSOLE.moveMs}ms ease-in-out;
-  animation: ${consoleWireDraw} ${MINI_TIMING.wiresMs}ms cubic-bezier(0.4, 0.1, 0.3, 1) ${MINI_TIMING.flyMs}ms both;
-`;
-
 /*
-  The Play!/Back console (Jamie): there from the avatar select on (it rises in once the monitor is on), standing right
-  of the monitor while that's in the middle, and moving under the side monitor as the monitor eases aside. Its one wire
-  runs from its underside into the big monitor's side, following it. The light blinks once three powers are picked.
-  'monitorRight': the big monitor's right edge, in the frame's units.
+  The Play!/Back console (Jamie): there from the avatar select on. It rises in once the monitor is on, as the monitor
+  eases aside for it, and its one wire slithers (and sparks) into the big monitor's side. The light blinks once three
+  powers are picked.
 */
-export const PlayConsole = ({ isAside, monitorRight, isReady, playLabel, onPlay, onBack }) => {
-  const left = isAside ? CONSOLE.leftAside : CONSOLE.left;
-  const from = { x: left + 2.5, y: CONSOLE.top + CONSOLE.height };
-  const to = { x: monitorRight, y: 50 };
-  const wire = `M ${from.x} ${from.y} C ${from.x} ${from.y + 3}, ${to.x + 3} ${to.y + 1}, ${to.x} ${to.y}`;
+const CONSOLE_WIRES = [{ from: { x: CONSOLE.left + 2.5, y: CONSOLE.top + CONSOLE.height }, to: { x: 64.9, y: 50 }, sag: 3, color: "#0e0f10" }];
+
+export const PlayConsole = ({ isReady, playLabel, onPlay, onBack }) => {
   return (
     <>
-      <ConsoleWireLayer viewBox="0 0 100 56.25" preserveAspectRatio="none" aria-hidden="true">
-        <ConsoleWirePath pathLength="100" stroke="#0e0f10" strokeWidth="0.75" style={{ d: `path("${wire}")` }} />
-        <ConsoleWirePath pathLength="100" stroke="#3b3d41" strokeWidth="0.16" style={{ d: `path("${wire}")`, transform: "translate(-0.12px, -0.12px)" }} />
-      </ConsoleWireLayer>
-      <Console style={{ left: `${left}cqw` }}>
+      <Wires delayMs={MINI_TIMING.consoleDelayMs + MINI_TIMING.flyMs - 250} wires={CONSOLE_WIRES} />
+      <Console>
         <ConsoleFace>
           {[[0.5, 0.5, 20], [null, 0.5, -35], [0.5, null, 60], [null, null, 5]].map(([screwLeft, top, turn], k) => (
             <Screw key={k} $turn={turn} style={{ left: screwLeft == null ? undefined : `${screwLeft}cqw`, right: screwLeft == null ? "0.5cqw" : undefined, top: top == null ? undefined : `${top}cqw`, bottom: top == null ? "0.5cqw" : undefined }} />
