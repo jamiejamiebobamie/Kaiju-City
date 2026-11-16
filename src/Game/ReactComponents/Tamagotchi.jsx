@@ -17,7 +17,7 @@ const TAMA = {
   color: "#ffd24a",
   glow: "0 0 0.35cqw #ffb020",
   tickMs: 100,
-  nameSize: 2.1, // cqw (twice what it was: Jamie), smaller for a long name
+  nameSize: 1.7, // cqw (a little smaller, under its "Pet Kaiju:" label: Jamie), smaller for a long name
   groundY: 0.78, // the bottom of its sprite's frame as it walks, of the LCD's height from the top (Jamie: up a little
   // again); its poops sit there too, and its bubble, hand, flames and egg go by it
   feetAbove: 0.058, // its feet, above that: a fifth of the frame up from its bottom (measured: 182 of 230)
@@ -52,6 +52,16 @@ const NAMES = [
   "Tater"
 ];
 
+// what it says (Jamie): every other line "Pick three abilities", these in turn between; a long one stays up longer
+const LINES = [
+  "Trigger your active abilities with number keys 1-3",
+  "Your passive abilities are applied when its active ability is on cooldown",
+  "I'm a nice Kaiju, but most want to kill you.",
+  "Fight with your teammate for maximum effectiveness"
+];
+const getLine = count => count % 2 == 0 ? "Pick three abilities" : LINES[Math.floor(count / 2) % LINES.length];
+const getSpeakMs = line => TAMA.speakMs + line.length * 45;
+
 const between = ([low, high]) => low + Math.random() * (high - low);
 let thingId = 0;
 
@@ -62,7 +72,7 @@ const newPet = (generation = 1) => ({
   happiness: TAMA.happinessMax,
   x: 0.5, facing: "left", frame: 0, frameAt: 0,
   mode: "walk", modeUntil: 3000, targetX: 0.35, turnsLeft: 0,
-  speakingUntil: 0, nextSpeakAt: 2500,
+  speakingUntil: 0, nextSpeakAt: 2500, lineCount: 0, line: "Pick three abilities",
   nextPoopAt: between(TAMA.poopEveryMs),
   nextPoopCheckAt: TAMA.poopCheckMs, nextCareCheckAt: TAMA.careCheckMs, caredSinceCheck: false,
   poops: [], pellets: [], hearts: [],
@@ -154,8 +164,10 @@ const step = pet => {
   let isSpeaking = now < next.speakingUntil;
   const isDueToSpeak = !isSpeaking && !food && now >= next.nextSpeakAt;
   if (isDueToSpeak && walkTo(0.5, TAMA.walkPerSecond * 1.6)) {
-    next.speakingUntil = now + TAMA.speakMs;
-    next.nextSpeakAt = now + TAMA.speakMs + between(TAMA.speakEveryMs);
+    next.line = getLine(next.lineCount);
+    next.lineCount += 1;
+    next.speakingUntil = now + getSpeakMs(next.line);
+    next.nextSpeakAt = next.speakingUntil + between(TAMA.speakEveryMs);
     next.frame = 0;
     isSpeaking = true;
   }
@@ -241,9 +253,21 @@ const Lcd = styled.div`
   }
 `;
 
+// "Pet Kaiju:" over the name, smaller than it (Jamie)
+const NameLabel = styled.div`
+  position: absolute;
+  top: 4%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 0.8cqw;
+  letter-spacing: 0.1cqw;
+  opacity: 0.8;
+`;
+
 const Name = styled.div`
   position: absolute;
-  top: 9%; /* (a little up again: Jamie) */
+  top: 10%;
   left: 0;
   right: 0;
   text-align: center;
@@ -269,10 +293,10 @@ const Bubble = styled.div`
   position: absolute;
   transform: translate(-50%, -100%);
   padding: 0.5cqw 0.8cqw;
-  font-size: 1.2cqw; /* (bigger again: Jamie) */
+  font-size: ${props => props.$isLong ? 0.95 : 1.2}cqw; /* (a long line a little smaller) */
   line-height: 1.3;
   width: max-content;
-  max-width: 14cqw; /* two lines, so it fits the screen */
+  max-width: 19cqw; /* inside the LCD (it may cover the name: Jamie) */
   text-align: center;
   background: #050402;
   border: 0.14cqw solid ${TAMA.color};
@@ -457,7 +481,8 @@ export const Tamagotchi = ({ actRef }) => {
     <Screen>
       <Lcd>
       {/* its name: an egg's is not known yet (Jamie): "???" until it hatches with its own */}
-      <Name style={{ fontSize: `${Math.min(TAMA.nameSize, 17 / pet.name.length)}cqw` }}>{pet.mode == "egg" ? "???" : pet.name.toUpperCase()}</Name>
+      <NameLabel>Pet Kaiju:</NameLabel>
+      <Name style={{ fontSize: `${Math.min(TAMA.nameSize, 14 / pet.name.length)}cqw` }}>{pet.mode == "egg" ? "???" : pet.name.toUpperCase()}</Name>
       {pet.pellets.map(({ id, x, y: pelletY }) => <Pellet key={id} style={{ left: `${x * 100}%`, top: `${pelletY * 100}%` }} />)}
       {pet.poops.map(({ id, x }) => <Poop key={id} style={{ left: `${x * 100}%`, top: y }} />)}
       {pet.mode == "burn" && <Flames style={{ left: `${pet.x * 100}%`, top: y }} />}
@@ -466,7 +491,7 @@ export const Tamagotchi = ({ actRef }) => {
         <Body style={{ left: `${pet.x * 100}%`, top: y, WebkitMaskImage: `url(${SHEET.src})`, maskImage: `url(${SHEET.src})`, WebkitMaskPosition: maskPosition, maskPosition }} />
       )}
       {pet.petUntil > 0 && pet.mode != "burn" && <Hand style={{ left: `${pet.x * 100}%`, top: `calc(${y} - ${TAMA.kaijuHeight * 0.75}cqw)` }}>🖐</Hand>}
-      {isSpeaking && <Bubble style={{ left: "50%", top: `calc(${y} - ${TAMA.kaijuHeight + 1.2}cqw)` }}>Pick three abilities</Bubble>}
+      {isSpeaking && <Bubble style={{ left: "50%", top: `calc(${y} - ${TAMA.kaijuHeight + 1.2}cqw)` }} $isLong={pet.line.length > 24}>{pet.line}</Bubble>}
       {pet.hearts.filter(({ at }) => pet.clock >= at).map(({ id, x }) => (
         <Heart key={id} style={{ left: `${x * 100}%`, top: `calc(${y} - ${TAMA.kaijuHeight}cqw)` }}>♥</Heart>
       ))}
