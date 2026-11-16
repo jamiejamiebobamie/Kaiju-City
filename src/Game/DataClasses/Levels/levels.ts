@@ -333,21 +333,24 @@ const buildLevel = (editorFile, name, accentColor, foregroundLayers = [], isWalk
 */
 export const buildBattlePreviewLevel = ({ columns = 11, rows = 6 } = {}): LevelConfig => {
   const { grid } = peninsula as any;
-  const firstI = Math.round((grid.columns - columns) / 2);
-  const firstJ = Math.round((grid.rows - rows) / 2);
+  // (from the grid's corner, in a world just the board's size, seen whole: its edges always in view. Jamie)
+  const firstI = 0;
+  const firstJ = 0;
   const base: Array<TileIndex> = [];
   for (let i = firstI; i < firstI + columns; i++) for (let j = firstJ; j < firstJ + rows; j++) base.push({ i, j });
   const edges = base.filter(({ i }) => i == firstI || i == firstI + columns - 1);
   const middle = { i: firstI + Math.floor(columns / 2), j: firstJ + Math.floor(rows / 2) };
-  const file = { ...(peninsula as any), id: 'battlePreview', tileLinks: [], tileSets: { base, kaijuEntry: edges, spawn: [middle], goal: [], radar: [] } };
+  const sceneWidth = grid.originX + (columns + 0.5) * grid.colStep;
+  const sceneHeight = grid.originY + (rows + 1.2) * grid.rowStep;
+  const file = { ...(peninsula as any), id: 'battlePreview', sceneWidth, sceneHeight, tileLinks: [], tileSets: { base, kaijuEntry: edges, spawn: [middle], goal: [], radar: [] } };
   const level = buildLevel(file, 'Battle preview', '#5a8a7a');
-  const rowY = j => grid.originY + j * grid.rowStep;
+  const rowY = j => grid.originY + (j + 0.5) * grid.rowStep;
   return {
     ...level,
     layers: [],
     kaijuEntry: {
       perimeterTiles: edges,
-      bounds: { minX: -5, maxX: (peninsula as any).sceneWidth + 5, minY: rowY(firstJ), maxY: rowY(firstJ + rows - 1) },
+      bounds: { minX: -grid.colStep, maxX: sceneWidth + grid.colStep, minY: rowY(firstJ), maxY: rowY(firstJ + rows - 1) },
       isSidesOnly: true,
       spawnEveryMs: [5000, 10000],
       maxAtOnce: 3

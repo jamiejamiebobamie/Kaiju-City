@@ -290,6 +290,7 @@ const Label = styled.span`
 `;
 
 const Prompt = styled.div`
+  margin-top: 40px; /* a little lower (Jamie) */
   font-family: gameboy;
   font-size: 20px;
   letter-spacing: 2px;

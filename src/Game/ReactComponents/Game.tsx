@@ -1452,7 +1452,8 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
         <GameArea>
           <GameFrame data-game-frame>
             {/* the alarm only when the call sends the team into a Kaiju fight */}
-            <PlayWindow playWindow={getCenteredWindow(playWindow)} setPlayWindow={updatePlayWindow} isAdjusting={false} isOpen={false} isSiren={isRadioAlarm} buttons={getBezelButtons({
+            {/* aside, for the call's dialogue panel beside it (Jamie: the panel moves the monitor too) */}
+            <PlayWindow playWindow={playWindow} setPlayWindow={updatePlayWindow} isAdjusting={false} isOpen={false} isSiren={isRadioAlarm} buttons={getBezelButtons({
               // blank through the call (Jamie, playtest 24): the Kaiju count only once the fight's "Defeat the Kaiju" has shown
               ticker: <ObjectiveTicker text="" isKaijuCount={false} count={0} toWin={0} />
             })}>

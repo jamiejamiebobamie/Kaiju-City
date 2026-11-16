@@ -717,7 +717,8 @@ const Info = styled.div`
   justify-content: space-evenly; /* the active and the passive as far apart as the screen allows (Jamie) */
   /* the class: from a quarter of the way down the screen (Jamie) */
   /* the class: at the top of the screen (Jamie), its battle preview below it */
-  ${props => props.$isClass && css`justify-content: flex-start; padding-top: 0.4cqw; bottom: ${(1 - BATTLE.top) * 100}%;`}
+  /* (its icons at the top now, its words down by the arena: Jamie) */
+  ${props => props.$isClass && css`justify-content: flex-end; padding-bottom: 0.6cqw; bottom: ${(1 - BATTLE.top) * 100}%;`}
   gap: 1.2cqw;
   font-size: 0.95cqw;
   line-height: 1.5;
@@ -753,11 +754,11 @@ const TitleRow = styled.div`
   color: white;
 `;
 
-// the class's three icons: larger, in the side screen's bottom right corner (Jamie), spaced apart
+// the class's three icons: larger, at the top right of the side screen (Jamie; were at the bottom), spaced apart
 const IconGroup = styled.div`
   position: absolute;
   right: 1.3cqw;
-  bottom: 0.9cqw;
+  top: 1cqw;
   display: flex;
   gap: 1.3cqw;
   i { font-size: 2.6cqw; }
@@ -893,25 +894,7 @@ export const AbilityPicker = ({
     settingsManager.setSortedPlayerChosenAbilityElementsString(picked);
   };
 
-  // keys: the arrows go round the halo (left toward its left end, right toward its right), Space or Enter picks
-  const keyState = useRef({});
-  keyState.current = { hovered, powers, togglePower };
-  useEffect(() => {
-    const onKey = event => {
-      const { hovered, powers, togglePower } = keyState.current;
-      if (!powers.length) return;
-      if (event.key == "ArrowLeft" || event.key == "ArrowUp") {
-        setHovered(hovered === undefined ? 0 : Math.min(powers.length - 1, hovered + 1));
-      } else if (event.key == "ArrowRight" || event.key == "ArrowDown") {
-        setHovered(hovered === undefined ? 0 : Math.max(0, hovered - 1));
-      } else if ((event.key == " " || event.key == "Enter") && hovered !== undefined) {
-        togglePower(powers[hovered]);
-      } else return;
-      event.preventDefault();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  // (no keys round the halo: Jamie)
 
   const isReady = pickedAbilities.length == PICK_COUNT;
   const playerClass = isReady ? getSciFiClass(pickedAbilities) : undefined;
@@ -994,7 +977,7 @@ export const AbilityPicker = ({
                 <BattleBox ref={arenaRef}>
                   {arenaWindow && <ClassBattle powers={pickedAbilities} avatar={selectedAvatar} playWindow={arenaWindow} />}
                 </BattleBox>
-                {/* the class's icons, in the screen's bottom right corner (Jamie) */}
+                {/* the class's icons, at the screen's top (Jamie) */}
                 <IconGroup>
                   {pickedPowers.map(({ element, activeIcon, color }) => <Icon key={element} className={`fa ${activeIcon}`} style={{ color }} />)}
                 </IconGroup>

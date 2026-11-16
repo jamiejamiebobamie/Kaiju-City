@@ -57,7 +57,7 @@ export const ClassBattle = ({ powers, avatar, playWindow }) => {
       isPaused={false}
       isWindowOpen={false}
       activePhases={[]}
-      isWholeScene={false}
+      isWholeScene={true} // the whole board in view, its edges always showing (Jamie)
       playWindow={playWindow}
       isShowingWindowSize={false}
       isEditingTiles={false}
