@@ -2490,7 +2490,7 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     passiveIcon: "fa-thermometer-quarter",
 
     activeName: "Ice Slice",
-    activeDesc: "Conjure a stationary vortex of ice",
+    activeDesc: "Conjure a vortex of ice that hunts your closest enemy", // draft (2026-11-15: it said "stationary", but it pursues)
     activeEffect1: "After a delay, ice pursues the closest enemy",
 
     passiveName: "Inclement Weather",
@@ -2931,7 +2931,7 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     activeEffect1: "Clears both positive and negative statuses",
 
     passiveName: "Clean Slate",
-    passiveDesc: "...they fade and die.",
+    passiveDesc: "Squeaky clean!", // (Jamie, 2026-11-15; was "...they fade and die.", from its old passive)
     passiveEffect1: "A Dispel ends your other powers' passives",
 
     activeEffect2: '',
