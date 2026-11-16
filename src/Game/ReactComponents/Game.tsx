@@ -614,6 +614,8 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   };
 
   const gameManager = useRef<any>(null);
+  // dev only: the game manager on the window, for scripted checks (calling recruits, hurting pieces); not in the built game
+  if (import.meta.env.DEV) (window as any).__kaiju = { gameManager };
   const gameLoop = useRef<GameLoop | null>(null);
 
   const [isTeammate, setIsTeammate] = useState(true);
