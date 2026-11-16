@@ -5,6 +5,7 @@ import { SpeedBlurFilter, slideAway } from "Components/SlideAway";
 import { Doodads } from "Components/AvatarSelection";
 import { ScaleToFit } from "Components/CrtPower";
 import { PICKER_FIGURE } from "./AbilityPicker";
+import { SCENE_DROP } from "./MonitorLabBackdrop";
 
 /*
   The start of the game (Jamie, playtest 21; the UI epic's mock-ups will restyle it): the guy and the girl, side by
@@ -45,7 +46,10 @@ const Screen = styled.div`
 // leaving: a parallax (Jamie, playtest 22): the two of them nearest, fastest; their labels behind, slower; both blurring
 const leaveLayer = (distance, isLeaving) => isLeaving && css`animation: ${slideAway(distance)} ${CHOICE.slideMs}ms ease-in forwards;`;
 
+// down with the Lab behind it (its share of the screen, in this 640 square fitted to it), the prompt left where it is
 const Row = styled.div`
+  position: relative;
+  top: ${SCENE_DROP * 640}px;
   display: flex;
   gap: 160px;
 `;

@@ -16,9 +16,16 @@ const TANK = { src: "/levels/lab-tank-empty.png", width: 98, height: 217 };
 const BUBBLES = { src: "/spritesheet/disc_bubbles.png", frames: 7, frameWidth: 177, frameHeight: 528, seconds: 2.4 };
 const HANDOVER_MS = 1100; // the avatar select's slide (CHOICE.slideMs)
 
+/*
+  The whole scene down a little (Jamie: the gap between each name and number on his line), "Choose your character"
+  left where it is: the Lab picture, the tanks, their light and the avatars (AvatarChoice moves its row as much), as a
+  share of the screen's height. The spots below are before it.
+*/
+export const SCENE_DROP = 0.072;
+
 export const BACKDROP_SPOTS = {
-  guy: { x: 0.26, y: 0.358 }, // (up with the avatars, their heads to Jamie's line; were 0.385)
-  girl: { x: 0.74, y: 0.358 },
+  guy: { x: 0.26, y: 0.358 + SCENE_DROP }, // (up with the avatars, their heads to Jamie's line; were 0.385)
+  girl: { x: 0.74, y: 0.358 + SCENE_DROP },
   figureHeight: 0.217, // the figures on the avatar select, of the screen's height
   tankHeight: 0.5,
   tankRaise: 0.033, // the tank's middle above the figure's (the tanks where they were, the avatars higher in them)
@@ -31,6 +38,16 @@ const Scene = styled.div`
   inset: 0;
   transform-origin: 0 0;
   transition: transform ${HANDOVER_MS}ms cubic-bezier(0.4, 0, 0.2, 1);
+  background: #050608;
+`;
+
+// the Lab picture, down with the scene (above it, the dark of the room's ceiling)
+const LabPicture = styled.div`
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: ${SCENE_DROP * 100}%;
+  height: 100%;
   background: url(${LAB.src}) center / cover no-repeat;
   image-rendering: pixelated;
 `;
@@ -167,6 +184,7 @@ export const MonitorLabBackdrop = ({ mode, hovered = undefined, focus = undefine
   }
   return (
     <Scene aria-hidden="true" style={{ transform }}>
+      <LabPicture />
       <UnderwaterFilter />
       {spots.map(({ id, x, y }) => (
         <Tank key={id} style={{ left: `${x * 100}%`, top: `${(y - BACKDROP_SPOTS.tankRaise) * 100}%`, height: `${BACKDROP_SPOTS.tankHeight * 100}%` }}>

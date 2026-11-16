@@ -702,10 +702,13 @@ const BATTLE = { top: 0.48, hex: { columns: 9, rows: 5 } }; // 'top': where it s
 // into the shot rather than cut into it
 const BattleBox = styled.div`
   position: absolute;
-  left: 6%;
-  right: 6%;
+  left: 3%;
+  right: 3%;
   top: 50.5%;
-  bottom: 5%;
+  bottom: 2.5%;
+  /* the pointer shows over it, the plain one (Jamie): the game's board hides it as it would in a game */
+  cursor: default;
+  & * { cursor: default !important; }
   -webkit-mask-image: linear-gradient(to right, transparent, black 9%, black 91%, transparent), linear-gradient(to bottom, transparent, black 7%, black 93%, transparent);
   -webkit-mask-composite: source-in;
   mask-image: linear-gradient(to right, transparent, black 9%, black 91%, transparent), linear-gradient(to bottom, transparent, black 7%, black 93%, transparent);
@@ -969,9 +972,26 @@ export const AbilityPicker = ({
       const f = frameBox.getBoundingClientRect();
       setArenaWindow({ left: (a.left - f.left) / f.width, top: (a.top - f.top) / f.height, right: (a.right - f.left) / f.width, bottom: (a.bottom - f.top) / f.height });
     };
-    measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
+    // measured again every frame while it shows: it can first be measured while the side monitor is still flying in
+    // (a replay, its powers picked already), which put the board off in the dark until a resize (Jamie)
+    let frameId;
+    let last = "";
+    const keepMeasuring = () => {
+      const box = arenaRef.current;
+      const frameBox = box && box.closest("[data-game-frame]");
+      if (box && frameBox) {
+        const a = box.getBoundingClientRect();
+        const f = frameBox.getBoundingClientRect();
+        const key = [a.left - f.left, a.top - f.top, a.width, a.height, f.width, f.height].map(Math.round).join(",");
+        if (key != last) {
+          last = key;
+          measure();
+        }
+      }
+      frameId = requestAnimationFrame(keepMeasuring);
+    };
+    keepMeasuring();
+    return () => cancelAnimationFrame(frameId);
   }, [isArenaShowing]);
   const isTamaShowing = hovered === undefined && !playerClass;
   const beside = (

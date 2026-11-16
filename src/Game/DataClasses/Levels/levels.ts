@@ -332,8 +332,14 @@ const buildLevel = (editorFile, name, accentColor, foregroundLayers = [], isWalk
   Kaiju come in from off the left or right edge, whichever is nearer their edge tile, every 5 to 10 s.
 */
 // 'aspect': the box it's shown in, width to height (Jamie's box on the side screen), so the world fills it
-export const buildBattlePreviewLevel = ({ columns = 16, rows = 5, aspect = 1.74 } = {}): LevelConfig => {
+// (bigger on screen: Jamie. The world is as tall as the rows and the room above and below them, so fewer rows and a
+// little less headroom make the tiles bigger in the box; then as many columns as fill its width)
+export const buildBattlePreviewLevel = ({ columns = undefined as number | undefined, rows = 4, aspect = 1.76 } = {}): LevelConfig => {
   const { grid } = peninsula as any;
+  const headroom = 3.5 * grid.rowStep; // (and the icons over a head: Jamie)
+  const footroom = 0.5 * grid.rowStep;
+  const sceneHeight = grid.originY + (rows + 1.2) * grid.rowStep + headroom + footroom;
+  columns = columns ?? Math.max(4, Math.floor((aspect * sceneHeight - 2 * grid.colStep - grid.originX) / grid.colStep - 0.5));
   // (from the grid's corner, in a world just the board's size, seen whole: its edges always in view. Jamie)
   const firstI = 0;
   const firstJ = 0;
@@ -343,9 +349,6 @@ export const buildBattlePreviewLevel = ({ columns = 16, rows = 5, aspect = 1.74 
   const middle = { i: firstI + Math.floor(columns / 2), j: firstJ + Math.floor(rows / 2) };
   // room round the board: headroom above (a character on the top row stands well above it: Jamie saw a head cut off),
   // a little below, and at the sides as much as makes the world the box's shape
-  const headroom = 4 * grid.rowStep; // (and the icons over a head: Jamie)
-  const footroom = 0.5 * grid.rowStep;
-  const sceneHeight = grid.originY + (rows + 1.2) * grid.rowStep + headroom + footroom;
   const boardWidth = grid.originX + (columns + 0.5) * grid.colStep;
   const sideroom = Math.max(grid.colStep, (aspect * sceneHeight - boardWidth) / 2);
   const sceneWidth = boardWidth + 2 * sideroom;
