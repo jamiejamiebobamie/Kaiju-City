@@ -18,9 +18,9 @@ const TAMA = {
   glow: "0 0 0.35cqw #ffb020",
   tickMs: 100,
   nameSize: 2.1, // cqw (twice what it was: Jamie), smaller for a long name
-  groundY: 0.84, // the bottom of its sprite's frame as it walks, of the LCD's height from the top (lower again: Jamie);
-  // its poops sit there too, as before
-  feetY: 0.84 - 0.058, // its feet, a fifth of the frame up from its bottom (measured: 182 of 230): food lands here (Jamie)
+  groundY: 0.78, // the bottom of its sprite's frame as it walks, of the LCD's height from the top (Jamie: up a little
+  // again); its poops sit there too, and its bubble, hand, flames and egg go by it
+  feetAbove: 0.058, // its feet, above that: a fifth of the frame up from its bottom (measured: 182 of 230)
   kaijuHeight: 7, // cqw
   walkPerSecond: 0.05, // of the screen's width: lazy
   hurryPerSecond: 0.14, // to food
@@ -99,7 +99,7 @@ const step = pet => {
   }
 
   // food falls to the ground
-  next.pellets = next.pellets.map(pellet => ({ ...pellet, y: Math.min(TAMA.feetY, pellet.y + TAMA.pelletFallPerSecond * seconds) }));
+  next.pellets = next.pellets.map(pellet => ({ ...pellet, y: Math.min((TAMA.groundY - TAMA.feetAbove), pellet.y + TAMA.pelletFallPerSecond * seconds) }));
 
   // happiness: poop left about, or no care
   if (now >= next.nextPoopCheckAt) {
@@ -133,7 +133,7 @@ const step = pet => {
   }
 
   // what it does: eat if there's food down, else speak now and then, else stroll and stop and turn
-  const food = next.pellets.filter(pellet => pellet.y >= TAMA.feetY - 0.01).sort((a, b) => Math.abs(a.x - next.x) - Math.abs(b.x - next.x))[0];
+  const food = next.pellets.filter(pellet => pellet.y >= (TAMA.groundY - TAMA.feetAbove) - 0.01).sort((a, b) => Math.abs(a.x - next.x) - Math.abs(b.x - next.x))[0];
   const walkTo = (x, perSecond) => {
     const gap = x - next.x;
     next.facing = gap < 0 ? "left" : "right";
