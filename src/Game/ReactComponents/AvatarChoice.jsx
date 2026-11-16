@@ -357,7 +357,12 @@ const AvatarName = styled.span`
   `}
 `;
 
-const ChoiceAvatar = ({ id, sheet, keyName, figureOffset, chosen, isLeaving, onChoose, onHover }) => {
+// the names a little off the figure's middle, where they sit better on the tank (Jamie: the girl's a little right)
+const NAME_NUDGE = { guy: 0, girl: 6 };
+
+// 'nameOnly': on the picker, only the chosen one's name and number (the very same layout, so no size jump in between)
+const ChoiceAvatar = ({ id, sheet, keyName, figureOffset, chosen, isLeaving, onChoose, onHover, nameOnly = undefined }) => {
+  const isNameHidden = !!nameOnly && nameOnly != id;
   const [isHovered, setIsHovered] = useState(false);
   const boxRef = useRef(null);
   const [handOver, setHandOver] = useState(undefined);
@@ -379,10 +384,10 @@ const ChoiceAvatar = ({ id, sheet, keyName, figureOffset, chosen, isLeaving, onC
         </DoodadHolder>
         <Sprite $sheet={sheet} $color={CHOICE.colors[id]} $isChosen={chosen == id} $isLocked={!!chosen} />
       </SpriteBox>
-      <NumberRow style={{ left: `${(FIGURE_SPOTS[id]?.middle ?? FRAME_WIDTH / 2) - FRAME_WIDTH / 2}px` }}>
-        <AvatarName $isHovered={isHovered} $isHidden={false}>{id}</AvatarName>
+      <NumberRow style={{ left: `${(FIGURE_SPOTS[id]?.middle ?? FRAME_WIDTH / 2) - FRAME_WIDTH / 2 + (NAME_NUDGE[id] ?? 0)}px` }}>
+        <AvatarName $isHovered={isHovered} $isHidden={isNameHidden}>{id}</AvatarName>
         <NumberUnder>
-          <ElectricNumber isElectric={isHovered && !chosen} isHidden={false} sparks={sparks}>{keyName}</ElectricNumber>
+          <ElectricNumber isElectric={isHovered && !chosen} isHidden={isNameHidden} sparks={sparks}>{keyName}</ElectricNumber>
         </NumberUnder>
       </NumberRow>
       <Label $isShown={!!chosen} $isLeaving={isLeaving} style={{ "--color": CHOICE.colors[id] }}>{chosen ? (chosen == id ? "Player" : "Teammate") : ""}</Label>
@@ -393,7 +398,8 @@ const ChoiceAvatar = ({ id, sheet, keyName, figureOffset, chosen, isLeaving, onC
 // 'isReady': the monitor is on, so a pick can be made (not while it is still dead or warming up)
 // 'onHover': which one is under the mouse (the backdrop lights it up more)
 // 'onHandOver': the chosen one, as it starts its slide to the picker (the backdrop goes with it)
-export const AvatarChoice = ({ onChoose, isReady = true, onHover = (_id) => {}, onHandOver = (_id) => {} }) => {
+// 'nameOnly': the chosen one, on the picker: everything hidden but its name and number, where the camera left them
+export const AvatarChoice = ({ onChoose = (_player, _teammate) => {}, isReady = true, onHover = (_id) => {}, onHandOver = (_id) => {}, nameOnly = undefined }) => {
   const isReadyRef = useRef(isReady);
   isReadyRef.current = isReady;
   const { setSelectedAvatar } = useContext(GlobalSettingsContext);
@@ -416,6 +422,7 @@ export const AvatarChoice = ({ onChoose, isReady = true, onHover = (_id) => {}, 
 
   // 1 or 2 picks, as the numbers under them say
   useEffect(() => {
+    if (nameOnly) return;
     const onKey = ({ code, repeat }) => {
       if (repeat) return;
       const avatar = AVATARS.find(({ key }) => code == `Digit${key}` || code == `Numpad${key}`);
@@ -427,11 +434,11 @@ export const AvatarChoice = ({ onChoose, isReady = true, onHover = (_id) => {}, 
 
   return (
     <ScaleToFit width={DESIGN_SIZE} height={DESIGN_SIZE}>
-      <Screen>
+      <Screen style={nameOnly ? { visibility: "hidden", pointerEvents: "none", zIndex: 7 } : undefined}>
         <SpeedBlurFilter />
         <Row>
           {AVATARS.map(({ id, sheet, key, figureOffset }) => (
-            <ChoiceAvatar key={id} id={id} sheet={sheet} keyName={key} figureOffset={figureOffset} chosen={chosen} isLeaving={isLeaving} onChoose={() => choose(id)} onHover={onHover} />
+            <ChoiceAvatar key={id} id={id} sheet={sheet} keyName={key} figureOffset={figureOffset} chosen={nameOnly || chosen} isLeaving={isLeaving} onChoose={() => choose(id)} onHover={onHover} nameOnly={nameOnly} />
           ))}
         </Row>
         <Prompt $isHidden={!!chosen}>Choose your character</Prompt>

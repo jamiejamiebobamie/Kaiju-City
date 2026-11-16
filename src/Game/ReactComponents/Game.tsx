@@ -1479,6 +1479,12 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
               setIsTeammate={setIsTeammate}
             />
           )}
+          {/* the chosen one's name and number on the picker: the avatar select's own, where the camera left them (Jamie) */}
+          {!isChoosingAvatar && selectedAvatar && (
+            <div style={{ position: "absolute", inset: 0, transformOrigin: "0 0", transform: getFocusTransform(selectedAvatar), pointerEvents: "none", zIndex: 7 }}>
+              <AvatarChoice nameOnly={selectedAvatar} isReady={false} />
+            </div>
+          )}
           {/* some bubbles over the avatars, in step with the backdrop (Jamie) */}
           <MonitorLabBackdrop layer="front" mode={isChoosingAvatar ? "choice" : "picker"} focus={isChoosingAvatar ? handOverAvatar : selectedAvatar} />
           {screenFade == 'out' && <ScreenBlack />}

@@ -22,8 +22,6 @@ export const BACKDROP_SPOTS = {
   figureHeight: 0.217, // the figures on the avatar select, of the screen's height
   tankHeight: 0.5,
   tankRaise: 0.033, // the tank's middle above the figure's (the tanks where they were, the avatars higher in them)
-  nameY: 0.522, // the GUY / GIRL names, on the tanks' bases (where the avatar select puts them), their numbers under
-  nameAcross: 0, // them; centered under the figure (Jamie)
   light: { width: 0.2, height: 0.3 } // a pool of light's size, of the screen
 };
 const LIGHT = { dim: 0.6, lit: 0.95 }; // how much a pool of light lifts the darkness: at rest, and hovered or chosen
@@ -56,28 +54,6 @@ const Tank = styled.div`
 const fadeAway = keyframes`
   from { opacity: 0.8; }
   to { opacity: 0; }
-`;
-
-// the chosen one's name on the picker: as the avatar select's, in the camera's zoom
-const PickedName = styled.div`
-  position: absolute;
-  transform: translate(-50%, -50%);
-  font-family: gameboy;
-  font-size: 1.1cqw;
-  text-transform: uppercase;
-  color: #e25cff;
-  text-shadow: 0 0 4px #e25cff;
-  white-space: nowrap;
-`;
-
-// its number under it, as on the avatar select (Jamie: kept through the pan in and out)
-const PickedNumber = styled.span`
-  position: absolute;
-  left: 50%;
-  top: calc(100% + 0.17cqw);
-  transform: translateX(-50%);
-  color: #c9c3d6;
-  text-shadow: none;
 `;
 
 const rise = keyframes`
@@ -186,13 +162,6 @@ export const MonitorLabBackdrop = ({ mode, hovered = undefined, focus = undefine
             <BubbleBursts scale={0.7} isFading />
           </TankPlace>
         ))}
-        {/* the chosen one's name, on the picker, where the camera left it (Jamie) */}
-        {mode == "picker" && focus && (
-          <PickedName style={{ left: `${(BACKDROP_SPOTS[focus].x + BACKDROP_SPOTS.nameAcross) * 100}%`, top: `${BACKDROP_SPOTS.nameY * 100}%` }}>
-            {focus}
-            <PickedNumber>{focus == "guy" ? 1 : 2}</PickedNumber>
-          </PickedName>
-        )}
       </Scene>
     );
   }
