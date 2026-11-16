@@ -18,7 +18,9 @@ const TAMA = {
   glow: "0 0 0.35cqw #ffb020",
   tickMs: 100,
   nameSize: 2.1, // cqw (twice what it was: Jamie), smaller for a long name
-  groundY: 0.76, // where it walks, of the LCD's height (from the top; lower: Jamie)
+  groundY: 0.84, // the bottom of its sprite's frame as it walks, of the LCD's height from the top (lower again: Jamie);
+  // its poops sit there too, as before
+  feetY: 0.84 - 0.058, // its feet, a fifth of the frame up from its bottom (measured: 182 of 230): food lands here (Jamie)
   kaijuHeight: 7, // cqw
   walkPerSecond: 0.05, // of the screen's width: lazy
   hurryPerSecond: 0.14, // to food
@@ -94,7 +96,7 @@ const step = pet => {
   }
 
   // food falls to the ground
-  next.pellets = next.pellets.map(pellet => ({ ...pellet, y: Math.min(TAMA.groundY, pellet.y + TAMA.pelletFallPerSecond * seconds) }));
+  next.pellets = next.pellets.map(pellet => ({ ...pellet, y: Math.min(TAMA.feetY, pellet.y + TAMA.pelletFallPerSecond * seconds) }));
 
   // happiness: poop left about, or no care
   if (now >= next.nextPoopCheckAt) {
@@ -128,12 +130,7 @@ const step = pet => {
   }
 
   // what it does: eat if there's food down, else speak now and then, else stroll and stop and turn
-  const food = next.pellets.filter(pellet => pellet.y >= TAMA.groundY - 0.01).sort((a, b) => Math.abs(a.x - next.x) - Math.abs(b.x - next.x))[0];
-  const isSpeaking = now < next.speakingUntil;
-  if (!isSpeaking && !food && now >= next.nextSpeakAt) {
-    next.speakingUntil = now + TAMA.speakMs;
-    next.nextSpeakAt = now + TAMA.speakMs + between(TAMA.speakEveryMs);
-  }
+  const food = next.pellets.filter(pellet => pellet.y >= TAMA.feetY - 0.01).sort((a, b) => Math.abs(a.x - next.x) - Math.abs(b.x - next.x))[0];
   const walkTo = (x, perSecond) => {
     const gap = x - next.x;
     next.facing = gap < 0 ? "left" : "right";
@@ -144,7 +141,19 @@ const step = pet => {
     }
     return Math.abs(x - next.x) < 0.01;
   };
-  if (food && !isSpeaking) {
+  // its line: only from the middle of the screen, so the bubble stays inside the LCD (Jamie): when it's time, it
+  // walks back to the middle first, then says it
+  let isSpeaking = now < next.speakingUntil;
+  const isDueToSpeak = !isSpeaking && !food && now >= next.nextSpeakAt;
+  if (isDueToSpeak && walkTo(0.5, TAMA.walkPerSecond * 1.6)) {
+    next.speakingUntil = now + TAMA.speakMs;
+    next.nextSpeakAt = now + TAMA.speakMs + between(TAMA.speakEveryMs);
+    next.frame = 0;
+    isSpeaking = true;
+  }
+  if (isDueToSpeak) {
+    // (on its way to the middle)
+  } else if (food && !isSpeaking) {
     if (walkTo(food.x, TAMA.hurryPerSecond)) {
       next.pellets = next.pellets.filter(pellet => pellet !== food);
       if (!next.pellets.length) Object.assign(next, care(next)); // the last of a feeding: a block back
@@ -152,15 +161,15 @@ const step = pet => {
     }
   } else if (!isSpeaking) {
     if (now >= next.modeUntil) {
-      // lazily: mostly stop and look about, sometimes amble somewhere
-      if (next.mode == "walk" || Math.random() < 0.55) {
+      // lazily: stop and look about now and then, but amble more, over to the far side (Jamie: it gets to both sides)
+      if (next.mode == "walk" && Math.random() < 0.6) {
         next.mode = "idle";
         next.turnsLeft = Math.floor(between([1, 4]));
         next.modeUntil = now + between([700, 1300]);
       } else {
         next.mode = "walk";
-        next.targetX = between([0.12, 0.88]);
-        next.modeUntil = now + between([3000, 6000]);
+        next.targetX = next.x < 0.5 ? between([0.62, 0.88]) : between([0.12, 0.38]);
+        next.modeUntil = now + between([5000, 9000]);
       }
     }
     if (next.mode == "walk") {
@@ -387,7 +396,7 @@ const Meter = styled.div`
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 7%; /* (a little up: Jamie) */
+  bottom: 4%; /* (a little up, then a little down again: Jamie) */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -448,7 +457,7 @@ export const Tamagotchi = ({ actRef }) => {
         <Body style={{ left: `${pet.x * 100}%`, top: y, WebkitMaskImage: `url(${SHEET.src})`, maskImage: `url(${SHEET.src})`, WebkitMaskPosition: maskPosition, maskPosition }} />
       )}
       {pet.petUntil > 0 && pet.mode != "burn" && <Hand style={{ left: `${pet.x * 100}%`, top: `calc(${y} - ${TAMA.kaijuHeight * 0.75}cqw)` }}>🖐</Hand>}
-      {isSpeaking && <Bubble style={{ left: `${Math.min(0.7, Math.max(0.3, pet.x)) * 100}%`, top: `calc(${y} - ${TAMA.kaijuHeight + 1.2}cqw)` }}>Pick three abilities</Bubble>}
+      {isSpeaking && <Bubble style={{ left: "50%", top: `calc(${y} - ${TAMA.kaijuHeight + 1.2}cqw)` }}>Pick three abilities</Bubble>}
       {pet.hearts.filter(({ at }) => pet.clock >= at).map(({ id, x }) => (
         <Heart key={id} style={{ left: `${x * 100}%`, top: `calc(${y} - ${TAMA.kaijuHeight}cqw)` }}>♥</Heart>
       ))}

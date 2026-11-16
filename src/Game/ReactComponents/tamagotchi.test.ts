@@ -64,3 +64,22 @@ describe('tamagotchi, later', () => {
     expect(pet.happiness).toBeGreaterThanOrEqual(4);
   });
 });
+
+describe('tamagotchi, its walks and its line', () => {
+  it('says its line only from the middle, and gets to both sides of the screen', () => {
+    let pet = { ...newPet(), happiness: 5 };
+    let least = 1, most = 0, spoke = 0;
+    for (let k = 0; k < 1200; k++) { // two minutes
+      pet = step({ ...pet, caredSinceCheck: true, poops: [] });
+      least = Math.min(least, pet.x);
+      most = Math.max(most, pet.x);
+      if (pet.clock < pet.speakingUntil) {
+        spoke += 1;
+        expect(Math.abs(pet.x - 0.5)).toBeLessThan(0.02);
+      }
+    }
+    expect(spoke).toBeGreaterThan(0);
+    expect(least).toBeLessThan(0.4);
+    expect(most).toBeGreaterThan(0.6);
+  });
+});
