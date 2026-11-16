@@ -56,13 +56,13 @@ const NAMES = [
 // (Jamie's, some tightened by Claude with his leave: draft)
 const LINES = [
   "Your three powers determine your class.",
-  "Fire your actives with keys 1-3.",
   "Each power has an active and a passive.",
+  "Fire your active with keys 1-3.",
   "A passive works while its active cools down.",
   "Hover over a power to read about it.",
   "I'm a nice Kaiju. Most want to kill you.",
   "Kaiju come from the sea to attack the city!",
-  "Fight beside your teammate!",
+  "Your teammate will fight beside you!",
   "Press Play! when ready."
 ];
 // the order (Jamie): kept for the play (this module), not per Kaiju, so a new one hatched carries on where the last left
