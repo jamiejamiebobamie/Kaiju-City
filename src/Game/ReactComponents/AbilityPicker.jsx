@@ -30,7 +30,7 @@ const STAGE = { width: 1000, height: 1000 };
 const LOOK = {
   figureHeight: 400, // the avatar, head to feet (Jamie's, 2026-11-15; was 270, then 540; the halo kept its size)
   figureDrop: -50, // the avatar moved down from the halo's middle (negative: up), in stage units; the dev panel's slider
-  haloRadius: 380, // the halo, from the upper torso (was 1.5 times the avatar's height, 270)
+  haloRadius: { fewest: { count: 6, radius: 300 }, most: { count: 10, radius: 320 } }, // by the open powers (Jamie)
   torso: { x: 500, y: 450 }, // the upper torso: the halo's middle
   headDrop: 0.28, // the upper torso, down from the top of the head (of the figure's height)
   // the area below the avatar stays clear (Jamie): its legs reach down past the lowest pendants (feet at 874, the
@@ -38,7 +38,7 @@ const LOOK = {
   // (215 to 325 degrees) and the board's lines out of it.
   haloStartDegrees: -35, // low on the avatar's right (0 is right, counter-clockwise; was -65: Jamie, the lowest higher)
   haloEndDegrees: 215, // low on its left (was 245)
-  radiusJitter: 0.75, // each pendant nearer or further than the circle, by up to this share of it (Jamie)
+  radiusJitter: 0.1, // each pendant nearer or further than the circle, by up to this share of it (Jamie)
   pendantSize: 90,
   bendAt: 0.55, // where a trace bends, of the halo's radius from the middle
   endSpread: 0.13, // the traces' ends behind the avatar, spread across (of the figure's height)
@@ -46,7 +46,33 @@ const LOOK = {
   beadMs: 1700, // a bead's run from the pendant to the avatar
   colors: { trace: "#1f3a29", traceHover: "#7fae8c", stub: "#15281c", pad: "#2d5a3c" }
 };
-const HALO_RADIUS = LOOK.haloRadius;
+// const LOOK = {
+//   figureHeight: 400, // the avatar, head to feet (Jamie's, 2026-11-15; was 270, then 540; the halo kept its size)
+//   figureDrop: -50, // the avatar moved down from the halo's middle (negative: up), in stage units; the dev panel's slider
+//   haloRadius: 300, // the halo, from the upper torso (was 1.5 times the avatar's height, 270)
+//   torso: { x: 500, y: 450 }, // the upper torso: the halo's middle
+//   headDrop: 0.28, // the upper torso, down from the top of the head (of the figure's height)
+//   // the area below the avatar stays clear (Jamie): its legs reach down past the lowest pendants (feet at 874, the
+//   // lowest pendants at about 720), and no pendant, line or pad is ever under it. Keep the arc's gap at the bottom wide
+//   // (215 to 325 degrees) and the board's lines out of it.
+//   haloStartDegrees: -35, // low on the avatar's right (0 is right, counter-clockwise; was -65: Jamie, the lowest higher)
+//   haloEndDegrees: 215, // low on its left (was 245)
+//   radiusJitter: 0.1, // each pendant nearer or further than the circle, by up to this share of it (Jamie)
+//   pendantSize: 90,
+//   bendAt: 0.55, // where a trace bends, of the halo's radius from the middle
+//   endSpread: 0.13, // the traces' ends behind the avatar, spread across (of the figure's height)
+//   endDrop: 0.06, // and how far below the upper torso
+//   beadMs: 1700, // a bead's run from the pendant to the avatar
+//   colors: { trace: "#1f3a29", traceHover: "#7fae8c", stub: "#15281c", pad: "#2d5a3c" }
+// };
+// the halo's radius for so many open powers: from the fewest's to the most's, in step (Jamie)
+const getHaloRadiusFor = count => {
+  const { fewest, most } = LOOK.haloRadius;
+  const share = Math.min(1, Math.max(0, (count - fewest.count) / (most.count - fewest.count)));
+  return fewest.radius + (most.radius - fewest.radius) * share;
+};
+// the radius now (set as the picker draws, for its open powers' count)
+let HALO_RADIUS = getHaloRadiusFor(LOOK.haloRadius.fewest.count);
 
 // where the picker's figure stands, as shares of its square stage: the avatar select slides the chosen one here, so the
 // two read as one monitor (Jamie)
@@ -69,24 +95,11 @@ const FadingIn = styled.div`
   animation: ${fadeIn} ${ARRIVAL.fadeMs}ms ease-out both;
 `;
 
-// the count of powers picked, "0/3" to "3/3", at the lower left (Jamie)
+// the count of powers picked, "0/3" to "3/3", at the top right (Jamie)
 const PickCount = styled.div`
   position: absolute;
-  left: ${(40 / STAGE.width) * 100}%;
-  bottom: ${(36 / STAGE.height) * 100}%;
-  font-family: gameboy;
-  font-size: ${(26 / STAGE.height) * 100}cqh;
-  letter-spacing: ${(2 / STAGE.height) * 100}cqh;
-  color: #ffd24a;
-  text-shadow: 0 0 ${(8 / STAGE.height) * 100}cqh #ffb020;
-  pointer-events: none;
-`;
-
-// "Pick three abilities", in yellow at the lower right of the screen, always (Jamie)
-const PickPrompt = styled.div`
-  position: absolute;
   right: ${(40 / STAGE.width) * 100}%;
-  bottom: ${(36 / STAGE.height) * 100}%;
+  top: ${(36 / STAGE.height) * 100}%;
   font-family: gameboy;
   font-size: ${(26 / STAGE.height) * 100}cqh;
   letter-spacing: ${(2 / STAGE.height) * 100}cqh;
@@ -362,9 +375,11 @@ const DevPanel = styled.div`
   shot, then switches on like the big one; then its wires slither out and plug into the big monitor's side.
   Sizes in cqw of the game frame (100 wide, 56.25 high).
 */
-const MINI = { left: 69, top: 6.5, width: 28, height: 37.5, casing: 1.3, chin: 4.2 };
+// 'brow': the top border, tall enough for its buttons (Jamie: swapped with the bottom's); the console sits below it
+const MINI = { left: 69, top: 2.2, width: 28, height: 34, casing: 1.3, brow: 4.2 };
+const CONSOLE = { left: 70, top: 39.5, width: 26, height: 12.5, rim: 0.9 };
 // (Jamie: after the picker's things fade in, the big monitor eases aside as the mini-monitor flies in, then the wires)
-export const MINI_TIMING = { flyDelayMs: 500, flyMs: 850, onAtMs: 1400, wiresAtMs: 1600, wiresMs: 1100 };
+export const MINI_TIMING = { flyDelayMs: 500, flyMs: 850, onAtMs: 1400, wiresAtMs: 1600, wiresMs: 1100, consoleDelayMs: 750 };
 
 const flyIn = keyframes`
   0% { transform: translate(40cqw, -16cqw) rotate(16deg) scale(0.8); opacity: 0; }
@@ -399,8 +414,8 @@ const MiniScreen = styled.div`
   position: absolute;
   left: ${MINI.casing}cqw;
   right: ${MINI.casing}cqw;
-  top: ${MINI.casing}cqw;
-  bottom: ${MINI.chin}cqw;
+  top: ${MINI.brow}cqw;
+  bottom: ${MINI.casing}cqw;
   border-radius: 1.1cqw;
   overflow: hidden;
   background: #030404;
@@ -418,22 +433,94 @@ const MiniGlass = styled.div`
     repeating-linear-gradient(to bottom, rgba(0, 0, 0, ${TV_LOOK.scanLineOpacity}) 0 1px, transparent 1px 3px);
 `;
 
-const MiniChin = styled.div`
+// the top border's buttons for the tamagotchi (Jamie): Feed, Pet, Clean up, in its middle
+const MiniBrow = styled.div`
   position: absolute;
-  left: ${MINI.casing + 0.4}cqw;
+  left: ${MINI.casing}cqw;
   right: ${MINI.casing}cqw;
-  bottom: 0;
-  height: ${MINI.chin}cqw;
+  top: 0;
+  height: ${MINI.brow}cqw;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  gap: 0.8cqw;
 `;
 
-const MiniBrand = styled.div`
+const BrowButton = styled.button`
+  padding: 0.35cqw 0.9cqw;
   font-family: gameboy;
   font-size: 0.7cqw;
-  letter-spacing: 0.3cqw;
-  color: #6d6a66;
+  cursor: pointer;
+  color: #d9dade;
+  background: linear-gradient(#3a3d43, #16171a);
+  border: 0.1cqw solid #8d9097;
+  border-radius: 0.3cqw;
+  &:disabled {
+    cursor: default;
+    opacity: 0.35;
+  }
+`;
+
+/*
+  The console (Jamie): Play! and Back on their own set, below the side monitor. It flies in from the bottom, out of
+  shot, and plugs into the big monitor by a wire of its own. Its face is metal, brushed, with screws at the corners,
+  set in a plastic case whose other sides face away (only a rim of it shows).
+*/
+const consoleRise = keyframes`
+  0% { transform: translateY(30cqw) rotate(-6deg); opacity: 0; }
+  15% { opacity: 1; }
+  70% { transform: translateY(-0.6cqw) rotate(0.8deg); }
+  100% { transform: none; opacity: 1; }
+`;
+
+const Console = styled.div`
+  position: absolute;
+  left: ${CONSOLE.left}cqw;
+  top: ${CONSOLE.top}cqw;
+  width: ${CONSOLE.width}cqw;
+  height: ${CONSOLE.height}cqw;
+  z-index: 3;
+  padding: ${CONSOLE.rim}cqw;
+  box-sizing: border-box;
+  border-radius: 1.4cqw;
+  box-shadow: inset 0 0.15cqw 0 ${TV_LOOK.casingLight}, 0 0 0 0.15cqw #080808, 0 1cqw 2.5cqw rgba(0, 0, 0, 0.8);
+  ${CASING_SHEEN}
+  animation: ${consoleRise} ${MINI_TIMING.flyMs}ms cubic-bezier(0.2, 0.9, 0.3, 1) ${MINI_TIMING.consoleDelayMs}ms both;
+`;
+
+const ConsoleFace = styled.div`
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.4cqw;
+  border-radius: 0.7cqw;
+  /* brushed metal: fine horizontal streaks, lighter toward the top (lit from above) */
+  background:
+    repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 3px),
+    linear-gradient(to bottom, #8d9198, #5c6067 55%, #44474d);
+  box-shadow: inset 0 0.12cqw 0 rgba(255, 255, 255, 0.35), inset 0 -0.15cqw 0 rgba(0, 0, 0, 0.4);
+`;
+
+// a screw head at each corner of the face
+const Screw = styled.span`
+  position: absolute;
+  width: 0.7cqw;
+  height: 0.7cqw;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #d6d9de, #6e7279 60%, #3a3d42);
+  box-shadow: 0 0.05cqw 0.1cqw rgba(0, 0, 0, 0.6);
+  &::after {
+    content: "";
+    position: absolute;
+    left: 15%;
+    right: 15%;
+    top: 45%;
+    height: 10%;
+    background: #33363b;
+    transform: rotate(${props => props.$turn}deg);
+  }
 `;
 
 /*
@@ -441,9 +528,9 @@ const MiniBrand = styled.div`
   land), to plug into the big monitor's side. In the frame's units.
 */
 const WIRES = [
-  { from: { x: 74, y: 44 }, to: { x: 64.9, y: 43 }, sag: 9, color: "#0e0f10" },
-  { from: { x: 79, y: 44 }, to: { x: 64.9, y: 47 }, sag: 11, color: "#121a14" },
-  { from: { x: 84.5, y: 44 }, to: { x: 64.9, y: 50.5 }, sag: 10, color: "#0e0f10" }
+  { from: { x: 73, y: MINI.top + MINI.height }, to: { x: 64.9, y: 30 }, sag: 5, color: "#0e0f10" },
+  { from: { x: 77.5, y: MINI.top + MINI.height }, to: { x: 64.9, y: 34.5 }, sag: 6, color: "#121a14" },
+  { from: { x: 76, y: CONSOLE.top + CONSOLE.height }, to: { x: 64.9, y: 49.5 }, sag: 3, color: "#0e0f10" } // the console's
 ];
 const getWirePath = ({ from, to, sag }, wave = 0) =>
   `M ${from.x} ${from.y} C ${from.x + wave} ${from.y + sag}, ${to.x + 6 - wave} ${to.y + wave * 0.6}, ${to.x} ${to.y}`;
@@ -575,7 +662,7 @@ const Info = styled.div`
   flex-direction: column;
   justify-content: space-evenly; /* the active and the passive as far apart as the screen allows (Jamie) */
   /* the class: from a quarter of the way down the screen (Jamie) */
-  ${props => props.$isClass && css`justify-content: flex-start; padding-top: ${(MINI.height - MINI.casing - MINI.chin) / 4 - 1.4}cqw;`}
+  ${props => props.$isClass && css`justify-content: flex-start; padding-top: ${(MINI.height - MINI.casing - MINI.brow) / 4 - 1.4}cqw;`}
   gap: 1.2cqw;
   font-size: 0.95cqw;
   line-height: 1.5;
@@ -653,15 +740,10 @@ const Effect = styled.div`
   filter: brightness(1.2);
 `;
 
-const Buttons = styled.div`
-  display: flex;
-  gap: 0.6cqw;
-`;
-
 const MetalButton = styled.button`
-  padding: 0.45cqw 1cqw;
+  padding: 0.8cqw 1.8cqw;
   font-family: gameboy;
-  font-size: 0.75cqw;
+  font-size: 1.1cqw;
   cursor: pointer;
   color: #d9dade;
   background: linear-gradient(#3a3d43, #16171a);
@@ -710,6 +792,7 @@ export const AbilityPicker = ({
     return () => clearTimeout(timeout);
   }, []);
 
+  HALO_RADIUS = getHaloRadiusFor(powers.length);
   const angles = useMemo(() => powers.map((_, k) => powers.length > 1
     ? LOOK.haloStartDegrees + (k * (LOOK.haloEndDegrees - LOOK.haloStartDegrees)) / (powers.length - 1)
     : 90), [powers]);
@@ -795,6 +878,7 @@ export const AbilityPicker = ({
     return null; // (no "Choose 3 powers" here: Jamie; "Pick three abilities" is on the main screen)
   };
 
+  const tamagotchi = undefined;
   const beside = (
     <>
       <Wires delayMs={MINI_TIMING.wiresAtMs} />
@@ -805,14 +889,22 @@ export const AbilityPicker = ({
           </CrtScreen>
           <MiniGlass />
         </MiniScreen>
-        <MiniChin>
-          <MiniBrand>K-V MINI</MiniBrand>
-          <Buttons>
-            <MetalButton disabled={!isReady} onClick={handleClickPlay}>{playLabel || "Play!"}</MetalButton>
-            {!onBack && <MetalButton onClick={handleClickHome}>Back</MetalButton>}
-          </Buttons>
-        </MiniChin>
+        <MiniBrow>
+          {/* the tamagotchi's (its own phase): off while the class shows */}
+          {["Feed", "Pet", "Clean up"].map(label => (
+            <BrowButton key={label} disabled={!!playerClass && hovered === undefined} onClick={() => tamagotchi && tamagotchi.act(label)}>{label}</BrowButton>
+          ))}
+        </MiniBrow>
       </MiniMonitor>
+      <Console>
+        <ConsoleFace>
+          {[[0.5, 0.5, 20], [null, 0.5, -35], [0.5, null, 60], [null, null, 5]].map(([left, top, turn], k) => (
+            <Screw key={k} $turn={turn} style={{ left: left == null ? undefined : `${left}cqw`, right: left == null ? "0.5cqw" : undefined, top: top == null ? undefined : `${top}cqw`, bottom: top == null ? "0.5cqw" : undefined }} />
+          ))}
+          <MetalButton disabled={!isReady} onClick={handleClickPlay}>{playLabel || "Play!"}</MetalButton>
+          {!onBack && <MetalButton onClick={handleClickHome}>Back</MetalButton>}
+        </ConsoleFace>
+      </Console>
       {import.meta.env.DEV && (
         <DevPanel>
           <label>
@@ -909,7 +1001,6 @@ export const AbilityPicker = ({
             </Pendant>
           );
         })}
-        <PickPrompt>Pick three abilities</PickPrompt>
         <PickCount>{pickedAbilities.length}/{PICK_COUNT}</PickCount>
         </FadingIn>
       </Stage>
