@@ -520,10 +520,10 @@ const ConsoleFace = styled.div`
     inset 0 -0.08cqw 0 rgba(255, 255, 255, 0.18);
 `;
 
-// the ready light (Jamie): at the top, five sixths of the way across; blinking red with three picked, else dark
+// the ready light (Jamie): at the top, five sixths of the way across; blinking green with three picked (Jamie; was red), else dark
 const readyBlink = keyframes`
-  0%, 55% { background: radial-gradient(circle at 40% 35%, #ffb3a8, #ff2a1a 55%, #8a0c05); box-shadow: 0 0 0.6cqw 0.15cqw #ff3a20; }
-  56%, 100% { background: radial-gradient(circle at 40% 35%, #5a1a16, #2a0705 70%); box-shadow: none; }
+  0%, 55% { background: radial-gradient(circle at 40% 35%, #c8ffb8, #2ee02a 55%, #0a6a0c); box-shadow: 0 0 0.6cqw 0.15cqw #3aff3a; }
+  56%, 100% { background: radial-gradient(circle at 40% 35%, #1a4a1a, #062a08 70%); box-shadow: none; }
 `;
 // (larger, up and to the right: where Jamie marked it, about 78% across and 28% down the face)
 const READY_LIGHT = { size: 1.35, across: 0.78, down: 0.28 };
@@ -535,7 +535,7 @@ const ReadyLight = styled.span`
   height: ${READY_LIGHT.size}cqw;
   border-radius: 50%;
   border: 0.1cqw solid #1a1b1d;
-  background: radial-gradient(circle at 40% 35%, #5a1a16, #2a0705 70%);
+  background: radial-gradient(circle at 40% 35%, #1a4a1a, #062a08 70%);
   ${props => props.$isOn && css`animation: ${readyBlink} 0.9s steps(1) infinite;`}
 `;
 
