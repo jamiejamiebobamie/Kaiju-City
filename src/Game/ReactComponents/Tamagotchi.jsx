@@ -1,0 +1,401 @@
+import React, { useEffect, useImperativeHandle, useState } from "react";
+import styled, { keyframes } from "styled-components";
+
+/*
+  The side monitor's Kaiju tamagotchi (Jamie, 2026-11-15): a silly mini-game while the player hasn't picked three
+  powers and isn't hovering one. All lo-fi, glowing yellow like an old LCD pet (mid-90s, early-00s).
+  - The Kaiju (the game's own sprite, as a yellow silhouette, its frames stepped choppily) strolls lazily about,
+    stopping often to turn left and right, and now and then says "Pick three abilities".
+  - Feed: pellets (faded, flowing green) drop from the top; it goes and eats them.
+  - About every 15 s it leaves a poop (a fainter yellow, so the Kaiju stays first).
+  - Clean up takes away one poop a click; the last one gone, hearts float up from it. Pet: hearts too.
+  - Happiness, 5 blocks, starts full: every 10 s, one off if there's a poop about; every 30 s, one off if it wasn't
+    fed or petted in that time. At none, it bursts into flames; 5 s later a new one hatches from an egg, with a new name.
+  - It lives on between visits to the picker (this module keeps it), and its clock runs only while it's on screen.
+*/
+const TAMA = {
+  color: "#ffd24a",
+  glow: "0 0 0.35cqw #ffb020",
+  tickMs: 100,
+  groundY: 0.7, // where it walks, of the screen's height (from the top)
+  kaijuHeight: 7, // cqw
+  walkPerSecond: 0.05, // of the screen's width: lazy
+  hurryPerSecond: 0.14, // to food
+  frameMs: 220, // its walk's frames, stepped slow and choppy
+  speakEveryMs: [9000, 15000], speakMs: 2600,
+  poopEveryMs: [12000, 18000],
+  happinessMax: 5,
+  poopCheckMs: 10000, careCheckMs: 30000,
+  burnMs: 1300, eggMs: 5000,
+  heartMs: 1400,
+  pelletFallPerSecond: 0.55
+};
+
+// the in-game Kaiju's sheet: 10 frames a row, its rows by facing (the walk to the lower left, and to the lower right)
+const SHEET = { src: "/spritesheet/kaiju_sprite2.png", frames: 10, rows: 6, frameWidth: 180, frameHeight: 230.33, rowLeft: 3, rowRight: 5 };
+const BURN = { src: "/spritesheet/burning_kaiju_sprite.png", frames: 6, frameWidth: 103, frameHeight: 155 };
+
+const NAMES = ["Mochi", "Biscuit", "Gizmo", "Pickles", "Noodle", "Waffles", "Pudding", "Tofu", "Bubbles", "Pebble", "Sprout",
+  "Nugget", "Dumpling", "Wasabi", "Peanut", "Jellybean", "Muffin", "Taco", "Bagel", "Pretzel", "Kiwi", "Mango", "Sprinkles",
+  "Chomp", "Rumble", "Stompy", "Gnasher", "Scales", "Zilla Jr.", "Pancake", "Doodle", "Squish", "Bean", "Crumpet", "Fizz",
+  "Snickerdoodle", "Turnip", "Marshmallow", "Kumquat", "Tater"];
+
+const between = ([low, high]) => low + Math.random() * (high - low);
+let thingId = 0;
+
+const newPet = (generation = 1) => ({
+  name: NAMES[Math.floor(Math.random() * NAMES.length)],
+  generation,
+  clock: 0,
+  happiness: TAMA.happinessMax,
+  x: 0.5, facing: "left", frame: 0, frameAt: 0,
+  mode: "walk", modeUntil: 3000, targetX: 0.35, turnsLeft: 0,
+  speakingUntil: 0, nextSpeakAt: 2500,
+  nextPoopAt: between(TAMA.poopEveryMs),
+  nextPoopCheckAt: TAMA.poopCheckMs, nextCareCheckAt: TAMA.careCheckMs, caredSinceCheck: false,
+  poops: [], pellets: [], hearts: [],
+  burnAt: 0, eggUntil: 0
+});
+
+// the pet lives on between visits (this module keeps it for the page's life)
+let PET = newPet();
+
+const heartsFrom = (pet, count) => [...Array(count).keys()].map(k => ({ id: thingId++, x: pet.x + (k - (count - 1) / 2) * 0.05, at: pet.clock + k * 120 }));
+
+// one step of its life
+const step = pet => {
+  const next = { ...pet, clock: pet.clock + TAMA.tickMs };
+  const now = next.clock;
+  const seconds = TAMA.tickMs / 1000;
+  next.hearts = next.hearts.filter(heart => now - heart.at < TAMA.heartMs);
+
+  // burning, then an egg, then a new one
+  if (next.mode == "burn") {
+    if (now - next.burnAt > TAMA.burnMs) return { ...next, mode: "egg", eggUntil: now + TAMA.eggMs, poops: [], pellets: [] };
+    return next;
+  }
+  if (next.mode == "egg") {
+    if (now >= next.eggUntil) {
+      const born = newPet(next.generation + 1);
+      return { ...born, hearts: heartsFrom({ ...born, clock: 0 }, 3) };
+    }
+    return next;
+  }
+
+  // food falls to the ground
+  next.pellets = next.pellets.map(pellet => ({ ...pellet, y: Math.min(TAMA.groundY, pellet.y + TAMA.pelletFallPerSecond * seconds) }));
+
+  // happiness: poop left about, or no care
+  if (now >= next.nextPoopCheckAt) {
+    if (next.poops.length) next.happiness -= 1;
+    next.nextPoopCheckAt = now + TAMA.poopCheckMs;
+  }
+  if (now >= next.nextCareCheckAt) {
+    if (!next.caredSinceCheck) next.happiness -= 1;
+    next.caredSinceCheck = false;
+    next.nextCareCheckAt = now + TAMA.careCheckMs;
+  }
+  if (next.happiness <= 0) return { ...next, happiness: 0, mode: "burn", burnAt: now };
+
+  // a poop, behind it
+  if (now >= next.nextPoopAt) {
+    next.poops = [...next.poops, { id: thingId++, x: Math.min(0.92, Math.max(0.08, next.x + (next.facing == "left" ? 0.07 : -0.07))) }];
+    next.nextPoopAt = now + between(TAMA.poopEveryMs);
+  }
+
+  // what it does: eat if there's food down, else speak now and then, else stroll and stop and turn
+  const food = next.pellets.filter(pellet => pellet.y >= TAMA.groundY - 0.01).sort((a, b) => Math.abs(a.x - next.x) - Math.abs(b.x - next.x))[0];
+  const isSpeaking = now < next.speakingUntil;
+  if (!isSpeaking && !food && now >= next.nextSpeakAt) {
+    next.speakingUntil = now + TAMA.speakMs;
+    next.nextSpeakAt = now + TAMA.speakMs + between(TAMA.speakEveryMs);
+  }
+  const walkTo = (x, perSecond) => {
+    const gap = x - next.x;
+    next.facing = gap < 0 ? "left" : "right";
+    next.x += Math.sign(gap) * Math.min(Math.abs(gap), perSecond * seconds);
+    if (now - next.frameAt >= TAMA.frameMs) {
+      next.frame = (next.frame + 1) % SHEET.frames;
+      next.frameAt = now;
+    }
+    return Math.abs(x - next.x) < 0.01;
+  };
+  if (food && !isSpeaking) {
+    if (walkTo(food.x, TAMA.hurryPerSecond)) {
+      next.pellets = next.pellets.filter(pellet => pellet !== food);
+      next.caredSinceCheck = true;
+    }
+  } else if (!isSpeaking) {
+    if (now >= next.modeUntil) {
+      // lazily: mostly stop and look about, sometimes amble somewhere
+      if (next.mode == "walk" || Math.random() < 0.55) {
+        next.mode = "idle";
+        next.turnsLeft = Math.floor(between([1, 4]));
+        next.modeUntil = now + between([700, 1300]);
+      } else {
+        next.mode = "walk";
+        next.targetX = between([0.12, 0.88]);
+        next.modeUntil = now + between([3000, 6000]);
+      }
+    }
+    if (next.mode == "walk") {
+      if (walkTo(next.targetX, TAMA.walkPerSecond)) next.modeUntil = now;
+    } else if (next.mode == "idle" && next.turnsLeft > 0 && now >= next.modeUntil - 200) {
+      // a turn the other way, and a beat
+      next.facing = next.facing == "left" ? "right" : "left";
+      next.turnsLeft -= 1;
+      next.frame = 0;
+      next.modeUntil = now + between([600, 1200]);
+    }
+  }
+  return next;
+};
+
+// the buttons on the side monitor's top border
+const act = (pet, label) => {
+  if (pet.mode == "burn" || pet.mode == "egg") return pet;
+  if (label == "Feed") {
+    const pellets = [...Array(3).keys()].map(() => ({ id: thingId++, x: between([0.12, 0.88]), y: 0.08 + Math.random() * 0.05 }));
+    return { ...pet, pellets: [...pet.pellets, ...pellets] };
+  }
+  if (label == "Pet") return { ...pet, caredSinceCheck: true, hearts: [...pet.hearts, ...heartsFrom(pet, 3)] };
+  if (label == "Clean up") {
+    if (!pet.poops.length) return pet;
+    const poops = pet.poops.slice(1);
+    return { ...pet, poops, hearts: poops.length ? pet.hearts : [...pet.hearts, ...heartsFrom(pet, 4)] };
+  }
+  return pet;
+};
+
+const Screen = styled.div`
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  color: ${TAMA.color};
+  font-family: gameboy;
+  text-shadow: ${TAMA.glow};
+  /* an old LCD's dot grid over it all */
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      repeating-linear-gradient(to right, rgba(0, 0, 0, 0.35) 0 1px, transparent 1px 4px),
+      repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.35) 0 1px, transparent 1px 4px);
+  }
+`;
+
+const Name = styled.div`
+  position: absolute;
+  top: 4%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 1.05cqw;
+  letter-spacing: 0.12cqw;
+`;
+
+const Generation = styled.span`
+  margin-left: 0.5cqw;
+  font-size: 0.6cqw;
+  opacity: 0.7;
+`;
+
+// the Kaiju: the sheet's shape, filled yellow
+const Body = styled.div`
+  position: absolute;
+  height: ${TAMA.kaijuHeight}cqw;
+  width: ${TAMA.kaijuHeight * SHEET.frameWidth / SHEET.frameHeight}cqw;
+  transform: translate(-50%, -100%);
+  background: ${TAMA.color};
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: ${SHEET.frames * 100}% ${SHEET.rows * 100}%;
+  mask-size: ${SHEET.frames * 100}% ${SHEET.rows * 100}%;
+  filter: drop-shadow(0 0 0.3cqw #ffb020);
+`;
+
+const Bubble = styled.div`
+  position: absolute;
+  transform: translate(-50%, -100%);
+  padding: 0.35cqw 0.55cqw;
+  font-size: 0.62cqw;
+  line-height: 1.4;
+  white-space: nowrap;
+  background: #050402;
+  border: 0.14cqw solid ${TAMA.color};
+  box-shadow: ${TAMA.glow};
+  &::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -0.7cqw;
+    width: 0.5cqw;
+    height: 0.55cqw;
+    transform: translateX(-50%);
+    background: ${TAMA.color};
+    clip-path: polygon(0 0, 100% 0, 30% 100%);
+  }
+`;
+
+const pelletGlow = keyframes`
+  from { opacity: 0.45; box-shadow: 0 0 0.2cqw #80EF80; }
+  to { opacity: 0.7; box-shadow: 0 0 0.45cqw #80EF80; }
+`;
+
+const Pellet = styled.div`
+  position: absolute;
+  width: 0.5cqw;
+  height: 0.5cqw;
+  transform: translate(-50%, -100%);
+  background: #80EF80;
+  animation: ${pelletGlow} 0.6s ease-in-out infinite alternate;
+`;
+
+const Poop = styled.div`
+  position: absolute;
+  transform: translate(-50%, -100%);
+  font-size: 1.6cqw;
+  line-height: 1;
+  opacity: 0.45;
+  text-shadow: none;
+  filter: grayscale(1) sepia(1) saturate(5) hue-rotate(10deg) brightness(1.5) drop-shadow(0 0 0.2cqw #ffb020);
+`;
+
+const heartUp = keyframes`
+  0% { transform: translate(-50%, 0) scale(0.6); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translate(-50%, -5cqw) scale(1.1); opacity: 0; }
+`;
+
+const Heart = styled.div`
+  position: absolute;
+  font-size: 1.2cqw;
+  animation: ${heartUp} ${TAMA.heartMs}ms ease-out forwards;
+`;
+
+const burn = keyframes`
+  from { -webkit-mask-position: 0 0; mask-position: 0 0; }
+  to { -webkit-mask-position: 100% 0; mask-position: 100% 0; }
+`;
+
+const Flames = styled.div`
+  position: absolute;
+  height: ${TAMA.kaijuHeight * 1.2}cqw;
+  width: ${TAMA.kaijuHeight * 1.2 * BURN.frameWidth / BURN.frameHeight}cqw;
+  transform: translate(-50%, -100%);
+  background: ${TAMA.color};
+  -webkit-mask: url(${BURN.src}) no-repeat;
+  mask: url(${BURN.src}) no-repeat;
+  -webkit-mask-size: ${BURN.frames * 100}% 100%;
+  mask-size: ${BURN.frames * 100}% 100%;
+  animation: ${burn} ${TAMA.burnMs}ms steps(${BURN.frames - 1}) forwards;
+  filter: drop-shadow(0 0 0.5cqw #ff8a20);
+`;
+
+const wobble = keyframes`
+  0%, 70%, 100% { transform: translate(-50%, -100%) rotate(0deg); }
+  78% { transform: translate(-50%, -100%) rotate(-10deg); }
+  86% { transform: translate(-50%, -100%) rotate(9deg); }
+  94% { transform: translate(-50%, -100%) rotate(-5deg); }
+`;
+
+const Egg = styled.div`
+  position: absolute;
+  width: 3cqw;
+  height: 3.8cqw;
+  border: 0.18cqw solid ${TAMA.color};
+  border-radius: 50% 50% 46% 46% / 60% 60% 40% 40%;
+  box-shadow: ${TAMA.glow}, inset ${TAMA.glow};
+  animation: ${wobble} 1.2s ease-in-out infinite;
+  /* a zig-zag crack */
+  &::after {
+    content: "";
+    position: absolute;
+    left: 15%;
+    right: 15%;
+    top: 42%;
+    height: 0.6cqw;
+    background: ${TAMA.color};
+    clip-path: polygon(0 50%, 15% 0, 30% 60%, 45% 10%, 60% 70%, 75% 20%, 90% 70%, 100% 40%, 100% 60%, 90% 90%, 75% 40%, 60% 90%, 45% 30%, 30% 80%, 15% 20%, 0 70%);
+  }
+`;
+
+const Meter = styled.div`
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 5%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8cqw;
+`;
+
+const MeterFace = styled.span`
+  font-family: "Segoe UI Symbol", "DejaVu Sans", sans-serif;
+  font-size: 1.6cqw;
+  line-height: 1;
+`;
+
+const MeterBox = styled.div`
+  display: flex;
+  gap: 0.3cqw;
+  padding: 0.3cqw;
+  border: 0.14cqw solid ${TAMA.color};
+  box-shadow: ${TAMA.glow};
+`;
+
+const Block = styled.div`
+  width: 0.9cqw;
+  height: 1.5cqw;
+  background: ${props => props.$isOn ? TAMA.color : "transparent"};
+  box-shadow: ${props => props.$isOn ? TAMA.glow : "none"};
+  outline: 0.08cqw solid rgba(255, 210, 74, 0.25);
+`;
+
+// 'actRef': the side monitor's buttons call actRef.current(label)
+export const Tamagotchi = ({ actRef }) => {
+  const [pet, setPet] = useState(PET);
+  useEffect(() => {
+    const tick = setInterval(() => {
+      PET = step(PET);
+      setPet(PET);
+    }, TAMA.tickMs);
+    return () => clearInterval(tick); // off screen: its clock stops, and it waits here as it was
+  }, []);
+  useImperativeHandle(actRef, () => label => {
+    PET = act(PET, label);
+    setPet(PET);
+  }, []);
+
+  const y = `${TAMA.groundY * 100}%`;
+  const isSpeaking = pet.clock < pet.speakingUntil && pet.mode != "burn" && pet.mode != "egg";
+  const row = pet.facing == "left" ? SHEET.rowLeft : SHEET.rowRight;
+  const maskPosition = `${(pet.frame / (SHEET.frames - 1)) * 100}% ${(row / (SHEET.rows - 1)) * 100}%`;
+  return (
+    <Screen>
+      <Name>{pet.name.toUpperCase()}<Generation>{pet.generation > 1 ? `gen ${pet.generation}` : ""}</Generation></Name>
+      {pet.pellets.map(({ id, x, y: pelletY }) => <Pellet key={id} style={{ left: `${x * 100}%`, top: `${pelletY * 100}%` }} />)}
+      {pet.poops.map(({ id, x }) => <Poop key={id} style={{ left: `${x * 100}%`, top: y }}>💩</Poop>)}
+      {pet.mode == "burn" && <Flames style={{ left: `${pet.x * 100}%`, top: y }} />}
+      {pet.mode == "egg" && <Egg style={{ left: `${pet.x * 100}%`, top: y }} />}
+      {pet.mode != "burn" && pet.mode != "egg" && (
+        <Body style={{ left: `${pet.x * 100}%`, top: y, WebkitMaskImage: `url(${SHEET.src})`, maskImage: `url(${SHEET.src})`, WebkitMaskPosition: maskPosition, maskPosition }} />
+      )}
+      {isSpeaking && <Bubble style={{ left: `${Math.min(0.75, Math.max(0.25, pet.x)) * 100}%`, top: `calc(${y} - ${TAMA.kaijuHeight + 1.2}cqw)` }}>Pick three abilities</Bubble>}
+      {pet.hearts.filter(({ at }) => pet.clock >= at).map(({ id, x }) => (
+        <Heart key={id} style={{ left: `${x * 100}%`, top: `calc(${y} - ${TAMA.kaijuHeight}cqw)` }}>♥</Heart>
+      ))}
+      <Meter>
+        <MeterFace>☹</MeterFace>
+        <MeterBox>{[...Array(TAMA.happinessMax).keys()].map(k => <Block key={k} $isOn={k < pet.happiness} />)}</MeterBox>
+        <MeterFace>☺</MeterFace>
+      </Meter>
+    </Screen>
+  );
+};
+
+// (for its test)
+export const TAMAGOTCHI_RULES = { TAMA, step, act, newPet };

@@ -5,6 +5,7 @@ import { GlobalSettingsContext } from 'Home';
 import { getSciFiClass } from "../DataClasses/sciFiClasses";
 import { getIsSkillOpen, OUT_OF_PLAY_POWERS } from "../DataClasses/Avatars";
 import { PIECES_INFO } from "Utils/gameState";
+import { Tamagotchi } from "./Tamagotchi";
 import { CrtScreen, ScaleToFit } from "Components/CrtPower";
 import { CASING_SHEEN, TV_LOOK } from "./GameBoard/PlayWindow";
 
@@ -878,21 +879,24 @@ export const AbilityPicker = ({
     return null; // (no "Choose 3 powers" here: Jamie; "Pick three abilities" is on the main screen)
   };
 
-  const tamagotchi = undefined;
+  // the Kaiju tamagotchi (Jamie): on the side monitor while nothing's hovered and three aren't picked; its buttons
+  // work only then (with the class showing, they're off, and its clock waits)
+  const tamaRef = useRef(null);
+  const isTamaShowing = hovered === undefined && !playerClass;
   const beside = (
     <>
       <Wires delayMs={MINI_TIMING.wiresAtMs} />
       <MiniMonitor>
         <MiniScreen>
           <CrtScreen isOn={isMiniOn}>
-            <Info $isClass={hovered === undefined && !!playerClass}>{getInfo()}</Info>
+            {isTamaShowing ? <Tamagotchi actRef={tamaRef} /> : <Info $isClass={hovered === undefined && !!playerClass}>{getInfo()}</Info>}
           </CrtScreen>
           <MiniGlass />
         </MiniScreen>
         <MiniBrow>
-          {/* the tamagotchi's (its own phase): off while the class shows */}
+          {/* the tamagotchi's: off while the class shows */}
           {["Feed", "Pet", "Clean up"].map(label => (
-            <BrowButton key={label} disabled={!!playerClass && hovered === undefined} onClick={() => tamagotchi && tamagotchi.act(label)}>{label}</BrowButton>
+            <BrowButton key={label} disabled={!isTamaShowing} onClick={() => tamaRef.current && tamaRef.current(label)}>{label}</BrowButton>
           ))}
         </MiniBrow>
       </MiniMonitor>
