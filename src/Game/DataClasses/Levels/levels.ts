@@ -331,7 +331,8 @@ const buildLevel = (editorFile, name, accentColor, foregroundLayers = [], isWalk
   so the tiles are the Peninsula's size on screen (same grid, same world, same camera zoom); no picture under it.
   Kaiju come in from off the left or right edge, whichever is nearer their edge tile, every 5 to 10 s.
 */
-export const buildBattlePreviewLevel = ({ columns = 11, rows = 6 } = {}): LevelConfig => {
+// 'aspect': the box it's shown in, width to height (Jamie's box on the side screen), so the world fills it
+export const buildBattlePreviewLevel = ({ columns = 16, rows = 5, aspect = 1.87 } = {}): LevelConfig => {
   const { grid } = peninsula as any;
   // (from the grid's corner, in a world just the board's size, seen whole: its edges always in view. Jamie)
   const firstI = 0;
@@ -340,11 +341,15 @@ export const buildBattlePreviewLevel = ({ columns = 11, rows = 6 } = {}): LevelC
   for (let i = firstI; i < firstI + columns; i++) for (let j = firstJ; j < firstJ + rows; j++) base.push({ i, j });
   const edges = base.filter(({ i }) => i == firstI || i == firstI + columns - 1);
   const middle = { i: firstI + Math.floor(columns / 2), j: firstJ + Math.floor(rows / 2) };
-  // (a margin of empty world round it, so the whole board sits smaller in its box: Jamie, still too close)
-  const margin = { x: 3 * grid.colStep, y: 1.5 * grid.rowStep };
-  const sceneWidth = grid.originX + (columns + 0.5) * grid.colStep + 2 * margin.x;
-  const sceneHeight = grid.originY + (rows + 1.2) * grid.rowStep + 2 * margin.y;
-  const shiftedGrid = { ...grid, originX: grid.originX + margin.x, originY: grid.originY + margin.y };
+  // room round the board: headroom above (a character on the top row stands well above it: Jamie saw a head cut off),
+  // a little below, and at the sides as much as makes the world the box's shape
+  const headroom = 2.6 * grid.rowStep;
+  const footroom = 0.5 * grid.rowStep;
+  const sceneHeight = grid.originY + (rows + 1.2) * grid.rowStep + headroom + footroom;
+  const boardWidth = grid.originX + (columns + 0.5) * grid.colStep;
+  const sideroom = Math.max(grid.colStep, (aspect * sceneHeight - boardWidth) / 2);
+  const sceneWidth = boardWidth + 2 * sideroom;
+  const shiftedGrid = { ...grid, originX: grid.originX + sideroom, originY: grid.originY + headroom };
   const file = { ...(peninsula as any), grid: shiftedGrid, id: 'battlePreview', sceneWidth, sceneHeight, tileLinks: [], tileSets: { base, kaijuEntry: edges, spawn: [middle], goal: [], radar: [] } };
   const level = buildLevel(file, 'Battle preview', '#5a8a7a');
   const rowY = j => shiftedGrid.originY + (j + 0.5) * grid.rowStep;

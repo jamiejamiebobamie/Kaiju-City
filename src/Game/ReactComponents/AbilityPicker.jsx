@@ -698,12 +698,13 @@ const Wires = ({ delayMs, wires = WIRES }) => {
 const BATTLE = { top: 0.5, hex: { columns: 9, rows: 5 } }; // 'top': where it starts, of the screen's height
 
 // the live preview's box: the game's board inside it, seen through it
+// (where Jamie drew it on the side screen)
 const BattleBox = styled.div`
   position: absolute;
-  left: 4%;
-  right: 4%;
-  top: ${BATTLE.top * 100 + 2}%;
-  bottom: 14%;
+  left: 12.3%;
+  right: 11.1%;
+  top: 53.3%;
+  bottom: 10.2%;
   overflow: hidden;
   border-radius: 0.4cqw;
   box-shadow: inset 0 0 0.6cqw rgba(0, 0, 0, 0.8);
@@ -755,10 +756,12 @@ const TitleRow = styled.div`
 `;
 
 // the class's three icons: larger, at the top right of the side screen (Jamie; were at the bottom), spaced apart
+// (ending at the screen's middle, centered 11% down: Jamie's lines)
 const IconGroup = styled.div`
   position: absolute;
-  right: 1.3cqw;
-  top: 1cqw;
+  right: 50%;
+  top: 11%;
+  transform: translateY(-50%);
   display: flex;
   gap: 1.3cqw;
   i { font-size: 2.6cqw; }
