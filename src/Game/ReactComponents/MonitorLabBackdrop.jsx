@@ -17,11 +17,11 @@ const BUBBLES = { src: "/spritesheet/disc_bubbles.png", frames: 7, frameWidth: 1
 const HANDOVER_MS = 1100; // the avatar select's slide (CHOICE.slideMs)
 
 export const BACKDROP_SPOTS = {
-  guy: { x: 0.26, y: 0.385 },
-  girl: { x: 0.74, y: 0.385 },
+  guy: { x: 0.26, y: 0.358 }, // (up with the avatars, their heads to Jamie's line; were 0.385)
+  girl: { x: 0.74, y: 0.358 },
   figureHeight: 0.217, // the figures on the avatar select, of the screen's height
   tankHeight: 0.5,
-  tankRaise: 0.06, // the tank's middle above the figure's, so the avatar stands low in it (Jamie)
+  tankRaise: 0.033, // the tank's middle above the figure's (the tanks where they were, the avatars higher in them)
   light: { width: 0.2, height: 0.3 } // a pool of light's size, of the screen
 };
 const LIGHT = { dim: 0.6, lit: 0.95 }; // how much a pool of light lifts the darkness: at rest, and hovered or chosen

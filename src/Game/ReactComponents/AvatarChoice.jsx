@@ -70,6 +70,7 @@ const idle = keyframes`
 // glowing green (Jamie, 2026-11-12: "just want to see")
 const SpriteBox = styled.div`
   position: relative;
+  top: -18px; /* up, their heads to Jamie's line in the tanks (about 21 screen pixels) */
   width: 152px;
   height: 230px;
   ${props => leaveLayer("-170vw", props.$isLeaving)}
