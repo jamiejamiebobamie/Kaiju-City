@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from "react";
 import styled, { css, keyframes } from "styled-components";
 import { ICON_LOOKUP as PASSIVE_ICONS, PIECES_INFO } from "Utils/gameState";
 import { getAvatarColor } from "Game/DataClasses/Avatars";
-import { FloatingEffect } from "Game/ReactComponents/Game";
 import { HUD_LAYERS, HUD_LOOK, HUD_VARIANTS, PLATES } from "./hudSpec";
 
 /*
@@ -28,7 +27,7 @@ const getPortraitSrc = avatar => avatar == "guy" ? "/player_avatar.png" : avatar
 
 const Root = styled.div`
   position: relative;
-  align-self: flex-end;
+  transition: width 400ms ease, height 400ms ease; /* (a size change eases: a crowd's compact HUDs) */
   pointer-events: none; /* only the HUD's own buttons take clicks; the rest passes to the board */
 `;
 
@@ -38,6 +37,7 @@ const Art = styled.div`
   left: 0;
   top: 0;
   transform-origin: 0 0;
+  transition: transform 400ms ease;
 `;
 
 const Part = styled.div`
@@ -264,8 +264,7 @@ export const Hud = ({ pd, variant = "player", isPaused }) => {
   const color = getHudColor(pd.gender);
   const abilities = pd.abilities || [];
   return (
-    <FloatingEffect styles={`display: flex; flex-direction: column; animation-delay: ${variant == "player" ? 2 : 3}s;`} duration={variant == "player" ? "5.5" : "5"}>
-      <Root style={{ width: `${plate.width * scale}px`, height: `${plate.height * scale}px`, marginBottom: `${HUD_LOOK.gap}px` }}>
+      <Root style={{ width: `${plate.width * scale}px`, height: `${plate.height * scale}px` }}>
         <Art style={{ width: `${plate.width}px`, height: `${plate.height}px`, transform: `scale(${scale})`, "--color": color }}>
           <Plate style={{ ...place({ x: 0, y: 0, width: plate.width, height: plate.height }, "plateBack"), backgroundImage: `url(${plate.back})`, filter: HUD_LOOK.plateBackFilter }} />
           <PortraitBack style={place(plate.portrait, "portraitBack")} />
@@ -282,6 +281,5 @@ export const Hud = ({ pd, variant = "player", isPaused }) => {
           <Plate style={{ ...place({ x: 0, y: 0, width: plate.width, height: plate.height }, "plateFront"), backgroundImage: `url(${plate.front})` }} />
         </Art>
       </Root>
-    </FloatingEffect>
   );
 };
