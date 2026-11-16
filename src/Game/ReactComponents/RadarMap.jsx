@@ -16,6 +16,8 @@ export const RADAR = {
   color: "#3dff7a",
   sweepSeconds: 4, // one turn
   sweepTrail: 0.9, // the fading light behind the sweep, in radians
+  // the outline lit by the sweep as it passes (Jamie, 2026-11-15), then fading over the turn, never below 'outlineLeast'
+  outlineLeast: 0.3, outlineFadeShare: 0.45, outlineSteps: 8,
   rings: 4, // range rings round the Lab
   dotColor: "#ff4a4a", // red, glowing (Jamie, 2026-11-10; was a soft purple)
   dotGlow: "#ff1a1a",
@@ -206,19 +208,34 @@ export const RadarMap = ({ dotCount = 0, alarmAtMs = undefined, radarTiles = und
       ctx.lineWidth = 1.6;
       ctx.shadowColor = RADAR.color;
       ctx.shadowBlur = 6;
-      ctx.beginPath();
+      // each bit lit as the sweep crosses it and fading after, by how long since (in a few steps, drawn together)
+      const getLight = point => {
+        const seen = Math.atan2(point.y - lab.y, point.x - lab.x);
+        const since = ((angle - seen) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) / (Math.PI * 2); // of a turn
+        const light = RADAR.outlineLeast + (1 - RADAR.outlineLeast) * Math.exp(-since / RADAR.outlineFadeShare);
+        return Math.min(RADAR.outlineSteps - 1, Math.floor(light * RADAR.outlineSteps));
+      };
+      const lit = Array.from({ length: RADAR.outlineSteps }, () => []);
       outline.edges.forEach(([a, b]) => {
         const from = toScreen(a);
         const to = toScreen(b);
-        ctx.moveTo(from.x, from.y);
-        ctx.lineTo(to.x, to.y);
+        lit[getLight({ x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 })].push([from, to]);
       });
       outline.runs.forEach(({ from, dir }) => {
         const start = toScreen(from);
-        ctx.moveTo(start.x, start.y);
-        ctx.lineTo(start.x + dir.x * reach, start.y + dir.y * reach);
+        lit[getLight(start)].push([start, { x: start.x + dir.x * reach, y: start.y + dir.y * reach }]);
       });
-      ctx.stroke();
+      lit.forEach((lines, step) => {
+        if (!lines.length) return;
+        ctx.globalAlpha = (step + 1) / RADAR.outlineSteps;
+        ctx.beginPath();
+        lines.forEach(([from, to]) => {
+          ctx.moveTo(from.x, from.y);
+          ctx.lineTo(to.x, to.y);
+        });
+        ctx.stroke();
+      });
+      ctx.globalAlpha = 1;
       // the Lab
       ctx.fillStyle = RADAR.color;
       ctx.beginPath();
