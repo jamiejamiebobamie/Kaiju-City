@@ -2,6 +2,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import { Hud } from "./Hud";
 import { HUD_LOOK, HUD_VARIANTS, PLATES } from "./hudSpec";
+import { triggerHudExplosion } from "./HudExplosions";
 
 /*
   The HUDs fly (Jamie, 2026-11-16, phase 2): each is a little drone with a place in the column (its slot). One small
@@ -20,7 +21,10 @@ export const FLOCK = {
   exit: { to: { x: 640, y: -360 }, thrust: 2600, staggerMs: 110 },
   hover: { amplitude: 2.6, seconds: 3.4 }, // the drift round the slot
   tilt: { perSpeed: 0.035, max: 9, spring: 60, damping: 10 }, // degrees per px/s of sideways speed
-  bump: { push: 900, margin: 4 }, // shoving apart when they touch
+  // shoving apart when they touch: only settled HUDs (near their slots), an overlap counted up to 'maxOverlap' px, and
+  // a top speed, so a reflow (sizes changing, a crowd arriving) never flings one off (it did)
+  bump: { push: 900, margin: 4, maxOverlap: 10, settledWithin: 60 },
+  maxSpeed: 1400,
   jostle: { everyMs: [2200, 5200], kick: 26 }, // now and then, a small knock (air, or a neighbor)
   jets: {
     idlePerSecond: 6, // the hovering trickle: faint and small, so it never distracts
@@ -38,6 +42,20 @@ export const FLOCK = {
     never over the monitor, and never taller than the frame (it shrinks to fit). Shares of the frame's width.
   */
   place: { gap: 0.012, top: 0.01 },
+  /*
+    Damage (phase 4, Jamie): as its avatar's health goes, a HUD malfunctions more: smoke rising off its console (grey,
+    brown, black) and bursts of sparks, both behind it, so its readouts stay clear. 'from': the health share where it
+    starts. Dead, it falls: slowly at first, then plummeting, tumbling off to the lower right, smoking hard; out of
+    shot, it explodes (HudExplosions).
+  */
+  damage: {
+    from: 0.85,
+    smokePerSecond: 30,
+    smoke: { rise: [40, 95], lifeMs: [1100, 2100], size: [8, 16], growth: 2.6, colors: ["96, 94, 92", "84, 66, 52", "34, 33, 36"], alpha: 0.5 },
+    burstsPerSecond: 0.9,
+    spark: { perBurst: [5, 11], speed: [150, 360], lifeMs: [260, 560], gravity: 900, color: "255, 214, 130" }
+  },
+  fall: { gravity: [260, 2600], drift: [60, 140], spin: [30, 220], smokePerSecond: 70 },
   /*
     The wires (Jamie): once a HUD has settled, a cable slithers from its left end to its socket on the casing's right
     side, sparking as it plugs in; leaving, the HUD rips it out. Sockets down the casing's side, as shares of its
@@ -57,6 +75,24 @@ export const FLOCK = {
 };
 
 const between = ([low, high]) => low + Math.random() * (high - low);
+/*
+  The passives' smoke rises above the top HUD (phase 5, Jamie: it ran off the top of the shot): how far above the
+  player's HUD it reaches, in the column's px, so the column can start that much lower.
+*/
+const getSmokeHeadroom = () => {
+  const { plate: plateId, scale } = HUD_VARIANTS.player;
+  const { smoke } = HUD_LOOK;
+  const highest = Math.min(...PLATES[plateId].passives.map(box => {
+    const height = box.width * smoke.widthInSockets * (smoke.frameHeight / smoke.frameWidth);
+    return box.y + box.height * 0.6 - height;
+  }));
+  return Math.max(0, -highest * scale);
+};
+const SMOKE_HEADROOM = getSmokeHeadroom();
+const getDamage = pd => {
+  const health = pd && pd.maxLives ? pd.lives / pd.maxLives : 1;
+  return Math.max(0, Math.min(1, (FLOCK.damage.from - health) / FLOCK.damage.from));
+};
 const sizeOf = variant => {
   const { plate, scale } = HUD_VARIANTS[variant];
   return { width: PLATES[plate].width * scale, height: PLATES[plate].height * scale };
@@ -110,13 +146,17 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused }) => {
       const shownKeys = new Set(isShowing ? order.map(({ key }) => key) : []);
       const next = (isShowing ? order : []).map(entry => ({ ...entry, isLeaving: false }));
       previous.forEach(entry => {
-        if (!shownKeys.has(entry.key)) next.push({ ...entry, isLeaving: true });
+        // gone from the order while the HUDs still show: its avatar died, and it falls (not flying off)
+        if (!shownKeys.has(entry.key)) next.push({ ...entry, isLeaving: true, isFalling: entry.isFalling ?? (isShowing && !entry.isLeaving) });
       });
       return next;
     });
   }, [isShowing, order.map(({ key, variant, pd }) => `${key}:${variant}:${pd.lives}:${pd.isDead}`).join("|")]);
   // (the HUDs' contents update every frame from their own data: the order's identity is enough above)
   const pdByKey = new Map(order.map(entry => [entry.key, entry.pd]));
+  const pdRef = useRef(pdByKey);
+  pdRef.current = pdByKey;
+  const placeRef = useRef(undefined); // the column's place this frame: { frameBox, left, top, columnScale }
 
   useEffect(() => {
     let frameId;
@@ -159,10 +199,13 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused }) => {
         } else {
           left = frameBox.width * 0.869 - FLOCK.columnWidth * columnScale; // (as it was, with no monitor about)
         }
-        columnScale = Math.max(0.2, Math.min(columnScale, (frameBox.height - 2 * top) / Math.max(y, 1)));
-        column.style.transform = `translate(${left}px, ${top}px) scale(${columnScale})`;
+        // (and its passives' smoke, room above the top HUD)
+        columnScale = Math.max(0.2, Math.min(columnScale, (frameBox.height - 2 * top) / Math.max(y + SMOKE_HEADROOM, 1)));
+        const columnTop = top + SMOKE_HEADROOM * columnScale;
+        column.style.transform = `translate(${left}px, ${columnTop}px) scale(${columnScale})`;
+        placeRef.current = { frameBox, left, top: columnTop, columnScale };
         if (casingBox && casingBox.width > 0) {
-          const toColumn = (px, py) => ({ x: (px - frameBox.left - left) / columnScale, y: (py - frameBox.top - top) / columnScale });
+          const toColumn = (px, py) => ({ x: (px - frameBox.left - left) / columnScale, y: (py - frameBox.top - columnTop) / columnScale });
           sockets = [...Array(8).keys()].map(k => toColumn(casingBox.right - 4, casingBox.top + casingBox.height * (FLOCK.wires.sockets.first + FLOCK.wires.sockets.step * k)));
         }
       }
@@ -184,7 +227,25 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused }) => {
         if (!body || now < body.born) return;
         let ax;
         let ay;
-        if (entry.isLeaving) {
+        if (entry.isFalling) {
+          // dead: falling, slow and then plummeting, off to the lower right; out of shot, it explodes
+          body.fallStart = body.fallStart ?? now;
+          const fallen = Math.min(1, (now - body.fallStart) / 1600);
+          const { gravity, drift } = FLOCK.fall;
+          ax = drift[0] + (drift[1] - drift[0]) * fallen - body.vx * 0.4;
+          ay = gravity[0] + (gravity[1] - gravity[0]) * fallen * fallen;
+          const place = placeRef.current;
+          if (place) {
+            const screen = {
+              x: place.frameBox.left + place.left + (body.x + slot.width / 2) * place.columnScale,
+              y: place.frameBox.top + place.top + body.y * place.columnScale
+            };
+            if (screen.y > place.frameBox.bottom + 20 || screen.x > place.frameBox.right + slot.width * place.columnScale) {
+              gone.push(entry.key);
+              triggerHudExplosion({ x: Math.min(screen.x, place.frameBox.right - 170), y: window.innerHeight });
+            }
+          }
+        } else if (entry.isLeaving) {
           // thrust off, up and to the right
           if (body.leftAt === undefined) body.leftAt = now + slot.leavingIndex * FLOCK.exit.staggerMs;
           if (now < body.leftAt) {
@@ -216,15 +277,19 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused }) => {
         body.vy += ay * dt;
       });
       // shoving: two that overlap push each other apart, and pass on some of their speed
-      const flying = list.filter(entry => bodies.current.has(entry.key) && now >= bodies.current.get(entry.key).born && !entry.isLeaving);
+      const flying = list.filter(entry => {
+        const body = bodies.current.get(entry.key);
+        const slot = slots.get(entry.key);
+        return body && now >= body.born && !entry.isLeaving && Math.hypot(body.x - slot.x, body.y - slot.y) < FLOCK.bump.settledWithin;
+      });
       for (let i = 0; i < flying.length; i++) {
         for (let j = i + 1; j < flying.length; j++) {
           const a = bodies.current.get(flying[i].key);
           const b = bodies.current.get(flying[j].key);
           const sa = slots.get(flying[i].key);
           const sb = slots.get(flying[j].key);
-          const overlapX = Math.min(a.x + sa.width, b.x + sb.width) - Math.max(a.x, b.x) + FLOCK.bump.margin;
-          const overlapY = Math.min(a.y + sa.height, b.y + sb.height) - Math.max(a.y, b.y) + FLOCK.bump.margin;
+          const overlapX = Math.min(FLOCK.bump.maxOverlap, Math.min(a.x + sa.width, b.x + sb.width) - Math.max(a.x, b.x) + FLOCK.bump.margin);
+          const overlapY = Math.min(FLOCK.bump.maxOverlap, Math.min(a.y + sa.height, b.y + sb.height) - Math.max(a.y, b.y) + FLOCK.bump.margin);
           if (overlapX > 0 && overlapY > 0) {
             // apart along the shallower overlap
             if (overlapY < overlapX) {
@@ -247,7 +312,18 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused }) => {
         const body = bodies.current.get(entry.key);
         const element = elements.current.get(entry.key);
         if (!body) return;
-        if (now >= body.born) {
+        if (now >= body.born && entry.isFalling) {
+          // tumbling as it falls, faster and faster
+          body.x += body.vx * dt;
+          body.y += body.vy * dt;
+          const fallen = Math.min(1, (now - (body.fallStart ?? now)) / 1600);
+          body.tilt += (FLOCK.fall.spin[0] + (FLOCK.fall.spin[1] - FLOCK.fall.spin[0]) * fallen) * dt;
+        } else if (now >= body.born) {
+          const speed = Math.hypot(body.vx, body.vy);
+          if (speed > FLOCK.maxSpeed && !entry.isLeaving) {
+            body.vx *= FLOCK.maxSpeed / speed;
+            body.vy *= FLOCK.maxSpeed / speed;
+          }
           body.x += body.vx * dt;
           body.y += body.vy * dt;
           const tiltTarget = Math.max(-FLOCK.tilt.max, Math.min(FLOCK.tilt.max, body.vx * FLOCK.tilt.perSpeed));
@@ -261,6 +337,33 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused }) => {
         // the jets: under its two ends, down, and away from the way it's going
         if (now < body.born || isPaused) return;
         const slot = slots.get(entry.key);
+        const pd = pdRef.current.get(entry.key) || entry.pd;
+        const health = pd && pd.maxLives ? pd.lives / pd.maxLives : 1;
+        const damage = entry.isFalling ? 1 : entry.isLeaving ? 0 : Math.max(0, Math.min(1, (FLOCK.damage.from - health) / FLOCK.damage.from));
+        body.damage = damage;
+        if (damage > 0) {
+          const { smoke, spark } = FLOCK.damage;
+          let smokes = (entry.isFalling ? FLOCK.fall.smokePerSecond : FLOCK.damage.smokePerSecond * damage) * dt;
+          while (smokes > 0) {
+            if (smokes < 1 && Math.random() > smokes) break;
+            smokes -= 1;
+            particles.push({
+              kind: "smoke", x: body.x + slot.width * between([0.08, 0.7]), y: body.y + slot.height * between([0.35, 0.85]),
+              vx: between([-12, 22]), vy: -between(smoke.rise), life: between(smoke.lifeMs), age: 0, size: between(smoke.size),
+              color: smoke.colors[Math.floor(Math.random() * smoke.colors.length)]
+            });
+          }
+          if (Math.random() < FLOCK.damage.burstsPerSecond * damage * dt * (entry.isFalling ? 3 : 1)) {
+            const edge = { x: body.x + slot.width * between([0.05, 0.95]), y: body.y + (Math.random() < 0.5 ? 0 : slot.height * 0.9) };
+            const count = Math.round(between(spark.perBurst));
+            for (let k = 0; k < count; k++) {
+              const angle = -Math.PI / 2 + (Math.random() - 0.5) * 2.4;
+              const speed = between(spark.speed);
+              particles.push({ kind: "spark", x: edge.x, y: edge.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: between(spark.lifeMs), age: 0 });
+            }
+          }
+        }
+        if (entry.isFalling) return; // (no jets: it's dead)
         const speed = Math.hypot(body.vx, body.vy);
         const isMoving = speed > FLOCK.jets.movingFrom;
         const rate = isMoving ? FLOCK.jets.movingPerSecond : FLOCK.jets.idlePerSecond;
@@ -295,11 +398,38 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused }) => {
             particles.splice(k, 1);
             continue;
           }
+          const share = p.age / p.life;
+          if (p.kind == "spark") {
+            const { spark } = FLOCK.damage;
+            p.vy += spark.gravity * dt;
+            const from = { x: p.x, y: p.y };
+            p.x += p.vx * dt;
+            p.y += p.vy * dt;
+            ctx.strokeStyle = `rgba(${spark.color}, ${1 - share})`;
+            ctx.lineWidth = 2;
+            ctx.lineCap = "round";
+            ctx.beginPath();
+            ctx.moveTo(from.x + JETS_MARGIN, from.y + JETS_MARGIN);
+            ctx.lineTo(p.x + JETS_MARGIN, p.y + JETS_MARGIN);
+            ctx.stroke();
+            continue;
+          }
+          if (p.kind == "smoke") {
+            const { smoke } = FLOCK.damage;
+            p.x += p.vx * dt;
+            p.y += p.vy * dt;
+            p.vy *= 1 - 0.4 * dt;
+            const radius = p.size * (0.6 + share * smoke.growth);
+            ctx.fillStyle = `rgba(${p.color}, ${smoke.alpha * (share < 0.15 ? share / 0.15 : 1 - (share - 0.15) / 0.85)})`;
+            ctx.beginPath();
+            ctx.arc(p.x + JETS_MARGIN, p.y + JETS_MARGIN, radius, 0, Math.PI * 2);
+            ctx.fill();
+            continue;
+          }
           p.x += p.vx * dt;
           p.y += p.vy * dt;
           p.vx *= 1 - 1.5 * dt;
           p.vy *= 1 - 1.2 * dt;
-          const share = p.age / p.life;
           const radius = p.size * (0.5 + share * 1.6);
           ctx.fillStyle = `rgba(${FLOCK.jets.color}, ${0.55 * p.strength * (1 - share)})`;
           ctx.beginPath();
@@ -408,7 +538,12 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused }) => {
       <JetCanvas ref={canvasRef} width={FLOCK.columnWidth + JETS_MARGIN * 2} height={1400 + JETS_MARGIN} />
       {entries.map(entry => (
         <Body key={entry.key} ref={element => { if (element) elements.current.set(entry.key, element); else elements.current.delete(entry.key); }} style={{ visibility: "hidden" }}>
-          <Hud pd={pdByKey.get(entry.key) || entry.pd} variant={entry.variant} isPaused={isPaused} />
+          <Hud
+            pd={entry.isFalling ? { ...entry.pd, lives: 0, isDead: true } : pdByKey.get(entry.key) || entry.pd}
+            variant={entry.variant}
+            isPaused={isPaused}
+            damage={entry.isFalling ? 1 : getDamage(pdByKey.get(entry.key) || entry.pd)}
+          />
         </Body>
       ))}
     </Column>

@@ -30,6 +30,7 @@ import { holdTamagotchi } from "./Tamagotchi";
 import { FOCUS_MOVE, getFocusTransform, MonitorLabBackdrop } from "./MonitorLabBackdrop";
 import { ROOM_HANDOFF, RoomBackdrop } from "Components/RoomScene";
 import { ZOOM_BACK } from "Components/ZoomThrough";
+import { HudExplosions } from "./UI/Hud/HudExplosions";
 import { useKeyPress } from "Utils/utils";
 import { ABILITY_KEY_CODES, GAME_TICK, PIECES_INFO, TILE_STATUSES_AND_ABILITY_DATA } from "Utils/gameState";
 import { FullscreenPage } from "Components/FullscreenPage.jsx";
@@ -1499,6 +1500,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const preGameMonitor = (
     <GameArea style={pullStyle}>
       <RoomBackdrop />
+          <HudExplosions />
       <GameFrame data-game-frame $shift={monitorShift == 'in' || monitorShift == 'fade' ? monitorShift : undefined}>
         <PlayWindow playWindow={preGameWindow} setPlayWindow={updatePlayWindow} isAdjusting={false} isOpen={false} isPoweredOn={isMonitorOn} isClipped hasGlare buttons={getBezelButtons({
           isPauseOff: true, // nothing to pause yet
@@ -1586,6 +1588,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
       : radioLines ?
         <GameArea style={pullStyle}>
           <RoomBackdrop />
+          <HudExplosions />
           <GameFrame data-game-frame>
             {/* the alarm only when the call sends the team into a Kaiju fight */}
             {/* aside, for the call's dialogue panel beside it (Jamie: the panel moves the monitor too) */}
@@ -1623,6 +1626,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
         />
         : !gameManager.current ? null : (<GameArea style={pullStyle}>
           <RoomBackdrop />
+          <HudExplosions />
           {import.meta.env.DEV && !isDevHidden && (
             <PhaseToggles>
               <button onClick={() => setIsDevHidden(true)}>Hide dev options (F2)</button>

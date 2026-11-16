@@ -48,12 +48,32 @@ const Plate = styled(Part)`
   background-size: 100% 100%;
 `;
 
+// damaged (phase 4, Jamie): the metal and the portrait's disc flicker, dipping by '--dip' (the readouts never do)
+const malfunction = keyframes`
+  0%, 100% { filter: brightness(1); }
+  7% { filter: brightness(calc(1 - var(--dip))); }
+  9% { filter: brightness(1.15); }
+  11% { filter: brightness(1); }
+  46% { filter: brightness(1); }
+  48% { filter: brightness(calc(1 - var(--dip) * 0.6)); }
+  51% { filter: brightness(1); }
+  83% { filter: brightness(calc(1 - var(--dip) * 0.8)); }
+  85% { filter: brightness(1); }
+`;
+const flickering = css`
+  animation: ${malfunction} var(--flicker-ms) steps(1) infinite;
+`;
+const FlickerPlate = styled(Plate)`
+  ${props => props.$isDamaged && flickering}
+`;
+
 // ---- the portrait: a circuit disc in the avatar's color, its glow, and the figure ----
 const discTurn = keyframes`
   from { -webkit-mask-position: 0 50%; mask-position: 0 50%; }
   to { -webkit-mask-position: 100% 50%; mask-position: 100% 50%; }
 `;
 const PortraitBack = styled(Part)`
+  ${props => props.$isDamaged && flickering}
   border-radius: 50%;
   overflow: hidden;
   background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--color) ${HUD_LOOK.portraitGlow * 100}%, transparent), #05070a 72%);
@@ -258,7 +278,10 @@ const Passive = ({ box, ability }) => {
   'pd': the piece's HUD data (GameBoardPieceBase.getUiState); 'variant': "player", "teammate" or "compact"
   (HUD_VARIANTS); 'isControlled': the one the player plays as (only its powers show their keys).
 */
-export const Hud = ({ pd, variant = "player", isPaused }) => {
+// 'damage': 0 (whole) to 1 (dead): how much its decorative layers flicker
+export const Hud = ({ pd, variant = "player", isPaused, damage = 0 }) => {
+  const isDamaged = damage > 0.05;
+  const damageStyle = isDamaged ? { "--dip": String(0.15 + 0.3 * damage), "--flicker-ms": `${Math.round(2600 - 1700 * damage)}ms` } : undefined;
   const { plate: plateId, scale } = HUD_VARIANTS[variant];
   const plate = PLATES[plateId];
   const color = getHudColor(pd.gender);
@@ -267,7 +290,7 @@ export const Hud = ({ pd, variant = "player", isPaused }) => {
       <Root style={{ width: `${plate.width * scale}px`, height: `${plate.height * scale}px` }}>
         <Art style={{ width: `${plate.width}px`, height: `${plate.height}px`, transform: `scale(${scale})`, "--color": color }}>
           <Plate style={{ ...place({ x: 0, y: 0, width: plate.width, height: plate.height }, "plateBack"), backgroundImage: `url(${plate.back})`, filter: HUD_LOOK.plateBackFilter }} />
-          <PortraitBack style={place(plate.portrait, "portraitBack")} />
+          <PortraitBack $isDamaged={isDamaged} style={{ ...place(plate.portrait, "portraitBack"), ...damageStyle }} />
           <Portrait style={{ ...place(plate.portrait, "portrait"), backgroundImage: `url(${getPortraitSrc(pd.gender)})` }} />
           {pd.isRewardPulse && <RewardGlow style={place(plate.portrait, "rewardGlow")} />}
           {!pd.isDead && <Health box={plate.health} health={pd.lives} modifier={pd.livesModifier} />}
@@ -278,7 +301,7 @@ export const Hud = ({ pd, variant = "player", isPaused }) => {
           {abilities.slice(0, plate.passives.length).map((ability, k) => (
             <Passive key={k} box={plate.passives[k]} ability={ability} />
           ))}
-          <Plate style={{ ...place({ x: 0, y: 0, width: plate.width, height: plate.height }, "plateFront"), backgroundImage: `url(${plate.front})` }} />
+          <FlickerPlate $isDamaged={isDamaged} style={{ ...place({ x: 0, y: 0, width: plate.width, height: plate.height }, "plateFront"), backgroundImage: `url(${plate.front})`, ...damageStyle }} />
         </Art>
       </Root>
   );
