@@ -69,6 +69,27 @@ const getCenteredWindow = window => {
   return { ...window, left, right: left + width };
 };
 
+// into the game from the picker (Jamie: no clouds): the monitor's screen fades to black, then the new scene up from it
+const SCREEN_FADE = { ms: 550 };
+const screenToBlack = keyframes`
+  from { opacity: 0; }
+  to { opacity: 1; }
+`;
+const screenFromBlack = keyframes`
+  from { opacity: 1; }
+  to { opacity: 0; }
+`;
+const ScreenBlack = styled.div<{ $isIn?: boolean }>`
+  position: absolute;
+  inset: 0;
+  z-index: 2147482970; /* over the picture, under the glass and casing */
+  pointer-events: none;
+  background: black;
+  ${props => props.$isIn
+    ? css`animation: ${screenFromBlack} ${SCREEN_FADE.ms}ms ease-in both;`
+    : css`animation: ${screenToBlack} ${SCREEN_FADE.ms}ms ease-out both;`}
+`;
+
 const shiftIn = keyframes`
   from { transform: translateX(105%); }
   to { transform: translateX(0); }
@@ -665,6 +686,19 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const [isPlayingGame, setIsPlayingGame] = useState(false);
   // the picker: the monitor stays in the middle while its things fade in, then eases aside as the mini-monitor flies in
   const [isPickerAside, setIsPickerAside] = useState(false);
+  // into the game: the monitor's screen goes to black, and the new scene comes up from it
+  const [screenFade, setScreenFade] = useState<'out' | 'in' | undefined>(undefined);
+  // a scene come up on the monitor's own screen doesn't fade the whole page too (it'd black out the casing): the scenes
+  // first shown in the screen fade's moments are left without it, for good
+  const sceneFadeSkips = useRef({ until: 0, keys: new Set<string>(), seen: new Set<string>() });
+  const getIsSceneFadeSkipped = (key: string) => {
+    const skips = sceneFadeSkips.current;
+    if (!skips.seen.has(key)) {
+      skips.seen.add(key);
+      if (Date.now() < skips.until) skips.keys.add(key);
+    }
+    return skips.keys.has(key);
+  };
   // the console's coming (Jamie): the monitor eases aside for it, from the avatar select on
   const [isConsoleIn, setIsConsoleIn] = useState(false);
   useEffect(() => {
@@ -991,7 +1025,14 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
         image: { src: './story_images/match_start.png', width: '535px', height: '535px' }
       });
     }
-    triggerTransition(() => setIsPlayingGame(true));
+    // no clouds (Jamie): the monitor's screen fades to black, then the new scene fades in on it
+    setScreenFade('out');
+    setTimeout(() => {
+      sceneFadeSkips.current.until = Date.now() + 1500;
+      setIsPlayingGame(true);
+      setScreenFade('in');
+      setTimeout(() => setScreenFade(undefined), SCREEN_FADE.ms + 100);
+    }, SCREEN_FADE.ms);
   };
 
   const getWinTitle = () => {
@@ -1356,7 +1397,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
 
   const sceneFades = isPlayingGame && createPortal(
     <>
-      <SceneFadeIn key={radioLines ? `radio ${campaignIndex}` : `match ${matchCount}`} />
+      {!getIsSceneFadeSkipped(radioLines ? `radio ${campaignIndex}` : `match ${matchCount}`) && <SceneFadeIn key={radioLines ? `radio ${campaignIndex}` : `match ${matchCount}`} />}
       {isFadingOut && <SceneFadeOut />}
       {labCover == "in" && <SceneFadeIn style={{ zIndex: 2147483647 }} />}
       {labCover == "out" && <SceneFadeOut style={{ zIndex: 2147483647 }} />}
@@ -1413,6 +1454,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
             }} />
           ) : (
             <AbilityPicker
+              key="picker"
               handleClickHome={handleClickHome}
               pickedAbilities={pickedAbilities}
               setPickedAbilities={setPickedAbilities}
@@ -1423,6 +1465,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
               setIsTeammate={setIsTeammate}
             />
           )}
+          {screenFade == 'out' && <ScreenBlack />}
         </PlayWindow>
         {isMonitorOn && (
           <PlayConsole
@@ -1457,6 +1500,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
               // blank through the call (Jamie, playtest 24): the Kaiju count only once the fight's "Defeat the Kaiju" has shown
               ticker: <ObjectiveTicker text="" isKaijuCount={false} count={0} toWin={0} />
             })}>
+              {screenFade == 'in' && <ScreenBlack $isIn />}
               <RadioCall
                 isPaused={isRadioPaused}
                 key={campaignIndex}
@@ -1705,6 +1749,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
                 </EndScreen>
               )}
               {isWiping && <ScreenClip><BlackWipe /></ScreenClip>}
+              {screenFade == 'in' && <ScreenBlack $isIn />}
               {/* inside the Kaiju-Vision screen itself (Jamie), not over the casing */}
               {objectiveNotice && createPortal(<ObjectiveNotice key={objectiveNotice.key} style={getPausedNoticeStyle(isPaused)}>{objectiveNotice.text}</ObjectiveNotice>, document.querySelector("[data-play-screen]") || document.body)}
               {takeOverNotice && createPortal(<TakeOverNotice key={takeOverNotice.key} style={getPausedNoticeStyle(isPaused)}>{takeOverNotice.text}</TakeOverNotice>, document.querySelector("[data-play-screen]") || document.body)}
