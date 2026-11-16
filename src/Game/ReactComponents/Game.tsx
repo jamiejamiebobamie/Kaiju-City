@@ -1424,7 +1424,14 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   // Play!/Back console beside it from the avatar select on
   const isPreGame = !isPlayingGame && (isChoosingAvatar || !isSkippingPicker);
   const preGameWindow = isConsoleIn ? playWindow : getCenteredWindow(playWindow);
-  const goBackFromPicker = isLabPicker ? returnToLab : pickerFrom == 'avatar' ? () => { setHandOverAvatar(undefined); setHoveredAvatar(undefined); setIsChoosingAvatar(true); } : handleClickHome;
+  const goBackFromPicker = isLabPicker ? returnToLab : pickerFrom == 'avatar' ? () => {
+    // (the avatar select comes up still zoomed in on the chosen one, where the picker's avatar and name were, then the
+    // camera pulls back out with everything on it: Jamie)
+    setHandOverAvatar(selectedAvatar);
+    setHoveredAvatar(undefined);
+    setIsChoosingAvatar(true);
+    requestAnimationFrame(() => requestAnimationFrame(() => setHandOverAvatar(undefined)));
+  } : handleClickHome;
   const preGameMonitor = (
     <GameArea>
       <GameFrame data-game-frame $shift={monitorShift == 'in' ? 'in' : undefined}>

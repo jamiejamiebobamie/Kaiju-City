@@ -324,13 +324,21 @@ const getHandOver = box => {
   };
 };
 
-// each one's name beside its number (Jamie): "Guy" and "Girl" in purple, glowing up on hover; gone once chosen
+// each one's name, its number under it (Jamie): "Guy" and "Girl" in purple, glowing up on hover; centered under the
+// figure (not the frame), on the tank's base as if a display on it; both kept once chosen (they ride the camera)
 const NumberRow = styled.span`
   position: relative;
-  top: -42px; /* up, on the tank's base, as if a display on it (Jamie) */
+  top: -42px;
   display: flex;
-  align-items: baseline;
-  gap: 14px;
+  justify-content: center;
+`;
+
+// the number under the name (where the base's green dots are: Jamie); out of the flow, so nothing else moves
+const NumberUnder = styled.span`
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 3px);
+  transform: translateX(-50%);
 `;
 
 const AvatarName = styled.span`
@@ -371,9 +379,11 @@ const ChoiceAvatar = ({ id, sheet, keyName, figureOffset, chosen, isLeaving, onC
         </DoodadHolder>
         <Sprite $sheet={sheet} $color={CHOICE.colors[id]} $isChosen={chosen == id} $isLocked={!!chosen} />
       </SpriteBox>
-      <NumberRow>
-        <ElectricNumber isElectric={isHovered} isHidden={!!chosen} sparks={sparks}>{keyName}</ElectricNumber>
+      <NumberRow style={{ left: `${(FIGURE_SPOTS[id]?.middle ?? FRAME_WIDTH / 2) - FRAME_WIDTH / 2}px` }}>
         <AvatarName $isHovered={isHovered} $isHidden={false}>{id}</AvatarName>
+        <NumberUnder>
+          <ElectricNumber isElectric={isHovered && !chosen} isHidden={false} sparks={sparks}>{keyName}</ElectricNumber>
+        </NumberUnder>
       </NumberRow>
       <Label $isShown={!!chosen} $isLeaving={isLeaving} style={{ "--color": CHOICE.colors[id] }}>{chosen ? (chosen == id ? "Player" : "Teammate") : ""}</Label>
     </Choice>

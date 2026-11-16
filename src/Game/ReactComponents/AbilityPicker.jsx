@@ -762,9 +762,10 @@ const TitleRow = styled.div`
 
 // the class's three icons: larger, at the top right of the side screen (Jamie; were at the bottom), spaced apart
 // (ending at the screen's middle, centered 11% down: Jamie's lines)
+// right-aligned now, as far in from the right as they were from the left (about 12%: Jamie)
 const IconGroup = styled.div`
   position: absolute;
-  right: 50%;
+  right: 12%;
   top: 11%;
   transform: translateY(-50%);
   display: flex;
