@@ -6,6 +6,7 @@ import { getSciFiClass } from "../DataClasses/sciFiClasses";
 import { getIsSkillOpen, OUT_OF_PLAY_POWERS } from "../DataClasses/Avatars";
 import { PIECES_INFO } from "Utils/gameState";
 import { Tamagotchi } from "./Tamagotchi";
+import { AvatarBio } from "./AvatarBio";
 import { ClassBattle } from "./ClassBattle";
 import { CrtScreen, ScaleToFit } from "Components/CrtPower";
 import { CASING_SHEEN, RUBBER_BUTTON, TV_LOOK } from "./GameBoard/PlayWindow";
@@ -989,7 +990,8 @@ const SideSlot = styled.div`
   inset: 0;
 `;
 
-export const SideMonitor = ({ isPickerShowing, isPoweredOff = false, isLeaving = false }) => {
+// 'bioOf': on the avatar select, the avatar whose file shows (the one hovered: Jamie)
+export const SideMonitor = ({ isPickerShowing, isPoweredOff = false, isLeaving = false, bioOf = undefined }) => {
   const [isOn, setIsOn] = useState(false);
   useEffect(() => {
     const timeout = setTimeout(() => setIsOn(true), MINI_TIMING.onAtMs);
@@ -1002,13 +1004,14 @@ export const SideMonitor = ({ isPickerShowing, isPoweredOff = false, isLeaving =
       <MiniMonitor $isLeaving={isLeaving}>
         <MiniScreen>
           <CrtScreen isOn={isOn && !isPoweredOff}>
-            {isPickerShowing ? <SideSlot data-side-screen /> : <Tamagotchi actRef={tamaRef} />}
+            {/* the avatar select: the candidates' files (Jamie: not the tamagotchi, that's on the picker) */}
+            {isPickerShowing ? <SideSlot data-side-screen /> : <AvatarBio avatar={bioOf} />}
           </CrtScreen>
           <MiniGlass />
         </MiniScreen>
         <MiniBrow>
           {isPickerShowing ? <div data-side-brow style={{ display: "contents" }} /> : ["Feed", "Pet", "Clean up"].map(label => (
-            <BrowButton key={label} onClick={() => tamaRef.current && tamaRef.current(label)}>{label}</BrowButton>
+            <BrowButton key={label} disabled>{label}</BrowButton>
           ))}
         </MiniBrow>
       </MiniMonitor>

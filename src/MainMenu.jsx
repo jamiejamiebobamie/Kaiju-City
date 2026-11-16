@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
 import styled, { css, keyframes } from "styled-components";
 import { SpeedBlurFilter, slideAway } from "./Components/SlideAway";
+import { getZoomThroughMs, ZoomThrough } from "./Components/ZoomThrough";
 import { getIsPressPanel, getPressEffect, PressKeyPanel, PressKeyRow, usePressSettings } from "./Components/PressKeyEffects";
 import {
   Wrapper,
@@ -210,7 +211,7 @@ export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
       if (isLeavingRef.current || toolScreen) return;
       isLeavingRef.current = true;
       setIsLeaving(true);
-      setTimeout(handleClickGame, PRESS_KEY.leaveMs);
+      setTimeout(handleClickGame, getZoomThroughMs()); // (on through the city, the window and the room: Jamie)
     };
     const onKey = event => { if (!event.repeat && !event.ctrlKey && !event.metaKey && !event.altKey) go(); };
     window.addEventListener("keydown", onKey);
@@ -259,6 +260,7 @@ export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
     <SpeedBlurFilter />
     <EmberSlide $isLeaving={isLeaving}><Embers /></EmberSlide>
     <SceneSlide $isLeaving={isLeaving}><Logo /></SceneSlide>
+    <ZoomThrough isOn={isLeaving} />
     {navButtons}
     <PressAnyKey $isLeaving={isLeaving}>
       <PressKeyRow settings={pressSettings} isLeaving={isLeaving} />
