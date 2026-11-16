@@ -73,6 +73,11 @@ const newPet = (generation = 1) => ({
 // the pet lives on between visits (this module keeps it for the page's life)
 let PET = newPet();
 
+// held: its clock stops while something's over it (the Controls card) or the tab is hidden (Jamie: it got unhappy
+// while he was away)
+let isHeld = false;
+export const holdTamagotchi = held => { isHeld = held; };
+
 // cared for: counts for the 30 s check, and a block of happiness back
 const care = pet => ({ ...pet, caredSinceCheck: true, lastCareAt: pet.clock, happiness: Math.min(TAMA.happinessMax, pet.happiness + 1) });
 
@@ -433,6 +438,7 @@ export const Tamagotchi = ({ actRef }) => {
   const [pet, setPet] = useState(PET);
   useEffect(() => {
     const tick = setInterval(() => {
+      if (isHeld || document.hidden) return;
       PET = step(PET);
       setPet(PET);
     }, TAMA.tickMs);

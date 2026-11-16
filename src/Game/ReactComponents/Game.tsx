@@ -26,6 +26,7 @@ import { DEFAULT_AGGRESSION } from "Game/DataClasses/npcBrain/brain";
 import { getKaijuSpeedMode, KaijuSpeedMode, setKaijuSpeedMode } from "../DataClasses/KaijuSpeedTest";
 import { getAvatarColor, saveAvatarColor, saveTeamAvatars, unlockEverything, unlockRecruitSkill, unlockSkill, unlockTool } from "../DataClasses/Avatars";
 import { AbilityPicker, MINI_TIMING, PlayConsole } from "./AbilityPicker";
+import { holdTamagotchi } from "./Tamagotchi";
 import { useKeyPress } from "Utils/utils";
 import { ABILITY_KEY_CODES, GAME_TICK, PIECES_INFO, TILE_STATUSES_AND_ABILITY_DATA } from "Utils/gameState";
 import { FullscreenPage } from "Components/FullscreenPage.jsx";
@@ -671,6 +672,8 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     const aside = setTimeout(() => setIsConsoleIn(true), MINI_TIMING.consoleDelayMs);
     return () => clearTimeout(aside);
   }, [isMonitorOn, isPlayingGame]);
+  // the tamagotchi waits while the Controls card is up
+  useEffect(() => holdTamagotchi(isShowingControls), [isShowingControls]);
   // where the picker came from, for its Back (Jamie): the avatar select, back there; else home
   const [pickerFrom, setPickerFrom] = useState<'avatar' | 'home'>('home');
   useEffect(() => {
