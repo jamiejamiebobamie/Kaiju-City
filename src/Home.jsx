@@ -99,7 +99,9 @@ export const Home = ({ triggerTransition }) => {
         />
       ) : (
         <MainMenu
-          handleClickGame={() => triggerTransition(handleClickGame) /* the clouds at the end of the zoom into the city (Jamie) */}
+          handleClickGame={() => triggerTransition(handleClickGame)}
+          playClouds={() => triggerTransition()}
+          enterRoom={handleClickGame /* the zoom ends in the room, the monitor in its spot: no clouds (Jamie) */}
           handleClickSettings={() => triggerTransition(handleClickSettings)}
         />
       )}

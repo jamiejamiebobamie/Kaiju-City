@@ -28,6 +28,7 @@ import { getAvatarColor, saveAvatarColor, saveTeamAvatars, unlockEverything, unl
 import { AbilityPicker, FLY_OFF, MINI_TIMING, PlayConsole, SideMonitor } from "./AbilityPicker";
 import { holdTamagotchi } from "./Tamagotchi";
 import { FOCUS_MOVE, getFocusTransform, MonitorLabBackdrop } from "./MonitorLabBackdrop";
+import { ROOM_HANDOFF, RoomBackdrop } from "Components/RoomScene";
 import { useKeyPress } from "Utils/utils";
 import { ABILITY_KEY_CODES, GAME_TICK, PIECES_INFO, TILE_STATUSES_AND_ABILITY_DATA } from "Utils/gameState";
 import { FullscreenPage } from "Components/FullscreenPage.jsx";
@@ -91,6 +92,11 @@ const ScreenBlack = styled.div<{ $isIn?: boolean }>`
     : css`animation: ${screenToBlack} ${SCREEN_FADE.ms}ms ease-out both;`}
 `;
 
+const fadeUp = keyframes`
+  from { opacity: 0; }
+  to { opacity: 1; }
+`;
+
 const shiftIn = keyframes`
   from { transform: translateX(105%); }
   to { transform: translateX(0); }
@@ -102,7 +108,7 @@ const shiftOut = keyframes`
 `;
 
 // everything in the game sits in this box, and scales with it
-const GameFrame = styled.div<{ $shift?: 'in' | 'out' }>`
+const GameFrame = styled.div<{ $shift?: 'in' | 'out' | 'fade' }>`
   position: relative;
   aspect-ratio: 16 / 9;
   min-width: 0;
@@ -111,8 +117,9 @@ const GameFrame = styled.div<{ $shift?: 'in' | 'out' }>`
   max-height: 100dvh;
   overflow: hidden;
   container-type: inline-size;
-  background: #000;
+  background: transparent; /* (the room shows round the monitor: Jamie) */
   transition: transform 0.9s ease-in, opacity 0.9s ease-in;
+  ${props => props.$shift == 'fade' && css`animation: ${fadeUp} 700ms ease-out both;`}
   ${props => props.$shift == 'in' && css`animation: ${shiftIn} ${MONITOR_SHIFT.ms}ms cubic-bezier(0.2, 0.7, 0.3, 1) both;`}
   ${props => props.$shift == 'out' && css`animation: ${shiftOut} ${MONITOR_SHIFT.ms}ms ease-in forwards;`}
   @media (orientation: portrait) {
@@ -613,7 +620,8 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const [isChoosingAvatar, setIsChoosingAvatar] = useState(!startingLevelId); // a new campaign starts with the guy or the girl
   // the monitor: dead as the view shifts onto it from the landing, then switched on; switched off after the credits
   const [isMonitorOn, setIsMonitorOn] = useState(!!startingLevelId);
-  const [monitorShift, setMonitorShift] = useState<'in' | 'out' | undefined>(startingLevelId ? undefined : 'in');
+  // (from the landing's zoom, the room's already there: the monitor fades up in its spot, it doesn't slide in. Jamie)
+  const [monitorShift, setMonitorShift] = useState<'in' | 'out' | 'fade' | undefined>(startingLevelId ? undefined : ROOM_HANDOFF.view ? 'fade' : 'in');
   useEffect(() => {
     if (startingLevelId) return;
     const on = setTimeout(() => setIsMonitorOn(true), MONITOR_SHIFT.ms + MONITOR_SHIFT.deadBeatMs);
@@ -1458,7 +1466,8 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   };
   const preGameMonitor = (
     <GameArea>
-      <GameFrame data-game-frame $shift={monitorShift == 'in' ? 'in' : undefined}>
+      <RoomBackdrop />
+      <GameFrame data-game-frame $shift={monitorShift == 'in' || monitorShift == 'fade' ? monitorShift : undefined}>
         <PlayWindow playWindow={preGameWindow} setPlayWindow={updatePlayWindow} isAdjusting={false} isOpen={false} isPoweredOn={isMonitorOn} isClipped hasGlare buttons={getBezelButtons({
           isPauseOff: true, // nothing to pause yet
           ticker: <ObjectiveTicker text="" isKaijuCount={false} count={0} toWin={0} />
@@ -1544,6 +1553,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     : !isPlayingGame ? null
       : radioLines ?
         <GameArea>
+          <RoomBackdrop />
           <GameFrame data-game-frame>
             {/* the alarm only when the call sends the team into a Kaiju fight */}
             {/* aside, for the call's dialogue panel beside it (Jamie: the panel moves the monitor too) */}
@@ -1578,6 +1588,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
           image={fullScreenPageData.image}
         />
         : !gameManager.current ? null : (<GameArea>
+          <RoomBackdrop />
           {import.meta.env.DEV && !isDevHidden && (
             <PhaseToggles>
               <button onClick={() => setIsDevHidden(true)}>Hide dev options (F2)</button>

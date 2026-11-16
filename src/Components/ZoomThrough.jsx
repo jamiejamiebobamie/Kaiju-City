@@ -1,48 +1,45 @@
 import React, { useEffect, useRef } from "react";
-import styled, { keyframes } from "styled-components";
+import styled from "styled-components";
+import { ROOM, ROOM_HANDOFF, RoomExtras } from "./RoomScene";
 
 /*
-  The landing's extreme zoom (Jamie, 2026-11-16): on from the skyline, one camera push through three pictures, each
-  zooming and cross-fading into the next so they overlap and blend: the city (into a lit window), the window (into its
-  top two panes), then the room behind them (into the empty spot right of the desk lamp, where the Kaiju-Vision monitor
-  stands: the player plays on a monitor in someone's apartment in this city).
-  The push is one zoom, counted in its log (so it feels steady), sped up as it goes. Each picture takes over at the
-  zoom where its first view matches the last one's end: 'span', its own zoom (as a log) to its 'target' (shares of the
-  picture). A picture's spot moves to the screen's middle as it zooms.
-  The room has two small things alive in it (Jamie): steam off the coffee, and a clock blinking 12:00 (the power went
-  out and nobody reset it).
+  The landing's extreme zoom (Jamie, 2026-11-16): after the logo's zoom and the clouds, one camera push through three
+  pictures, each zooming and blending into the next: the city (into Jamie's lit window), the window (into its top two
+  panes), then the room behind them, where it stops: the monitor's spot right of the lamp, the clock and the coffee in
+  shot (the game page then puts the monitor there: RoomScene).
+  The push is one zoom, counted in its log (so it feels steady). Each picture takes over at the zoom where its first
+  view matches the last one's end: 'span', its own zoom (as a log) to its 'target' (shares of the picture), which moves
+  to the screen's middle as it zooms. A picture blends in over 'blendSpan' of zoom before it takes over, its edges
+  feathered (a soft oval) so its rectangle never shows, opening up as it takes over (Jamie: a blend by their alphas).
 */
 export const ZOOM_THROUGH = {
-  startMs: 900, // after the key: the landing's own zoom is well under way
-  fadeInMs: 400, // the first picture over the landing's skyline
-  blendSpan: 0.35, // a picture fades in over this much zoom (as a log) before it takes over
-  // each its own time (the room's longest: its things seen before the push into the spot)
+  fadeInMs: 80, // the first picture, under the clouds
+  blendSpan: 0.8,
   pictures: [
     // Jamie's window: the lit four-pane one in the grey tower, middle (about 26 px of 1365 wide)
-    { src: "/zoom-scene/1-city.png", target: { x: 727 / 1365, y: 430 / 768 }, span: Math.log(20), ms: 1500 },
-    { src: "/zoom-scene/2-window.png", target: { x: 0.511, y: 0.337 }, span: Math.log(2.87), ms: 1100 }, // the top two panes
-    { src: "/zoom-scene/3-room.png", target: { x: 0.381, y: 0.528 }, span: Math.log(4), ms: 1500 } // right of the lamp
+    { src: "/zoom-scene/1-city.png", target: { x: 727 / 1365, y: 430 / 768 }, span: Math.log(20), ms: 2200 },
+    { src: "/zoom-scene/2-window.png", target: { x: 0.511, y: 0.337 }, span: Math.log(2.87), ms: 1200 }, // the top two panes
+    { src: ROOM.src, target: undefined, span: undefined, ms: 1500 } // to the monitor's spot (worked out for the screen)
   ],
-  size: { width: 1365, height: 768 }
+  size: ROOM.size
 };
-const PUSH_MS = ZOOM_THROUGH.pictures.reduce((sum, { ms }) => sum + ms, 0);
-export const getZoomThroughMs = () => ZOOM_THROUGH.startMs + PUSH_MS;
 
-// the zoom (as a log) at a time into the push: each picture's span in its own time, steady, the first easing in
-const getZoomAt = ms => {
-  let zoom = 0;
-  let left = ms;
-  for (const [k, { span, ms: own }] of ZOOM_THROUGH.pictures.entries()) {
-    if (left >= own) {
-      zoom += span;
-      left -= own;
-      continue;
-    }
-    const share = left / own;
-    return zoom + span * (k == 0 ? share * share : share);
-  }
-  return zoom;
+const getPushMs = () => ZOOM_THROUGH.pictures.reduce((sum, { ms }) => sum + ms, 0);
+export const getZoomThroughMs = startMs => startMs + getPushMs();
+
+/*
+  The room's last view: as the game page will have it, the monitor (about 0.8 of the screen's height, in its middle)
+  standing in its spot. In the pictures' frame (it covers the screen): its zoom, and the picture's point at the middle.
+*/
+const getRoomEnd = () => {
+  const screen = { width: window.innerWidth, height: window.innerHeight };
+  const frameWidth = Math.max(screen.width, screen.height * (ROOM.size.width / ROOM.size.height));
+  const k = (0.8 * screen.height) / ROOM.monitor.height; // screen px for the picture's px
+  const zoom = (k * ROOM.size.width) / frameWidth;
+  const middle = { x: ROOM.monitor.centerX, y: ROOM.monitor.bottom - ROOM.monitor.height / 2 };
+  return { span: Math.log(Math.max(zoom, 1.05)), target: { x: middle.x / ROOM.size.width, y: middle.y / ROOM.size.height } };
 };
+
 const smooth = x => {
   const t = Math.max(0, Math.min(1, x));
   return t * t * (3 - 2 * t);
@@ -76,61 +73,38 @@ const Picture = styled.div`
   will-change: transform, opacity;
 `;
 
-// the clock: 12:00, blinking, as one that lost its power
-const blink = keyframes`
-  0%, 49% { opacity: 1; }
-  50%, 100% { opacity: 0; }
-`;
-const ClockDigits = styled.div`
-  position: absolute;
-  background: url(/zoom-scene/3-room-clock.png) 0 0 / 100% 100%;
-  image-rendering: pixelated;
-  filter: drop-shadow(0 0 3px rgba(255, 40, 30, 0.9));
-  animation: ${blink} 1s steps(1) infinite;
-`;
-
-// the coffee's steam: a few soft pixel wisps rising and swaying, fading out
-const rise = keyframes`
-  0% { transform: translate(0, 0); opacity: 0; }
-  20% { opacity: 0.55; }
-  50% { transform: translate(35%, -45%); }
-  100% { transform: translate(-25%, -100%); opacity: 0; }
-`;
-const Steam = styled.div`
-  position: absolute;
-  span {
-    position: absolute;
-    bottom: 0;
-    width: 22%;
-    height: 22%;
-    background: rgba(240, 236, 228, 0.85);
-    filter: blur(0.5px);
-    animation: ${rise} 2.4s ease-out infinite;
-  }
-`;
-
-// a spot in the room's picture, as shares of it
-const at = (x, y, width, height) => ({
-  left: `${(x / ZOOM_THROUGH.size.width) * 100}%`,
-  top: `${(y / ZOOM_THROUGH.size.height) * 100}%`,
-  width: `${(width / ZOOM_THROUGH.size.width) * 100}%`,
-  height: `${(height / ZOOM_THROUGH.size.height) * 100}%`
-});
-
-// 'isOn': the key's been pressed; 'onDone': the push is over
-export const ZoomThrough = ({ isOn }) => {
+// 'startMs': when the push starts after the key (the clouds covering); 'onDone': it's over, in the room
+export const ZoomThrough = ({ isOn, startMs, onDone }) => {
   const refs = useRef([]);
   useEffect(() => {
     if (!isOn) return;
+    const room = getRoomEnd();
+    const pictures = ZOOM_THROUGH.pictures.map(picture => picture.span === undefined ? { ...picture, ...room } : picture);
+    const pushMs = getPushMs();
+    // the zoom (as a log) at a time into the push: each picture's span in its own time, steady; the last eases to a stop
+    const getZoomAt = ms => {
+      let zoom = 0;
+      let left = ms;
+      for (const [k, { span, ms: own }] of pictures.entries()) {
+        if (left >= own) {
+          zoom += span;
+          left -= own;
+          continue;
+        }
+        const share = left / own;
+        return zoom + span * (k == pictures.length - 1 ? 1 - Math.pow(1 - share, 2) : share);
+      }
+      return zoom;
+    };
     const start = performance.now();
     let frameId;
+    let isDone = false;
     const run = () => {
       const elapsed = performance.now() - start;
-      const into = Math.max(0, elapsed - ZOOM_THROUGH.startMs);
-      const progress = into / PUSH_MS;
-      const zoom = getZoomAt(into);
+      const into = Math.max(0, elapsed - startMs);
+      const zoom = getZoomAt(Math.min(into, pushMs));
       let before = 0;
-      ZOOM_THROUGH.pictures.forEach(({ target, span }, k) => {
+      pictures.forEach(({ target, span }, k) => {
         const element = refs.current[k];
         const own = zoom - before; // this picture's own zoom, as a log
         before += span;
@@ -139,12 +113,29 @@ export const ZoomThrough = ({ isOn }) => {
         const share = Math.max(0, Math.min(1, own / span));
         const focus = { x: 0.5 + (target.x - 0.5) * share, y: 0.5 + (target.y - 0.5) * share };
         element.style.transform = `translate(${(0.5 - scale * focus.x) * 100}%, ${(0.5 - scale * focus.y) * 100}%) scale(${scale})`;
-        const opacity = k == 0
-          ? smooth((elapsed - ZOOM_THROUGH.startMs) / ZOOM_THROUGH.fadeInMs)
-          : smooth((own + ZOOM_THROUGH.blendSpan) / ZOOM_THROUGH.blendSpan);
-        element.style.opacity = String(opacity);
+        if (k == 0) {
+          element.style.opacity = String(elapsed >= startMs ? smooth((elapsed - startMs) / ZOOM_THROUGH.fadeInMs) : 0);
+          return;
+        }
+        const blend = smooth((own + ZOOM_THROUGH.blendSpan) / ZOOM_THROUGH.blendSpan);
+        element.style.opacity = String(blend);
+        // feathered while it blends in: a soft oval, opening to the whole picture as it takes over
+        const mask = blend < 1 ? `radial-gradient(ellipse 75% 75% at 50% 50%, black ${30 + 70 * blend}%, transparent 100%)` : "none";
+        element.style.maskImage = mask;
+        element.style.webkitMaskImage = mask;
       });
-      if (progress < 1) frameId = requestAnimationFrame(run);
+      if (into < pushMs) {
+        frameId = requestAnimationFrame(run);
+      } else if (!isDone) {
+        isDone = true;
+        // where the room is on the screen now, for the game page to start from
+        const last = refs.current[pictures.length - 1];
+        if (last) {
+          const box = last.getBoundingClientRect();
+          ROOM_HANDOFF.view = { left: box.left, top: box.top, width: box.width };
+        }
+        onDone && onDone();
+      }
     };
     frameId = requestAnimationFrame(run);
     return () => cancelAnimationFrame(frameId);
@@ -156,14 +147,7 @@ export const ZoomThrough = ({ isOn }) => {
       <Frame>
         {ZOOM_THROUGH.pictures.map(({ src }, k) => (
           <Picture key={src} ref={element => { refs.current[k] = element; }} style={{ backgroundImage: `url(${src})` }}>
-            {k == 2 && (
-              <>
-                <ClockDigits style={at(300, 538, 100, 50)} />
-                <Steam style={at(705, 470, 50, 68)}>
-                  {[0, 0.8, 1.6].map((delay, n) => <span key={n} style={{ left: `${20 + n * 22}%`, animationDelay: `${delay}s` }} />)}
-                </Steam>
-              </>
-            )}
+            {k == ZOOM_THROUGH.pictures.length - 1 && <RoomExtras />}
           </Picture>
         ))}
       </Frame>

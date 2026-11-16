@@ -44,3 +44,12 @@
     transform: rotate(360deg);
   }
 }
+
+/* the landing, after the splash: faded in (Jamie, 2026-11-16) */
+@keyframes landingFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.landing-fade-in {
+  animation: landingFadeIn 900ms ease-out both;
+}

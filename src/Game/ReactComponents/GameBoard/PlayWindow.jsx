@@ -479,7 +479,7 @@ export const PlayWindow = ({ playWindow, setPlayWindow, isAdjusting, isOpen, isC
       {!isOpen && (
         <>
           <ScreenCorners />
-          <TvCasing />
+          <TvCasing data-tv-casing />
           <CasingSheen />
           <BrandName>KAIJU-VISION</BrandName>
           <SirenLight isOn={isSiren} />

@@ -1,7 +1,8 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
 import styled, { css, keyframes } from "styled-components";
 import { SpeedBlurFilter, slideAway } from "./Components/SlideAway";
-import { getZoomThroughMs, ZoomThrough } from "./Components/ZoomThrough";
+import { ZoomThrough } from "./Components/ZoomThrough";
+import { CLOUD_TIMING } from "./Components/CloudTransition";
 import { getIsPressPanel, getPressEffect, PressKeyPanel, PressKeyRow, usePressSettings } from "./Components/PressKeyEffects";
 import {
   Wrapper,
@@ -182,7 +183,12 @@ const ShiftingWrapper = styled(Wrapper)`
   ${props => props.$isShiftingIn && css`animation: ${landingShiftIn} ${LANDING_SHIFT_MS}ms cubic-bezier(0.2, 0.7, 0.3, 1) both;`}
 `;
 
-export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
+// the clouds (Jamie): once, rolling in with the key so they cover the screen as the logo's zoom ends; the apartment's
+// pictures come up under them
+const ZOOM_CLOUDS = { atMs: 0 };
+
+// 'playClouds': the cloud transition, on its own; 'enterRoom': on into the game, in the room (no clouds)
+export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = () => {}, enterRoom = undefined }) => {
   const { selectedAvatar, isLandingShifting, setIsLandingShifting } = useContext(GlobalSettingsContext);
   const [isShiftingIn] = useState(!!isLandingShifting);
   useEffect(() => {
@@ -211,7 +217,7 @@ export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
       if (isLeavingRef.current || toolScreen) return;
       isLeavingRef.current = true;
       setIsLeaving(true);
-      setTimeout(handleClickGame, getZoomThroughMs()); // (on through the city, the window and the room: Jamie)
+      setTimeout(playClouds, ZOOM_CLOUDS.atMs); // (then on through the city, the window and the room: Jamie)
     };
     const onKey = event => { if (!event.repeat && !event.ctrlKey && !event.metaKey && !event.altKey) go(); };
     window.addEventListener("keydown", onKey);
@@ -260,7 +266,7 @@ export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
     <SpeedBlurFilter />
     <EmberSlide $isLeaving={isLeaving}><Embers /></EmberSlide>
     <SceneSlide $isLeaving={isLeaving}><Logo /></SceneSlide>
-    <ZoomThrough isOn={isLeaving} />
+    <ZoomThrough isOn={isLeaving} startMs={ZOOM_CLOUDS.atMs + CLOUD_TIMING.coveredMs} onDone={enterRoom || handleClickGame} />
     {navButtons}
     <PressAnyKey $isLeaving={isLeaving}>
       <PressKeyRow settings={pressSettings} isLeaving={isLeaving} />

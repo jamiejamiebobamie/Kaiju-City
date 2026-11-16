@@ -16,16 +16,20 @@ const isClassReview = import.meta.env.DEV && window.location.pathname == "/class
 const ClassReview = import.meta.env.DEV ? lazy(() => import("./Game/ReactComponents/ClassReview/ClassReview").then(({ ClassReview }) => ({ default: ClassReview }))) : null;
 const DialogueViewer = import.meta.env.DEV ? lazy(() => import("./Game/ReactComponents/Dialogue/DialogueViewer").then(({ DialogueViewer }) => ({ default: DialogueViewer }))) : null;
 
+const SPLASH_FADE_MS = 700;
+
 const App = () => {
   const [shouldPlayAnim, setShouldPlayAnim] = useState(false);
   const [isFirstLoad, setIsFirstLoad] = useState(true);
   const isTransitioning = useRef(false);
 
-  // show splash screen for 5 seconds on first load of site
+  // show splash screen for 5 seconds on first load of site; then its words and logo fade out and the landing fades in
+  // (Jamie, 2026-11-16: no clouds here, they're in the landing's zoom now)
+  const [isSplashLeaving, setIsSplashLeaving] = useState(false);
   useEffect(() => {
     const timeoutRef = setTimeout(() => {
-      setTimeout(() => setIsFirstLoad(false), CLOUD_TIMING.coveredMs); // (was 750: the landing showed through the clouds)
-      triggerTransition();
+      setIsSplashLeaving(true);
+      setTimeout(() => setIsFirstLoad(false), SPLASH_FADE_MS);
     }, 5000);
     return () => clearTimeout(timeoutRef);
   }, []);
@@ -43,7 +47,9 @@ const App = () => {
     callback && setTimeout(() => callback(), CLOUD_TIMING.coveredMs);
   };
 
-  const appContent = isFirstLoad ? <SplashScreen /> : <Home triggerTransition={triggerTransition} />;
+  const appContent = isFirstLoad
+    ? <div style={{ opacity: isSplashLeaving ? 0 : 1, transition: `opacity ${SPLASH_FADE_MS}ms ease-out` }}><SplashScreen /></div>
+    : <div className={isSplashLeaving ? "landing-fade-in" : undefined}><Home triggerTransition={triggerTransition} /></div>;
 
   if (isLevelEditor) return <Suspense fallback={null}><LevelEditor /></Suspense>;
   if (isDialogueViewer) return <Suspense fallback={null}><DialogueViewer /></Suspense>;
