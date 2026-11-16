@@ -11,8 +11,7 @@ const Monster = styled.div`
     width: 40px;
     height: 40px;
     z-index: 20000;
-    left: ${props => `${props.charLocation.x}px`};
-    top: ${props => `${props.charLocation.y}px`};
+    /* (changing values go in 'style', not here: each new value made a new class, styled-components warned) */
     pointer-events: none;
 
     -webkit-animation-name: fadeOut;
@@ -105,7 +104,7 @@ const Character = styled.div`
 `;
 export const ExplodingKaiju = ({ zIndex, charLocation, color }) => {
   return (
-    <Monster zIndex={zIndex} charLocation={charLocation}>
+    <Monster style={{ left: `${charLocation.x}px`, top: `${charLocation.y}px` }}>
       <Character>
         <SpriteSheet color={color} />
       </Character>

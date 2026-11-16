@@ -197,7 +197,7 @@ const GreenGraphDoodad = styled.div`
   filter: drop-shadow(0 0 5px #80EF80);
 
   transition: transform 1.5s;
-  ${props => `transform: scale(${props.scale}) translate(${props.translation});`}
+  /* (changing values go in 'style', not here: each new value made a new class, styled-components warned) */
 
   /* 'isStatic' (the character select, Jamie 2026-11-12): a bad TV signal. It crackles with snow, blurs and
      brightens in fits, and shivers a pixel in place ('translate' adds to the transform above) */
@@ -246,7 +246,7 @@ const AlignSelfCenter = styled.div`
 
 const DoodadsWrapper = styled.div`
     position: absolute;
-    ${props => `transform: translate(${props.translation});`}
+    /* (changing values go in 'style', not here: each new value made a new class, styled-components warned) */
 `;
 
 const StyledMsg = styled.div`
@@ -282,13 +282,11 @@ const PopupMsg = styled.span`
 `;
 
 const FadeInOutEffect = styled.div`
-    transition: opacity ${props => props.ms || 1000}ms;
-    ${props => `opacity: ${props.opacity};`} 
+    /* (changing values go in 'style', not here: each new value made a new class, styled-components warned) */
 `;
 
 const DoodadTransform = styled.div`
-  transition: transform ${props => props.ms || 1500}ms ${props => props.$ease || 'ease-out'}, filter 220ms;
-  ${props => `transform: scale(${props.scale}) translate(${props.translation});`}
+  /* (changing values go in 'style', not here: each new value made a new class, styled-components warned) */
   ${props => props.$isFlash && `filter: brightness(1.9);`}
 `;
 
@@ -297,6 +295,15 @@ const DoodadTransform = styled.div`
   bright horizontal line, the line shrinks to a dot, a sparkle flares on the dot and fades, then black. Back on, the
   same the other way, quicker. 'origin': the middle of the doodad's art on its sheet.
 */
+// the values these took as props, as inline styles
+const getMoveStyle = ({ scale, translation }) => ({ transform: `${scale ? `scale(${scale}) ` : ""}translate(${translation})` });
+const DoodadsWrapperBox = ({ translation, ...rest }) => <DoodadsWrapper {...rest} style={getMoveStyle({ translation })} />;
+const FadeInOutBox = ({ opacity, ms, ...rest }) => <FadeInOutEffect {...rest} style={{ opacity, transition: `opacity ${ms || 1000}ms` }} />;
+const DoodadTransformBox = ({ scale, translation, ms, $ease, ...rest }) => (
+  <DoodadTransform {...rest} style={{ ...getMoveStyle({ scale, translation }), transition: `transform ${ms || 1500}ms ${$ease || "ease-out"}, filter 220ms` }} />
+);
+const GreenGraphBox = ({ scale, translation, ...rest }) => <GreenGraphDoodad {...rest} style={getMoveStyle({ scale, translation })} />;
+
 const CRT = { offMs: 520, onMs: 240 };
 
 const CrtScreen = styled.div`
@@ -650,19 +657,19 @@ export const Doodads = ({ persistDisc, show, globalTranslation, isRed, opacity, 
   useOpacityEffect({ show, opacity, setOpacity, activeInterval: activeOpacityInterval, fadeInMs, fadeOutMs });
   useDriftEffect({ isOn: isDrifting && show, starts: STARTING_POSTIONS, setTranslations });
 
-  return <DoodadsWrapper translation={globalTranslation}>
+  return <DoodadsWrapperBox translation={globalTranslation}>
     {hasPrompt &&
       !isAvatarChangedOnce &&
       !persistDisc &&
-      <FadeInOutEffect opacity={1 - opacity}>
+      <FadeInOutBox opacity={1 - opacity}>
         <PopupSpan
           msg={'Click to change avatar'}
           color={'rgb(196 193 106)'}
           textAlign={'start'}
           fontSize={'13px'}
         />
-      </FadeInOutEffect>}
-    <FadeInOutEffect opacity={opacity} ms={show ? fadeInMs : fadeOutMs}>
+      </FadeInOutBox>}
+    <FadeInOutBox opacity={opacity} ms={show ? fadeInMs : fadeOutMs}>
       {hasPrompt && <PopupSpan
         msg={'Click to change avatar'}
         color={'#80EF80'}
@@ -671,7 +678,7 @@ export const Doodads = ({ persistDisc, show, globalTranslation, isRed, opacity, 
       />}
       {isDrifting && <DoodadSignalFilters />}
       <BlinkFadeEffect high={isDrifting ? 95 : 69} low={isDrifting ? 75 : 40}>
-        <DoodadTransform scale={`${STARTING_POSTIONS[0].scaleX}, ${STARTING_POSTIONS[0].scaleY}`} translation={`${translations[0].x}px, ${translations[0].y}px`} ms={isDrifting ? translations[0].ms : undefined} $ease={isDrifting ? translations[0].ease : undefined} $isFlash={translations[0].isFlash}>
+        <DoodadTransformBox scale={`${STARTING_POSTIONS[0].scaleX}, ${STARTING_POSTIONS[0].scaleY}`} translation={`${translations[0].x}px, ${translations[0].y}px`} ms={isDrifting ? translations[0].ms : undefined} $ease={isDrifting ? translations[0].ease : undefined} $isFlash={translations[0].isFlash}>
           <CrtScreen $origin="105px 133px" $isOff={translations[0].isOff} $isReturning={translations[0].isReturning}>
             <Grainy $isOn={isDrifting} $doodad={0}>
               <DoodadSpriteSheet
@@ -681,8 +688,8 @@ export const Doodads = ({ persistDisc, show, globalTranslation, isRed, opacity, 
             </Grainy>
           </CrtScreen>
           <CrtSparkle $x={105} $y={133} $isOff={translations[0].isOff} />
-        </DoodadTransform>
-        <DoodadTransform scale={`${STARTING_POSTIONS[1].scaleX}, ${STARTING_POSTIONS[1].scaleY}`} translation={`${translations[1].x}px, ${translations[1].y}px`} ms={isDrifting ? translations[1].ms : undefined} $ease={isDrifting ? translations[1].ease : undefined} $isFlash={translations[1].isFlash}>
+        </DoodadTransformBox>
+        <DoodadTransformBox scale={`${STARTING_POSTIONS[1].scaleX}, ${STARTING_POSTIONS[1].scaleY}`} translation={`${translations[1].x}px, ${translations[1].y}px`} ms={isDrifting ? translations[1].ms : undefined} $ease={isDrifting ? translations[1].ease : undefined} $isFlash={translations[1].isFlash}>
           <CrtScreen $origin="240px 183px" $isOff={translations[1].isOff} $isReturning={translations[1].isReturning}>
             <Grainy $isOn={isDrifting} $doodad={1}>
               <DoodadSpriteSheet
@@ -692,8 +699,8 @@ export const Doodads = ({ persistDisc, show, globalTranslation, isRed, opacity, 
             </Grainy>
           </CrtScreen>
           <CrtSparkle $x={240} $y={183} $isOff={translations[1].isOff} />
-        </DoodadTransform>
-        <DoodadTransform scale={`${STARTING_POSTIONS[2].scaleX}, ${STARTING_POSTIONS[2].scaleY}`} translation={`${translations[2].x}px, ${translations[2].y}px`} ms={isDrifting ? translations[2].ms : undefined} $ease={isDrifting ? translations[2].ease : undefined} $isFlash={translations[2].isFlash}>
+        </DoodadTransformBox>
+        <DoodadTransformBox scale={`${STARTING_POSTIONS[2].scaleX}, ${STARTING_POSTIONS[2].scaleY}`} translation={`${translations[2].x}px, ${translations[2].y}px`} ms={isDrifting ? translations[2].ms : undefined} $ease={isDrifting ? translations[2].ease : undefined} $isFlash={translations[2].isFlash}>
           <CrtScreen $origin="243px 75px" $isOff={translations[2].isOff} $isReturning={translations[2].isReturning}>
             <Grainy $isOn={isDrifting} $doodad={2}>
               <DoodadSpriteSheet
@@ -703,14 +710,14 @@ export const Doodads = ({ persistDisc, show, globalTranslation, isRed, opacity, 
             </Grainy>
           </CrtScreen>
           <CrtSparkle $x={243} $y={75} $isOff={translations[2].isOff} />
-        </DoodadTransform>
-        <GreenGraphDoodad $isStatic={isDrifting} scale={`${STARTING_POSTIONS[3].scaleX}, ${STARTING_POSTIONS[3].scaleY}`} translation={`${translations[3].x}px, ${translations[3].y}px`} zIndex={108} />
+        </DoodadTransformBox>
+        <GreenGraphBox $isStatic={isDrifting} scale={`${STARTING_POSTIONS[3].scaleX}, ${STARTING_POSTIONS[3].scaleY}`} translation={`${translations[3].x}px, ${translations[3].y}px`} zIndex={108} />
       </BlinkFadeEffect>
       {hasDisc && <BlinkFadeEffect high={20} low={59} time={400}><CircuitDiscSpriteSheet isRed={!!isRed} zIndex={107} /></BlinkFadeEffect>}
       {persistDisc && <BlinkFadeEffect high={59} low={30}><CircuitDiscSpriteSheet isRed={!!isRed} zIndex={106} /></BlinkFadeEffect>}
-    </FadeInOutEffect>
+    </FadeInOutBox>
     {persistDisc && <BlinkFadeEffect high={59} low={30}><CircuitDiscSpriteSheet persistDisc={true} isRed={!!isRed} zIndex={105} /></BlinkFadeEffect>}
-  </DoodadsWrapper>
+  </DoodadsWrapperBox>
 };
 
 const Sprite = ({ gender, onClick, selectedAvatar, globalTranslation }) => {
