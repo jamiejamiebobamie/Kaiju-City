@@ -287,7 +287,7 @@ const Label = styled.span`
   color: var(--color);
   opacity: 0;
   ${props => props.$isShown && !props.$isLeaving && css`animation: ${lockIn} ${CHOICE.lockInMs}ms linear forwards;`}
-  ${props => props.$isLeaving && css`opacity: 1; animation: ${slideAway("-110vw")} ${CHOICE.slideMs}ms ease-in forwards;`}
+  ${props => props.$isLeaving && css`opacity: 1;`} /* (stays: it rides the camera's move to the picker now: Jamie) */
 `;
 
 const Prompt = styled.div`
@@ -326,6 +326,8 @@ const getHandOver = box => {
 
 // each one's name beside its number (Jamie): "Guy" and "Girl" in purple, glowing up on hover; gone once chosen
 const NumberRow = styled.span`
+  position: relative;
+  top: -42px; /* up, on the tank's base, as if a display on it (Jamie) */
   display: flex;
   align-items: baseline;
   gap: 14px;
@@ -359,7 +361,9 @@ const ChoiceAvatar = ({ id, sheet, keyName, figureOffset, chosen, isLeaving, onC
   const sparks = useSparkBursts(isHovered && !chosen, figureOffset);
   return (
     <Choice $isLocked={!!chosen} onClick={onChoose} onMouseEnter={() => { setIsHovered(true); onHover(id); }} onMouseLeave={() => { setIsHovered(false); onHover(undefined); }} aria-label={id}>
-      <SpriteBox ref={boxRef} data-avatar={id} $isLeaving={isLeaving && !isHandedOver} style={isHandedOver && handOver ? { ...handOver, transition: `transform ${CHOICE.slideMs}ms cubic-bezier(0.4, 0, 0.2, 1)` } : undefined}>
+      {/* (no slide of its own: the whole avatar select rides the camera's move to the picker, which brings the chosen one
+          to where the picker's stands: Jamie) */}
+      <SpriteBox ref={boxRef} data-avatar={id} $isLeaving={false}>
         {/* the grid's sparks under everything here: the grid, the three readouts and the figure (Jamie) */}
         <GridSparks sparks={sparks} />
         <DoodadHolder>
@@ -369,7 +373,7 @@ const ChoiceAvatar = ({ id, sheet, keyName, figureOffset, chosen, isLeaving, onC
       </SpriteBox>
       <NumberRow>
         <ElectricNumber isElectric={isHovered} isHidden={!!chosen} sparks={sparks}>{keyName}</ElectricNumber>
-        <AvatarName $isHovered={isHovered} $isHidden={!!chosen}>{id}</AvatarName>
+        <AvatarName $isHovered={isHovered} $isHidden={false}>{id}</AvatarName>
       </NumberRow>
       <Label $isShown={!!chosen} $isLeaving={isLeaving} style={{ "--color": CHOICE.colors[id] }}>{chosen ? (chosen == id ? "Player" : "Teammate") : ""}</Label>
     </Choice>

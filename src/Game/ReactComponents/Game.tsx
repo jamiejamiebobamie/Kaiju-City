@@ -27,7 +27,7 @@ import { getKaijuSpeedMode, KaijuSpeedMode, setKaijuSpeedMode } from "../DataCla
 import { getAvatarColor, saveAvatarColor, saveTeamAvatars, unlockEverything, unlockRecruitSkill, unlockSkill, unlockTool } from "../DataClasses/Avatars";
 import { AbilityPicker, MINI_TIMING, PlayConsole } from "./AbilityPicker";
 import { holdTamagotchi } from "./Tamagotchi";
-import { MonitorLabBackdrop } from "./MonitorLabBackdrop";
+import { FOCUS_MOVE, getFocusTransform, MonitorLabBackdrop } from "./MonitorLabBackdrop";
 import { useKeyPress } from "Utils/utils";
 import { ABILITY_KEY_CODES, GAME_TICK, PIECES_INFO, TILE_STATUSES_AND_ABILITY_DATA } from "Utils/gameState";
 import { FullscreenPage } from "Components/FullscreenPage.jsx";
@@ -1435,6 +1435,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
           {/* the Lab behind them, darkened, lit round the avatars (Jamie) */}
           <MonitorLabBackdrop mode={isChoosingAvatar ? "choice" : "picker"} hovered={hoveredAvatar} focus={isChoosingAvatar ? handOverAvatar : selectedAvatar} />
           {isChoosingAvatar ? (
+            <div style={{ position: "absolute", inset: 0, transformOrigin: "0 0", transition: FOCUS_MOVE, transform: getFocusTransform(handOverAvatar) }}>
             <AvatarChoice isReady={isMonitorOn} onHover={setHoveredAvatar} onHandOver={setHandOverAvatar} onChoose={(player, teammate) => {
               // a first play skips the power picker: Discharge, Wildfire and Dispel to start (Jamie); every replay after it shows it
               const isFirstPlay = getIsFirstPlay();
@@ -1457,6 +1458,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
               setPickerFrom('avatar');
               setIsChoosingAvatar(false); // the picker comes up on the same monitor
             }} />
+            </div>
           ) : (
             <AbilityPicker
               key="picker"

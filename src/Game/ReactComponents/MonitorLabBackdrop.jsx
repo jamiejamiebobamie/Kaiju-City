@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import styled, { keyframes } from "styled-components";
+import styled, { css, keyframes } from "styled-components";
 import { PICKER_FIGURE } from "./AbilityPicker";
 
 /*
@@ -22,6 +22,8 @@ export const BACKDROP_SPOTS = {
   figureHeight: 0.217, // the figures on the avatar select, of the screen's height
   tankHeight: 0.5,
   tankRaise: 0.033, // the tank's middle above the figure's (the tanks where they were, the avatars higher in them)
+  nameY: 0.522, // the GUY / GIRL names, on the tanks' bases (where the avatar select puts them), and a little right of
+  nameAcross: 0.025, // the figure's middle (they follow their numbers)
   light: { width: 0.2, height: 0.3 } // a pool of light's size, of the screen
 };
 const LIGHT = { dim: 0.6, lit: 0.95 }; // how much a pool of light lifts the darkness: at rest, and hovered or chosen
@@ -51,6 +53,23 @@ const Tank = styled.div`
   filter: drop-shadow(0 0 0.6cqw rgba(120, 220, 255, 0.35));
 `;
 
+const fadeAway = keyframes`
+  from { opacity: 0.8; }
+  to { opacity: 0; }
+`;
+
+// the chosen one's name on the picker: as the avatar select's, in the camera's zoom
+const PickedName = styled.div`
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-family: gameboy;
+  font-size: 1.1cqw;
+  text-transform: uppercase;
+  color: #e25cff;
+  text-shadow: 0 0 4px #e25cff;
+  white-space: nowrap;
+`;
+
 const rise = keyframes`
   from { background-position-x: 0%; }
   to { background-position-x: 100%; }
@@ -64,7 +83,7 @@ const Bubbles = styled.div`
   bottom: 20%;
   transform: translateX(-50%);
   background: url(${BUBBLES.src}) 0 0 / ${BUBBLES.frames * 100}% 100% no-repeat;
-  animation: ${rise} ${BUBBLES.seconds}s steps(${BUBBLES.frames - 1}) forwards;
+  animation: ${rise} ${BUBBLES.seconds}s steps(${BUBBLES.frames - 1}) forwards${props => props.$isFading ? css`, ${fadeAway} ${BUBBLES.seconds}s linear forwards` : ""};
   image-rendering: pixelated;
   filter: hue-rotate(150deg) saturate(0.7) brightness(1.15);
   mix-blend-mode: screen;
@@ -75,7 +94,8 @@ const Bubbles = styled.div`
 const BURSTS = { gapMs: [1000, 3000], across: [0.32, 0.68] };
 const between = ([low, high]) => low + Math.random() * (high - low);
 
-const BubbleBursts = ({ scale = 1 }) => {
+// 'isFading': fainter as it plays (the ones over the avatars: Jamie)
+const BubbleBursts = ({ scale = 1, isFading = false }) => {
   const [burst, setBurst] = useState(undefined); // { k, x }
   useEffect(() => {
     let timeout;
@@ -93,7 +113,7 @@ const BubbleBursts = ({ scale = 1 }) => {
     next();
     return () => clearTimeout(timeout);
   }, []);
-  return burst ? <Bubbles key={burst.k} style={{ left: `${burst.x * 100}%`, width: `${60 * scale}%` }} /> : null;
+  return burst ? <Bubbles key={burst.k} $isFading={isFading} style={{ left: `${burst.x * 100}%`, width: `${60 * scale}%` }} /> : null;
 };
 
 // the avatars in the water: a slow wobble, an svg filter the avatars use (url(#underwater))
@@ -122,6 +142,20 @@ const getMask = spots => spots.map(({ x, y, light }) => {
   return `radial-gradient(ellipse ${width * 50}% ${height * 50}% at ${at.x}% ${at.y}%, rgba(0, 0, 0, ${1 - light}) 0%, rgba(0, 0, 0, ${1 - light * 0.55}) 55%, black 100%)`;
 }).join(", ");
 
+/*
+  The camera's move onto the chosen one (the select's whole scene goes with it: the backdrop, and the avatar select
+  itself, so the chosen avatar lands where the picker's stands): zoomed by as much as the avatar grows, its spot moved
+  to the picker's. For a box filling the screen, from its top left corner.
+*/
+export const getFocusTransform = focus => {
+  if (!focus) return "none";
+  const k = PICKER_FIGURE.height / BACKDROP_SPOTS.figureHeight;
+  const from = BACKDROP_SPOTS[focus];
+  const to = { x: PICKER_FIGURE.x, y: PICKER_FIGURE.headY + PICKER_FIGURE.height / 2 };
+  return `translate(${(to.x - k * from.x) * 100}%, ${(to.y - k * from.y) * 100}%) scale(${k})`;
+};
+export const FOCUS_MOVE = `transform ${HANDOVER_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`;
+
 // 'mode': "choice" (two avatars) or "picker"; 'hovered': the avatar under the mouse; 'focus': the chosen one, while
 // it slides to the picker and on the picker (the scene follows it there). 'layer': "back" (the Lab, the tanks, the
 // light) under the avatars, or "front" (only some of the bubbles) over them, in step with it
@@ -132,23 +166,20 @@ export const MonitorLabBackdrop = ({ mode, hovered = undefined, focus = undefine
     light: focus ? (focus == id ? LIGHT.lit : 0) : hovered == id ? LIGHT.lit : LIGHT.dim
   }));
   const mask = getMask(spots.filter(({ light }) => light > 0));
-  // following the chosen one: zoomed by as much as the avatar grows, its spot moved to the picker's
-  let transform = "none";
-  if (focus) {
-    const k = PICKER_FIGURE.height / BACKDROP_SPOTS.figureHeight;
-    const from = BACKDROP_SPOTS[focus];
-    const to = { x: PICKER_FIGURE.x, y: PICKER_FIGURE.headY + PICKER_FIGURE.height / 2 };
-    transform = `translate(${(to.x - k * from.x) * 100}%, ${(to.y - k * from.y) * 100}%) scale(${k})`;
-  }
+  const transform = getFocusTransform(focus);
   const darkness = mode == "picker" ? LAB.darknessPicker : LAB.darkness;
   if (layer == "front") {
     return (
       <Scene aria-hidden="true" style={{ transform, background: "none", pointerEvents: "none", zIndex: 7 }}>
         {spots.map(({ id, x, y }) => (
           <TankPlace key={id} style={{ left: `${x * 100}%`, top: `${(y - BACKDROP_SPOTS.tankRaise) * 100}%`, height: `${BACKDROP_SPOTS.tankHeight * 100}%` }}>
-            <BubbleBursts scale={0.7} />
+            <BubbleBursts scale={0.7} isFading />
           </TankPlace>
         ))}
+        {/* the chosen one's name, on the picker, where the camera left it (Jamie) */}
+        {mode == "picker" && focus && (
+          <PickedName style={{ left: `${(BACKDROP_SPOTS[focus].x + BACKDROP_SPOTS.nameAcross) * 100}%`, top: `${BACKDROP_SPOTS.nameY * 100}%` }}>{focus}</PickedName>
+        )}
       </Scene>
     );
   }
