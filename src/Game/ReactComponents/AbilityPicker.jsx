@@ -822,6 +822,13 @@ const MetalButton = styled.button`
     cursor: default;
     opacity: 0.35;
   }
+  ${props => props.$isBacklit && css`animation: ${backlitBlink} 0.9s steps(1) infinite;`}
+`;
+
+// Play!, ready (Jamie): its letters lit green from behind, blinking in step with the ready light
+const backlitBlink = keyframes`
+  0%, 55% { color: #c8ffb8; text-shadow: 0 0 0.25cqw #3aff3a, 0 0 0.6cqw #2ee02a, 0 0 1cqw #1a9a1a; }
+  56%, 100% { color: #3e8a3a; text-shadow: 0 0 0.15cqw rgba(46, 224, 42, 0.35); }
 `;
 
 /*
@@ -841,7 +848,7 @@ export const PlayConsole = ({ isReady, playLabel, onPlay, onBack }) => {
             <Screw key={k} $turn={turn} style={{ left: screwLeft == null ? undefined : `${screwLeft}cqw`, right: screwLeft == null ? "0.5cqw" : undefined, top: top == null ? undefined : `${top}cqw`, bottom: top == null ? "0.5cqw" : undefined }} />
           ))}
           <ReadyLight $isOn={isReady} />
-          <MetalButton disabled={!isReady} onClick={onPlay}>{playLabel}</MetalButton>
+          <MetalButton disabled={!isReady} $isBacklit={isReady} onClick={onPlay}>{playLabel}</MetalButton>
           {onBack && <MetalButton onClick={onBack}>Back</MetalButton>}
         </ConsoleFace>
       </Console>

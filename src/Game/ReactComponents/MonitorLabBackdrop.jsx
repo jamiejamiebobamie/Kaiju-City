@@ -150,8 +150,27 @@ const getMask = spots => spots.map(({ x, y, light }) => {
   itself, so the chosen avatar lands where the picker's stands): zoomed by as much as the avatar grows, its spot moved
   to the picker's. For a box filling the screen, from its top left corner.
 */
+/*
+  The avatars' real places (Jamie: they came out of step on a screen not quite square): AvatarChoice works out where
+  each figure stands from its layout (not its rectangle on screen, which the camera's move changes) and puts it here.
+  Kept by avatar, so the way back from the picker has it too. Pixels of the screen, with the screen's size.
+*/
+const FIGURE_PLACES = {};
+export const setFigurePlace = (id, place) => {
+  FIGURE_PLACES[id] = place;
+};
+
 export const getFocusTransform = focus => {
   if (!focus) return "none";
+  const place = FIGURE_PLACES[focus];
+  if (place) {
+    // onto the picker's figure: its stage is a square fitted to the screen, in its middle
+    const { x, y, figureHeight: height, screenWidth: w, screenHeight } = place;
+    const stage = Math.min(w, screenHeight);
+    const to = { x: (w - stage) / 2 + PICKER_FIGURE.x * stage, y: (screenHeight - stage) / 2 + (PICKER_FIGURE.headY + PICKER_FIGURE.height / 2) * stage };
+    const k = (PICKER_FIGURE.height * stage) / height;
+    return `translate(${((to.x - k * x) / w) * 100}%, ${((to.y - k * y) / screenHeight) * 100}%) scale(${k})`;
+  }
   const k = PICKER_FIGURE.height / BACKDROP_SPOTS.figureHeight;
   const from = BACKDROP_SPOTS[focus];
   const to = { x: PICKER_FIGURE.x, y: PICKER_FIGURE.headY + PICKER_FIGURE.height / 2 };

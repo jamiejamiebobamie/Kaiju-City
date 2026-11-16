@@ -5,7 +5,7 @@ import { SpeedBlurFilter, slideAway } from "Components/SlideAway";
 import { Doodads } from "Components/AvatarSelection";
 import { ScaleToFit } from "Components/CrtPower";
 import { PICKER_FIGURE } from "./AbilityPicker";
-import { SCENE_DROP } from "./MonitorLabBackdrop";
+import { SCENE_DROP, setFigurePlace } from "./MonitorLabBackdrop";
 
 /*
   The start of the game (Jamie, playtest 21; the UI epic's mock-ups will restyle it): the guy and the girl, side by
@@ -371,6 +371,38 @@ const ChoiceAvatar = ({ id, sheet, keyName, figureOffset, chosen, isLeaving, onC
   const boxRef = useRef(null);
   const [handOver, setHandOver] = useState(undefined);
   const isHandedOver = isLeaving && chosen == id;
+  // where its figure stands on the screen, for the camera's move to the picker (from the layout: the move itself, a
+  // transform, doesn't change it)
+  useLayoutEffect(() => {
+    const box = boxRef.current;
+    const design = box && box.closest("[data-choice-screen]");
+    const holder = design && design.parentElement && design.parentElement.parentElement; // (the ScaleToFit's parent)
+    const spot = FIGURE_SPOTS[id];
+    if (!box || !design || !holder || !spot) return;
+    const measure = () => {
+      let left = 0;
+      let top = 0;
+      for (let el = box; el && el != design; el = el.offsetParent) {
+        left += el.offsetLeft;
+        top += el.offsetTop;
+      }
+      const w = holder.clientWidth;
+      const h = holder.clientHeight;
+      const s = Math.min(w / DESIGN_SIZE, h / DESIGN_SIZE);
+      const origin = { x: (w - DESIGN_SIZE * s) / 2, y: (h - DESIGN_SIZE * s) / 2 };
+      setFigurePlace(id, {
+        x: origin.x + (left + spot.middle) * s,
+        y: origin.y + (top + (spot.head + spot.feet) / 2) * s,
+        figureHeight: (spot.feet - spot.head) * s,
+        screenWidth: w,
+        screenHeight: h
+      });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(holder);
+    return () => observer.disconnect();
+  }, [id]);
   useLayoutEffect(() => {
     if (isHandedOver && boxRef.current) setHandOver(getHandOver(boxRef.current));
   }, [isHandedOver]);
@@ -438,7 +470,7 @@ export const AvatarChoice = ({ onChoose = (_player, _teammate) => {}, isReady = 
 
   return (
     <ScaleToFit width={DESIGN_SIZE} height={DESIGN_SIZE}>
-      <Screen style={nameOnly ? { visibility: "hidden", pointerEvents: "none", zIndex: 7 } : undefined}>
+      <Screen data-choice-screen style={nameOnly ? { visibility: "hidden", pointerEvents: "none", zIndex: 7 } : undefined}>
         <SpeedBlurFilter />
         <Row>
           {AVATARS.map(({ id, sheet, key, figureOffset }) => (
