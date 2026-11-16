@@ -1470,6 +1470,8 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
               setIsTeammate={setIsTeammate}
             />
           )}
+          {/* some bubbles over the avatars, in step with the backdrop (Jamie) */}
+          <MonitorLabBackdrop layer="front" mode={isChoosingAvatar ? "choice" : "picker"} focus={isChoosingAvatar ? handOverAvatar : selectedAvatar} />
           {screenFade == 'out' && <ScreenBlack />}
         </PlayWindow>
         {isMonitorOn && (

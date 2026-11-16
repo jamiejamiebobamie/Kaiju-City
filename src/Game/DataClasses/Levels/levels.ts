@@ -332,7 +332,7 @@ const buildLevel = (editorFile, name, accentColor, foregroundLayers = [], isWalk
   Kaiju come in from off the left or right edge, whichever is nearer their edge tile, every 5 to 10 s.
 */
 // 'aspect': the box it's shown in, width to height (Jamie's box on the side screen), so the world fills it
-export const buildBattlePreviewLevel = ({ columns = 16, rows = 5, aspect = 1.87 } = {}): LevelConfig => {
+export const buildBattlePreviewLevel = ({ columns = 16, rows = 5, aspect = 1.74 } = {}): LevelConfig => {
   const { grid } = peninsula as any;
   // (from the grid's corner, in a world just the board's size, seen whole: its edges always in view. Jamie)
   const firstI = 0;
@@ -343,7 +343,7 @@ export const buildBattlePreviewLevel = ({ columns = 16, rows = 5, aspect = 1.87 
   const middle = { i: firstI + Math.floor(columns / 2), j: firstJ + Math.floor(rows / 2) };
   // room round the board: headroom above (a character on the top row stands well above it: Jamie saw a head cut off),
   // a little below, and at the sides as much as makes the world the box's shape
-  const headroom = 2.6 * grid.rowStep;
+  const headroom = 4 * grid.rowStep; // (and the icons over a head: Jamie)
   const footroom = 0.5 * grid.rowStep;
   const sceneHeight = grid.originY + (rows + 1.2) * grid.rowStep + headroom + footroom;
   const boardWidth = grid.originX + (columns + 0.5) * grid.colStep;

@@ -104,7 +104,7 @@ const newPet = (generation = 1) => ({
   happiness: TAMA.happinessMax,
   x: 0.5, facing: "left", frame: 0, frameAt: 0,
   mode: "walk", modeUntil: 3000, targetX: 0.35, turnsLeft: 0,
-  speakingUntil: 0, nextSpeakAt: 2500, lineCount: 0, line: "Pick three abilities",
+  speakingUntil: 0, nextSpeakAt: 2500, lineCount: 0, line: "Pick three abilities", hasIntroduced: false,
   nextPoopAt: between(TAMA.poopEveryMs),
   nextPoopCheckAt: TAMA.poopCheckMs, nextCareCheckAt: TAMA.careCheckMs, caredSinceCheck: false,
   poops: [], pellets: [], hearts: [],
@@ -196,7 +196,9 @@ const step = pet => {
   let isSpeaking = now < next.speakingUntil;
   const isDueToSpeak = !isSpeaking && !food && now >= next.nextSpeakAt;
   if (isDueToSpeak && walkTo(0.5, TAMA.walkPerSecond * 1.6)) {
-    next.line = getNextLine();
+    // its first words, first time out or new from its egg: who it is (Jamie), before anything else
+    next.line = next.hasIntroduced ? getNextLine() : `Hi, I am ${next.name}, your virtual Kaiju!`;
+    next.hasIntroduced = true;
     next.speakingUntil = now + getSpeakMs(next.line);
     next.nextSpeakAt = next.speakingUntil + between(TAMA.speakEveryMs);
     next.frame = 0;

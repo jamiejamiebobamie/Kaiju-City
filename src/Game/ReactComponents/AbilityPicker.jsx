@@ -695,16 +695,21 @@ const Wires = ({ delayMs, wires = WIRES }) => {
   The class's battle preview (Jamie): below the class details, a little hex board where the player's avatar, with the
   picked powers, fights Kaiju coming in from the sides, live on the game's own engine (ClassBattle.jsx).
 */
-const BATTLE = { top: 0.5, hex: { columns: 9, rows: 5 } }; // 'top': where it starts, of the screen's height
+const BATTLE = { top: 0.48, hex: { columns: 9, rows: 5 } }; // 'top': where it starts, of the screen's height
 
 // the live preview's box: the game's board inside it, seen through it
-// (where Jamie drew it on the side screen)
+// (where Jamie drew it on the side screen, then a little larger: Jamie); its edges fade to black, so the Kaiju walk
+// into the shot rather than cut into it
 const BattleBox = styled.div`
   position: absolute;
-  left: 12.3%;
-  right: 11.1%;
-  top: 53.3%;
-  bottom: 10.2%;
+  left: 6%;
+  right: 6%;
+  top: 50.5%;
+  bottom: 5%;
+  -webkit-mask-image: linear-gradient(to right, transparent, black 9%, black 91%, transparent), linear-gradient(to bottom, transparent, black 7%, black 93%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to right, transparent, black 9%, black 91%, transparent), linear-gradient(to bottom, transparent, black 7%, black 93%, transparent);
+  mask-composite: intersect;
   overflow: hidden;
   border-radius: 0.4cqw;
   box-shadow: inset 0 0 0.6cqw rgba(0, 0, 0, 0.8);
@@ -949,7 +954,7 @@ export const AbilityPicker = ({
   // the battle preview's box, as a share of the game frame: the board sizes its view from it (its tiles the Peninsula's)
   const arenaRef = useRef(null);
   const [arenaWindow, setArenaWindow] = useState(null);
-  const isArenaShowing = hovered === undefined && !!playerClass;
+  const isArenaShowing = !!playerClass;
   useLayoutEffect(() => {
     if (!isArenaShowing) {
       setArenaWindow(null);
@@ -977,7 +982,7 @@ export const AbilityPicker = ({
             {isTamaShowing ? <Tamagotchi actRef={tamaRef} /> : <Info $isClass={hovered === undefined && !!playerClass}>{getInfo()}</Info>}
             {hovered === undefined && !!playerClass && (
               <>
-                <BattleBox ref={arenaRef}>
+                <BattleBox ref={arenaRef} style={{ visibility: hovered === undefined ? "visible" : "hidden" }}>
                   {arenaWindow && <ClassBattle powers={pickedAbilities} avatar={selectedAvatar} playWindow={arenaWindow} />}
                 </BattleBox>
                 {/* the class's icons, at the screen's top (Jamie) */}
@@ -1062,7 +1067,7 @@ export const AbilityPicker = ({
             width: pctX(FRAME.width * scale),
             height: pctY(FRAME.height * scale),
             backgroundImage: `url(/${figure.sheet})`,
-            filter: `drop-shadow(0 0 ${unit(CHOSEN_GLOW.colorPx * glowScale)} ${avatarColor}) drop-shadow(0 0 ${unit(CHOSEN_GLOW.whitePx * glowScale)} white)`
+            filter: `url(#underwater) drop-shadow(0 0 ${unit(CHOSEN_GLOW.colorPx * glowScale)} ${avatarColor}) drop-shadow(0 0 ${unit(CHOSEN_GLOW.whitePx * glowScale)} white)`
           }}
         />
         <FadingIn style={{ pointerEvents: "none" }}>

@@ -92,10 +92,10 @@ const Sprite = styled.div`
   height: 230px;
   background: url(${props => props.$sheet});
   background-position: 0 -460px;
-  filter: drop-shadow(0 0 3px ${props => props.$color});
+  filter: url(#underwater) drop-shadow(0 0 3px ${props => props.$color}); /* in the tank's water (Jamie) */
   ${props => !props.$isLocked && css`${Choice}:hover & { animation: ${idle} 1.2s steps(6) -0.4s infinite; }`}
   /* picked: facing front, glowing brighter (the idle cycle turns them round) */
-  ${props => props.$isChosen && css`filter: drop-shadow(0 0 8px ${props.$color}) drop-shadow(0 0 3px white);`}
+  ${props => props.$isChosen && css`filter: url(#underwater) drop-shadow(0 0 8px ${props.$color}) drop-shadow(0 0 3px white);`}
 `;
 
 /*

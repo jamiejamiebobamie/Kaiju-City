@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import styled, { keyframes } from "styled-components";
 import { PICKER_FIGURE } from "./AbilityPicker";
 
@@ -35,6 +35,13 @@ const Scene = styled.div`
   image-rendering: pixelated;
 `;
 
+// a tank's place, empty (the front layer's bubbles)
+const TankPlace = styled.div`
+  position: absolute;
+  transform: translate(-50%, -50%);
+  aspect-ratio: ${TANK.width} / ${TANK.height};
+`;
+
 const Tank = styled.div`
   position: absolute;
   transform: translate(-50%, -50%);
@@ -49,20 +56,57 @@ const rise = keyframes`
   to { background-position-x: 100%; }
 `;
 
-// the bubbles, inside the glass (its middle part), tinted toward the water's cyan
+// a burst of bubbles, inside the glass, tinted toward the water's cyan: played once where it's put
 const Bubbles = styled.div`
   position: absolute;
-  left: 12%;
-  right: 12%;
+  width: 60%;
   top: 30%;
   bottom: 20%;
+  transform: translateX(-50%);
   background: url(${BUBBLES.src}) 0 0 / ${BUBBLES.frames * 100}% 100% no-repeat;
-  animation: ${rise} ${BUBBLES.seconds}s steps(${BUBBLES.frames - 1}) infinite;
+  animation: ${rise} ${BUBBLES.seconds}s steps(${BUBBLES.frames - 1}) forwards;
   image-rendering: pixelated;
   filter: hue-rotate(150deg) saturate(0.7) brightness(1.15);
   mix-blend-mode: screen;
   opacity: 0.8;
 `;
+
+// bursts at random (Jamie): each tank its own, every 1 to 3 s after the last, at a spot across the glass
+const BURSTS = { gapMs: [1000, 3000], across: [0.32, 0.68] };
+const between = ([low, high]) => low + Math.random() * (high - low);
+
+const BubbleBursts = ({ scale = 1 }) => {
+  const [burst, setBurst] = useState(undefined); // { k, x }
+  useEffect(() => {
+    let timeout;
+    let k = 0;
+    const next = () => {
+      timeout = setTimeout(() => {
+        k += 1;
+        setBurst({ k, x: between(BURSTS.across) });
+        timeout = setTimeout(() => {
+          setBurst(undefined);
+          next();
+        }, BUBBLES.seconds * 1000);
+      }, between(BURSTS.gapMs));
+    };
+    next();
+    return () => clearTimeout(timeout);
+  }, []);
+  return burst ? <Bubbles key={burst.k} style={{ left: `${burst.x * 100}%`, width: `${60 * scale}%` }} /> : null;
+};
+
+// the avatars in the water: a slow wobble, an svg filter the avatars use (url(#underwater))
+const UnderwaterFilter = () => (
+  <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true">
+    <filter id="underwater" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.045" numOctaves="2" seed="3" result="ripple">
+        <animate attributeName="baseFrequency" dur="6s" values="0.012 0.045;0.016 0.055;0.012 0.045" repeatCount="indefinite" />
+      </feTurbulence>
+      <feDisplacementMap in="SourceGraphic" in2="ripple" scale="5" xChannelSelector="R" yChannelSelector="G" />
+    </filter>
+  </svg>
+);
 
 const Darkness = styled.div`
   position: absolute;
@@ -79,8 +123,9 @@ const getMask = spots => spots.map(({ x, y, light }) => {
 }).join(", ");
 
 // 'mode': "choice" (two avatars) or "picker"; 'hovered': the avatar under the mouse; 'focus': the chosen one, while
-// it slides to the picker and on the picker (the scene follows it there)
-export const MonitorLabBackdrop = ({ mode, hovered = undefined, focus = undefined }) => {
+// it slides to the picker and on the picker (the scene follows it there). 'layer': "back" (the Lab, the tanks, the
+// light) under the avatars, or "front" (only some of the bubbles) over them, in step with it
+export const MonitorLabBackdrop = ({ mode, hovered = undefined, focus = undefined, layer = "back" }) => {
   const spots = ["guy", "girl"].map(id => ({
     id,
     ...BACKDROP_SPOTS[id],
@@ -96,11 +141,23 @@ export const MonitorLabBackdrop = ({ mode, hovered = undefined, focus = undefine
     transform = `translate(${(to.x - k * from.x) * 100}%, ${(to.y - k * from.y) * 100}%) scale(${k})`;
   }
   const darkness = mode == "picker" ? LAB.darknessPicker : LAB.darkness;
+  if (layer == "front") {
+    return (
+      <Scene aria-hidden="true" style={{ transform, background: "none", pointerEvents: "none", zIndex: 7 }}>
+        {spots.map(({ id, x, y }) => (
+          <TankPlace key={id} style={{ left: `${x * 100}%`, top: `${(y - BACKDROP_SPOTS.tankRaise) * 100}%`, height: `${BACKDROP_SPOTS.tankHeight * 100}%` }}>
+            <BubbleBursts scale={0.7} />
+          </TankPlace>
+        ))}
+      </Scene>
+    );
+  }
   return (
     <Scene aria-hidden="true" style={{ transform }}>
+      <UnderwaterFilter />
       {spots.map(({ id, x, y }) => (
         <Tank key={id} style={{ left: `${x * 100}%`, top: `${(y - BACKDROP_SPOTS.tankRaise) * 100}%`, height: `${BACKDROP_SPOTS.tankHeight * 100}%` }}>
-          <Bubbles />
+          <BubbleBursts />
         </Tank>
       ))}
       <Darkness style={{ background: `rgba(2, 4, 8, ${darkness})`, WebkitMaskImage: mask, maskImage: mask, WebkitMaskComposite: "source-in", maskComposite: "intersect" }} />

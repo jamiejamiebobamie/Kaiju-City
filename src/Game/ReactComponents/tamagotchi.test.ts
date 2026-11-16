@@ -58,7 +58,7 @@ describe('tamagotchi, later', () => {
     expect(pet.petUntil).toBeGreaterThan(0);
     pet = run(pet, 1500);
     expect(pet.hearts.length).toBe(0);
-    pet = run(pet, 2700);
+    for (let k = 0; k < 40 && pet.petUntil; k++) pet = step(pet); // (the hand's time is random: 2 to 4 s)
     expect(pet.petUntil).toBe(0);
     expect(pet.hearts.length).toBeGreaterThan(0);
     expect(pet.happiness).toBeGreaterThanOrEqual(4);
