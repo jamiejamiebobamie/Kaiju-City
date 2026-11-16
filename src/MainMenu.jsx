@@ -104,6 +104,19 @@ const SLIDE = { ms: PRESS_KEY.leaveMs * 0.9, title: "-170vw", skyline: "-120vw",
 // the logo's own layers: its title, the skyline image, the Kaiju walking behind the buildings
 const layerSlide = (distance, isOn) => isOn && css`animation: ${slideAway(distance)} ${SLIDE.ms}ms ease-in forwards;`;
 
+/*
+  Leaving (Jamie, 2026-11-15: trying something new): an extreme zoom into one of the city's buildings, the cloud
+  transition at its end. Later, with Jamie's pictures: the clouds part on a closer city, a lit apartment window, and the
+  camera goes in through it to the room that holds the Kaiju-Vision monitor (the player plays in an apartment in this
+  city). 'spot': the building, as shares across and down the skyline picture (a guess: tune it).
+*/
+const CITY_ZOOM = { ms: PRESS_KEY.leaveMs, scale: 18, spot: { x: 0.62, y: 0.6 } };
+const zoomIntoCity = keyframes`
+  from { transform: scale(1); filter: blur(0); }
+  70% { filter: blur(0); }
+  to { transform: scale(${CITY_ZOOM.scale}); filter: blur(1.5px); }
+`;
+
 const SceneSlide = styled.div`
   position: absolute;
   inset: 0;
@@ -111,17 +124,19 @@ const SceneSlide = styled.div`
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  & > div > :first-child { ${props => layerSlide(SLIDE.title, props.$isLeaving)} }
-  & img { ${props => layerSlide(SLIDE.skyline, props.$isLeaving)} }
-  /* the Kaiju keeps its walk and its own glow: it slides by 'translate' alone */
-  & > div > :nth-child(n + 3) { ${props => props.$isLeaving && css`transition: translate ${SLIDE.ms}ms ease-in; translate: ${SLIDE.kaiju} 0;`} }
+  /* (the old leave, a parallax slide off left ('layerSlide', 'SLIDE'), is replaced by the zoom; the embers fade) */
+  ${props => props.$isLeaving && css`
+    transform-origin: var(--zoom-x, 50%) var(--zoom-y, 50%);
+    animation: ${zoomIntoCity} ${CITY_ZOOM.ms}ms cubic-bezier(0.6, 0, 0.9, 0.35) forwards;
+  `}
 `;
 
 const EmberSlide = styled.div`
   position: fixed;
   inset: 0;
   pointer-events: none;
-  ${props => layerSlide(SLIDE.embers, props.$isLeaving)}
+  transition: opacity ${CITY_ZOOM.ms * 0.4}ms ease-out;
+  ${props => props.$isLeaving && css`opacity: 0;`}
 `;
 
 // confirmed (Jamie, playtest 22): two slow blinks, then white, then it fades
@@ -185,11 +200,21 @@ export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
 
   // any key or a click (Jamie, playtest 21): the scene slides off left, "[Press any key]" flashes white and fades, then on
   const [isLeaving, setIsLeaving] = useState(false);
+  const sceneRef = useRef(null);
+  const [zoomSpot, setZoomSpot] = useState(undefined);
   const isLeavingRef = useRef(false);
   useEffect(() => {
     const go = () => {
       if (isLeavingRef.current || toolScreen) return;
       isLeavingRef.current = true;
+      // the zoom's aim: the building's spot in the skyline picture, from the scene's own corner
+      const scene = sceneRef.current;
+      const skyline = scene && scene.querySelector("img");
+      if (scene && skyline) {
+        const s = scene.getBoundingClientRect();
+        const k = skyline.getBoundingClientRect();
+        setZoomSpot({ x: k.left - s.left + k.width * CITY_ZOOM.spot.x, y: k.top - s.top + k.height * CITY_ZOOM.spot.y });
+      }
       setIsLeaving(true);
       setTimeout(handleClickGame, PRESS_KEY.leaveMs);
     };
@@ -239,7 +264,7 @@ export const MainMenu = ({ handleClickGame, handleClickSettings }) => {
   return <ShiftingWrapper $isShiftingIn={isShiftingIn}>
     <SpeedBlurFilter />
     <EmberSlide $isLeaving={isLeaving}><Embers /></EmberSlide>
-    <SceneSlide $isLeaving={isLeaving}><Logo /></SceneSlide>
+    <SceneSlide ref={sceneRef} $isLeaving={isLeaving} style={zoomSpot ? { "--zoom-x": `${zoomSpot.x}px`, "--zoom-y": `${zoomSpot.y}px` } : undefined}><Logo /></SceneSlide>
     {navButtons}
     <PressAnyKey $isLeaving={isLeaving}>
       <PressKeyRow settings={pressSettings} isLeaving={isLeaving} />
