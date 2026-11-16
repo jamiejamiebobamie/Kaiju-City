@@ -690,6 +690,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   // into the game: the monitor's screen goes to black, and the new scene comes up from it
   const [screenFade, setScreenFade] = useState<'out' | 'in' | undefined>(undefined);
   const [hoveredAvatar, setHoveredAvatar] = useState<string | undefined>(undefined);
+  const [handOverAvatar, setHandOverAvatar] = useState<string | undefined>(undefined);
   // a scene come up on the monitor's own screen doesn't fade the whole page too (it'd black out the casing): the scenes
   // first shown in the screen fade's moments are left without it, for good
   const sceneFadeSkips = useRef({ until: 0, keys: new Set<string>(), seen: new Set<string>() });
@@ -1423,7 +1424,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   // Play!/Back console beside it from the avatar select on
   const isPreGame = !isPlayingGame && (isChoosingAvatar || !isSkippingPicker);
   const preGameWindow = isConsoleIn ? playWindow : getCenteredWindow(playWindow);
-  const goBackFromPicker = isLabPicker ? returnToLab : pickerFrom == 'avatar' ? () => setIsChoosingAvatar(true) : handleClickHome;
+  const goBackFromPicker = isLabPicker ? returnToLab : pickerFrom == 'avatar' ? () => { setHandOverAvatar(undefined); setHoveredAvatar(undefined); setIsChoosingAvatar(true); } : handleClickHome;
   const preGameMonitor = (
     <GameArea>
       <GameFrame data-game-frame $shift={monitorShift == 'in' ? 'in' : undefined}>
@@ -1432,9 +1433,9 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
           ticker: <ObjectiveTicker text="" isKaijuCount={false} count={0} toWin={0} />
         })}>
           {/* the Lab behind them, darkened, lit round the avatars (Jamie) */}
-          <MonitorLabBackdrop mode={isChoosingAvatar ? "choice" : "picker"} hovered={hoveredAvatar} />
+          <MonitorLabBackdrop mode={isChoosingAvatar ? "choice" : "picker"} hovered={hoveredAvatar} focus={isChoosingAvatar ? handOverAvatar : selectedAvatar} />
           {isChoosingAvatar ? (
-            <AvatarChoice isReady={isMonitorOn} onHover={setHoveredAvatar} onChoose={(player, teammate) => {
+            <AvatarChoice isReady={isMonitorOn} onHover={setHoveredAvatar} onHandOver={setHandOverAvatar} onChoose={(player, teammate) => {
               // a first play skips the power picker: Discharge, Wildfire and Dispel to start (Jamie); every replay after it shows it
               const isFirstPlay = getIsFirstPlay();
               markPlaythroughStarted();

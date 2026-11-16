@@ -919,7 +919,7 @@ export const AbilityPicker = ({
             <div style={{ color: getTint(power.color, -TINT.turnDegrees) }}>{power.activeDesc}</div>
             {power.activeEffect1 && <Effect $color={power.color}>{power.activeEffect1}</Effect>}
           </Part>
-          <Part $align="right">
+          <Part $align="left">
             <PartHeader>Passive:</PartHeader>
             <FitTitleRow text={power.passiveName}>{power.passiveName}<Icon className={`fa ${power.passiveIcon}`} style={{ color: power.color }} /></FitTitleRow>
             <div style={{ color: getTint(power.color, TINT.turnDegrees) }}>{power.passiveDesc}</div>

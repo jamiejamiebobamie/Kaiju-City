@@ -377,7 +377,8 @@ const ChoiceAvatar = ({ id, sheet, keyName, figureOffset, chosen, isLeaving, onC
 
 // 'isReady': the monitor is on, so a pick can be made (not while it is still dead or warming up)
 // 'onHover': which one is under the mouse (the backdrop lights it up more)
-export const AvatarChoice = ({ onChoose, isReady = true, onHover = (_id) => {} }) => {
+// 'onHandOver': the chosen one, as it starts its slide to the picker (the backdrop goes with it)
+export const AvatarChoice = ({ onChoose, isReady = true, onHover = (_id) => {}, onHandOver = (_id) => {} }) => {
   const isReadyRef = useRef(isReady);
   isReadyRef.current = isReady;
   const { setSelectedAvatar } = useContext(GlobalSettingsContext);
@@ -391,7 +392,10 @@ export const AvatarChoice = ({ onChoose, isReady = true, onHover = (_id) => {} }
     setChosen(player);
     setSelectedAvatar(player);
     const teammate = player == "guy" ? "girl" : "guy";
-    setTimeout(() => setIsLeaving(true), CHOICE.lockInMs);
+    setTimeout(() => {
+      setIsLeaving(true);
+      onHandOver(player);
+    }, CHOICE.lockInMs);
     setTimeout(() => onChoose(player, teammate), CHOICE.lockInMs + CHOICE.slideMs);
   };
 

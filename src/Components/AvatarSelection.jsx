@@ -329,7 +329,7 @@ const CrtScreen = styled.div`
   A little see-through, too. The doodads' timings differ, so they don't zap together.
 */
 const DOODAD_SIGNAL = {
-  opacity: 0.8,
+  opacity: 1, // (was 0.8: lost against the Lab behind them. Jamie)
   seeds: 4,
   snowMs: 240, // the noise's crackle, as the grid's
   noiseDark: 0.9, // how far the specks go toward black (0: none)
@@ -670,7 +670,7 @@ export const Doodads = ({ persistDisc, show, globalTranslation, isRed, opacity, 
         fontSize={'13px'}
       />}
       {isDrifting && <DoodadSignalFilters />}
-      <BlinkFadeEffect high={69} low={40}>
+      <BlinkFadeEffect high={isDrifting ? 95 : 69} low={isDrifting ? 75 : 40}>
         <DoodadTransform scale={`${STARTING_POSTIONS[0].scaleX}, ${STARTING_POSTIONS[0].scaleY}`} translation={`${translations[0].x}px, ${translations[0].y}px`} ms={isDrifting ? translations[0].ms : undefined} $ease={isDrifting ? translations[0].ease : undefined} $isFlash={translations[0].isFlash}>
           <CrtScreen $origin="105px 133px" $isOff={translations[0].isOff} $isReturning={translations[0].isReturning}>
             <Grainy $isOn={isDrifting} $doodad={0}>

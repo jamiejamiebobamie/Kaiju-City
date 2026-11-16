@@ -340,11 +340,14 @@ export const buildBattlePreviewLevel = ({ columns = 11, rows = 6 } = {}): LevelC
   for (let i = firstI; i < firstI + columns; i++) for (let j = firstJ; j < firstJ + rows; j++) base.push({ i, j });
   const edges = base.filter(({ i }) => i == firstI || i == firstI + columns - 1);
   const middle = { i: firstI + Math.floor(columns / 2), j: firstJ + Math.floor(rows / 2) };
-  const sceneWidth = grid.originX + (columns + 0.5) * grid.colStep;
-  const sceneHeight = grid.originY + (rows + 1.2) * grid.rowStep;
-  const file = { ...(peninsula as any), id: 'battlePreview', sceneWidth, sceneHeight, tileLinks: [], tileSets: { base, kaijuEntry: edges, spawn: [middle], goal: [], radar: [] } };
+  // (a margin of empty world round it, so the whole board sits smaller in its box: Jamie, still too close)
+  const margin = { x: 3 * grid.colStep, y: 1.5 * grid.rowStep };
+  const sceneWidth = grid.originX + (columns + 0.5) * grid.colStep + 2 * margin.x;
+  const sceneHeight = grid.originY + (rows + 1.2) * grid.rowStep + 2 * margin.y;
+  const shiftedGrid = { ...grid, originX: grid.originX + margin.x, originY: grid.originY + margin.y };
+  const file = { ...(peninsula as any), grid: shiftedGrid, id: 'battlePreview', sceneWidth, sceneHeight, tileLinks: [], tileSets: { base, kaijuEntry: edges, spawn: [middle], goal: [], radar: [] } };
   const level = buildLevel(file, 'Battle preview', '#5a8a7a');
-  const rowY = j => grid.originY + (j + 0.5) * grid.rowStep;
+  const rowY = j => shiftedGrid.originY + (j + 0.5) * grid.rowStep;
   return {
     ...level,
     layers: [],
