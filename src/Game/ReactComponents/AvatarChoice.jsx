@@ -346,7 +346,7 @@ const AvatarName = styled.span`
   `}
 `;
 
-const ChoiceAvatar = ({ id, sheet, keyName, figureOffset, chosen, isLeaving, onChoose }) => {
+const ChoiceAvatar = ({ id, sheet, keyName, figureOffset, chosen, isLeaving, onChoose, onHover }) => {
   const [isHovered, setIsHovered] = useState(false);
   const boxRef = useRef(null);
   const [handOver, setHandOver] = useState(undefined);
@@ -357,7 +357,7 @@ const ChoiceAvatar = ({ id, sheet, keyName, figureOffset, chosen, isLeaving, onC
   const [doodadOpacity, setDoodadOpacity] = useState(0);
   const sparks = useSparkBursts(isHovered && !chosen, figureOffset);
   return (
-    <Choice $isLocked={!!chosen} onClick={onChoose} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} aria-label={id}>
+    <Choice $isLocked={!!chosen} onClick={onChoose} onMouseEnter={() => { setIsHovered(true); onHover(id); }} onMouseLeave={() => { setIsHovered(false); onHover(undefined); }} aria-label={id}>
       <SpriteBox ref={boxRef} data-avatar={id} $isLeaving={isLeaving && !isHandedOver} style={isHandedOver && handOver ? { ...handOver, transition: `transform ${CHOICE.slideMs}ms cubic-bezier(0.4, 0, 0.2, 1)` } : undefined}>
         {/* the grid's sparks under everything here: the grid, the three readouts and the figure (Jamie) */}
         <GridSparks sparks={sparks} />
@@ -376,7 +376,8 @@ const ChoiceAvatar = ({ id, sheet, keyName, figureOffset, chosen, isLeaving, onC
 };
 
 // 'isReady': the monitor is on, so a pick can be made (not while it is still dead or warming up)
-export const AvatarChoice = ({ onChoose, isReady = true }) => {
+// 'onHover': which one is under the mouse (the backdrop lights it up more)
+export const AvatarChoice = ({ onChoose, isReady = true, onHover = (_id) => {} }) => {
   const isReadyRef = useRef(isReady);
   isReadyRef.current = isReady;
   const { setSelectedAvatar } = useContext(GlobalSettingsContext);
@@ -411,7 +412,7 @@ export const AvatarChoice = ({ onChoose, isReady = true }) => {
         <SpeedBlurFilter />
         <Row>
           {AVATARS.map(({ id, sheet, key, figureOffset }) => (
-            <ChoiceAvatar key={id} id={id} sheet={sheet} keyName={key} figureOffset={figureOffset} chosen={chosen} isLeaving={isLeaving} onChoose={() => choose(id)} />
+            <ChoiceAvatar key={id} id={id} sheet={sheet} keyName={key} figureOffset={figureOffset} chosen={chosen} isLeaving={isLeaving} onChoose={() => choose(id)} onHover={onHover} />
           ))}
         </Row>
         <Prompt $isHidden={!!chosen}>Choose your character</Prompt>
