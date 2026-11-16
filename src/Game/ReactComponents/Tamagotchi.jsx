@@ -44,10 +44,13 @@ const TAMA = {
 const SHEET = { src: "/spritesheet/kaiju_sprite2.png", frames: 10, rows: 6, frameWidth: 180, frameHeight: 230.33, rowLeft: 3, rowRight: 0 };
 const BURN = { src: "/spritesheet/burning_kaiju_sprite.png", frames: 6, frameWidth: 103, frameHeight: 155 };
 
-const NAMES = ["Mochi", "Biscuit", "Gizmo", "Pickles", "Noodle", "Waffles", "Pudding", "Tofu", "Bubbles", "Pebble", "Sprout",
-  "Nugget", "Dumpling", "Wasabi", "Peanut", "Jellybean", "Muffin", "Taco", "Bagel", "Pretzel", "Kiwi", "Mango", "Sprinkles",
-  "Chomp", "Rumble", "Stompy", "Gnasher", "Scales", "Zilla Jr.", "Pancake", "Doodle", "Squish", "Bean", "Crumpet", "Fizz",
-  "Snickerdoodle", "Turnip", "Marshmallow", "Kumquat", "Tater"];
+// its names: 8 letters at most, so a name fits the LCD at full size (Jamie: the long ones ran off it)
+const NAMES = [
+  "Mochi", "Biscuit", "Gizmo", "Pickles", "Noodle", "Waffles", "Pudding", "Tofu", "Bubbles", "Pebble", "Sprout",
+  "Nugget", "Dumpling", "Wasabi", "Peanut", "Muffin", "Taco", "Bagel", "Pretzel", "Kiwi", "Mango", "Chomp", "Rumble",
+  "Stompy", "Gnasher", "Scales", "Pancake", "Doodle", "Squish", "Bean", "Crumpet", "Fizz", "Turnip", "Kumquat",
+  "Tater"
+];
 
 const between = ([low, high]) => low + Math.random() * (high - low);
 let thingId = 0;
@@ -448,7 +451,7 @@ export const Tamagotchi = ({ actRef }) => {
     <Screen>
       <Lcd>
       {/* its name: an egg's is not known yet (Jamie): "???" until it hatches with its own */}
-      <Name style={{ fontSize: `${Math.min(TAMA.nameSize, 21 / pet.name.length)}cqw` }}>{pet.mode == "egg" ? "???" : pet.name.toUpperCase()}</Name>
+      <Name style={{ fontSize: `${Math.min(TAMA.nameSize, 17 / pet.name.length)}cqw` }}>{pet.mode == "egg" ? "???" : pet.name.toUpperCase()}</Name>
       {pet.pellets.map(({ id, x, y: pelletY }) => <Pellet key={id} style={{ left: `${x * 100}%`, top: `${pelletY * 100}%` }} />)}
       {pet.poops.map(({ id, x }) => <Poop key={id} style={{ left: `${x * 100}%`, top: y }} />)}
       {pet.mode == "burn" && <Flames style={{ left: `${pet.x * 100}%`, top: y }} />}
