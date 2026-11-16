@@ -22,7 +22,7 @@ export const ROOM = {
 
 // the zoom's last view of the room (its box on the screen, px), for the game page to start from; the real casing's
 // shape (width over height), for the stand-in monitor the zoom shows
-export const ROOM_HANDOFF = { view: undefined, casingAspect: undefined };
+export const ROOM_HANDOFF = { view: undefined, casingAspect: undefined, isFrozen: false };
 
 // the room's box (px) for a casing's box on the screen
 export const getRoomViewFor = casing => {
@@ -166,7 +166,7 @@ export const RoomBackdrop = () => {
     const place = () => {
       const box = ref.current;
       const casing = document.querySelector("[data-tv-casing]");
-      if (box) {
+      if (box && !ROOM_HANDOFF.isFrozen) {
         const casingBox = casing && casing.getBoundingClientRect();
         if (casingBox && casingBox.height > 0) ROOM_HANDOFF.casingAspect = casingBox.width / casingBox.height;
         let view = casingBox && getRoomViewFor(casingBox);
@@ -195,5 +195,5 @@ export const RoomBackdrop = () => {
       clearTimeout(standIn);
     };
   }, []);
-  return <Box ref={ref} aria-hidden="true" style={{ visibility: "hidden" }}><RoomExtras /><RoomMonitor isShown={isStandInShown} /></Box>;
+  return <Box ref={ref} data-room-box aria-hidden="true" style={{ visibility: "hidden" }}><RoomExtras /><RoomMonitor isShown={isStandInShown} /></Box>;
 };

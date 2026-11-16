@@ -39,6 +39,7 @@ export const savePlayWindow = playWindow => {
 
 const Window = styled.div`
   position: absolute;
+  background: #000; /* (the room behind the monitor never shows through its screen: Jamie) */
 `;
 
 const Outline = styled.div`

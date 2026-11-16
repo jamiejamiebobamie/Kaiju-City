@@ -3,7 +3,8 @@ import styled, { keyframes } from "styled-components";
 import { ROOM, ROOM_HANDOFF, RoomExtras, RoomMonitor } from "./RoomScene";
 
 // Leave (Jamie): the way back to the landing is the zoom backwards, quicker; set before the landing shows
-export const ZOOM_BACK = { isPending: false, speed: 1.7, cityFadeMs: 500 };
+// 'fromView': the room's box (px) as the game page's pull-back left it, the way back blending on from there
+export const ZOOM_BACK = { isPending: false, speed: 1.7, cityFadeMs: 500, fromView: undefined, blendMs: 700 };
 
 /*
   The landing's extreme zoom (Jamie, 2026-11-16): after the logo's zoom and the clouds, one camera push through three
@@ -129,8 +130,11 @@ const Clouds = ({ isReverse = false, startMs = CLOUDS.startMs }) => (
 // 'isReverse': backwards, from the room out to the city, which then fades away to the landing
 export const ZoomThrough = ({ isOn, startMs, onDone, isReverse = false }) => {
   const refs = useRef([]);
+  const frameRef = useRef(null);
   useEffect(() => {
     if (!isOn) return;
+    const fromView = isReverse ? ZOOM_BACK.fromView : undefined;
+    ZOOM_BACK.fromView = undefined;
     const room = getRoomEnd();
     const pictures = ZOOM_THROUGH.pictures.map(picture => picture.span === undefined ? { ...picture, ...room } : picture);
     const pushMs = getPushMs();
@@ -165,7 +169,15 @@ export const ZoomThrough = ({ isOn, startMs, onDone, isReverse = false }) => {
         const scale = Math.exp(own);
         const share = Math.max(0, Math.min(1, own / span));
         const focus = { x: 0.5 + (target.x - 0.5) * share, y: 0.5 + (target.y - 0.5) * share };
-        element.style.transform = `translate(${(0.5 - scale * focus.x) * 100}%, ${(0.5 - scale * focus.y) * 100}%) scale(${scale})`;
+        let view = { x: 0.5 - scale * focus.x, y: 0.5 - scale * focus.y, scale };
+        // backwards, the room starts where the game page left it and blends onto the way back's path
+        if (fromView && k == pictures.length - 1 && frameRef.current) {
+          const frame = frameRef.current.getBoundingClientRect();
+          const from = { x: (fromView.left - frame.left) / frame.width, y: (fromView.top - frame.top) / frame.height, scale: fromView.width / frame.width };
+          const t = smooth(elapsed / ZOOM_BACK.blendMs);
+          view = { x: from.x + (view.x - from.x) * t, y: from.y + (view.y - from.y) * t, scale: from.scale + (view.scale - from.scale) * t };
+        }
+        element.style.transform = `translate(${view.x * 100}%, ${view.y * 100}%) scale(${view.scale})`;
         if (k == 0) {
           element.style.opacity = String(isReverse
             ? smooth(into / ZOOM_BACK.cityFadeMs)
@@ -207,7 +219,7 @@ export const ZoomThrough = ({ isOn, startMs, onDone, isReverse = false }) => {
   if (!isOn) return null;
   return (
     <Stage aria-hidden="true">
-      <Frame>
+      <Frame ref={frameRef}>
         {ZOOM_THROUGH.pictures.map(({ src }, k) => (
           <Picture key={src} ref={element => { refs.current[k] = element; }} style={{ backgroundImage: `url(${src})` }}>
             {k == ZOOM_THROUGH.pictures.length - 1 && <><RoomExtras /><RoomMonitor /></>}

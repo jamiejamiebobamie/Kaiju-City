@@ -29,6 +29,7 @@ import { AbilityPicker, FLY_OFF, MINI_TIMING, PlayConsole, SideMonitor } from ".
 import { holdTamagotchi } from "./Tamagotchi";
 import { FOCUS_MOVE, getFocusTransform, MonitorLabBackdrop } from "./MonitorLabBackdrop";
 import { ROOM_HANDOFF, RoomBackdrop } from "Components/RoomScene";
+import { ZOOM_BACK } from "Components/ZoomThrough";
 import { useKeyPress } from "Utils/utils";
 import { ABILITY_KEY_CODES, GAME_TICK, PIECES_INFO, TILE_STATUSES_AND_ABILITY_DATA } from "Utils/gameState";
 import { FullscreenPage } from "Components/FullscreenPage.jsx";
@@ -73,6 +74,8 @@ const getCenteredWindow = window => {
 
 // into the game from the picker (Jamie: no clouds): the monitor's screen fades to black, then the new scene up from it
 const SCREEN_FADE = { ms: 550 };
+// Leave's pull back (Jamie): how far and how long, and when the screen clicks off in it
+const PULL_BACK = { scale: 0.82, ms: 1150, offAtMs: 450 };
 const screenToBlack = keyframes`
   from { opacity: 0; }
   to { opacity: 1; }
@@ -724,6 +727,33 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     setIsSideOff(false);
     setIsFlyingOff(false);
   }, [isPlayingGame, isMonitorOn]);
+  /*
+    Leave (and Back from the avatar select), Jamie: the view starts pulling back from the monitor with its picture still
+    on, the screen clicks off as an old TV does, then the way back to the landing carries on from there (ZoomThrough).
+  */
+  const [pullOrigin, setPullOrigin] = useState<string | undefined>(undefined);
+  const leaveByZoom = () => {
+    if (!handleZoomHome) {
+      handleClickHome();
+      return;
+    }
+    if (pullOrigin) return;
+    const casing = document.querySelector("[data-tv-casing]");
+    const box = casing && casing.getBoundingClientRect();
+    ROOM_HANDOFF.isFrozen = true;
+    setPullOrigin(box ? `${box.left + box.width / 2}px ${box.top + box.height / 2}px` : "50% 50%");
+    setTimeout(() => setIsMonitorOn(false), PULL_BACK.offAtMs);
+    setTimeout(() => {
+      const room = document.querySelector("[data-room-box]");
+      if (room) {
+        const view = room.getBoundingClientRect();
+        ZOOM_BACK.fromView = { left: view.left, top: view.top, width: view.width };
+      }
+      ROOM_HANDOFF.isFrozen = false;
+      handleZoomHome();
+    }, PULL_BACK.offAtMs + CRT.offMs);
+  };
+  const pullStyle = pullOrigin ? { transform: `scale(${PULL_BACK.scale})`, transformOrigin: pullOrigin, transition: `transform ${PULL_BACK.ms}ms ease-in` } : undefined;
   // the tamagotchi waits while the Controls card is up
   useEffect(() => holdTamagotchi(isShowingControls), [isShowingControls]);
   // where the picker came from, for its Back (Jamie): the avatar select, back there; else home
@@ -1065,13 +1095,13 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     const isDestroyed = !!gameManager.current && gameManager.current.finalTurnState == "destroyed";
     if (isWon && (level.giantKaiju || (campaignIndex !== null && getIsLastSection(campaignIndex)))) return { title: isDestroyed ? "You turned into a Kaiju and destroyed the city!" : "You saved the city!", buttons: [], isFinale: true };
     if (campaignIndex === null) {
-      return { title, buttons: [{ text: "Play again", onClick: () => triggerTransition(resetMatch) }, { text: "Leave", onClick: handleClickHome }] };
+      return { title, buttons: [{ text: "Play again", onClick: () => triggerTransition(resetMatch) }, { text: "Leave", onClick: () => leaveByZoom() } /* (the way back out, as the bezel's Leave: Jamie) */] };
     }
     if (!isWon) {
-      return { title, buttons: [{ text: "Try again", onClick: () => fadeOutThen(() => retrySection(campaignIndex)) }, { text: "Leave", onClick: handleClickHome }] };
+      return { title, buttons: [{ text: "Try again", onClick: () => fadeOutThen(() => retrySection(campaignIndex)) }, { text: "Leave", onClick: () => leaveByZoom() } /* (the way back out, as the bezel's Leave: Jamie) */] };
     }
     if (getIsLastSection(campaignIndex)) {
-      return { title: "You saved the city!", buttons: [{ text: "Play again", onClick: () => { setCampaignIndex(0); triggerTransition(resetMatch); } }, { text: "Leave", onClick: handleClickHome }] };
+      return { title: "You saved the city!", buttons: [{ text: "Play again", onClick: () => { setCampaignIndex(0); triggerTransition(resetMatch); } }, { text: "Leave", onClick: () => leaveByZoom() } /* (the way back out, as the bezel's Leave: Jamie) */] };
     }
     // the first fight to the Street: in on the city, then the map swirls away (Jamie)
     if (campaignIndex === 0) return { title, buttons: [{ text: "Continue", onClick: () => swirlToSection(campaignIndex + 1) }] };
@@ -1274,7 +1304,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     <>
       <BezelButton title="Pause" onClick={handleClickPause} disabled={isPauseOff}>Pause</BezelButton>
       <BezelButton title="How to play" onClick={openControls}>Controls</BezelButton>
-      <BezelButton title="Goodbye!" onClick={handleZoomHome || handleClickHome}>Leave</BezelButton>
+      <BezelButton title="Goodbye!" onClick={() => leaveByZoom()}>Leave</BezelButton>
       {ticker}
     </>
   );
@@ -1446,7 +1476,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     setHoveredAvatar(undefined);
     setIsChoosingAvatar(true);
     requestAnimationFrame(() => requestAnimationFrame(() => setHandOverAvatar(undefined)));
-  } : handleClickHome;
+  } : () => leaveByZoom();
   // Play! (Jamie): the side monitor and the console fly off right, ripping their wires out, gone before the first
   // scene; the screen's fade to black runs as they go. (From the Lab, straight back.)
   const playFromConsole = () => {
@@ -1462,10 +1492,10 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const backFromAvatarSelect = () => {
     if (isSideOff) return;
     setIsSideOff(true);
-    setTimeout(handleZoomHome || handleClickHome, CRT.offMs);
+    leaveByZoom();
   };
   const preGameMonitor = (
-    <GameArea>
+    <GameArea style={pullStyle}>
       <RoomBackdrop />
       <GameFrame data-game-frame $shift={monitorShift == 'in' || monitorShift == 'fade' ? monitorShift : undefined}>
         <PlayWindow playWindow={preGameWindow} setPlayWindow={updatePlayWindow} isAdjusting={false} isOpen={false} isPoweredOn={isMonitorOn} isClipped hasGlare buttons={getBezelButtons({
@@ -1552,7 +1582,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
       </>
     : !isPlayingGame ? null
       : radioLines ?
-        <GameArea>
+        <GameArea style={pullStyle}>
           <RoomBackdrop />
           <GameFrame data-game-frame>
             {/* the alarm only when the call sends the team into a Kaiju fight */}
@@ -1571,7 +1601,9 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
                 isResuming={isResumingRadio}
                 onGo={() => {
                   const { levelId: sectionLevelId, hasArrival, kills } = CAMPAIGN_SECTIONS[campaignIndex];
-                  fadeOutThen(() => startMatch(LEVELS[sectionLevelId], hasArrival, kills));
+                  // a hard cut on the monitor (Jamie): no fade, the room around it unchanged
+                  sceneFadeSkips.current.until = Date.now() + 1500;
+                  startMatch(LEVELS[sectionLevelId], hasArrival, kills);
                 }}
                 onChangePowers={handleChangePowers}
                 onAlarm={() => setIsRadioAlarm(true)}
@@ -1587,7 +1619,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
           buttons={fullScreenPageData.buttons}
           image={fullScreenPageData.image}
         />
-        : !gameManager.current ? null : (<GameArea>
+        : !gameManager.current ? null : (<GameArea style={pullStyle}>
           <RoomBackdrop />
           {import.meta.env.DEV && !isDevHidden && (
             <PhaseToggles>
