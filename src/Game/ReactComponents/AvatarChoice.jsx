@@ -322,6 +322,29 @@ const getHandOver = box => {
   };
 };
 
+// each one's name beside its number (Jamie): "Guy" and "Girl" in purple, glowing up on hover; gone once chosen
+const NumberRow = styled.span`
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+`;
+
+const AvatarName = styled.span`
+  font-family: gameboy;
+  font-size: 18px;
+  text-transform: uppercase;
+  color: ${CHOICE.textColor};
+  text-shadow: 0 0 4px ${CHOICE.textColor};
+  opacity: 0.8;
+  transition: text-shadow 160ms, opacity 160ms, color 160ms;
+  visibility: ${props => props.$isHidden ? "hidden" : "visible"};
+  ${props => props.$isHovered && css`
+    opacity: 1;
+    color: #f2a6ff;
+    text-shadow: 0 0 6px ${CHOICE.textColor}, 0 0 14px ${CHOICE.textColor}, 0 0 2px white;
+  `}
+`;
+
 const ChoiceAvatar = ({ id, sheet, keyName, figureOffset, chosen, isLeaving, onChoose }) => {
   const [isHovered, setIsHovered] = useState(false);
   const boxRef = useRef(null);
@@ -342,7 +365,10 @@ const ChoiceAvatar = ({ id, sheet, keyName, figureOffset, chosen, isLeaving, onC
         </DoodadHolder>
         <Sprite $sheet={sheet} $color={CHOICE.colors[id]} $isChosen={chosen == id} $isLocked={!!chosen} />
       </SpriteBox>
-      <ElectricNumber isElectric={isHovered} isHidden={!!chosen} sparks={sparks}>{keyName}</ElectricNumber>
+      <NumberRow>
+        <ElectricNumber isElectric={isHovered} isHidden={!!chosen} sparks={sparks}>{keyName}</ElectricNumber>
+        <AvatarName $isHovered={isHovered} $isHidden={!!chosen}>{id}</AvatarName>
+      </NumberRow>
       <Label $isShown={!!chosen} $isLeaving={isLeaving} style={{ "--color": CHOICE.colors[id] }}>{chosen ? (chosen == id ? "Player" : "Teammate") : ""}</Label>
     </Choice>
   );
