@@ -443,16 +443,18 @@ const MiniBrow = styled.div`
   right: ${MINI.casing}cqw;
   top: 0;
   height: ${MINI.brow}cqw;
+  box-sizing: border-box;
+  padding-top: 0.9cqw; /* a little lower in the border (Jamie) */
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.8cqw;
+  gap: 0.9cqw;
 `;
 
 const BrowButton = styled.button`
-  padding: 0.35cqw 0.9cqw;
+  padding: 0.45cqw 1.05cqw;
   font-family: gameboy;
-  font-size: 0.7cqw;
+  font-size: 0.95cqw; /* (larger, more readable: Jamie; was 0.7) */
   cursor: pointer;
   border-radius: 0.35cqw;
   ${RUBBER_BUTTON}
