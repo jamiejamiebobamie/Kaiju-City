@@ -48,8 +48,8 @@ const App = () => {
   };
 
   const appContent = isFirstLoad
-    ? <div style={{ opacity: isSplashLeaving ? 0 : 1, transition: `opacity ${SPLASH_FADE_MS}ms ease-out` }}><SplashScreen /></div>
-    : <div className={isSplashLeaving ? "landing-fade-in" : undefined}><Home triggerTransition={triggerTransition} /></div>;
+    ? <div className="app-page" style={{ opacity: isSplashLeaving ? 0 : 1, transition: `opacity ${SPLASH_FADE_MS}ms ease-out` }}><SplashScreen /></div>
+    : <div className={isSplashLeaving ? "app-page landing-fade-in" : "app-page"}><Home triggerTransition={triggerTransition} /></div>;
 
   if (isLevelEditor) return <Suspense fallback={null}><LevelEditor /></Suspense>;
   if (isDialogueViewer) return <Suspense fallback={null}><DialogueViewer /></Suspense>;

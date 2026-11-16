@@ -53,3 +53,13 @@
 .landing-fade-in {
   animation: landingFadeIn 900ms ease-out both;
 }
+
+/* the splash's and the landing's wrappers (for their fades), laid out as .App is, so things stay centered (Jamie) */
+.app-page {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}

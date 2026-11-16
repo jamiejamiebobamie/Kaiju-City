@@ -1,5 +1,6 @@
 import React, { useState, useEffect, createContext } from "react";
 import { MainMenu } from "./MainMenu";
+import { ZOOM_BACK } from "./Components/ZoomThrough";
 import { Game } from "./Game/ReactComponents/Game";
 import { Settings } from "./Settings/Settings";
 import { SettingsManager } from "./Game/DataClasses/SettingsManager";
@@ -95,6 +96,7 @@ export const Home = ({ triggerTransition }) => {
         <Game
           triggerTransition={triggerTransition}
           handleClickHome={() => triggerTransition(handleClickHome)}
+          handleZoomHome={() => { ZOOM_BACK.isPending = true; handleClickHome(); } /* Leave: the zoom backwards (Jamie) */}
           handleShiftHome={handleShiftHome}
         />
       ) : (

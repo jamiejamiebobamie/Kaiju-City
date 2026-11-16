@@ -1,6 +1,9 @@
 import React, { useEffect, useRef } from "react";
-import styled from "styled-components";
+import styled, { keyframes } from "styled-components";
 import { ROOM, ROOM_HANDOFF, RoomExtras } from "./RoomScene";
+
+// Leave (Jamie): the way back to the landing is the zoom backwards, quicker; set before the landing shows
+export const ZOOM_BACK = { isPending: false, speed: 1.7, cityFadeMs: 500 };
 
 /*
   The landing's extreme zoom (Jamie, 2026-11-16): after the logo's zoom and the clouds, one camera push through three
@@ -13,7 +16,7 @@ import { ROOM, ROOM_HANDOFF, RoomExtras } from "./RoomScene";
   feathered (a soft oval) so its rectangle never shows, opening up as it takes over (Jamie: a blend by their alphas).
 */
 export const ZOOM_THROUGH = {
-  fadeInMs: 80, // the first picture, under the clouds
+  fadeInMs: 450, // the first picture, as the clouds sweep past
   blendSpan: 0.8,
   pictures: [
     // Jamie's window: the lit four-pane one in the grey tower, middle (about 26 px of 1365 wide)
@@ -73,8 +76,55 @@ const Picture = styled.div`
   will-change: transform, opacity;
 `;
 
-// 'startMs': when the push starts after the key (the clouds covering); 'onDone': it's over, in the room
-export const ZoomThrough = ({ isOn, startMs, onDone }) => {
+/*
+  The zoom's clouds (Jamie, after the Simpsons' opening): a few, quick and sparse, sweeping in from both sides and on
+  past the camera as it zooms, adding detail to the logo's city as it comes, a little distraction as the logo fades out
+  and the city's picture fades in. Not the cloud transition (they never cover the screen). Each: its side, its height
+  (share of the screen), its size (vh), its delay.
+*/
+const CLOUDS = {
+  ms: 1100,
+  startMs: 650, // after the key
+  puffs: [
+    { side: -1, y: 0.2, size: 20, delay: 0 }, { side: 1, y: 0.3, size: 24, delay: 60 },
+    { side: -1, y: 0.72, size: 26, delay: 120 }, { side: 1, y: 0.78, size: 20, delay: 170 },
+    { side: -1, y: 0.46, size: 16, delay: 220 }, { side: 1, y: 0.08, size: 18, delay: 260 }
+  ]
+};
+const sweep = keyframes`
+  0% { transform: translate(calc(var(--side) * 70vw), 0) scale(0.6); opacity: 0; }
+  25% { opacity: 0.8; }
+  60% { opacity: 0.7; }
+  100% { transform: translate(calc(var(--side) * 30vw), 0) scale(2); opacity: 0; }
+`;
+const Puff = styled.div`
+  position: absolute;
+  left: 50%;
+  aspect-ratio: 2 / 1;
+  margin-left: calc(var(--size) * -1);
+  margin-top: calc(var(--size) * -0.5);
+  /* a pixel-edged cloud: a few round lobes, white to a lavender underside */
+  background:
+    radial-gradient(circle at 30% 60%, #f4f0ff 0 28%, transparent 29%),
+    radial-gradient(circle at 52% 42%, #ffffff 0 30%, transparent 31%),
+    radial-gradient(circle at 72% 62%, #ebe4ff 0 25%, transparent 26%),
+    radial-gradient(ellipse 48% 22% at 50% 78%, #c9bde8 0 98%, transparent 100%);
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0.6vh 0 rgba(120, 96, 170, 0.45));
+  opacity: 0;
+  animation: ${sweep} ${CLOUDS.ms}ms cubic-bezier(0.3, 0, 0.6, 1) forwards;
+`;
+const Clouds = () => (
+  <>
+    {CLOUDS.puffs.map(({ side, y, size, delay }, k) => (
+      <Puff key={k} style={{ top: `${y * 100}%`, width: `${size * 2}vh`, "--size": `${size}vh`, "--side": side, animationDelay: `${CLOUDS.startMs + delay}ms` }} />
+    ))}
+  </>
+);
+
+// 'startMs': when the push starts after the key (as the clouds sweep past); 'onDone': it's over, in the room
+// 'isReverse': backwards, from the room out to the city, which then fades away to the landing
+export const ZoomThrough = ({ isOn, startMs, onDone, isReverse = false }) => {
   const refs = useRef([]);
   useEffect(() => {
     if (!isOn) return;
@@ -101,7 +151,7 @@ export const ZoomThrough = ({ isOn, startMs, onDone }) => {
     let isDone = false;
     const run = () => {
       const elapsed = performance.now() - start;
-      const into = Math.max(0, elapsed - startMs);
+      const into = isReverse ? Math.max(0, pushMs - elapsed * ZOOM_BACK.speed) : Math.max(0, elapsed - startMs);
       const zoom = getZoomAt(Math.min(into, pushMs));
       let before = 0;
       pictures.forEach(({ target, span }, k) => {
@@ -114,9 +164,13 @@ export const ZoomThrough = ({ isOn, startMs, onDone }) => {
         const focus = { x: 0.5 + (target.x - 0.5) * share, y: 0.5 + (target.y - 0.5) * share };
         element.style.transform = `translate(${(0.5 - scale * focus.x) * 100}%, ${(0.5 - scale * focus.y) * 100}%) scale(${scale})`;
         if (k == 0) {
-          element.style.opacity = String(elapsed >= startMs ? smooth((elapsed - startMs) / ZOOM_THROUGH.fadeInMs) : 0);
+          element.style.opacity = String(isReverse
+            ? smooth(into / ZOOM_BACK.cityFadeMs)
+            : elapsed >= startMs ? smooth((elapsed - startMs) / ZOOM_THROUGH.fadeInMs) : 0);
           return;
         }
+        // backwards, the room starts as dark as it was behind the monitor and brightens as it pulls away
+        if (isReverse && k == pictures.length - 1) element.style.filter = `brightness(${ROOM.brightness + (1 - ROOM.brightness) * smooth(elapsed / 700)})`;
         const blend = smooth((own + ZOOM_THROUGH.blendSpan) / ZOOM_THROUGH.blendSpan);
         element.style.opacity = String(blend);
         // feathered while it blends in: a soft oval, opening to the whole picture as it takes over
@@ -124,7 +178,13 @@ export const ZoomThrough = ({ isOn, startMs, onDone }) => {
         element.style.maskImage = mask;
         element.style.webkitMaskImage = mask;
       });
-      if (into < pushMs) {
+      if (isReverse) {
+        if (into > 0) frameId = requestAnimationFrame(run);
+        else if (!isDone) {
+          isDone = true;
+          onDone && onDone();
+        }
+      } else if (into < pushMs) {
         frameId = requestAnimationFrame(run);
       } else if (!isDone) {
         isDone = true;
@@ -151,6 +211,7 @@ export const ZoomThrough = ({ isOn, startMs, onDone }) => {
           </Picture>
         ))}
       </Frame>
+      {!isReverse && <Clouds />}
     </Stage>
   );
 };

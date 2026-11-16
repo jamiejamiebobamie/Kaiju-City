@@ -586,7 +586,7 @@ const FinaleCredits = ({ title, onDone }) => {
 };
 
 // 'handleShiftHome': back to the landing with the view's shift, not the clouds (the end of the game)
-export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = undefined }) => {
+export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = undefined, handleZoomHome = undefined }) => {
   const { selectedAvatar, setSelectedAvatar, selectedTeammate, setSelectedTeammate, selectedDifficulty, settingsManager } = useContext(GlobalSettingsContext);
   const { objectiveText, isObjectiveKaijuCount, objectiveCount } = useSnapshot(gameUiStore);
   const { takeOverCount, takeOverText } = useSnapshot(gameUiStore);
@@ -1274,7 +1274,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     <>
       <BezelButton title="Pause" onClick={handleClickPause} disabled={isPauseOff}>Pause</BezelButton>
       <BezelButton title="How to play" onClick={openControls}>Controls</BezelButton>
-      <BezelButton title="Goodbye!" onClick={handleClickHome}>Leave</BezelButton>
+      <BezelButton title="Goodbye!" onClick={handleZoomHome || handleClickHome}>Leave</BezelButton>
       {ticker}
     </>
   );
@@ -1462,7 +1462,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const backFromAvatarSelect = () => {
     if (isSideOff) return;
     setIsSideOff(true);
-    setTimeout(handleClickHome, CRT.offMs);
+    setTimeout(handleZoomHome || handleClickHome, CRT.offMs);
   };
   const preGameMonitor = (
     <GameArea>

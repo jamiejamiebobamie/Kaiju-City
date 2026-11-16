@@ -13,7 +13,8 @@ export const ROOM = {
   src: "/zoom-scene/3-room.png",
   size: { width: 1365, height: 768 },
   monitor: { centerX: 532, bottom: 582, height: 350 }, // (the clock left of it, the coffee right: Jamie)
-  settleMs: 900 // from where the zoom ended to the monitor's spot
+  settleMs: 900, // from where the zoom ended to the monitor's spot
+  brightness: 0.5 // behind the monitor (Jamie: much darker; a CSS filter, so it's easy to change)
 };
 
 // the zoom's last view of the room (its box on the screen, px), for the game page to start from
@@ -87,6 +88,8 @@ const Box = styled.div`
   background: url(${ROOM.src}) 0 0 / 100% 100%;
   image-rendering: pixelated;
   pointer-events: none;
+  filter: brightness(var(--room-brightness, 1));
+  transition: filter ${ROOM.settleMs}ms ease-out;
 `;
 
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -120,7 +123,12 @@ export const RoomBackdrop = () => {
       frameId = requestAnimationFrame(place);
     };
     place();
-    return () => cancelAnimationFrame(frameId);
+    // the lights down as the view settles (from the zoom's brightness)
+    const dim = requestAnimationFrame(() => ref.current && ref.current.style.setProperty("--room-brightness", String(ROOM.brightness)));
+    return () => {
+      cancelAnimationFrame(frameId);
+      cancelAnimationFrame(dim);
+    };
   }, []);
   return <Box ref={ref} aria-hidden="true" style={{ visibility: "hidden" }}><RoomExtras /></Box>;
 };

@@ -60,14 +60,16 @@ const Top = styled.div`
   align-items: flex-start;
 `;
 
+// as the dialogue panel shows them (Jamie): 3:4, from the top of the picture, in its green
 const Portrait = styled.div`
   flex: none;
-  width: 7.5cqw;
-  height: 7.5cqw;
+  width: 6.5cqw;
+  aspect-ratio: 3 / 4;
   border: 0.12cqw solid ${GREEN};
   box-shadow: 0 0 0.5cqw rgba(128, 239, 128, 0.45);
-  background: center / cover no-repeat;
+  background: #041a10 center top / cover no-repeat;
   image-rendering: pixelated;
+  filter: sepia(1) hue-rotate(75deg) saturate(1.6) brightness(1.05);
 `;
 
 const Name = styled.div`

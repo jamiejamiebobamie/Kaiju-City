@@ -1,8 +1,7 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
 import styled, { css, keyframes } from "styled-components";
 import { SpeedBlurFilter, slideAway } from "./Components/SlideAway";
-import { ZoomThrough } from "./Components/ZoomThrough";
-import { CLOUD_TIMING } from "./Components/CloudTransition";
+import { ZOOM_BACK, ZoomThrough } from "./Components/ZoomThrough";
 import { getIsPressPanel, getPressEffect, PressKeyPanel, PressKeyRow, usePressSettings } from "./Components/PressKeyEffects";
 import {
   Wrapper,
@@ -183,9 +182,8 @@ const ShiftingWrapper = styled(Wrapper)`
   ${props => props.$isShiftingIn && css`animation: ${landingShiftIn} ${LANDING_SHIFT_MS}ms cubic-bezier(0.2, 0.7, 0.3, 1) both;`}
 `;
 
-// the clouds (Jamie): once, rolling in with the key so they cover the screen as the logo's zoom ends; the apartment's
-// pictures come up under them
-const ZOOM_CLOUDS = { atMs: 0 };
+// the city's first picture comes up as the zoom's own clouds sweep past (ZoomThrough), the logo's zoom ending under them
+const ZOOM_START_MS = 1250;
 
 // 'playClouds': the cloud transition, on its own; 'enterRoom': on into the game, in the room (no clouds)
 export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = () => {}, enterRoom = undefined }) => {
@@ -211,13 +209,20 @@ export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = ()
 
   // any key or a click (Jamie, playtest 21): the scene slides off left, "[Press any key]" flashes white and fades, then on
   const [isLeaving, setIsLeaving] = useState(false);
+  // back from the game by Leave: the zoom backwards over the landing, then gone (Jamie)
+  const [isZoomingBack, setIsZoomingBack] = useState(() => {
+    const isBack = ZOOM_BACK.isPending;
+    ZOOM_BACK.isPending = false;
+    return isBack;
+  });
+  const isZoomingBackRef = useRef(isZoomingBack);
+  isZoomingBackRef.current = isZoomingBack;
   const isLeavingRef = useRef(false);
   useEffect(() => {
     const go = () => {
-      if (isLeavingRef.current || toolScreen) return;
+      if (isLeavingRef.current || toolScreen || isZoomingBackRef.current) return;
       isLeavingRef.current = true;
       setIsLeaving(true);
-      setTimeout(playClouds, ZOOM_CLOUDS.atMs); // (then on through the city, the window and the room: Jamie)
     };
     const onKey = event => { if (!event.repeat && !event.ctrlKey && !event.metaKey && !event.altKey) go(); };
     window.addEventListener("keydown", onKey);
@@ -266,9 +271,10 @@ export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = ()
     <SpeedBlurFilter />
     <EmberSlide $isLeaving={isLeaving}><Embers /></EmberSlide>
     <SceneSlide $isLeaving={isLeaving}><Logo /></SceneSlide>
-    <ZoomThrough isOn={isLeaving} startMs={ZOOM_CLOUDS.atMs + CLOUD_TIMING.coveredMs} onDone={enterRoom || handleClickGame} />
+    <ZoomThrough isOn={isLeaving} startMs={ZOOM_START_MS} onDone={enterRoom || handleClickGame} />
+    {isZoomingBack && <ZoomThrough isOn isReverse startMs={0} onDone={() => setIsZoomingBack(false)} />}
     {navButtons}
-    <PressAnyKey $isLeaving={isLeaving}>
+    <PressAnyKey $isLeaving={isLeaving} style={{ opacity: isZoomingBack ? 0 : undefined, transition: "opacity 600ms ease-out" }}>
       <PressKeyRow settings={pressSettings} isLeaving={isLeaving} />
     </PressAnyKey>
     {getIsPressPanel() && <PressKeyPanel settings={pressSettings} setSettings={setPressSettings} />}
