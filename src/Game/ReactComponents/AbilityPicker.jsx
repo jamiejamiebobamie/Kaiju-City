@@ -222,8 +222,17 @@ const Bead = styled.path`
   animation: ${beadRun} ${LOOK.beadMs}ms linear infinite;
 `;
 
+// floating in the tank (Jamie): a small, slow drift in place, kept light so the power traces still meet its middle
+const floatInTank = keyframes`
+  0%, 100% { transform: translate(0, 0); }
+  22% { transform: translate(0.25%, -0.45%); }
+  48% { transform: translate(-0.15%, -0.7%); }
+  74% { transform: translate(-0.3%, -0.2%); }
+`;
+
 const Avatar = styled.div`
   position: absolute;
+  animation: ${floatInTank} 7s ease-in-out infinite;
   background-repeat: no-repeat;
   background-size: auto ${FRAME.rows * 100}%;
   background-position: 0 ${(FRAME.standingRow / (FRAME.rows - 1)) * 100}%;
@@ -705,13 +714,13 @@ const BattleBox = styled.div`
   left: 3%;
   right: 3%;
   top: 50.5%;
-  bottom: 2.5%;
+  bottom: 1%;
   /* the pointer shows over it, the plain one (Jamie): the game's board hides it as it would in a game */
   cursor: default;
   & * { cursor: default !important; }
-  -webkit-mask-image: linear-gradient(to right, transparent, black 9%, black 91%, transparent), linear-gradient(to bottom, transparent, black 7%, black 93%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 9%, black 91%, transparent), linear-gradient(to bottom, transparent, black 3%, black 95%, transparent);
   -webkit-mask-composite: source-in;
-  mask-image: linear-gradient(to right, transparent, black 9%, black 91%, transparent), linear-gradient(to bottom, transparent, black 7%, black 93%, transparent);
+  mask-image: linear-gradient(to right, transparent, black 9%, black 91%, transparent), linear-gradient(to bottom, transparent, black 3%, black 95%, transparent);
   mask-composite: intersect;
   overflow: hidden;
   border-radius: 0.4cqw;
@@ -1010,7 +1019,7 @@ export const AbilityPicker = ({
             {isTamaShowing ? <Tamagotchi actRef={tamaRef} /> : <Info $isClass={hovered === undefined && !!playerClass}>{getInfo()}</Info>}
             {hovered === undefined && !!playerClass && (
               <>
-                <BattleBox ref={arenaRef} style={{ visibility: hovered === undefined ? "visible" : "hidden" }}>
+                <BattleBox ref={arenaRef} data-no-floating-words style={{ visibility: hovered === undefined ? "visible" : "hidden" }}>
                   {arenaWindow && <ClassBattle powers={pickedAbilities} avatar={selectedAvatar} playWindow={arenaWindow} />}
                 </BattleBox>
                 {/* the class's icons, at the screen's top (Jamie) */}

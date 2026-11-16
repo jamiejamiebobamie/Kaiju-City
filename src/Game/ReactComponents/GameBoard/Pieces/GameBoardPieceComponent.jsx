@@ -553,6 +553,8 @@ const FloatingNumber = ({ anchorRef, color, text, sizeScale = 1 }) => {
   useEffect(() => {
     const frame = document.querySelector("[data-game-frame]");
     if (!frame || !anchorRef.current) return;
+    // none on the class's battle preview (Jamie): no damage numbers or status words there
+    if (anchorRef.current.closest("[data-no-floating-words]")) return;
     const anchorBox = anchorRef.current.getBoundingClientRect();
     const frameBox = frame.getBoundingClientRect();
     setSpot({ frame, x: anchorBox.left - frameBox.left + (Math.random() - 0.5) * 12, y: anchorBox.top - frameBox.top });
