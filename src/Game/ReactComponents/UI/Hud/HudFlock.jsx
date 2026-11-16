@@ -32,6 +32,27 @@ export const FLOCK = {
     lifeMs: [380, 620],
     size: [5, 11],
     color: "232, 240, 246"
+  },
+  /*
+    Beside the monitor (phase 3, Jamie): the column starts just right of the casing, as big as the game allows but
+    never over the monitor, and never taller than the frame (it shrinks to fit). Shares of the frame's width.
+  */
+  place: { gap: 0.012, top: 0.01 },
+  /*
+    The wires (Jamie): once a HUD has settled, a cable slithers from its left end to its socket on the casing's right
+    side, sparking as it plugs in; leaving, the HUD rips it out. Sockets down the casing's side, as shares of its
+    height; in design pixels otherwise.
+  */
+  wires: {
+    sockets: { first: 0.22, step: 0.11 },
+    plugMs: 700, // the slither to the socket
+    arcsMs: 380, // sparking round the plug, then done
+    ripMs: 420,
+    width: 7,
+    color: "#0e0f10",
+    shine: "#3b3d41",
+    sag: 70,
+    arc: "#a8f4ff"
   }
 };
 
@@ -43,12 +64,12 @@ const sizeOf = variant => {
 
 const Column = styled.div`
   position: absolute;
-  top: 1cqw;
-  right: 13.1cqw;
+  left: 0;
+  top: 0;
   z-index: 2147483646;
   width: ${FLOCK.columnWidth}px;
   height: 0;
-  transform-origin: top right;
+  transform-origin: 0 0;
   pointer-events: none;
 `;
 
@@ -77,6 +98,9 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused }) => {
   const bodies = useRef(new Map()); // key → { x, y, vx, vy, tilt, vt, born, leftAt, seed }
   const elements = useRef(new Map());
   const canvasRef = useRef(null);
+  const columnRef = useRef(null);
+  const scaleRef = useRef(scale);
+  scaleRef.current = scale;
   const entriesRef = useRef(entries);
   entriesRef.current = entries;
 
@@ -116,6 +140,32 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused }) => {
           slots.set(entry.key, { leavingIndex: leavingIndex++, ...size });
         }
       });
+      // the column's place beside the monitor, and its scale (frame px); and the casing's sockets, in the column's px
+      const column = columnRef.current;
+      const frame = column && column.parentElement;
+      const casing = frame && frame.querySelector("[data-tv-casing]");
+      let sockets = [];
+      if (column && frame) {
+        const frameBox = frame.getBoundingClientRect();
+        const casingBox = casing && casing.getBoundingClientRect();
+        const gap = FLOCK.place.gap * frameBox.width;
+        const top = FLOCK.place.top * frameBox.width;
+        let columnScale = scaleRef.current;
+        let left;
+        if (casingBox && casingBox.width > 0) {
+          left = casingBox.right - frameBox.left + gap;
+          const roomWide = frameBox.right - casingBox.right - 2 * gap;
+          columnScale = Math.min(columnScale, roomWide / FLOCK.columnWidth);
+        } else {
+          left = frameBox.width * 0.869 - FLOCK.columnWidth * columnScale; // (as it was, with no monitor about)
+        }
+        columnScale = Math.max(0.2, Math.min(columnScale, (frameBox.height - 2 * top) / Math.max(y, 1)));
+        column.style.transform = `translate(${left}px, ${top}px) scale(${columnScale})`;
+        if (casingBox && casingBox.width > 0) {
+          const toColumn = (px, py) => ({ x: (px - frameBox.left - left) / columnScale, y: (py - frameBox.top - top) / columnScale });
+          sockets = [...Array(8).keys()].map(k => toColumn(casingBox.right - 4, casingBox.top + casingBox.height * (FLOCK.wires.sockets.first + FLOCK.wires.sockets.step * k)));
+        }
+      }
       // bring in the new ones, from out of shot, one after another
       let newIndex = 0;
       list.forEach(entry => {
@@ -237,6 +287,7 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused }) => {
       if (canvas) {
         const ctx = canvas.getContext("2d");
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawWires(ctx, list, slots, sockets, now, dt);
         for (let k = particles.length - 1; k >= 0; k--) {
           const p = particles[k];
           p.age += dt * 1000;
@@ -262,8 +313,98 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused }) => {
     return () => cancelAnimationFrame(frameId);
   }, [isPaused]);
 
+  /*
+    The wires: each settled HUD's cable, from its left end (turned with it) to its socket; slithering in, sparking as it
+    plugs in, ripped out as the HUD leaves (the socket end whipping after it).
+  */
+  const drawWires = (ctx, list, slots, sockets, now, dt) => {
+    const { wires } = FLOCK;
+    let socketIndex = 0;
+    list.forEach(entry => {
+      const body = bodies.current.get(entry.key);
+      const slot = slots.get(entry.key);
+      if (!body || now < body.born) return;
+      const socket = entry.isLeaving ? body.wire && body.wire.socket : sockets[socketIndex++];
+      if (!socket) return;
+      body.wire = body.wire || { progress: 0, pluggedAt: undefined, socket };
+      const wire = body.wire;
+      if (!entry.isLeaving) wire.socket = socket;
+      const settled = !entry.isLeaving && Math.hypot(body.vx, body.vy) < 160 && Math.abs(body.y - slot.y) < 40;
+      if (entry.isLeaving) wire.progress = Math.max(0, wire.progress - (dt * 1000) / wires.ripMs);
+      else if (settled || wire.progress > 0) wire.progress = Math.min(1, wire.progress + (dt * 1000) / wires.plugMs);
+      if (wire.progress >= 1 && wire.pluggedAt === undefined) wire.pluggedAt = now;
+      if (wire.progress <= 0) return;
+      // the HUD's end: its left end, near the middle, turned with it about its middle
+      const angle = (body.tilt * Math.PI) / 180;
+      const rel = { x: -slot.width / 2 + 8, y: slot.height * 0.08 };
+      const from = {
+        x: body.x + slot.width / 2 + rel.x * Math.cos(angle) - rel.y * Math.sin(angle) + JETS_MARGIN,
+        y: body.y + slot.height / 2 + rel.x * Math.sin(angle) + rel.y * Math.cos(angle) + JETS_MARGIN
+      };
+      // ripped: the socket end follows the HUD as it goes, whipping
+      const to = entry.isLeaving
+        ? { x: from.x + (wire.socket.x + JETS_MARGIN - from.x) * wire.progress, y: from.y + 60 * (1 - wire.progress) + (wire.socket.y + JETS_MARGIN - from.y) * wire.progress }
+        : { x: wire.socket.x + JETS_MARGIN, y: wire.socket.y + JETS_MARGIN };
+      const c1 = { x: from.x - 40, y: from.y + wires.sag };
+      const c2 = { x: to.x + 50, y: to.y + wires.sag };
+      const pointAt = t => {
+        const u = 1 - t;
+        return {
+          x: u * u * u * from.x + 3 * u * u * t * c1.x + 3 * u * t * t * c2.x + t * t * t * to.x,
+          y: u * u * u * from.y + 3 * u * u * t * c1.y + 3 * u * t * t * c2.y + t * t * t * to.y
+        };
+      };
+      // slithering in: drawn as far as it's got, waving a little
+      const reach = entry.isLeaving ? 1 : wire.progress;
+      const wave = entry.isLeaving ? 0 : (1 - wire.progress) * 10;
+      const points = [...Array(25).keys()].map(k => {
+        const t = (k / 24) * reach;
+        const point = pointAt(t);
+        return { x: point.x, y: point.y + Math.sin(t * 14 + now / 90) * wave };
+      });
+      const stroke = (color, width, offset) => {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        points.forEach(({ x, y }, k) => (k ? ctx.lineTo(x + offset, y + offset) : ctx.moveTo(x + offset, y + offset)));
+        ctx.stroke();
+      };
+      stroke(wires.color, wires.width, 0);
+      stroke(wires.shine, wires.width * 0.28, -wires.width * 0.18);
+      // the plug, in its socket
+      if (!entry.isLeaving && wire.progress >= 1) {
+        ctx.fillStyle = "#2a2b2e";
+        ctx.fillRect(to.x - 4, to.y - 7, 14, 14);
+      }
+      // sparks: nearing the socket, and a moment after plugging in; and at the socket as it's ripped out
+      const isSparking = (!entry.isLeaving && wire.progress > 0.7 && (wire.pluggedAt === undefined || now - wire.pluggedAt < wires.arcsMs))
+        || (entry.isLeaving && wire.progress > 0.4);
+      if (isSparking) {
+        const tip = points[points.length - 1];
+        const socketPoint = { x: wire.socket.x + JETS_MARGIN, y: wire.socket.y + JETS_MARGIN };
+        ctx.strokeStyle = wires.arc;
+        ctx.lineWidth = 1.6;
+        ctx.shadowColor = wires.arc;
+        ctx.shadowBlur = 8;
+        for (let bolt = 0; bolt < 2; bolt++) {
+          ctx.beginPath();
+          const end = { x: socketPoint.x - 3, y: socketPoint.y + (Math.random() - 0.5) * 22 };
+          ctx.moveTo(tip.x, tip.y);
+          for (let step = 1; step < 5; step++) {
+            const share = step / 5;
+            ctx.lineTo(tip.x + (end.x - tip.x) * share + (Math.random() - 0.5) * 8, tip.y + (end.y - tip.y) * share + (Math.random() - 0.5) * 8);
+          }
+          ctx.lineTo(end.x, end.y);
+          ctx.stroke();
+        }
+        ctx.shadowBlur = 0;
+      }
+    });
+  };
+
   return (
-    <Column style={{ transform: `scale(${scale})` }}>
+    <Column ref={columnRef}>
       <JetCanvas ref={canvasRef} width={FLOCK.columnWidth + JETS_MARGIN * 2} height={1400 + JETS_MARGIN} />
       {entries.map(entry => (
         <Body key={entry.key} ref={element => { if (element) elements.current.set(entry.key, element); else elements.current.delete(entry.key); }} style={{ visibility: "hidden" }}>
