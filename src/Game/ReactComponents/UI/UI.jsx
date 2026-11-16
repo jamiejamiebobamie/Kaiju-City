@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import styled, { css, keyframes } from "styled-components";
-import { PlayerUI } from "./PlayerUI/PlayerUI";
+import { Hud } from "./Hud/Hud";
 
 // the game width the HUDs are drawn for. they scale with the game from this size.
 const HUD_DESIGN_WIDTH = 1200;
@@ -81,7 +81,8 @@ export const UI = ({
       ...(recruits || []).map((pd, i) => ({ pd, playerIndex: players.length + i, isRecruit: true }))
     ];
     const alive = all.filter(({ pd }) => !pd.isDead);
-    if (!alive.length) return all.slice(0, 1); // the fight is lost: the player's, as it ended
+    // the fight is lost (no one alive, only a restart left): no HUDs (Jamie: the original avatar's came back here)
+    if (!alive.length) return [];
     const controlled = alive.find(({ pd }) => pd.isControlled);
     return controlled ? [controlled, ...alive.filter(hud => hud !== controlled)] : alive;
   };
@@ -105,7 +106,6 @@ export const UI = ({
   const shown = isShowingHuds ? order : isLeaving ? lastOrder.current : [];
 
   const [hudScale, setHudScale] = useState(1);
-  const [, setDisplayString] = useState(null);
 
   useEffect(() => {
     const frame = hudsRef.current.parentElement;
@@ -131,14 +131,8 @@ export const UI = ({
             $isLeaving={!isShowingHuds}
             style={{ animationDelay: isShowingHuds ? `${k * DRONE.staggerMs}ms, ${DRONE.inMs + k * DRONE.staggerMs}ms` : `${k * DRONE.staggerMs}ms` }}
           >
-            <PlayerUI
-              pd={pd}
-              setDisplayString={setDisplayString}
-              playerIndex={playerIndex}
-              isTeammate={k > 0}
-              isRecruit={isRecruit}
-              isPaused={isPaused}
-            />
+            {/* the one played as: the player's HUD; the rest teammates', compact in a crowd (more than three: Jamie) */}
+            <Hud pd={pd} variant={k == 0 ? "player" : shown.length > 3 ? "compact" : "teammate"} isPaused={isPaused} />
           </Drone>
         ))}
       </Huds>
