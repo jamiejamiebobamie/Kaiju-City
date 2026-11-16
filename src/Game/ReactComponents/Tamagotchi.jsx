@@ -65,7 +65,22 @@ const LINES = [
   "Fight beside your teammate!",
   "Press Play! when ready."
 ];
-const getLine = count => count % 2 == 0 ? "Pick three abilities" : LINES[Math.floor(count / 2) % LINES.length];
+// the order (Jamie): kept for the play (this module), not per Kaiju, so a new one hatched carries on where the last left
+// off; each line once, in order, then at random (never the same twice running). Every other line "Pick three abilities"
+const SPOKEN = { count: 0, said: 0, last: -1 };
+const getNextLine = () => {
+  const isPick = SPOKEN.count % 2 == 0;
+  SPOKEN.count += 1;
+  if (isPick) return "Pick three abilities";
+  if (SPOKEN.said < LINES.length) {
+    SPOKEN.last = SPOKEN.said;
+    return LINES[SPOKEN.said++];
+  }
+  let k = Math.floor(Math.random() * LINES.length);
+  if (k == SPOKEN.last) k = (k + 1) % LINES.length;
+  SPOKEN.last = k;
+  return LINES[k];
+};
 // the bubble shrink-wrapped to its line (Jamie): as few, even lines as fit in 'maxCqw', its text's width from the
 // font's (about one em a letter)
 const BUBBLE = { maxCqw: 15, letterEm: 1.0 };
@@ -179,8 +194,7 @@ const step = pet => {
   let isSpeaking = now < next.speakingUntil;
   const isDueToSpeak = !isSpeaking && !food && now >= next.nextSpeakAt;
   if (isDueToSpeak && walkTo(0.5, TAMA.walkPerSecond * 1.6)) {
-    next.line = getLine(next.lineCount);
-    next.lineCount += 1;
+    next.line = getNextLine();
     next.speakingUntil = now + getSpeakMs(next.line);
     next.nextSpeakAt = next.speakingUntil + between(TAMA.speakEveryMs);
     next.frame = 0;
@@ -500,7 +514,7 @@ export const Tamagotchi = ({ actRef }) => {
       {pet.pellets.map(({ id, x, y: pelletY }) => <Pellet key={id} style={{ left: `${x * 100}%`, top: `${pelletY * 100}%` }} />)}
       {pet.poops.map(({ id, x }) => <Poop key={id} style={{ left: `${x * 100}%`, top: y }} />)}
       {pet.mode == "burn" && <Flames style={{ left: `${pet.x * 100}%`, top: y }} />}
-      {pet.mode == "egg" && <Egg style={{ left: `${pet.x * 100}%`, top: y }} />}
+      {pet.mode == "egg" && <Egg style={{ left: `${pet.x * 100}%`, top: `${(TAMA.groundY - TAMA.feetAbove) * 100}%` }} />}
       {pet.mode != "burn" && pet.mode != "egg" && (
         <Body style={{ left: `${pet.x * 100}%`, top: y, WebkitMaskImage: `url(${SHEET.src})`, maskImage: `url(${SHEET.src})`, WebkitMaskPosition: maskPosition, maskPosition }} />
       )}
