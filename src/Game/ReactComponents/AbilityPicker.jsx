@@ -392,7 +392,54 @@ const MINI = { left: 69, top: 2.2, width: 28, height: 34, casing: 1.3, brow: 4.2
 // eases aside for it as it comes, from the avatar select on (Jamie)
 const CONSOLE = { left: 71, top: 40.5, width: 24, height: 10, rim: 1.2 };
 // (Jamie: after the picker's things fade in, the big monitor eases aside as the mini-monitor flies in, then the wires)
-export const MINI_TIMING = { flyDelayMs: 500, flyMs: 850, onAtMs: 1400, wiresAtMs: 1600, wiresMs: 1100, consoleDelayMs: 750 };
+// (the side monitor and the console come once the big monitor is nearly aside, so they never fly over it: Jamie.
+// 'consoleDelayMs': when the big monitor starts easing aside, 700 ms; 'riseDelayMs': the console's rise)
+export const MINI_TIMING = { flyDelayMs: 900, flyMs: 850, onAtMs: 1800, wiresAtMs: 2000, wiresMs: 1100, consoleDelayMs: 750, riseDelayMs: 1000 };
+
+/*
+  On Play! (Jamie): the side monitor and the console fly off to the right, out of shot, ripping their wires out of the
+  big monitor (arcs of current at the sockets as they go), all gone before the game's first scene. A quick wind-up
+  back, then off, faster and faster, tipping as they go. One motion for the casing and the wires' ends on it, so they
+  stay together: in the frame's units (cqw).
+*/
+export const FLY_OFF = {
+  ms: 700,
+  windup: 0.16, // its share of the time
+  back: { x: -0.9, y: -0.3, turn: -1.5 },
+  devices: {
+    mini: { box: MINI, x: 64, y: -6, turn: 12, delayShare: 0 },
+    console: { box: CONSOLE, x: 64, y: 5, turn: 8, delayShare: 0.08 }
+  }
+};
+// where a device is at a moment of its fly-off (0 to 1): its move and its turn
+const getFlyOff = (device, time) => {
+  const t = Math.max(0, Math.min(1, (time - device.delayShare) / (1 - device.delayShare)));
+  const { back, windup } = FLY_OFF;
+  if (t < windup) {
+    const s = 1 - Math.pow(1 - t / windup, 2);
+    return { x: back.x * s, y: back.y * s, turn: back.turn * s };
+  }
+  const e = Math.pow((t - windup) / (1 - windup), 3);
+  return { x: back.x + (device.x - back.x) * e, y: back.y + (device.y - back.y) * e, turn: back.turn + (device.turn - back.turn) * e };
+};
+// (as keyframes, the same motion, step by step)
+const getFlyOffKeyframes = device => keyframes`${[...Array(21).keys()].map(k => {
+  const { x, y, turn } = getFlyOff(device, k / 20);
+  return `${k * 5}% { transform: translate(${x.toFixed(3)}cqw, ${y.toFixed(3)}cqw) rotate(${turn.toFixed(2)}deg); }`;
+}).join("\n")}`;
+// a point on a device (the frame's units) where it is at that moment: moved, and turned about the device's middle
+const getMovedPoint = (point, device, time) => {
+  const { x, y, turn } = getFlyOff(device, time);
+  const { box } = device;
+  const center = { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+  const angle = (turn * Math.PI) / 180;
+  const dx = point.x - center.x;
+  const dy = point.y - center.y;
+  return { x: center.x + x + dx * Math.cos(angle) - dy * Math.sin(angle), y: center.y + y + dx * Math.sin(angle) + dy * Math.cos(angle) };
+};
+
+const miniFlyOff = getFlyOffKeyframes(FLY_OFF.devices.mini);
+const consoleFlyOff = getFlyOffKeyframes(FLY_OFF.devices.console);
 
 const flyIn = keyframes`
   0% { transform: translate(40cqw, -16cqw) rotate(16deg) scale(0.8); opacity: 0; }
@@ -412,6 +459,7 @@ const MiniMonitor = styled.div`
   background: ${TV_LOOK.casing};
   box-shadow: inset 0 0.2cqw 0 ${TV_LOOK.casingLight}, 0 0.25cqw 0 ${TV_LOOK.casingLight}, 0 0 0 0.15cqw #080808, 0 1cqw 2.5cqw rgba(0, 0, 0, 0.8);
   animation: ${flyIn} ${MINI_TIMING.flyMs}ms cubic-bezier(0.2, 0.9, 0.3, 1) ${MINI_TIMING.flyDelayMs}ms both;
+  ${props => props.$isLeaving && css`animation: ${miniFlyOff} ${FLY_OFF.ms}ms linear forwards;`}
   /* the same plastic as the big one's (its screen lies over this) */
   &::before {
     content: "";
@@ -504,7 +552,8 @@ const Console = styled.div`
     0 0.5cqw 0.3cqw rgba(0, 0, 0, 0.6),
     0 1.4cqw 3cqw rgba(0, 0, 0, 0.85);
   ${CASING_SHEEN}
-  animation: ${consoleRise} ${MINI_TIMING.flyMs}ms cubic-bezier(0.2, 0.9, 0.3, 1) ${MINI_TIMING.consoleDelayMs}ms both;
+  animation: ${consoleRise} ${MINI_TIMING.flyMs}ms cubic-bezier(0.2, 0.9, 0.3, 1) ${MINI_TIMING.riseDelayMs}ms both;
+  ${props => props.$isLeaving && css`animation: ${consoleFlyOff} ${FLY_OFF.ms}ms linear forwards;`}
 `;
 
 const ConsoleFace = styled.div`
@@ -579,9 +628,11 @@ const WIRES = [
 const getWirePath = ({ from, to, sag }, wave = 0) =>
   `M ${from.x} ${from.y} C ${from.x + wave} ${from.y + sag}, ${to.x + 6 - wave} ${to.y + wave * 0.6}, ${to.x} ${to.y}`;
 
+// (hidden until it starts: a wire not drawn yet still showed its round end as a dot, over the big monitor as it moved: Jamie)
 const wireDraw = keyframes`
-  from { stroke-dashoffset: 100; }
-  to { stroke-dashoffset: 0; }
+  0% { stroke-dashoffset: 100; opacity: 0; }
+  2% { opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
 `;
 
 const plugIn = keyframes`
@@ -664,10 +715,72 @@ const useArcs = (delayMs, pathRefs, wires) => {
   return bolts;
 };
 
-// 'wires': the side monitor's by default; the console has its own one
-const Wires = ({ delayMs, wires = WIRES }) => {
+/*
+  Ripped out (Jamie): as its device flies off, a wire's near end goes with it; the far end holds in its socket a moment,
+  the wire pulled taut, then tears out and whips after it, current arcing from the socket to the torn end and off to
+  the right.
+*/
+const RIP = { popAt: 0.24, arcsUntil: 0.62, everyMs: 50, sparks: 3 };
+const useRip = (device, wires, refs) => {
+  const [bolts, setBolts] = useState([]);
+  useEffect(() => {
+    if (!device) return;
+    const start = performance.now();
+    let frameId;
+    let lastBoltsAt = -Infinity;
+    const run = () => {
+      const now = performance.now();
+      const time = Math.min((now - start) / FLY_OFF.ms, 1);
+      const ends = wires.map((wire, k) => {
+        const from = getMovedPoint(wire.from, device, time);
+        // after it tears out: trailing below the device's edge, whipping as it goes
+        const pull = time < RIP.popAt ? 0 : 1 - Math.pow(1 - (time - RIP.popAt) / (1 - RIP.popAt), 2);
+        const trail = { x: from.x - 3, y: from.y + 5 };
+        const whip = pull > 0 ? Math.sin(pull * Math.PI * 3) * (1 - pull) * 4 : 0;
+        const to = { x: wire.to.x + (trail.x - wire.to.x) * pull, y: wire.to.y + (trail.y - wire.to.y) * pull + whip * 0.5 };
+        const taut = Math.min(time / RIP.popAt, 1);
+        const d = getWirePath({ from, to, sag: wire.sag * (1 - 0.85 * taut * (1 - pull)) }, whip);
+        const { main, shine, plug } = refs.current[k] || {};
+        if (main) main.setAttribute("d", d);
+        if (shine) shine.setAttribute("d", d);
+        if (plug) {
+          plug.setAttribute("x", to.x - 0.2);
+          plug.setAttribute("y", to.y - 0.55);
+        }
+        return to;
+      });
+      if (now - lastBoltsAt > RIP.everyMs) {
+        lastBoltsAt = now;
+        const next = [];
+        if (time > RIP.popAt * 0.5 && time < RIP.arcsUntil) {
+          wires.forEach((wire, k) => {
+            const socket = { x: wire.to.x - 0.05, y: wire.to.y };
+            next.push({ key: `rip-${k}`, d: getBolt(socket, ends[k]) });
+            for (let s = 0; s < RIP.sparks; s++) {
+              const off = { x: socket.x + 1.5 + Math.random() * 5, y: socket.y + (Math.random() - 0.5) * 4 };
+              next.push({ key: `spark-${k}-${s}`, d: getBolt(socket, off) });
+            }
+          });
+        }
+        setBolts(next);
+      }
+      if (time < 1) frameId = requestAnimationFrame(run);
+      else setBolts([]);
+    };
+    frameId = requestAnimationFrame(run);
+    return () => cancelAnimationFrame(frameId);
+  }, [device]);
+  return bolts;
+};
+
+// 'wires': the side monitor's by default; the console has its own one. 'ripFor': its device's id ("mini" or
+// "console") once it flies off
+const Wires = ({ delayMs, wires = WIRES, ripFor = undefined }) => {
   const pathRefs = useRef([]);
-  const bolts = useArcs(delayMs, pathRefs, wires);
+  const ripRefs = useRef([]);
+  const hookUpBolts = useArcs(delayMs, pathRefs, wires);
+  const ripBolts = useRip(ripFor ? FLY_OFF.devices[ripFor] : undefined, wires, ripRefs);
+  const bolts = ripFor ? ripBolts : hookUpBolts;
   return (
   <WireLayer viewBox="0 0 100 56.25" preserveAspectRatio="none" aria-hidden="true">
     <defs>
@@ -678,15 +791,16 @@ const Wires = ({ delayMs, wires = WIRES }) => {
     </defs>
     {wires.map((wire, k) => {
       const style = { animationDelay: `${delayMs + k * 140}ms` };
-      const slither = (
+      // (not while ripping: the frozen slither would hold the wire in place)
+      const slither = !ripFor && (
         <animate attributeName="d" dur={`${MINI_TIMING.wiresMs / 1000}s`} begin={`${(delayMs + k * 140) / 1000}s`} fill="freeze"
           values={`${getWirePath(wire, 5)};${getWirePath(wire, -4)};${getWirePath(wire, 2)};${getWirePath(wire, 0)}`} />
       );
       return (
         <g key={k}>
-          <path ref={element => { pathRefs.current[k] = element; }} d={getWirePath(wire)} pathLength="100" stroke={wire.color} strokeWidth="0.75" style={style}>{slither}</path>
-          <path d={getWirePath(wire)} pathLength="100" stroke="#3b3d41" strokeWidth="0.16" style={style} transform="translate(-0.12 -0.12)">{slither}</path>
-          <rect x={wire.to.x - 0.2} y={wire.to.y - 0.55} width="1.3" height="1.1" rx="0.2" fill="#2a2b2e" stroke="#4a4542" strokeWidth="0.1" style={style} />
+          <path ref={element => { pathRefs.current[k] = element; ripRefs.current[k] = { ...ripRefs.current[k], main: element }; }} d={getWirePath(wire)} pathLength="100" stroke={wire.color} strokeWidth="0.75" style={style}>{slither}</path>
+          <path ref={element => { ripRefs.current[k] = { ...ripRefs.current[k], shine: element }; }} d={getWirePath(wire)} pathLength="100" stroke="#3b3d41" strokeWidth="0.16" style={style} transform="translate(-0.12 -0.12)">{slither}</path>
+          <rect ref={element => { ripRefs.current[k] = { ...ripRefs.current[k], plug: element }; }} x={wire.to.x - 0.2} y={wire.to.y - 0.55} width="1.3" height="1.1" rx="0.2" fill="#2a2b2e" stroke="#4a4542" strokeWidth="0.1" style={style} />
         </g>
       );
     })}
@@ -704,7 +818,7 @@ const Wires = ({ delayMs, wires = WIRES }) => {
   The class's battle preview (Jamie): below the class details, a little hex board where the player's avatar, with the
   picked powers, fights Kaiju coming in from the sides, live on the game's own engine (ClassBattle.jsx).
 */
-const BATTLE = { top: 0.48, hex: { columns: 9, rows: 5 } }; // 'top': where it starts, of the screen's height
+const BATTLE = { top: 0.45, hex: { columns: 9, rows: 5 } }; // 'top': where it starts, of the screen's height
 
 // the live preview's box: the game's board inside it, seen through it
 // (where Jamie drew it on the side screen, then a little larger: Jamie); its edges fade to black, so the Kaiju walk
@@ -713,7 +827,7 @@ const BattleBox = styled.div`
   position: absolute;
   left: 3%;
   right: 3%;
-  top: 50.5%;
+  top: 47%;
   bottom: 1%;
   /* the pointer shows over it, the plain one (Jamie): the game's board hides it as it would in a game */
   cursor: default;
@@ -847,11 +961,11 @@ const backlitBlink = keyframes`
 */
 const CONSOLE_WIRES = [{ from: { x: CONSOLE.left + 2.5, y: CONSOLE.top + CONSOLE.height }, to: { x: 64.9, y: 50 }, sag: 3, color: "#0e0f10" }];
 
-export const PlayConsole = ({ isReady, playLabel, onPlay, onBack }) => {
+export const PlayConsole = ({ isReady, playLabel, onPlay, onBack, isLeaving = false }) => {
   return (
     <>
-      <Wires delayMs={MINI_TIMING.consoleDelayMs + MINI_TIMING.flyMs - 250} wires={CONSOLE_WIRES} />
-      <Console>
+      <Wires delayMs={MINI_TIMING.riseDelayMs + MINI_TIMING.flyMs - 250} wires={CONSOLE_WIRES} ripFor={isLeaving ? "console" : undefined} />
+      <Console $isLeaving={isLeaving}>
         <ConsoleFace>
           {[[0.5, 0.5, 20], [null, 0.5, -35], [0.5, null, 60], [null, null, 5]].map(([screwLeft, top, turn], k) => (
             <Screw key={k} $turn={turn} style={{ left: screwLeft == null ? undefined : `${screwLeft}cqw`, right: screwLeft == null ? "0.5cqw" : undefined, top: top == null ? undefined : `${top}cqw`, bottom: top == null ? "0.5cqw" : undefined }} />
@@ -861,6 +975,43 @@ export const PlayConsole = ({ isReady, playLabel, onPlay, onBack }) => {
           {onBack && <MetalButton onClick={onBack}>Back</MetalButton>}
         </ConsoleFace>
       </Console>
+    </>
+  );
+};
+
+/*
+  The side monitor, on its own (Jamie): it flies in with the console, from the avatar select on, its pet Kaiju on it;
+  on the picker, the picker puts its own things on its screen and border (into the two places marked for them).
+  Back from the avatar select: its screen switches off. On Play!: it flies off.
+*/
+const SideSlot = styled.div`
+  position: absolute;
+  inset: 0;
+`;
+
+export const SideMonitor = ({ isPickerShowing, isPoweredOff = false, isLeaving = false }) => {
+  const [isOn, setIsOn] = useState(false);
+  useEffect(() => {
+    const timeout = setTimeout(() => setIsOn(true), MINI_TIMING.onAtMs);
+    return () => clearTimeout(timeout);
+  }, []);
+  const tamaRef = useRef(null);
+  return (
+    <>
+      <Wires delayMs={MINI_TIMING.wiresAtMs} ripFor={isLeaving ? "mini" : undefined} />
+      <MiniMonitor $isLeaving={isLeaving}>
+        <MiniScreen>
+          <CrtScreen isOn={isOn && !isPoweredOff}>
+            {isPickerShowing ? <SideSlot data-side-screen /> : <Tamagotchi actRef={tamaRef} />}
+          </CrtScreen>
+          <MiniGlass />
+        </MiniScreen>
+        <MiniBrow>
+          {isPickerShowing ? <div data-side-brow style={{ display: "contents" }} /> : ["Feed", "Pet", "Clean up"].map(label => (
+            <BrowButton key={label} onClick={() => tamaRef.current && tamaRef.current(label)}>{label}</BrowButton>
+          ))}
+        </MiniBrow>
+      </MiniMonitor>
     </>
   );
 };
@@ -896,11 +1047,12 @@ export const AbilityPicker = ({
   const [lockIns, setLockIns] = useState({}); // each power's count of being picked, to play its lock-in again
   const anchorRef = useRef(null);
   const [frame, setFrame] = useState(null);
-  useLayoutEffect(() => setFrame(anchorRef.current && anchorRef.current.closest("[data-game-frame]")), []);
-  const [isMiniOn, setIsMiniOn] = useState(false);
-  useEffect(() => {
-    const timeout = setTimeout(() => setIsMiniOn(true), MINI_TIMING.onAtMs);
-    return () => clearTimeout(timeout);
+  // the side monitor's screen and border, for the picker's things (SideMonitor)
+  const [side, setSide] = useState(null);
+  useLayoutEffect(() => {
+    const gameFrame = anchorRef.current && anchorRef.current.closest("[data-game-frame]");
+    setFrame(gameFrame);
+    setSide(gameFrame && { screen: gameFrame.querySelector("[data-side-screen]"), brow: gameFrame.querySelector("[data-side-brow]") });
   }, []);
 
   HALO_RADIUS = getHaloRadiusFor(powers.length);
@@ -1010,12 +1162,8 @@ export const AbilityPicker = ({
     return () => cancelAnimationFrame(frameId);
   }, [isArenaShowing]);
   const isTamaShowing = hovered === undefined && !playerClass;
-  const beside = (
+  const sideScreen = (
     <>
-      <Wires delayMs={MINI_TIMING.wiresAtMs} />
-      <MiniMonitor>
-        <MiniScreen>
-          <CrtScreen isOn={isMiniOn}>
             {isTamaShowing ? <Tamagotchi actRef={tamaRef} /> : <Info $isClass={hovered === undefined && !!playerClass}>{getInfo()}</Info>}
             {hovered === undefined && !!playerClass && (
               <>
@@ -1028,16 +1176,14 @@ export const AbilityPicker = ({
                 </IconGroup>
               </>
             )}
-          </CrtScreen>
-          <MiniGlass />
-        </MiniScreen>
-        <MiniBrow>
-          {/* the tamagotchi's: off while the class shows */}
-          {["Feed", "Pet", "Clean up"].map(label => (
-            <BrowButton key={label} disabled={!isTamaShowing} onClick={() => tamaRef.current && tamaRef.current(label)}>{label}</BrowButton>
-          ))}
-        </MiniBrow>
-      </MiniMonitor>
+    </>
+  );
+  // the tamagotchi's: off while the class shows
+  const sideBrow = ["Feed", "Pet", "Clean up"].map(label => (
+    <BrowButton key={label} disabled={!isTamaShowing} onClick={() => tamaRef.current && tamaRef.current(label)}>{label}</BrowButton>
+  ));
+  const beside = (
+    <>
       {import.meta.env.DEV && (
         <DevPanel>
           <label>
@@ -1139,6 +1285,8 @@ export const AbilityPicker = ({
       </Stage>
     </ScaleToFit>
     {frame && createPortal(beside, frame)}
+    {side && side.screen && createPortal(sideScreen, side.screen)}
+    {side && side.brow && createPortal(sideBrow, side.brow)}
     </>
   );
 };

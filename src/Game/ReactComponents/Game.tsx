@@ -25,7 +25,7 @@ import { ChoiceButton } from "./GameBoard/GameBoard";
 import { DEFAULT_AGGRESSION } from "Game/DataClasses/npcBrain/brain";
 import { getKaijuSpeedMode, KaijuSpeedMode, setKaijuSpeedMode } from "../DataClasses/KaijuSpeedTest";
 import { getAvatarColor, saveAvatarColor, saveTeamAvatars, unlockEverything, unlockRecruitSkill, unlockSkill, unlockTool } from "../DataClasses/Avatars";
-import { AbilityPicker, MINI_TIMING, PlayConsole } from "./AbilityPicker";
+import { AbilityPicker, FLY_OFF, MINI_TIMING, PlayConsole, SideMonitor } from "./AbilityPicker";
 import { holdTamagotchi } from "./Tamagotchi";
 import { FOCUS_MOVE, getFocusTransform, MonitorLabBackdrop } from "./MonitorLabBackdrop";
 import { useKeyPress } from "Utils/utils";
@@ -709,6 +709,13 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     const aside = setTimeout(() => setIsConsoleIn(true), MINI_TIMING.consoleDelayMs);
     return () => clearTimeout(aside);
   }, [isMonitorOn, isPlayingGame]);
+  // the side monitor and the console: switched off (Back from the avatar select), flying off (Play!: Jamie)
+  const [isSideOff, setIsSideOff] = useState(false);
+  const [isFlyingOff, setIsFlyingOff] = useState(false);
+  useEffect(() => {
+    setIsSideOff(false);
+    setIsFlyingOff(false);
+  }, [isPlayingGame, isMonitorOn]);
   // the tamagotchi waits while the Controls card is up
   useEffect(() => holdTamagotchi(isShowingControls), [isShowingControls]);
   // where the picker came from, for its Back (Jamie): the avatar select, back there; else home
@@ -1432,6 +1439,23 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     setIsChoosingAvatar(true);
     requestAnimationFrame(() => requestAnimationFrame(() => setHandOverAvatar(undefined)));
   } : handleClickHome;
+  // Play! (Jamie): the side monitor and the console fly off right, ripping their wires out, gone before the first
+  // scene; the screen's fade to black runs as they go. (From the Lab, straight back.)
+  const playFromConsole = () => {
+    if (isLabPicker) {
+      handleClickPlay();
+      return;
+    }
+    if (isFlyingOff) return;
+    setIsFlyingOff(true);
+    setTimeout(handleClickPlay, Math.max(0, FLY_OFF.ms - SCREEN_FADE.ms + 100));
+  };
+  // Back from the avatar select (Jamie): the side screen switches off first, as it came on
+  const backFromAvatarSelect = () => {
+    if (isSideOff) return;
+    setIsSideOff(true);
+    setTimeout(handleClickHome, CRT.offMs);
+  };
   const preGameMonitor = (
     <GameArea>
       <GameFrame data-game-frame $shift={monitorShift == 'in' ? 'in' : undefined}>
@@ -1490,12 +1514,17 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
           {screenFade == 'out' && <ScreenBlack />}
         </PlayWindow>
         {isMonitorOn && (
-          <PlayConsole
-            isReady={!isChoosingAvatar && pickedAbilities.length == 3}
-            playLabel={isLabPicker ? "Back to Lab" : "Play!"}
-            onPlay={handleClickPlay}
-            onBack={isChoosingAvatar ? handleClickHome : isLabPicker ? undefined : goBackFromPicker}
-          />
+          <>
+            {/* from the avatar select on, flying in with the console (Jamie) */}
+            <SideMonitor isPickerShowing={!isChoosingAvatar} isPoweredOff={isSideOff} isLeaving={isFlyingOff} />
+            <PlayConsole
+              isReady={!isChoosingAvatar && pickedAbilities.length == 3}
+              playLabel={isLabPicker ? "Back to Lab" : "Play!"}
+              onPlay={playFromConsole}
+              onBack={isChoosingAvatar ? backFromAvatarSelect : isLabPicker ? undefined : goBackFromPicker}
+              isLeaving={isFlyingOff}
+            />
+          </>
         )}
         {isShowingControls && <ControlsOverlay onClose={closeControls} />}
       </GameFrame>

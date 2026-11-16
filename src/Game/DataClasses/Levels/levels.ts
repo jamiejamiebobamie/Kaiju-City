@@ -335,9 +335,10 @@ const buildLevel = (editorFile, name, accentColor, foregroundLayers = [], isWalk
 // (bigger on screen: Jamie. The world is as tall as the rows and the room above and below them, so fewer rows and a
 // little less headroom make the tiles bigger in the box; then as many columns as fill its width)
 // (and the board lower in it, more room above: the icons over a head on the top row were still cut off. Jamie)
-export const buildBattlePreviewLevel = ({ columns = undefined as number | undefined, rows = 4, aspect = 1.7 } = {}): LevelConfig => {
+// (fewer tiles and Kaiju, all bigger: the action in focus, the whole board still in view. Jamie)
+export const buildBattlePreviewLevel = ({ columns = undefined as number | undefined, rows = 3, aspect = 1.59 } = {}): LevelConfig => {
   const { grid } = peninsula as any;
-  const headroom = 5 * grid.rowStep; // (and the icons over a head: Jamie)
+  const headroom = 4 * grid.rowStep; // (and the icons over a head: Jamie)
   const footroom = 0.3 * grid.rowStep;
   const sceneHeight = grid.originY + (rows + 1.2) * grid.rowStep + headroom + footroom;
   columns = columns ?? Math.max(4, Math.floor((aspect * sceneHeight - 2 * grid.colStep - grid.originX) / grid.colStep - 0.5));
@@ -365,7 +366,7 @@ export const buildBattlePreviewLevel = ({ columns = undefined as number | undefi
       bounds: { minX: -grid.colStep, maxX: sceneWidth + grid.colStep, minY: rowY(firstJ), maxY: rowY(firstJ + rows - 1) },
       isSidesOnly: true,
       spawnEveryMs: [5000, 10000],
-      maxAtOnce: 3
+      maxAtOnce: 2
     }
   };
 };

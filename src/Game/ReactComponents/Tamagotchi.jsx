@@ -1,5 +1,5 @@
 import React, { useEffect, useImperativeHandle, useState } from "react";
-import styled, { keyframes } from "styled-components";
+import styled, { css, keyframes } from "styled-components";
 
 /*
   The side monitor's Kaiju tamagotchi (Jamie, 2026-11-15): a silly mini-game while the player hasn't picked three
@@ -28,6 +28,7 @@ const TAMA = {
   speakEveryMs: [3500, 6000], speakMs: 2600, // (more often: Jamie)
   poopEveryMs: [12000, 18000],
   poopGap: 0.09, // poops at least this far apart (of the screen's width)
+  cleanFlashMs: 700, // a cleaned-up poop blinks, as a Game Boy sprite does, then it's gone (Jamie)
   happinessMax: 5,
   poopCheckMs: 10000, careCheckMs: 30000,
   // back up, quickly (Jamie): a block for each care (fed, petted, all cleaned up), and every 4 s a block while it's
@@ -131,6 +132,7 @@ const step = pet => {
   const now = next.clock;
   const seconds = TAMA.tickMs / 1000;
   next.hearts = next.hearts.filter(heart => now - heart.at < TAMA.heartMs);
+  next.cleaned = (next.cleaned || []).filter(poop => now - poop.at < TAMA.cleanFlashMs);
 
   // burning, then an egg, then a new one
   if (next.mode == "burn") {
@@ -250,7 +252,9 @@ const act = (pet, label) => {
   if (label == "Clean up") {
     if (!pet.poops.length) return pet;
     const poops = pet.poops.slice(1);
-    return poops.length ? { ...pet, poops } : { ...care(pet), poops, hearts: [...pet.hearts, ...heartsFrom(pet, 4)] };
+    // (it blinks a moment where it was, then goes)
+    const cleaned = [...(pet.cleaned || []), { ...pet.poops[0], at: pet.clock }];
+    return poops.length ? { ...pet, poops, cleaned } : { ...care(pet), poops, cleaned, hearts: [...pet.hearts, ...heartsFrom(pet, 4)] };
   }
   return pet;
 };
@@ -362,15 +366,20 @@ const Pellet = styled.div`
   animation: ${pelletGlow} 0.6s ease-in-out infinite alternate;
 `;
 
-// a swirled pile, glowing brown, three stacked lumps and a curl on top (no face: Jamie)
-const POOP_BROWN = "#a86a32";
+// a swirled pile, three stacked lumps and a curl on top (no face: Jamie); the Kaiju's yellow (Jamie: all one color)
+const POOP_BROWN = TAMA.color;
+// cleaned up: on and off, hard, as an old handheld's sprite blinks, then gone
+const poopBlink = keyframes`
+  0%, 24%, 50%, 74% { visibility: visible; }
+  12%, 37%, 62%, 87%, 100% { visibility: hidden; }
+`;
 const Poop = styled.div`
   position: absolute;
   width: 1.7cqw;
   height: 1.5cqw;
   transform: translate(-50%, -100%);
-  opacity: 0.8;
-  filter: drop-shadow(0 0 0.3cqw #c27a30);
+  filter: drop-shadow(0 0 0.3cqw #ffb020);
+  ${props => props.$isCleaned && css`animation: ${poopBlink} ${TAMA.cleanFlashMs}ms steps(1, end) forwards;`}
   background:
     radial-gradient(ellipse 50% 32% at 50% 82%, ${POOP_BROWN} 98%, transparent),
     radial-gradient(ellipse 36% 26% at 50% 55%, ${POOP_BROWN} 98%, transparent),
@@ -384,9 +393,12 @@ const heartUp = keyframes`
   100% { transform: translate(-50%, -5cqw) scale(1.1); opacity: 0; }
 `;
 
+// (a symbol's emoji look made one flat yellow: the glyph clear, its shadow in the color)
 const Heart = styled.div`
   position: absolute;
   font-size: 1.2cqw;
+  color: transparent;
+  text-shadow: 0 0 0 ${TAMA.color}, 0 0 0.35cqw #ffb020;
   animation: ${heartUp} ${TAMA.heartMs}ms ease-out forwards;
 `;
 
@@ -452,8 +464,9 @@ const Hand = styled.div`
   position: absolute;
   font-size: 2.4cqw;
   line-height: 1;
-  text-shadow: none;
-  filter: grayscale(1) sepia(1) saturate(5) hue-rotate(10deg) brightness(1.7) drop-shadow(0 0 0.3cqw #ffb020);
+  color: transparent;
+  text-shadow: 0 0 0 ${TAMA.color};
+  filter: drop-shadow(0 0 0.3cqw #ffb020);
   animation: ${handIn} 300ms ease-out both, ${stroke} 700ms ease-in-out 300ms infinite;
 `;
 
@@ -518,6 +531,7 @@ export const Tamagotchi = ({ actRef }) => {
       <Name style={{ fontSize: `${Math.min(TAMA.nameSize, 14 / pet.name.length)}cqw` }}>{pet.mode == "egg" ? "???" : pet.name.toUpperCase()}</Name>
       {pet.pellets.map(({ id, x, y: pelletY }) => <Pellet key={id} style={{ left: `${x * 100}%`, top: `${pelletY * 100}%` }} />)}
       {pet.poops.map(({ id, x }) => <Poop key={id} style={{ left: `${x * 100}%`, top: y }} />)}
+      {(pet.cleaned || []).map(({ id, x }) => <Poop key={id} $isCleaned style={{ left: `${x * 100}%`, top: y }} />)}
       {pet.mode == "burn" && <Flames style={{ left: `${pet.x * 100}%`, top: `${(TAMA.groundY - TAMA.feetAbove) * 100}%` }} />}
       {pet.mode == "egg" && <Egg style={{ left: `${pet.x * 100}%`, top: `${(TAMA.groundY - TAMA.feetAbove) * 100}%` }} />}
       {pet.mode != "burn" && pet.mode != "egg" && (

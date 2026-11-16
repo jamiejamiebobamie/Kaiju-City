@@ -18,7 +18,7 @@ const startPreview = () => {
 };
 
 describe('class battle preview', () => {
-  it('is the Peninsula grid, its Kaiju coming in from the sides only, every 5 to 10 s, three at most', () => {
+  it('is the Peninsula grid, its Kaiju coming in from the sides only, every 5 to 10 s, two at most', () => {
     const { level } = startPreview();
     expect(level.grid.colStep).toBe(18.9);
     expect(level.grid.rowStep).toBe(21.6);
@@ -41,8 +41,8 @@ describe('class battle preview', () => {
         }
       });
     }
-    expect(gm.kaijuManager.kaijuPieces.length).toBeGreaterThan(1);
-    expect(gm.kaijuManager.kaijuPieces.length).toBeLessThanOrEqual(3);
+    expect(gm.kaijuManager.kaijuPieces.length).toBeGreaterThan(0);
+    expect(gm.kaijuManager.kaijuPieces.length).toBeLessThanOrEqual(2);
     expect(player.getIsDead()).toBe(false);
   }, 60000);
 });
