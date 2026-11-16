@@ -690,6 +690,45 @@ const Wires = ({ delayMs, wires = WIRES }) => {
   );
 };
 
+/*
+  The class's battle preview (Jamie): below the class details, a little hex board where the player's avatar, with the
+  picked powers, fights Kaiju coming in from the sides. Phase C1: the board, empty (the live fight comes next, on the
+  game's own engine: see the plan in memory).
+*/
+const BATTLE = { top: 0.5, hex: { columns: 9, rows: 5 } }; // 'top': where it starts, of the screen's height
+
+const BattleBoard = styled.svg`
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  top: ${BATTLE.top * 100 + 2}%;
+  bottom: 14%;
+  width: 92%;
+  pointer-events: none;
+`;
+
+// a rectangle of hexes, as the game's board draws them: thin pale outlines
+const BattleArena = () => {
+  const { columns, rows } = BATTLE.hex;
+  const size = 10; // a hex's radius, in the board's units
+  const w = Math.sqrt(3) * size;
+  const hexes = [];
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < columns; col++) {
+      const cx = w / 2 + col * w + (row % 2 ? w / 2 : 0);
+      const cy = size + row * size * 1.5;
+      const points = [...Array(6).keys()].map(k => {
+        const a = (Math.PI / 180) * (60 * k - 30);
+        return `${(cx + size * Math.cos(a)).toFixed(2)},${(cy + size * Math.sin(a)).toFixed(2)}`;
+      }).join(" ");
+      hexes.push(<polygon key={`${row} ${col}`} points={points} fill="rgba(128, 239, 128, 0.04)" stroke="rgba(200, 255, 210, 0.45)" strokeWidth="0.6" />);
+    }
+  }
+  const width = w * columns + w / 2;
+  const height = size * 2 + (rows - 1) * size * 1.5;
+  return <BattleBoard viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" aria-hidden="true">{hexes}</BattleBoard>;
+};
+
 const Info = styled.div`
   position: absolute;
   inset: 1.4cqw 1.3cqw;
@@ -697,7 +736,8 @@ const Info = styled.div`
   flex-direction: column;
   justify-content: space-evenly; /* the active and the passive as far apart as the screen allows (Jamie) */
   /* the class: from a quarter of the way down the screen (Jamie) */
-  ${props => props.$isClass && css`justify-content: flex-start; padding-top: ${(MINI.height - MINI.casing - MINI.brow) / 4 - 1.4}cqw;`}
+  /* the class: at the top of the screen (Jamie), its battle preview below it */
+  ${props => props.$isClass && css`justify-content: flex-start; padding-top: 0.4cqw; bottom: ${(1 - BATTLE.top) * 100}%;`}
   gap: 1.2cqw;
   font-size: 0.95cqw;
   line-height: 1.5;
@@ -736,8 +776,8 @@ const TitleRow = styled.div`
 // the class's three icons: larger, in the side screen's bottom right corner (Jamie), spaced apart
 const IconGroup = styled.div`
   position: absolute;
-  right: 0.3cqw;
-  bottom: 0.2cqw;
+  right: 1.3cqw;
+  bottom: 0.9cqw;
   display: flex;
   gap: 1.3cqw;
   i { font-size: 2.6cqw; }
@@ -931,9 +971,6 @@ export const AbilityPicker = ({
           <PartHeader>Class:</PartHeader>
           <FitTitleRow text={playerClass[0]}>{playerClass[0]}</FitTitleRow>
           <ClassText style={{ color: getClassTint(pickedPowers.map(({ color }) => color)) }}>{playerClass[1]}</ClassText>
-          <IconGroup>
-            {pickedPowers.map(({ element, activeIcon, color }) => <Icon key={element} className={`fa ${activeIcon}`} style={{ color }} />)}
-          </IconGroup>
         </Part>
       );
     }
@@ -951,6 +988,15 @@ export const AbilityPicker = ({
         <MiniScreen>
           <CrtScreen isOn={isMiniOn}>
             {isTamaShowing ? <Tamagotchi actRef={tamaRef} /> : <Info $isClass={hovered === undefined && !!playerClass}>{getInfo()}</Info>}
+            {hovered === undefined && !!playerClass && (
+              <>
+                <BattleArena />
+                {/* the class's icons, in the screen's bottom right corner (Jamie) */}
+                <IconGroup>
+                  {pickedPowers.map(({ element, activeIcon, color }) => <Icon key={element} className={`fa ${activeIcon}`} style={{ color }} />)}
+                </IconGroup>
+              </>
+            )}
           </CrtScreen>
           <MiniGlass />
         </MiniScreen>
