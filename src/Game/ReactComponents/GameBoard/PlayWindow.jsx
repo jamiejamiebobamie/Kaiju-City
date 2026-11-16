@@ -373,24 +373,35 @@ export const ObjectiveTicker = ({ text, isKaijuCount, count, toWin }) => {
   );
 };
 
+/*
+  Every button on the monitors and consoles is rubber (Jamie, 2026-11-15): matte and soft-edged, a separate part set
+  through a hole in the casing, so a thin black gap shows all round it. Pressed, it sinks into the hole.
+*/
+export const RUBBER_BUTTON = `
+  color: #b3ada7;
+  background: linear-gradient(to bottom, #2b2b2d, #1a1a1c);
+  border: none;
+  box-shadow:
+    0 0 0 0.18cqw #020202,
+    inset 0 0.1cqw 0.06cqw rgba(255, 255, 255, 0.1),
+    inset 0 -0.15cqw 0.25cqw rgba(0, 0, 0, 0.55);
+  &:hover:not(:disabled) {
+    color: #ece6e0;
+  }
+  &:active:not(:disabled) {
+    transform: translateY(0.08cqw) scale(0.98);
+    box-shadow: 0 0 0 0.18cqw #020202, inset 0 0.15cqw 0.3cqw rgba(0, 0, 0, 0.75);
+  }
+`;
+
 export const BezelButton = styled.button`
   padding: 0.25cqw 0.8cqw;
   font-family: gameboy;
   font-size: 0.75cqw;
   letter-spacing: 0.1cqw;
   cursor: pointer;
-  color: #a39b95;
-  background: linear-gradient(to bottom, #2c2927, #121110);
-  border: 0.1cqw solid #050505;
-  border-radius: 0.3cqw;
-  box-shadow: inset 0 0.08cqw 0 ${TV_LOOK.casingLight}, 0 0.12cqw 0 #050505;
-  &:hover:not(:disabled) {
-    color: #e6e0da;
-  }
-  &:active:not(:disabled) {
-    transform: translateY(0.1cqw);
-    box-shadow: inset 0 0.08cqw 0 #050505;
-  }
+  border-radius: 0.35cqw;
+  ${RUBBER_BUTTON}
   /* nothing it can do here now (Jamie, playtest 23) */
   &:disabled {
     cursor: default;

@@ -9,6 +9,7 @@ import { useSnapshot } from "valtio";
 import { GlobalSettingsContext } from "Home";
 import { GameBoard } from "./GameBoard/GameBoard";
 import { CRT } from "Components/CrtPower";
+import { TV_LOOK } from "./GameBoard/PlayWindow";
 import { BezelButton, KaijuCounter, FULL_WINDOW, loadPlayWindow, ObjectiveTicker, PlayWindow, PORTRAIT_WINDOW, savePlayWindow } from "./GameBoard/PlayWindow";
 import { UI } from "./UI/UI";
 import { RadioCall } from "./RadioCall";
@@ -25,7 +26,7 @@ import { ChoiceButton } from "./GameBoard/GameBoard";
 import { DEFAULT_AGGRESSION } from "Game/DataClasses/npcBrain/brain";
 import { getKaijuSpeedMode, KaijuSpeedMode, setKaijuSpeedMode } from "../DataClasses/KaijuSpeedTest";
 import { getAvatarColor, saveAvatarColor, saveTeamAvatars, unlockEverything, unlockRecruitSkill, unlockSkill, unlockTool } from "../DataClasses/Avatars";
-import { AbilityPicker, MINI_TIMING } from "./AbilityPicker";
+import { AbilityPicker, MINI_TIMING, PlayConsole } from "./AbilityPicker";
 import { useKeyPress } from "Utils/utils";
 import { ABILITY_KEY_CODES, GAME_TICK, PIECES_INFO, TILE_STATUSES_AND_ABILITY_DATA } from "Utils/gameState";
 import { FullscreenPage } from "Components/FullscreenPage.jsx";
@@ -664,6 +665,8 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const [isPlayingGame, setIsPlayingGame] = useState(false);
   // the picker: the monitor stays in the middle while its things fade in, then eases aside as the mini-monitor flies in
   const [isPickerAside, setIsPickerAside] = useState(false);
+  // where the picker came from, for its Back (Jamie): the avatar select, back there; else home
+  const [pickerFrom, setPickerFrom] = useState<'avatar' | 'home'>('home');
   useEffect(() => {
     if (isChoosingAvatar || isPlayingGame) {
       setIsPickerAside(false);
@@ -1141,6 +1144,12 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
       setIsShowingControls(true);
       return;
     }
+    // before a game (the avatar select, the picker): nothing to hold, just the card
+    if (!isPlayingGame) {
+      isPausedForControls.current = false;
+      setIsShowingControls(true);
+      return;
+    }
     if (!gameManager.current) return;
     isPausedForControls.current = !isPaused && winner === null;
     if (isPausedForControls.current) {
@@ -1357,59 +1366,81 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const isBesideShowing = isHudsShowing || isLogShowing || labScreen == "colors";
   const gameWindow = isBesideShowing || isAdjustingWindow ? playWindow : getCenteredWindow(playWindow);
 
-  // the screens before a game (the avatar select and the power picker) are on the Kaiju-Vision monitor (Jamie, 2026-11-14)
-  const onMonitor = (content: React.ReactNode) => (
+  // the screens before a game (the avatar select and the power picker) are on the Kaiju-Vision monitor (Jamie, 2026-11-14),
+  // one and the same monitor through both (its bezel buttons, display and light as in a game: Jamie), with the
+  // Play!/Back console beside it from the avatar select on
+  const isPreGame = !isPlayingGame && (isChoosingAvatar || !isSkippingPicker);
+  const preGameWindow = isChoosingAvatar || !isPickerAside ? getCenteredWindow(playWindow) : playWindow;
+  const goBackFromPicker = isLabPicker ? returnToLab : pickerFrom == 'avatar' ? () => setIsChoosingAvatar(true) : handleClickHome;
+  const preGameMonitor = (
     <GameArea>
       <GameFrame data-game-frame $shift={monitorShift == 'in' ? 'in' : undefined}>
-        <PlayWindow playWindow={isChoosingAvatar || !isPickerAside ? getCenteredWindow(playWindow) : playWindow} setPlayWindow={updatePlayWindow} isAdjusting={false} isOpen={false} isPoweredOn={isMonitorOn} isClipped hasGlare>
-          {content}
+        <PlayWindow playWindow={preGameWindow} setPlayWindow={updatePlayWindow} isAdjusting={false} isOpen={false} isPoweredOn={isMonitorOn} isClipped hasGlare buttons={getBezelButtons({
+          isPauseOff: true, // nothing to pause yet
+          ticker: <ObjectiveTicker text="" isKaijuCount={false} count={0} toWin={0} />
+        })}>
+          {isChoosingAvatar ? (
+            <AvatarChoice isReady={isMonitorOn} onChoose={(player, teammate) => {
+              // a first play skips the power picker: Discharge, Wildfire and Dispel to start (Jamie); every replay after it shows it
+              const isFirstPlay = getIsFirstPlay();
+              markPlaythroughStarted();
+              chooseTeam(player, teammate);
+              startNewPlaythrough();
+              if (isFirstPlay && isDevPickerFirstPlay) {
+                // dev: the picker, with the first play's powers picked already
+                settingsManager.setSortedPlayerChosenAbilityElementsString(FIRST_PLAY_POWERS);
+                setPickedAbilities(FIRST_PLAY_POWERS);
+              }
+              if (isFirstPlay && !isDevPickerFirstPlay) {
+                settingsManager.setSortedPlayerChosenAbilityElementsString(FIRST_PLAY_POWERS);
+                setPickedAbilities(FIRST_PLAY_POWERS);
+                setIsSkippingPicker(true);
+                setIsChoosingAvatar(false);
+                handleClickPlay();
+                return;
+              }
+              setPickerFrom('avatar');
+              setIsChoosingAvatar(false); // the picker comes up on the same monitor
+            }} />
+          ) : (
+            <AbilityPicker
+              handleClickHome={handleClickHome}
+              pickedAbilities={pickedAbilities}
+              setPickedAbilities={setPickedAbilities}
+              handleClickPlay={handleClickPlay}
+              playLabel={isLabPicker ? "Back to Lab" : undefined}
+              onBack={isLabPicker ? returnToLab : undefined}
+              isTeammate={isTeammate}
+              setIsTeammate={setIsTeammate}
+            />
+          )}
         </PlayWindow>
+        {isMonitorOn && (
+          <PlayConsole
+            isAside={!isChoosingAvatar && isPickerAside}
+            monitorRight={preGameWindow.right * 100 + TV_LOOK.casingWidth}
+            isReady={!isChoosingAvatar && pickedAbilities.length == 3}
+            playLabel={isLabPicker ? "Back to Lab" : "Play!"}
+            onPlay={handleClickPlay}
+            onBack={isChoosingAvatar ? handleClickHome : isLabPicker ? undefined : goBackFromPicker}
+          />
+        )}
+        {isShowingControls && <ControlsOverlay onClose={closeControls} />}
       </GameFrame>
     </GameArea>
   );
 
   const screen = (
-    !isPlayingGame && isChoosingAvatar ? onMonitor(
-      <AvatarChoice isReady={isMonitorOn} onChoose={(player, teammate) => {
-        // a first play skips the power picker: Discharge, Wildfire and Dispel to start (Jamie); every replay after it shows it
-        const isFirstPlay = getIsFirstPlay();
-        markPlaythroughStarted();
-        chooseTeam(player, teammate);
-        startNewPlaythrough();
-        if (isFirstPlay && isDevPickerFirstPlay) {
-          // dev: the picker, with the first play's powers picked already
-          settingsManager.setSortedPlayerChosenAbilityElementsString(FIRST_PLAY_POWERS);
-          setPickedAbilities(FIRST_PLAY_POWERS);
-        }
-        if (isFirstPlay && !isDevPickerFirstPlay) {
-          settingsManager.setSortedPlayerChosenAbilityElementsString(FIRST_PLAY_POWERS);
-          setPickedAbilities(FIRST_PLAY_POWERS);
-          setIsSkippingPicker(true);
-          setIsChoosingAvatar(false);
-          handleClickPlay();
-          return;
-        }
-        setIsChoosingAvatar(false); // the picker comes up on the same monitor
-      }} />)
-    : !isPlayingGame && isSkippingPicker ? null
-    : !isPlayingGame ?
+    isPreGame ?
       <>
-      {import.meta.env.DEV && !isDevHidden && (
+      {import.meta.env.DEV && !isDevHidden && !isChoosingAvatar && (
         <LevelPicker value={level.id} onChange={e => { switchLevel(e.target.value); e.target.blur(); }}>
           {levelOptions}
         </LevelPicker>
       )}
-      {onMonitor(<AbilityPicker
-        handleClickHome={handleClickHome}
-        pickedAbilities={pickedAbilities}
-        setPickedAbilities={setPickedAbilities}
-        handleClickPlay={handleClickPlay}
-        playLabel={isLabPicker ? "Back to Lab" : undefined}
-        onBack={isLabPicker ? returnToLab : undefined}
-        isTeammate={isTeammate}
-        setIsTeammate={setIsTeammate}
-      />)}
+      {preGameMonitor}
       </>
+    : !isPlayingGame ? null
       : radioLines ?
         <GameArea>
           <GameFrame data-game-frame>

@@ -7,7 +7,7 @@ import { getIsSkillOpen, OUT_OF_PLAY_POWERS } from "../DataClasses/Avatars";
 import { PIECES_INFO } from "Utils/gameState";
 import { Tamagotchi } from "./Tamagotchi";
 import { CrtScreen, ScaleToFit } from "Components/CrtPower";
-import { CASING_SHEEN, TV_LOOK } from "./GameBoard/PlayWindow";
+import { CASING_SHEEN, RUBBER_BUTTON, TV_LOOK } from "./GameBoard/PlayWindow";
 
 /*
   The ability picker (Jamie, UI epic, 2026-11-14). On black: the player's avatar on the left, and around it, like a
@@ -378,8 +378,9 @@ const DevPanel = styled.div`
 */
 // 'brow': the top border, tall enough for its buttons (Jamie: swapped with the bottom's); the console sits below it
 const MINI = { left: 69, top: 2.2, width: 28, height: 34, casing: 1.3, brow: 4.2 };
-// (less tall, a thicker rim jutting out round a recessed face: Jamie)
-const CONSOLE = { left: 70, top: 40.5, width: 26, height: 10, rim: 1.2 };
+// (less tall, a thicker rim jutting out round a recessed face: Jamie). It's there from the avatar select on, so it
+// stands right of the monitor in the middle ('left'), and moves under the side monitor once that's in ('leftAside')
+const CONSOLE = { left: 77, leftAside: 72.5, top: 40.5, width: 22, height: 10, rim: 1.2, moveMs: 700 };
 // (Jamie: after the picker's things fade in, the big monitor eases aside as the mini-monitor flies in, then the wires)
 export const MINI_TIMING = { flyDelayMs: 500, flyMs: 850, onAtMs: 1400, wiresAtMs: 1600, wiresMs: 1100, consoleDelayMs: 750 };
 
@@ -453,10 +454,8 @@ const BrowButton = styled.button`
   font-family: gameboy;
   font-size: 0.7cqw;
   cursor: pointer;
-  color: #d9dade;
-  background: linear-gradient(#3a3d43, #16171a);
-  border: 0.1cqw solid #8d9097;
-  border-radius: 0.3cqw;
+  border-radius: 0.35cqw;
+  ${RUBBER_BUTTON}
   &:disabled {
     cursor: default;
     opacity: 0.35;
@@ -477,7 +476,7 @@ const consoleRise = keyframes`
 
 const Console = styled.div`
   position: absolute;
-  left: ${CONSOLE.left}cqw;
+  transition: left ${CONSOLE.moveMs}ms ease-in-out;
   top: ${CONSOLE.top}cqw;
   width: ${CONSOLE.width}cqw;
   height: ${CONSOLE.height}cqw;
@@ -526,7 +525,7 @@ const readyBlink = keyframes`
 const ReadyLight = styled.span`
   position: absolute;
   left: calc(${(5 / 6) * 100}% - 0.45cqw);
-  top: 0.9cqw;
+  top: ${(CONSOLE.height - 2 * CONSOLE.rim) * 0.4 - 0.45}cqw; /* its middle two fifths of the way down (Jamie) */
   width: 0.9cqw;
   height: 0.9cqw;
   border-radius: 50%;
@@ -562,7 +561,6 @@ const Screw = styled.span`
 const WIRES = [
   { from: { x: 73, y: MINI.top + MINI.height }, to: { x: 64.9, y: 30 }, sag: 5, color: "#0e0f10" },
   { from: { x: 77.5, y: MINI.top + MINI.height }, to: { x: 64.9, y: 34.5 }, sag: 6, color: "#121a14" },
-  { from: { x: 76, y: CONSOLE.top + CONSOLE.height }, to: { x: 64.9, y: 49.5 }, sag: 3, color: "#0e0f10" } // the console's
 ];
 const getWirePath = ({ from, to, sag }, wave = 0) =>
   `M ${from.x} ${from.y} C ${from.x + wave} ${from.y + sag}, ${to.x + 6 - wave} ${to.y + wave * 0.6}, ${to.x} ${to.y}`;
@@ -772,19 +770,71 @@ const Effect = styled.div`
   filter: brightness(1.2);
 `;
 
+// (narrower than they were, clear of the screws: Jamie)
 const MetalButton = styled.button`
-  padding: 0.75cqw 2.1cqw;
+  padding: 0.6cqw 1.3cqw;
   font-family: gameboy;
-  font-size: 1.3cqw;
+  font-size: 1.2cqw;
   cursor: pointer;
-  color: #d9dade;
-  background: linear-gradient(#3a3d43, #16171a);
-  border: 0.1cqw solid #8d9097;
+  border-radius: 0.45cqw;
+  ${RUBBER_BUTTON}
   &:disabled {
     cursor: default;
     opacity: 0.35;
   }
 `;
+
+const consoleWireDraw = keyframes`
+  from { stroke-dashoffset: 100; }
+  to { stroke-dashoffset: 0; }
+`;
+const ConsoleWireLayer = styled.svg`
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+  overflow: visible;
+`;
+const ConsoleWirePath = styled.path`
+  fill: none;
+  stroke-linecap: round;
+  stroke-dasharray: 100 100;
+  transition: d ${CONSOLE.moveMs}ms ease-in-out;
+  animation: ${consoleWireDraw} ${MINI_TIMING.wiresMs}ms cubic-bezier(0.4, 0.1, 0.3, 1) ${MINI_TIMING.flyMs}ms both;
+`;
+
+/*
+  The Play!/Back console (Jamie): there from the avatar select on (it rises in once the monitor is on), standing right
+  of the monitor while that's in the middle, and moving under the side monitor as the monitor eases aside. Its one wire
+  runs from its underside into the big monitor's side, following it. The light blinks once three powers are picked.
+  'monitorRight': the big monitor's right edge, in the frame's units.
+*/
+export const PlayConsole = ({ isAside, monitorRight, isReady, playLabel, onPlay, onBack }) => {
+  const left = isAside ? CONSOLE.leftAside : CONSOLE.left;
+  const from = { x: left + 2.5, y: CONSOLE.top + CONSOLE.height };
+  const to = { x: monitorRight, y: 50 };
+  const wire = `M ${from.x} ${from.y} C ${from.x} ${from.y + 3}, ${to.x + 3} ${to.y + 1}, ${to.x} ${to.y}`;
+  return (
+    <>
+      <ConsoleWireLayer viewBox="0 0 100 56.25" preserveAspectRatio="none" aria-hidden="true">
+        <ConsoleWirePath pathLength="100" stroke="#0e0f10" strokeWidth="0.75" style={{ d: `path("${wire}")` }} />
+        <ConsoleWirePath pathLength="100" stroke="#3b3d41" strokeWidth="0.16" style={{ d: `path("${wire}")`, transform: "translate(-0.12px, -0.12px)" }} />
+      </ConsoleWireLayer>
+      <Console style={{ left: `${left}cqw` }}>
+        <ConsoleFace>
+          {[[0.5, 0.5, 20], [null, 0.5, -35], [0.5, null, 60], [null, null, 5]].map(([screwLeft, top, turn], k) => (
+            <Screw key={k} $turn={turn} style={{ left: screwLeft == null ? undefined : `${screwLeft}cqw`, right: screwLeft == null ? "0.5cqw" : undefined, top: top == null ? undefined : `${top}cqw`, bottom: top == null ? "0.5cqw" : undefined }} />
+          ))}
+          <ReadyLight $isOn={isReady} />
+          <MetalButton disabled={!isReady} onClick={onPlay}>{playLabel}</MetalButton>
+          {onBack && <MetalButton onClick={onBack}>Back</MetalButton>}
+        </ConsoleFace>
+      </Console>
+    </>
+  );
+};
 
 export const AbilityPicker = ({
   handleClickHome,
@@ -931,16 +981,6 @@ export const AbilityPicker = ({
           ))}
         </MiniBrow>
       </MiniMonitor>
-      <Console>
-        <ConsoleFace>
-          {[[0.5, 0.5, 20], [null, 0.5, -35], [0.5, null, 60], [null, null, 5]].map(([left, top, turn], k) => (
-            <Screw key={k} $turn={turn} style={{ left: left == null ? undefined : `${left}cqw`, right: left == null ? "0.5cqw" : undefined, top: top == null ? undefined : `${top}cqw`, bottom: top == null ? "0.5cqw" : undefined }} />
-          ))}
-          <ReadyLight $isOn={isReady} />
-          <MetalButton disabled={!isReady} onClick={handleClickPlay}>{playLabel || "Play!"}</MetalButton>
-          {!onBack && <MetalButton onClick={handleClickHome}>Back</MetalButton>}
-        </ConsoleFace>
-      </Console>
       {import.meta.env.DEV && (
         <DevPanel>
           <label>
@@ -1037,7 +1077,7 @@ export const AbilityPicker = ({
             </Pendant>
           );
         })}
-        <PickCount>{pickedAbilities.length}/{PICK_COUNT}</PickCount>
+        <PickCount>{`${pickedAbilities.length}/ ${PICK_COUNT}`}</PickCount>
         </FadingIn>
       </Stage>
     </ScaleToFit>

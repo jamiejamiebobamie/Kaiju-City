@@ -214,7 +214,7 @@ const Screen = styled.div`
 
 const Name = styled.div`
   position: absolute;
-  top: 4%;
+  top: 14%; /* down a tenth of the screen (Jamie; was 4%) */
   left: 0;
   right: 0;
   text-align: center;
