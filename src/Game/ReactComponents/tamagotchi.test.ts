@@ -69,7 +69,7 @@ describe('tamagotchi, its walks and its line', () => {
   it('says its line only from the middle, and gets to both sides of the screen', () => {
     let pet = { ...newPet(), happiness: 5 };
     let least = 1, most = 0, spoke = 0;
-    for (let k = 0; k < 1200; k++) { // two minutes
+    for (let k = 0; k < 1800; k++) { // three minutes (its strolls are random)
       pet = step({ ...pet, caredSinceCheck: true, poops: [] });
       least = Math.min(least, pet.x);
       most = Math.max(most, pet.x);

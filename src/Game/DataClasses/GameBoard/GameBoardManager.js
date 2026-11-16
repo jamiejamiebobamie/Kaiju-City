@@ -810,7 +810,9 @@ export class GameBoardManager {
         const randIntX = getRandomIntInRange({ min: min_X, max: max_X });
         const randIntY = getRandomIntInRange({ min: min_Y, max: max_Y });
 
-        const charLocation = Math.random() > 0.5 ? { x: randIntX, y: min_Y } : { x: Math.random() > 0.5 ? min_X : max_X, y: randIntY };
+        // (the class's battle preview: from the left or right only)
+        const isSidesOnly = this.level.kaijuEntry.isSidesOnly;
+        const charLocation = !isSidesOnly && Math.random() > 0.5 ? { x: randIntX, y: min_Y } : { x: Math.random() > 0.5 ? min_X : max_X, y: randIntY };
         const tileIndex = this.getClosestPerimeterTileFromLocation(charLocation);
         const destXY = this.getTileXAndYFromTileIndex(tileIndex);
         const dir = this.getDirFromNormVec(getNormVecFromDestAndOrigin(destXY, charLocation));

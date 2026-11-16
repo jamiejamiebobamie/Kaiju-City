@@ -3617,7 +3617,10 @@ export class GameManager {
             getKaijuAbilities: this.settingsManager.getKaijuAbilities,
             determineKaijuDetails: () => ({
                 ...this.kaijuManager.determineKaijuDetailsFromDifficulty(this.settingsManager.getDifficulty()),
-                ...(this.killsToWin ? { MAX_TO_WIN: this.killsToWin } : {})
+                ...(this.killsToWin ? { MAX_TO_WIN: this.killsToWin } : {}),
+                // a level's own Kaiju timing and count (the class's battle preview)
+                ...(this.level.kaijuEntry && this.level.kaijuEntry.spawnEveryMs ? { SPAWN_EVERY_MS: this.level.kaijuEntry.spawnEveryMs } : {}),
+                ...(this.level.kaijuEntry && this.level.kaijuEntry.maxAtOnce ? { MAX_AT_ONCE: this.level.kaijuEntry.maxAtOnce } : {})
             }),
             getTilesAround: tile => this.gameBoardManager.getAdjacentTileIndices(tile),
             getFlattenedArrayIndex: this.gameBoardManager.getFlattenedArrayIndex,

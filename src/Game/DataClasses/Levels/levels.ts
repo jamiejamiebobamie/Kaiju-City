@@ -266,6 +266,9 @@ export type LevelConfig = {
   kaijuEntry?: {
     perimeterTiles: Array<TileIndex>; // the tiles Kaiju walk onto the board from
     bounds: { minX: number; minY: number; maxX: number; maxY: number }; // where they start
+    isSidesOnly?: boolean; // in from the left or the right edge only (the class's battle preview)
+    spawnEveryMs?: [number, number]; // a new one every so long, at random in this range (else the game's own)
+    maxAtOnce?: number; // at most so many on the board (else the difficulty's)
   };
 };
 
@@ -320,6 +323,35 @@ const buildLevel = (editorFile, name, accentColor, foregroundLayers = [], isWalk
     shakePhases: [],
     tileTone: 'white' as const,
     layers: [{ src: `/levels/${id}.png`, zIndex: -4 }]
+  };
+};
+
+/*
+  The class's battle preview (Jamie, 2026-11-15): a rectangle of the Peninsula's own grid, in the middle of its world,
+  so the tiles are the Peninsula's size on screen (same grid, same world, same camera zoom); no picture under it.
+  Kaiju come in from off the left or right edge, whichever is nearer their edge tile, every 5 to 10 s.
+*/
+export const buildBattlePreviewLevel = ({ columns = 11, rows = 6 } = {}): LevelConfig => {
+  const { grid } = peninsula as any;
+  const firstI = Math.round((grid.columns - columns) / 2);
+  const firstJ = Math.round((grid.rows - rows) / 2);
+  const base: Array<TileIndex> = [];
+  for (let i = firstI; i < firstI + columns; i++) for (let j = firstJ; j < firstJ + rows; j++) base.push({ i, j });
+  const edges = base.filter(({ i }) => i == firstI || i == firstI + columns - 1);
+  const middle = { i: firstI + Math.floor(columns / 2), j: firstJ + Math.floor(rows / 2) };
+  const file = { ...(peninsula as any), id: 'battlePreview', tileLinks: [], tileSets: { base, kaijuEntry: edges, spawn: [middle], goal: [], radar: [] } };
+  const level = buildLevel(file, 'Battle preview', '#5a8a7a');
+  const rowY = j => grid.originY + j * grid.rowStep;
+  return {
+    ...level,
+    layers: [],
+    kaijuEntry: {
+      perimeterTiles: edges,
+      bounds: { minX: -5, maxX: (peninsula as any).sceneWidth + 5, minY: rowY(firstJ), maxY: rowY(firstJ + rows - 1) },
+      isSidesOnly: true,
+      spawnEveryMs: [5000, 10000],
+      maxAtOnce: 3
+    }
   };
 };
 

@@ -6,6 +6,7 @@ import { getSciFiClass } from "../DataClasses/sciFiClasses";
 import { getIsSkillOpen, OUT_OF_PLAY_POWERS } from "../DataClasses/Avatars";
 import { PIECES_INFO } from "Utils/gameState";
 import { Tamagotchi } from "./Tamagotchi";
+import { ClassBattle } from "./ClassBattle";
 import { CrtScreen, ScaleToFit } from "Components/CrtPower";
 import { CASING_SHEEN, RUBBER_BUTTON, TV_LOOK } from "./GameBoard/PlayWindow";
 
@@ -32,7 +33,7 @@ const LOOK = {
   figureHeight: 400, // the avatar, head to feet (Jamie's, 2026-11-15; was 270, then 540; the halo kept its size)
   figureDrop: -50, // the avatar moved down from the halo's middle (negative: up), in stage units; the dev panel's slider
   haloRadius: { fewest: { count: 6, radius: 300 }, most: { count: 10, radius: 320 } }, // by the open powers (Jamie)
-  torso: { x: 500, y: 500 }, // the upper torso: the halo's middle
+  torso: { x: 500, y: 525 }, // the upper torso: the halo's middle
   headDrop: 0.28, // the upper torso, down from the top of the head (of the figure's height)
   // the area below the avatar stays clear (Jamie): its legs reach down past the lowest pendants (feet at 874, the
   // lowest pendants at about 720), and no pendant, line or pad is ever under it. Keep the arc's gap at the bottom wide
@@ -692,42 +693,21 @@ const Wires = ({ delayMs, wires = WIRES }) => {
 
 /*
   The class's battle preview (Jamie): below the class details, a little hex board where the player's avatar, with the
-  picked powers, fights Kaiju coming in from the sides. Phase C1: the board, empty (the live fight comes next, on the
-  game's own engine: see the plan in memory).
+  picked powers, fights Kaiju coming in from the sides, live on the game's own engine (ClassBattle.jsx).
 */
 const BATTLE = { top: 0.5, hex: { columns: 9, rows: 5 } }; // 'top': where it starts, of the screen's height
 
-const BattleBoard = styled.svg`
+// the live preview's box: the game's board inside it, seen through it
+const BattleBox = styled.div`
   position: absolute;
   left: 4%;
   right: 4%;
   top: ${BATTLE.top * 100 + 2}%;
   bottom: 14%;
-  width: 92%;
-  pointer-events: none;
+  overflow: hidden;
+  border-radius: 0.4cqw;
+  box-shadow: inset 0 0 0.6cqw rgba(0, 0, 0, 0.8);
 `;
-
-// a rectangle of hexes, as the game's board draws them: thin pale outlines
-const BattleArena = () => {
-  const { columns, rows } = BATTLE.hex;
-  const size = 10; // a hex's radius, in the board's units
-  const w = Math.sqrt(3) * size;
-  const hexes = [];
-  for (let row = 0; row < rows; row++) {
-    for (let col = 0; col < columns; col++) {
-      const cx = w / 2 + col * w + (row % 2 ? w / 2 : 0);
-      const cy = size + row * size * 1.5;
-      const points = [...Array(6).keys()].map(k => {
-        const a = (Math.PI / 180) * (60 * k - 30);
-        return `${(cx + size * Math.cos(a)).toFixed(2)},${(cy + size * Math.sin(a)).toFixed(2)}`;
-      }).join(" ");
-      hexes.push(<polygon key={`${row} ${col}`} points={points} fill="rgba(128, 239, 128, 0.04)" stroke="rgba(200, 255, 210, 0.45)" strokeWidth="0.6" />);
-    }
-  }
-  const width = w * columns + w / 2;
-  const height = size * 2 + (rows - 1) * size * 1.5;
-  return <BattleBoard viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" aria-hidden="true">{hexes}</BattleBoard>;
-};
 
 const Info = styled.div`
   position: absolute;
@@ -980,6 +960,27 @@ export const AbilityPicker = ({
   // the Kaiju tamagotchi (Jamie): on the side monitor while nothing's hovered and three aren't picked; its buttons
   // work only then (with the class showing, they're off, and its clock waits)
   const tamaRef = useRef(null);
+  // the battle preview's box, as a share of the game frame: the board sizes its view from it (its tiles the Peninsula's)
+  const arenaRef = useRef(null);
+  const [arenaWindow, setArenaWindow] = useState(null);
+  const isArenaShowing = hovered === undefined && !!playerClass;
+  useLayoutEffect(() => {
+    if (!isArenaShowing) {
+      setArenaWindow(null);
+      return;
+    }
+    const measure = () => {
+      const box = arenaRef.current;
+      const frameBox = box && box.closest("[data-game-frame]");
+      if (!box || !frameBox) return;
+      const a = box.getBoundingClientRect();
+      const f = frameBox.getBoundingClientRect();
+      setArenaWindow({ left: (a.left - f.left) / f.width, top: (a.top - f.top) / f.height, right: (a.right - f.left) / f.width, bottom: (a.bottom - f.top) / f.height });
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [isArenaShowing]);
   const isTamaShowing = hovered === undefined && !playerClass;
   const beside = (
     <>
@@ -990,7 +991,9 @@ export const AbilityPicker = ({
             {isTamaShowing ? <Tamagotchi actRef={tamaRef} /> : <Info $isClass={hovered === undefined && !!playerClass}>{getInfo()}</Info>}
             {hovered === undefined && !!playerClass && (
               <>
-                <BattleArena />
+                <BattleBox ref={arenaRef}>
+                  {arenaWindow && <ClassBattle powers={pickedAbilities} avatar={selectedAvatar} playWindow={arenaWindow} />}
+                </BattleBox>
                 {/* the class's icons, in the screen's bottom right corner (Jamie) */}
                 <IconGroup>
                   {pickedPowers.map(({ element, activeIcon, color }) => <Icon key={element} className={`fa ${activeIcon}`} style={{ color }} />)}

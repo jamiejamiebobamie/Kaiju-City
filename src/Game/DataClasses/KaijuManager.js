@@ -25,13 +25,16 @@ export class KaijuManager {
     }
 
     update(accTime, killCount) {
-        const { MAX_AT_ONCE, MAX_TO_WIN } = this.gameManagerProxy.determineKaijuDetails();
+        const { MAX_AT_ONCE, MAX_TO_WIN, SPAWN_EVERY_MS } = this.gameManagerProxy.determineKaijuDetails();
+        // a level's own timing, at random in its range (the class's battle preview), else the game's
+        const spawnIntervalMs = this.nextSpawnIntervalMs ?? KAIJU_SPAWN.spawnIntervalMs;
 
         // never more Kaiju than are left to win: the fight doesn't end with some still standing
         const getRemainingNeeded = () => MAX_TO_WIN - (killCount + this.kaijuPieces.filter(piece => !piece.getIsDead()).length);
-        if (accTime >= this.lastSpawnAccTime + KAIJU_SPAWN.spawnIntervalMs) {
+        if (accTime >= this.lastSpawnAccTime + spawnIntervalMs) {
             this.lastSpawnAccTime = accTime;
             if (this.kaijuPieces.length < MAX_AT_ONCE && getRemainingNeeded() > 0) this.addKaijuPiece(accTime);
+            if (SPAWN_EVERY_MS) this.nextSpawnIntervalMs = SPAWN_EVERY_MS[0] + Math.random() * (SPAWN_EVERY_MS[1] - SPAWN_EVERY_MS[0]);
         }
 
         if (accTime >= this.lastRespawnAccTime + KAIJU_SPAWN.respawnIntervalMs) {
