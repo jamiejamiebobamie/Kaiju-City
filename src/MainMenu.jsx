@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
 import styled, { css, keyframes } from "styled-components";
 import { SpeedBlurFilter, slideAway } from "./Components/SlideAway";
-import { ZOOM_BACK, ZoomThrough } from "./Components/ZoomThrough";
+import { getZoomBackMs, ZOOM_BACK, ZoomThrough } from "./Components/ZoomThrough";
 import { getIsPressPanel, getPressEffect, PressKeyPanel, PressKeyRow, usePressSettings } from "./Components/PressKeyEffects";
 import {
   Wrapper,
@@ -113,6 +113,13 @@ const layerSlide = (distance, isOn) => isOn && css`animation: ${slideAway(distan
   found from its building lights); the title and the walking Kaiju still slide off left in parallax (Jamie).
 */
 const CITY_ZOOM = { ms: PRESS_KEY.leaveMs, scale: 18, spot: { x: 0.692, y: 0.413 } };
+// the way back (Leave: Jamie): the skyline zooms back out of the city, from where the zoom went in, as the city fades
+const zoomOutOfCity = keyframes`
+  from { transform: scale(${18}); filter: blur(1.5px); }
+  30% { filter: blur(0); }
+  to { transform: scale(1); filter: blur(0); }
+`;
+
 const zoomIntoCity = keyframes`
   from { transform: scale(1); filter: blur(0); }
   70% { filter: blur(0); }
@@ -131,6 +138,10 @@ const SceneSlide = styled.div`
   & img { ${props => props.$isLeaving && css`
     transform-origin: ${CITY_ZOOM.spot.x * 100}% ${CITY_ZOOM.spot.y * 100}%;
     animation: ${zoomIntoCity} ${CITY_ZOOM.ms}ms cubic-bezier(0.6, 0, 0.9, 0.35) forwards;
+  `} }
+  & img { ${props => props.$isZoomingBack && !props.$isLeaving && css`
+    transform-origin: ${CITY_ZOOM.spot.x * 100}% ${CITY_ZOOM.spot.y * 100}%;
+    animation: ${zoomOutOfCity} ${CITY_ZOOM.ms}ms cubic-bezier(0.1, 0.65, 0.4, 1) ${getZoomBackMs() - 450}ms both;
   `} }
   /* the Kaiju keeps its walk and its own glow: it slides by 'translate' alone */
   & > div > :nth-child(n + 3) { ${props => props.$isLeaving && css`transition: translate ${SLIDE.ms}ms ease-in; translate: ${SLIDE.kaiju} 0;`} }
@@ -215,6 +226,7 @@ export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = ()
     ZOOM_BACK.isPending = false;
     return isBack;
   });
+  const [isLogoZoomingOut] = useState(isZoomingBack); // (the skyline's zoom back out runs on to its end)
   const isZoomingBackRef = useRef(isZoomingBack);
   isZoomingBackRef.current = isZoomingBack;
   const isLeavingRef = useRef(false);
@@ -270,7 +282,7 @@ export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = ()
   return <ShiftingWrapper $isShiftingIn={isShiftingIn}>
     <SpeedBlurFilter />
     <EmberSlide $isLeaving={isLeaving}><Embers /></EmberSlide>
-    <SceneSlide $isLeaving={isLeaving}><Logo /></SceneSlide>
+    <SceneSlide $isLeaving={isLeaving} $isZoomingBack={isLogoZoomingOut}><Logo /></SceneSlide>
     <ZoomThrough isOn={isLeaving} startMs={ZOOM_START_MS} onDone={enterRoom || handleClickGame} />
     {isZoomingBack && <ZoomThrough isOn isReverse startMs={0} onDone={() => setIsZoomingBack(false)} />}
     {navButtons}

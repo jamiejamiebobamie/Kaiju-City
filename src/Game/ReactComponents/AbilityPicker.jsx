@@ -442,6 +442,50 @@ const getMovedPoint = (point, device, time) => {
 const miniFlyOff = getFlyOffKeyframes(FLY_OFF.devices.mini);
 const consoleFlyOff = getFlyOffKeyframes(FLY_OFF.devices.console);
 
+/*
+  Steam jets (Jamie): as a side unit flies, puffs of steam shoot from under it, opposite the way it goes (in from the
+  upper right: down and to the right; the console rising: down; flying off right: down and to the left). Only while
+  it flies. 'dx', 'dy': where a puff goes (cqw); 'delayMs', 'ms': the flight.
+*/
+const JETS = { puffMs: 420, puffs: 4, nozzles: [0.22, 0.78] };
+const jetPuff = keyframes`
+  0% { transform: translate(-50%, 0) scale(0.35); opacity: 0.9; }
+  100% { transform: translate(calc(-50% + var(--dx)), var(--dy)) scale(2.2); opacity: 0; }
+`;
+const jetWindow = keyframes`
+  0% { opacity: 0; }
+  3% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+`;
+const JetHolder = styled.div`
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 96%;
+  height: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0;
+  animation: ${jetWindow} var(--ms) linear var(--delay) both;
+  span {
+    position: absolute;
+    top: 0;
+    width: 1.8cqw;
+    height: 1.8cqw;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(240, 246, 250, 0.95), rgba(200, 214, 224, 0.5) 55%, transparent 72%);
+    animation: ${jetPuff} ${JETS.puffMs}ms ease-out infinite;
+  }
+`;
+const Jets = ({ dx, dy, delayMs, ms }) => (
+  <JetHolder style={{ "--ms": `${ms}ms`, "--delay": `${delayMs}ms` }}>
+    {JETS.nozzles.map(across => [...Array(JETS.puffs).keys()].map(n => (
+      <span key={`${across}-${n}`} style={{ left: `${across * 100}%`, "--dx": `${dx}cqw`, "--dy": `${dy}cqw`, animationDelay: `${(n * JETS.puffMs) / JETS.puffs}ms` }} />
+    )))}
+  </JetHolder>
+);
+
 const flyIn = keyframes`
   0% { transform: translate(40cqw, -16cqw) rotate(16deg) scale(0.8); opacity: 0; }
   12% { opacity: 1; }
@@ -967,6 +1011,9 @@ export const PlayConsole = ({ isReady, playLabel, onPlay, onBack, isLeaving = fa
     <>
       <Wires delayMs={MINI_TIMING.riseDelayMs + MINI_TIMING.flyMs - 250} wires={CONSOLE_WIRES} ripFor={isLeaving ? "console" : undefined} />
       <Console $isLeaving={isLeaving}>
+        {isLeaving
+          ? <Jets key="off" dx={-7} dy={3} delayMs={0} ms={FLY_OFF.ms} />
+          : <Jets key="in" dx={0} dy={7} delayMs={MINI_TIMING.riseDelayMs} ms={MINI_TIMING.flyMs} />}
         <ConsoleFace>
           {[[0.5, 0.5, 20], [null, 0.5, -35], [0.5, null, 60], [null, null, 5]].map(([screwLeft, top, turn], k) => (
             <Screw key={k} $turn={turn} style={{ left: screwLeft == null ? undefined : `${screwLeft}cqw`, right: screwLeft == null ? "0.5cqw" : undefined, top: top == null ? undefined : `${top}cqw`, bottom: top == null ? "0.5cqw" : undefined }} />
@@ -1002,6 +1049,9 @@ export const SideMonitor = ({ isPickerShowing, isPoweredOff = false, isLeaving =
     <>
       <Wires delayMs={MINI_TIMING.wiresAtMs} ripFor={isLeaving ? "mini" : undefined} />
       <MiniMonitor $isLeaving={isLeaving}>
+        {isLeaving
+          ? <Jets key="off" dx={-7} dy={3} delayMs={0} ms={FLY_OFF.ms} />
+          : <Jets key="in" dx={6} dy={5} delayMs={MINI_TIMING.flyDelayMs} ms={MINI_TIMING.flyMs} />}
         <MiniScreen>
           <CrtScreen isOn={isOn && !isPoweredOff}>
             {/* the avatar select: the candidates' files (Jamie: not the tamagotchi, that's on the picker) */}

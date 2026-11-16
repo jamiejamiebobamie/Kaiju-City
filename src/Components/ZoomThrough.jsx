@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import styled, { keyframes } from "styled-components";
-import { ROOM, ROOM_HANDOFF, RoomExtras } from "./RoomScene";
+import { ROOM, ROOM_HANDOFF, RoomExtras, RoomMonitor } from "./RoomScene";
 
 // Leave (Jamie): the way back to the landing is the zoom backwards, quicker; set before the landing shows
 export const ZOOM_BACK = { isPending: false, speed: 1.7, cityFadeMs: 500 };
@@ -28,6 +28,8 @@ export const ZOOM_THROUGH = {
 };
 
 const getPushMs = () => ZOOM_THROUGH.pictures.reduce((sum, { ms }) => sum + ms, 0);
+// the way back's length, and when its city has faded (the landing's skyline zooms back out from there: MainMenu)
+export const getZoomBackMs = () => getPushMs() / ZOOM_BACK.speed;
 export const getZoomThroughMs = startMs => startMs + getPushMs();
 
 /*
@@ -114,10 +116,11 @@ const Puff = styled.div`
   opacity: 0;
   animation: ${sweep} ${CLOUDS.ms}ms cubic-bezier(0.3, 0, 0.6, 1) forwards;
 `;
-const Clouds = () => (
+// 'isReverse': the way back, the sweep played backwards (from by the camera out to the sides), from 'startMs'
+const Clouds = ({ isReverse = false, startMs = CLOUDS.startMs }) => (
   <>
     {CLOUDS.puffs.map(({ side, y, size, delay }, k) => (
-      <Puff key={k} style={{ top: `${y * 100}%`, width: `${size * 2}vh`, "--size": `${size}vh`, "--side": side, animationDelay: `${CLOUDS.startMs + delay}ms` }} />
+      <Puff key={k} style={{ top: `${y * 100}%`, width: `${size * 2}vh`, "--size": `${size}vh`, "--side": side, animationDelay: `${startMs + delay}ms`, animationDirection: isReverse ? "reverse" : undefined, animationFillMode: isReverse ? "both" : undefined }} />
     ))}
   </>
 );
@@ -207,11 +210,11 @@ export const ZoomThrough = ({ isOn, startMs, onDone, isReverse = false }) => {
       <Frame>
         {ZOOM_THROUGH.pictures.map(({ src }, k) => (
           <Picture key={src} ref={element => { refs.current[k] = element; }} style={{ backgroundImage: `url(${src})` }}>
-            {k == ZOOM_THROUGH.pictures.length - 1 && <RoomExtras />}
+            {k == ZOOM_THROUGH.pictures.length - 1 && <><RoomExtras /><RoomMonitor /></>}
           </Picture>
         ))}
       </Frame>
-      {!isReverse && <Clouds />}
+      {isReverse ? <Clouds isReverse startMs={getZoomBackMs() - 650} /> : <Clouds />}
     </Stage>
   );
 };
