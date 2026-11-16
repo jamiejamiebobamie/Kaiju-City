@@ -25,7 +25,7 @@ const TAMA = {
   walkPerSecond: 0.05, // of the screen's width: lazy
   hurryPerSecond: 0.14, // to food
   frameMs: 220, // its walk's frames, stepped slow and choppy
-  speakEveryMs: [9000, 15000], speakMs: 2600,
+  speakEveryMs: [3500, 6000], speakMs: 2600, // (more often: Jamie)
   poopEveryMs: [12000, 18000],
   poopGap: 0.09, // poops at least this far apart (of the screen's width)
   happinessMax: 5,
@@ -53,13 +53,28 @@ const NAMES = [
 ];
 
 // what it says (Jamie): every other line "Pick three abilities", these in turn between; a long one stays up longer
+// (Jamie's, some tightened by Claude with his leave: draft)
 const LINES = [
-  "Trigger your active abilities with number keys 1-3",
-  "Your passive abilities are applied when its active ability is on cooldown",
-  "I'm a nice Kaiju, but most want to kill you.",
-  "Fight with your teammate for maximum effectiveness"
+  "Your three powers determine your class.",
+  "Fire your actives with keys 1-3.",
+  "Each power has an active and a passive.",
+  "A passive works while its active cools down.",
+  "Hover over a power to read about it.",
+  "I'm a nice Kaiju. Most want to kill you.",
+  "Kaiju come from the sea to attack the city!",
+  "Fight beside your teammate!",
+  "Press Play! when ready."
 ];
 const getLine = count => count % 2 == 0 ? "Pick three abilities" : LINES[Math.floor(count / 2) % LINES.length];
+// the bubble shrink-wrapped to its line (Jamie): as few, even lines as fit in 'maxCqw', its text's width from the
+// font's (about one em a letter)
+const BUBBLE = { maxCqw: 15, letterEm: 1.0 };
+const getBubbleWidth = line => {
+  const size = line.length > 24 ? 0.95 : 1.2;
+  const full = line.length * size * BUBBLE.letterEm;
+  const lines = Math.ceil(full / BUBBLE.maxCqw);
+  return Math.min(BUBBLE.maxCqw, full / lines + size * 2.5);
+};
 const getSpeakMs = line => TAMA.speakMs + line.length * 45;
 
 const between = ([low, high]) => low + Math.random() * (high - low);
@@ -295,8 +310,7 @@ const Bubble = styled.div`
   padding: 0.5cqw 0.8cqw;
   font-size: ${props => props.$isLong ? 0.95 : 1.2}cqw; /* (a long line a little smaller) */
   line-height: 1.3;
-  width: max-content;
-  max-width: 19cqw; /* inside the LCD (it may cover the name: Jamie) */
+  text-wrap: balance;
   text-align: center;
   background: #050402;
   border: 0.14cqw solid ${TAMA.color};
@@ -491,7 +505,7 @@ export const Tamagotchi = ({ actRef }) => {
         <Body style={{ left: `${pet.x * 100}%`, top: y, WebkitMaskImage: `url(${SHEET.src})`, maskImage: `url(${SHEET.src})`, WebkitMaskPosition: maskPosition, maskPosition }} />
       )}
       {pet.petUntil > 0 && pet.mode != "burn" && <Hand style={{ left: `${pet.x * 100}%`, top: `calc(${y} - ${TAMA.kaijuHeight * 0.75}cqw)` }}>🖐</Hand>}
-      {isSpeaking && <Bubble style={{ left: "50%", top: `calc(${y} - ${TAMA.kaijuHeight + 1.2}cqw)` }} $isLong={pet.line.length > 24}>{pet.line}</Bubble>}
+      {isSpeaking && <Bubble $isLong={pet.line.length > 24} style={{ left: "50%", top: `calc(${y} - ${TAMA.kaijuHeight + 1.2}cqw)`, width: `${getBubbleWidth(pet.line)}cqw` }}>{pet.line}</Bubble>}
       {pet.hearts.filter(({ at }) => pet.clock >= at).map(({ id, x }) => (
         <Heart key={id} style={{ left: `${x * 100}%`, top: `calc(${y} - ${TAMA.kaijuHeight}cqw)` }}>♥</Heart>
       ))}
