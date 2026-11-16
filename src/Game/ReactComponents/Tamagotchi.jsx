@@ -42,7 +42,9 @@ const TAMA = {
 // the in-game Kaiju's sheet: 10 frames a row; from the top, its rows face right, right (three-quarters), front, left,
 // and away twice. Walking: the side views, row 3 (left) and row 0 (right; row 5 faced away: Jamie)
 const SHEET = { src: "/spritesheet/kaiju_sprite2.png", frames: 10, rows: 6, frameWidth: 180, frameHeight: 230.33, rowLeft: 3, rowRight: 0 };
-const BURN = { src: "/spritesheet/burning_kaiju_sprite.png", frames: 6, frameWidth: 103, frameHeight: 155 };
+// the burning sheet: in the game it's drawn at 1.5 times the walk's pixel scale (0.6 to 0.4), its figure's bottom at
+// 127 of its 155 (measured): so here too, standing on the Kaiju's feet (Jamie: it was too big and sat wrong)
+const BURN = { src: "/spritesheet/burning_kaiju_sprite.png", frames: 6, frameWidth: 103, frameHeight: 155, scaleToWalk: 1.5, figureBottom: 127 };
 
 // its names: 8 letters at most, so a name fits the LCD at full size (Jamie: the long ones ran off it)
 const NAMES = [
@@ -391,11 +393,12 @@ const burn = keyframes`
   to { -webkit-mask-position: 100% 0; mask-position: 100% 0; }
 `;
 
+const BURN_HEIGHT = BURN.frameHeight * (TAMA.kaijuHeight / SHEET.frameHeight) * BURN.scaleToWalk; // cqw
 const Flames = styled.div`
   position: absolute;
-  height: ${TAMA.kaijuHeight * 1.2}cqw;
-  width: ${TAMA.kaijuHeight * 1.2 * BURN.frameWidth / BURN.frameHeight}cqw;
-  transform: translate(-50%, -100%);
+  height: ${BURN_HEIGHT}cqw;
+  width: ${BURN_HEIGHT * BURN.frameWidth / BURN.frameHeight}cqw;
+  transform: translate(-50%, -${(BURN.figureBottom / BURN.frameHeight) * 100}%);
   background: ${TAMA.color};
   -webkit-mask: url(${BURN.src}) no-repeat;
   mask: url(${BURN.src}) no-repeat;
@@ -513,7 +516,7 @@ export const Tamagotchi = ({ actRef }) => {
       <Name style={{ fontSize: `${Math.min(TAMA.nameSize, 14 / pet.name.length)}cqw` }}>{pet.mode == "egg" ? "???" : pet.name.toUpperCase()}</Name>
       {pet.pellets.map(({ id, x, y: pelletY }) => <Pellet key={id} style={{ left: `${x * 100}%`, top: `${pelletY * 100}%` }} />)}
       {pet.poops.map(({ id, x }) => <Poop key={id} style={{ left: `${x * 100}%`, top: y }} />)}
-      {pet.mode == "burn" && <Flames style={{ left: `${pet.x * 100}%`, top: y }} />}
+      {pet.mode == "burn" && <Flames style={{ left: `${pet.x * 100}%`, top: `${(TAMA.groundY - TAMA.feetAbove) * 100}%` }} />}
       {pet.mode == "egg" && <Egg style={{ left: `${pet.x * 100}%`, top: `${(TAMA.groundY - TAMA.feetAbove) * 100}%` }} />}
       {pet.mode != "burn" && pet.mode != "egg" && (
         <Body style={{ left: `${pet.x * 100}%`, top: y, WebkitMaskImage: `url(${SHEET.src})`, maskImage: `url(${SHEET.src})`, WebkitMaskPosition: maskPosition, maskPosition }} />
