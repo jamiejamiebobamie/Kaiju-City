@@ -102,7 +102,7 @@ const PickCount = styled.div`
   right: ${(40 / STAGE.width) * 100}%;
   top: ${(36 / STAGE.height) * 100}%;
   font-family: gameboy;
-  font-size: ${(26 / STAGE.height) * 100}cqh;
+  font-size: ${(44 / STAGE.height) * 100}cqh; /* (bigger: Jamie; was 26) */
   letter-spacing: ${(2 / STAGE.height) * 100}cqh;
   color: #ffd24a;
   text-shadow: 0 0 ${(8 / STAGE.height) * 100}cqh #ffb020;
@@ -378,7 +378,8 @@ const DevPanel = styled.div`
 */
 // 'brow': the top border, tall enough for its buttons (Jamie: swapped with the bottom's); the console sits below it
 const MINI = { left: 69, top: 2.2, width: 28, height: 34, casing: 1.3, brow: 4.2 };
-const CONSOLE = { left: 70, top: 39.5, width: 26, height: 12.5, rim: 0.9 };
+// (less tall, a thicker rim jutting out round a recessed face: Jamie)
+const CONSOLE = { left: 70, top: 40.5, width: 26, height: 10, rim: 1.2 };
 // (Jamie: after the picker's things fade in, the big monitor eases aside as the mini-monitor flies in, then the wires)
 export const MINI_TIMING = { flyDelayMs: 500, flyMs: 850, onAtMs: 1400, wiresAtMs: 1600, wiresMs: 1100, consoleDelayMs: 750 };
 
@@ -484,7 +485,13 @@ const Console = styled.div`
   padding: ${CONSOLE.rim}cqw;
   box-sizing: border-box;
   border-radius: 1.4cqw;
-  box-shadow: inset 0 0.15cqw 0 ${TV_LOOK.casingLight}, 0 0 0 0.15cqw #080808, 0 1cqw 2.5cqw rgba(0, 0, 0, 0.8);
+  /* the case juts out toward the viewer: a lit top edge and a rounded lip, dark below, and a strong shadow under it */
+  box-shadow:
+    inset 0 0.22cqw 0 ${TV_LOOK.casingLight},
+    inset 0 -0.3cqw 0.4cqw rgba(0, 0, 0, 0.55),
+    0 0 0 0.15cqw #080808,
+    0 0.5cqw 0.3cqw rgba(0, 0, 0, 0.6),
+    0 1.4cqw 3cqw rgba(0, 0, 0, 0.85);
   ${CASING_SHEEN}
   animation: ${consoleRise} ${MINI_TIMING.flyMs}ms cubic-bezier(0.2, 0.9, 0.3, 1) ${MINI_TIMING.consoleDelayMs}ms both;
 `;
@@ -492,16 +499,40 @@ const Console = styled.div`
 const ConsoleFace = styled.div`
   position: relative;
   height: 100%;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 1.4cqw;
+  /* the buttons' middle three quarters of the way down (Jamie): the face's lower half, centered */
+  padding-top: ${(CONSOLE.height - 2 * CONSOLE.rim) / 2}cqw;
   border-radius: 0.7cqw;
-  /* brushed metal: fine horizontal streaks, lighter toward the top (lit from above) */
+  /* brushed metal, dimmer (Jamie): fine horizontal streaks, a little lighter toward the top. Recessed in the case:
+     the case's lip throws a shadow in along its top and left, and its bottom edge catches the light */
   background:
-    repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 3px),
-    linear-gradient(to bottom, #8d9198, #5c6067 55%, #44474d);
-  box-shadow: inset 0 0.12cqw 0 rgba(255, 255, 255, 0.35), inset 0 -0.15cqw 0 rgba(0, 0, 0, 0.4);
+    repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 3px),
+    linear-gradient(to bottom, #64686e, #474a50 55%, #33363b);
+  box-shadow:
+    inset 0 0.45cqw 0.5cqw rgba(0, 0, 0, 0.7),
+    inset 0.3cqw 0 0.35cqw rgba(0, 0, 0, 0.45),
+    inset 0 -0.08cqw 0 rgba(255, 255, 255, 0.18);
+`;
+
+// the ready light (Jamie): at the top, five sixths of the way across; blinking red with three picked, else dark
+const readyBlink = keyframes`
+  0%, 55% { background: radial-gradient(circle at 40% 35%, #ffb3a8, #ff2a1a 55%, #8a0c05); box-shadow: 0 0 0.6cqw 0.15cqw #ff3a20; }
+  56%, 100% { background: radial-gradient(circle at 40% 35%, #5a1a16, #2a0705 70%); box-shadow: none; }
+`;
+const ReadyLight = styled.span`
+  position: absolute;
+  left: calc(${(5 / 6) * 100}% - 0.45cqw);
+  top: 0.9cqw;
+  width: 0.9cqw;
+  height: 0.9cqw;
+  border-radius: 50%;
+  border: 0.1cqw solid #1a1b1d;
+  background: radial-gradient(circle at 40% 35%, #5a1a16, #2a0705 70%);
+  ${props => props.$isOn && css`animation: ${readyBlink} 0.9s steps(1) infinite;`}
 `;
 
 // a screw head at each corner of the face
@@ -742,9 +773,9 @@ const Effect = styled.div`
 `;
 
 const MetalButton = styled.button`
-  padding: 0.8cqw 1.8cqw;
+  padding: 0.75cqw 2.1cqw;
   font-family: gameboy;
-  font-size: 1.1cqw;
+  font-size: 1.3cqw;
   cursor: pointer;
   color: #d9dade;
   background: linear-gradient(#3a3d43, #16171a);
@@ -905,6 +936,7 @@ export const AbilityPicker = ({
           {[[0.5, 0.5, 20], [null, 0.5, -35], [0.5, null, 60], [null, null, 5]].map(([left, top, turn], k) => (
             <Screw key={k} $turn={turn} style={{ left: left == null ? undefined : `${left}cqw`, right: left == null ? "0.5cqw" : undefined, top: top == null ? undefined : `${top}cqw`, bottom: top == null ? "0.5cqw" : undefined }} />
           ))}
+          <ReadyLight $isOn={isReady} />
           <MetalButton disabled={!isReady} onClick={handleClickPlay}>{playLabel || "Play!"}</MetalButton>
           {!onBack && <MetalButton onClick={handleClickHome}>Back</MetalButton>}
         </ConsoleFace>

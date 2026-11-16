@@ -46,3 +46,21 @@ describe('tamagotchi', () => {
     expect(pet.hearts.length).toBeGreaterThan(hearts); // all clean: hearts
   });
 });
+
+describe('tamagotchi, later', () => {
+  it('its poops never overlap, and petting is a hand for 2 to 4 s, then hearts and a block back', () => {
+    let pet = newPet();
+    for (let k = 0; k < 8; k++) pet = step({ ...pet, nextPoopAt: pet.clock, x: 0.5 });
+    const xs = pet.poops.map(({ x }) => x).sort((a, b) => a - b);
+    xs.slice(1).forEach((x, k) => expect(x - xs[k]).toBeGreaterThanOrEqual(TAMA.poopGap - 1e-9));
+    pet = { ...newPet(), happiness: 3 };
+    pet = act(pet, 'Pet');
+    expect(pet.petUntil).toBeGreaterThan(0);
+    pet = run(pet, 1500);
+    expect(pet.hearts.length).toBe(0);
+    pet = run(pet, 2700);
+    expect(pet.petUntil).toBe(0);
+    expect(pet.hearts.length).toBeGreaterThan(0);
+    expect(pet.happiness).toBeGreaterThanOrEqual(4);
+  });
+});

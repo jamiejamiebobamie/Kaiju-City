@@ -17,6 +17,7 @@ const TAMA = {
   color: "#ffd24a",
   glow: "0 0 0.35cqw #ffb020",
   tickMs: 100,
+  nameSize: 2.1, // cqw (twice what it was: Jamie), smaller for a long name
   groundY: 0.7, // where it walks, of the screen's height (from the top)
   kaijuHeight: 7, // cqw
   walkPerSecond: 0.05, // of the screen's width: lazy
@@ -24,15 +25,21 @@ const TAMA = {
   frameMs: 220, // its walk's frames, stepped slow and choppy
   speakEveryMs: [9000, 15000], speakMs: 2600,
   poopEveryMs: [12000, 18000],
+  poopGap: 0.09, // poops at least this far apart (of the screen's width)
   happinessMax: 5,
   poopCheckMs: 10000, careCheckMs: 30000,
+  // back up, quickly (Jamie): a block for each care (fed, petted, all cleaned up), and every 4 s a block while it's
+  // clean and was cared for in the last 30 s
+  upCheckMs: 4000, caredWithinMs: 30000,
+  petMs: [2000, 4000], // the hand's petting, before the hearts
   burnMs: 1300, eggMs: 5000,
   heartMs: 1400,
   pelletFallPerSecond: 0.55
 };
 
-// the in-game Kaiju's sheet: 10 frames a row, its rows by facing (the walk to the lower left, and to the lower right)
-const SHEET = { src: "/spritesheet/kaiju_sprite2.png", frames: 10, rows: 6, frameWidth: 180, frameHeight: 230.33, rowLeft: 3, rowRight: 5 };
+// the in-game Kaiju's sheet: 10 frames a row; from the top, its rows face right, right (three-quarters), front, left,
+// and away twice. Walking: the side views, row 3 (left) and row 0 (right; row 5 faced away: Jamie)
+const SHEET = { src: "/spritesheet/kaiju_sprite2.png", frames: 10, rows: 6, frameWidth: 180, frameHeight: 230.33, rowLeft: 3, rowRight: 0 };
 const BURN = { src: "/spritesheet/burning_kaiju_sprite.png", frames: 6, frameWidth: 103, frameHeight: 155 };
 
 const NAMES = ["Mochi", "Biscuit", "Gizmo", "Pickles", "Noodle", "Waffles", "Pudding", "Tofu", "Bubbles", "Pebble", "Sprout",
@@ -54,11 +61,15 @@ const newPet = (generation = 1) => ({
   nextPoopAt: between(TAMA.poopEveryMs),
   nextPoopCheckAt: TAMA.poopCheckMs, nextCareCheckAt: TAMA.careCheckMs, caredSinceCheck: false,
   poops: [], pellets: [], hearts: [],
+  lastCareAt: -Infinity, nextUpCheckAt: 4000, petUntil: 0,
   burnAt: 0, eggUntil: 0
 });
 
 // the pet lives on between visits (this module keeps it for the page's life)
 let PET = newPet();
+
+// cared for: counts for the 30 s check, and a block of happiness back
+const care = pet => ({ ...pet, caredSinceCheck: true, lastCareAt: pet.clock, happiness: Math.min(TAMA.happinessMax, pet.happiness + 1) });
 
 const heartsFrom = (pet, count) => [...Array(count).keys()].map(k => ({ id: thingId++, x: pet.x + (k - (count - 1) / 2) * 0.05, at: pet.clock + k * 120 }));
 
@@ -95,11 +106,24 @@ const step = pet => {
     next.caredSinceCheck = false;
     next.nextCareCheckAt = now + TAMA.careCheckMs;
   }
+  if (now >= next.nextUpCheckAt) {
+    if (!next.poops.length && now - next.lastCareAt < TAMA.caredWithinMs) next.happiness = Math.min(TAMA.happinessMax, next.happiness + 1);
+    next.nextUpCheckAt = now + TAMA.upCheckMs;
+  }
   if (next.happiness <= 0) return { ...next, happiness: 0, mode: "burn", burnAt: now };
 
-  // a poop, behind it
+  // being petted: it stands still for the hand; when the hand goes, the hearts, and a block back
+  if (next.petUntil) {
+    if (now < next.petUntil) return next;
+    return { ...care(next), petUntil: 0, modeUntil: now, hearts: [...next.hearts, ...heartsFrom(next, 3)] };
+  }
+
+  // a poop, behind it, never on another (Jamie): the nearest clear spot behind it; none clear, it holds on
   if (now >= next.nextPoopAt) {
-    next.poops = [...next.poops, { id: thingId++, x: Math.min(0.92, Math.max(0.08, next.x + (next.facing == "left" ? 0.07 : -0.07))) }];
+    const behind = next.facing == "left" ? 1 : -1;
+    const spots = [...Array(24).keys()].map(k => next.x + behind * (0.07 + k * 0.035)).concat([...Array(24).keys()].map(k => next.x - behind * (0.07 + k * 0.035)));
+    const spot = spots.find(x => x >= 0.08 && x <= 0.92 && next.poops.every(poop => Math.abs(poop.x - x) >= TAMA.poopGap));
+    if (spot !== undefined) next.poops = [...next.poops, { id: thingId++, x: spot }];
     next.nextPoopAt = now + between(TAMA.poopEveryMs);
   }
 
@@ -123,7 +147,8 @@ const step = pet => {
   if (food && !isSpeaking) {
     if (walkTo(food.x, TAMA.hurryPerSecond)) {
       next.pellets = next.pellets.filter(pellet => pellet !== food);
-      next.caredSinceCheck = true;
+      if (!next.pellets.length) Object.assign(next, care(next)); // the last of a feeding: a block back
+      else next.caredSinceCheck = true;
     }
   } else if (!isSpeaking) {
     if (now >= next.modeUntil) {
@@ -158,11 +183,12 @@ const act = (pet, label) => {
     const pellets = [...Array(3).keys()].map(() => ({ id: thingId++, x: between([0.12, 0.88]), y: 0.08 + Math.random() * 0.05 }));
     return { ...pet, pellets: [...pet.pellets, ...pellets] };
   }
-  if (label == "Pet") return { ...pet, caredSinceCheck: true, hearts: [...pet.hearts, ...heartsFrom(pet, 3)] };
+  // a hand comes and pets it a few seconds; the hearts come after (Jamie)
+  if (label == "Pet") return pet.petUntil ? pet : { ...pet, petUntil: pet.clock + between(TAMA.petMs), mode: "idle", modeUntil: pet.clock + 99999 };
   if (label == "Clean up") {
     if (!pet.poops.length) return pet;
     const poops = pet.poops.slice(1);
-    return { ...pet, poops, hearts: poops.length ? pet.hearts : [...pet.hearts, ...heartsFrom(pet, 4)] };
+    return poops.length ? { ...pet, poops } : { ...care(pet), poops, hearts: [...pet.hearts, ...heartsFrom(pet, 4)] };
   }
   return pet;
 };
@@ -192,14 +218,8 @@ const Name = styled.div`
   left: 0;
   right: 0;
   text-align: center;
-  font-size: 1.05cqw;
   letter-spacing: 0.12cqw;
-`;
-
-const Generation = styled.span`
-  margin-left: 0.5cqw;
-  font-size: 0.6cqw;
-  opacity: 0.7;
+  white-space: nowrap;
 `;
 
 // the Kaiju: the sheet's shape, filled yellow
@@ -219,10 +239,12 @@ const Body = styled.div`
 const Bubble = styled.div`
   position: absolute;
   transform: translate(-50%, -100%);
-  padding: 0.35cqw 0.55cqw;
-  font-size: 0.62cqw;
-  line-height: 1.4;
-  white-space: nowrap;
+  padding: 0.45cqw 0.7cqw;
+  font-size: 0.95cqw; /* (bigger: Jamie; was 0.62) */
+  line-height: 1.35;
+  width: max-content;
+  max-width: 12cqw; /* two lines, so it fits the screen */
+  text-align: center;
   background: #050402;
   border: 0.14cqw solid ${TAMA.color};
   box-shadow: ${TAMA.glow};
@@ -322,6 +344,25 @@ const Egg = styled.div`
   }
 `;
 
+// the petting hand: lo-fi yellow, come from above, stroking back and forth over the Kaiju's head
+const stroke = keyframes`
+  0% { transform: translate(-80%, -100%) rotate(-12deg); }
+  50% { transform: translate(-20%, -85%) rotate(8deg); }
+  100% { transform: translate(-80%, -100%) rotate(-12deg); }
+`;
+const handIn = keyframes`
+  from { opacity: 0; margin-top: -3cqw; }
+  to { opacity: 1; margin-top: 0; }
+`;
+const Hand = styled.div`
+  position: absolute;
+  font-size: 2.4cqw;
+  line-height: 1;
+  text-shadow: none;
+  filter: grayscale(1) sepia(1) saturate(5) hue-rotate(10deg) brightness(1.7) drop-shadow(0 0 0.3cqw #ffb020);
+  animation: ${handIn} 300ms ease-out both, ${stroke} 700ms ease-in-out 300ms infinite;
+`;
+
 const Meter = styled.div`
   position: absolute;
   left: 0;
@@ -376,7 +417,7 @@ export const Tamagotchi = ({ actRef }) => {
   const maskPosition = `${(pet.frame / (SHEET.frames - 1)) * 100}% ${(row / (SHEET.rows - 1)) * 100}%`;
   return (
     <Screen>
-      <Name>{pet.name.toUpperCase()}<Generation>{pet.generation > 1 ? `gen ${pet.generation}` : ""}</Generation></Name>
+      <Name style={{ fontSize: `${Math.min(TAMA.nameSize, 21 / pet.name.length)}cqw` }}>{pet.name.toUpperCase()}</Name>
       {pet.pellets.map(({ id, x, y: pelletY }) => <Pellet key={id} style={{ left: `${x * 100}%`, top: `${pelletY * 100}%` }} />)}
       {pet.poops.map(({ id, x }) => <Poop key={id} style={{ left: `${x * 100}%`, top: y }}>💩</Poop>)}
       {pet.mode == "burn" && <Flames style={{ left: `${pet.x * 100}%`, top: y }} />}
@@ -384,7 +425,8 @@ export const Tamagotchi = ({ actRef }) => {
       {pet.mode != "burn" && pet.mode != "egg" && (
         <Body style={{ left: `${pet.x * 100}%`, top: y, WebkitMaskImage: `url(${SHEET.src})`, maskImage: `url(${SHEET.src})`, WebkitMaskPosition: maskPosition, maskPosition }} />
       )}
-      {isSpeaking && <Bubble style={{ left: `${Math.min(0.75, Math.max(0.25, pet.x)) * 100}%`, top: `calc(${y} - ${TAMA.kaijuHeight + 1.2}cqw)` }}>Pick three abilities</Bubble>}
+      {pet.petUntil > 0 && pet.mode != "burn" && <Hand style={{ left: `${pet.x * 100}%`, top: `calc(${y} - ${TAMA.kaijuHeight * 0.75}cqw)` }}>🖐</Hand>}
+      {isSpeaking && <Bubble style={{ left: `${Math.min(0.7, Math.max(0.3, pet.x)) * 100}%`, top: `calc(${y} - ${TAMA.kaijuHeight + 1.2}cqw)` }}>Pick three abilities</Bubble>}
       {pet.hearts.filter(({ at }) => pet.clock >= at).map(({ id, x }) => (
         <Heart key={id} style={{ left: `${x * 100}%`, top: `calc(${y} - ${TAMA.kaijuHeight}cqw)` }}>♥</Heart>
       ))}
