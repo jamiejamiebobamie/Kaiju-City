@@ -821,19 +821,47 @@ const useRip = (device, wires, refs) => {
 // 'wires': the side monitor's by default; the console has its own one. 'ripFor': its device's id ("mini" or
 // "console") once it flies off
 const Wires = ({ delayMs, wires = WIRES, ripFor = undefined }) => {
+  // the wires go under the big monitor's casing (Jamie, playtest 26: their plugs were drawn over it, more so as it
+  // moved): a hole in their layer the casing's shape, kept where the casing is each frame
+  const layerRef = useRef(null);
+  const holeRef = useRef(null);
+  const clipId = useRef(`wireClip${Math.random().toString(36).slice(2, 8)}`).current;
+  useEffect(() => {
+    let frameId;
+    const place = () => {
+      const layer = layerRef.current;
+      const hole = holeRef.current;
+      const casing = document.querySelector("[data-tv-casing]");
+      if (layer && hole) {
+        const box = layer.getBoundingClientRect();
+        const rect = casing && casing.getBoundingClientRect();
+        const outer = "M -200 -200 H 300 V 260 H -200 Z";
+        if (rect && rect.width > 0 && box.width > 0) {
+          const toX = px => ((px - box.left) / box.width) * 100;
+          const toY = py => ((py - box.top) / box.height) * 56.25;
+          hole.setAttribute("d", `${outer} M ${toX(rect.left)} ${toY(rect.top)} H ${toX(rect.right)} V ${toY(rect.bottom)} H ${toX(rect.left)} Z`);
+        } else hole.setAttribute("d", outer);
+      }
+      frameId = requestAnimationFrame(place);
+    };
+    place();
+    return () => cancelAnimationFrame(frameId);
+  }, []);
   const pathRefs = useRef([]);
   const ripRefs = useRef([]);
   const hookUpBolts = useArcs(delayMs, pathRefs, wires);
   const ripBolts = useRip(ripFor ? FLY_OFF.devices[ripFor] : undefined, wires, ripRefs);
   const bolts = ripFor ? ripBolts : hookUpBolts;
   return (
-  <WireLayer viewBox="0 0 100 56.25" preserveAspectRatio="none" aria-hidden="true">
+  <WireLayer ref={layerRef} viewBox="0 0 100 56.25" preserveAspectRatio="none" aria-hidden="true">
     <defs>
+      <clipPath id={clipId}><path ref={holeRef} clipRule="evenodd" d="M -200 -200 H 300 V 260 H -200 Z" /></clipPath>
       <filter id="arcGlow" x="-50%" y="-50%" width="200%" height="200%">
         <feGaussianBlur stdDeviation="0.25" result="blur" />
         <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
       </filter>
     </defs>
+    <g clipPath={`url(#${clipId})`}>
     {wires.map((wire, k) => {
       const style = { animationDelay: `${delayMs + k * 140}ms` };
       // (not while ripping: the frozen slither would hold the wire in place)
@@ -855,6 +883,7 @@ const Wires = ({ delayMs, wires = WIRES, ripFor = undefined }) => {
         <path d={d} stroke="white" strokeWidth="0.1" />
       </g>
     ))}
+    </g>
   </WireLayer>
   );
 };

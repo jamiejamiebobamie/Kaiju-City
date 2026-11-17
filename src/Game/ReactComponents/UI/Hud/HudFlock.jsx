@@ -227,6 +227,7 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused, deadKeys = [],
       const frame = column && column.parentElement;
       const casing = frame && frame.querySelector("[data-tv-casing]");
       let sockets = [];
+      let hole; // the casing, in the column's px: the wires go under it (Jamie, playtest 26: the plugs were over the monitor)
       let cqw = 1;
       if (column && frame) {
         const frameBox = frame.getBoundingClientRect();
@@ -249,6 +250,9 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused, deadKeys = [],
         cqw = frameBox.width / 100 / columnScale;
         if (casingBox && casingBox.width > 0) {
           const toColumn = (px, py) => ({ x: (px - frameBox.left - left) / columnScale, y: (py - frameBox.top - columnTop) / columnScale });
+          const corner = toColumn(casingBox.left, casingBox.top);
+          const far = toColumn(casingBox.right, casingBox.bottom);
+          hole = { left: corner.x, top: corner.y, right: far.x, bottom: far.y };
           sockets = [...Array(10).keys()].map(k => toColumn(casingBox.right - 2, casingBox.top + casingBox.height * (FLOCK.wires.sockets.first + FLOCK.wires.sockets.step * k)));
         }
       }
@@ -472,7 +476,16 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused, deadKeys = [],
       if (backCanvas) {
         const ctx = backCanvas.getContext("2d");
         ctx.clearRect(0, 0, backCanvas.width, backCanvas.height);
+        // the wires (their plugs, their sparks) under the monitor's casing: nothing drawn inside it
+        ctx.save();
+        if (hole) {
+          ctx.beginPath();
+          ctx.rect(0, 0, backCanvas.width, backCanvas.height);
+          ctx.rect(hole.left + MARGIN, hole.top + MARGIN, hole.right - hole.left, hole.bottom - hole.top);
+          ctx.clip("evenodd");
+        }
         drawWires(ctx, list, slots, sockets, now, dt, cqw);
+        ctx.restore();
         for (let k = back.length - 1; k >= 0; k--) {
           const p = back[k];
           p.age += dt * 1000;
