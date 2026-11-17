@@ -542,16 +542,25 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused, deadKeys = [],
   */
   const drawWires = (ctx, list, slots, sockets, now, dt, cqw) => {
     const { wires } = FLOCK;
-    let socketIndex = 0;
+    // each wire keeps its socket from the first plug-in until its HUD goes (Jamie, playtest 26: when one died, the others
+    // re-plugged, each moving up a socket): a new one takes the first socket free
+    const taken = new Set(list.map(entry => (bodies.current.get(entry.key) || {}).wire).filter(Boolean).map(wire => wire.socketIndex));
     list.forEach(entry => {
       const body = bodies.current.get(entry.key);
       const slot = slots.get(entry.key);
       if (!body || now < body.born) return;
-      const socket = entry.isLeaving ? body.wire && body.wire.socket : sockets[socketIndex++];
-      if (!socket) return;
-      body.wire = body.wire || { progress: 0, pluggedAt: undefined, socket };
+      if (!body.wire) {
+        if (entry.isLeaving) return;
+        let socketIndex = 0;
+        while (taken.has(socketIndex)) socketIndex += 1;
+        taken.add(socketIndex);
+        body.wire = { progress: 0, pluggedAt: undefined, socketIndex };
+      }
       const wire = body.wire;
-      if (!entry.isLeaving) wire.socket = socket;
+      // (the socket's point, from where the monitor is now: it moves)
+      const socket = sockets[wire.socketIndex];
+      if (!socket) return;
+      wire.socket = socket;
       const isSettled = !entry.isLeaving && Math.hypot(body.vx, body.vy) < 160 && Math.abs(body.y - slot.y) < 40;
       // (a dying one's comes out as its power goes)
       if (entry.isLeaving) wire.progress = Math.max(0, wire.progress - (dt * 1000) / wires.ripMs);
