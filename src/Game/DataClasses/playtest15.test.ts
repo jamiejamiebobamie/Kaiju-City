@@ -108,7 +108,8 @@ describe('playtest 15', () => {
     expect(gm.getPieces().filter(piece => piece.avatar == 'kaiju' && !piece.isTeammateKaiju).length).toBe(0);
     expect(gm.getGameResult()).toBe(null);
     gm.accTime += 5000;
-    kaiju.decrementHealth(gm.accTime, kaiju.maxLives);
+    // (all of it, and any extra lives it picked up meanwhile: they took the first hits, and it was left at 1)
+    kaiju.decrementHealth(gm.accTime, kaiju.maxLives + Math.max(0, kaiju.livesModifier || 0));
     expect(gm.getGameResult()).toBe(GameResult.PlayerWon);
   });
 
