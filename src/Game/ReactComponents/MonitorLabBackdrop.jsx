@@ -23,7 +23,9 @@ const HANDOVER_MS = 1100; // the avatar select's slide (CHOICE.slideMs)
   left where it is: the Lab picture, the tanks, their light and the avatars (AvatarChoice moves its row as much), as a
   share of the screen's height. The spots below are before it.
 */
-export const SCENE_DROP = 0.072;
+// (Jamie, playtest 31: the whole of it lower, "Choose your character" too, the spacing kept: SCENE_DROP_MORE more)
+export const SCENE_DROP_MORE = 0.048;
+export const SCENE_DROP = 0.072 + SCENE_DROP_MORE;
 
 export const BACKDROP_SPOTS = {
   guy: { x: 0.26, y: 0.358 + SCENE_DROP }, // (up with the avatars, their heads to Jamie's line; were 0.385)

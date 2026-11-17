@@ -5,7 +5,7 @@ import { SpeedBlurFilter, slideAway } from "Components/SlideAway";
 import { Doodads } from "Components/AvatarSelection";
 import { ScaleToFit } from "Components/CrtPower";
 import { PICKER_FIGURE } from "./AbilityPicker";
-import { SCENE_DROP, setFigurePlace } from "./MonitorLabBackdrop";
+import { SCENE_DROP, SCENE_DROP_MORE, setFigurePlace } from "./MonitorLabBackdrop";
 
 /*
   The start of the game (Jamie, playtest 21; the UI epic's mock-ups will restyle it): the guy and the girl, side by
@@ -300,6 +300,8 @@ const Label = styled.span`
 
 const Prompt = styled.div`
   margin-top: 40px; /* a little lower (Jamie) */
+  position: relative;
+  top: ${SCENE_DROP_MORE * 640}px; /* (down with the scene: Jamie, playtest 31) */
   font-family: gameboy;
   font-size: 20px;
   letter-spacing: 2px;
