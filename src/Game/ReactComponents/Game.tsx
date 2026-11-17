@@ -134,10 +134,15 @@ const GameFrame = styled.div<{ $shift?: 'in' | 'out' | 'fade' }>`
 `;
 
 // dev only, and beside the game rather than over it
+// (pinned over the room at the left, on top: under the room's picture it was hidden in every scene. Jamie, playtest 28)
 const PhaseToggles = styled.div`
-  flex: 0 0 200px;
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 200px;
+  z-index: 2147483645;
   box-sizing: border-box;
-  align-self: stretch;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -262,6 +267,7 @@ const EndTitle = styled.div`
   font-size: min(7.4cqw, 6.1vw);
   line-height: 1.15;
   white-space: pre-line;
+  translate: 0 -4.5cqw; /* (a little higher: Jamie, playtest 28. 'translate', so its arrival's transform still runs) */
   text-transform: uppercase;
   text-align: center;
   color: #ff2a4d;
@@ -1658,7 +1664,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
             <SideMonitor isPickerShowing={!isChoosingAvatar} isPoweredOff={isSideOff} isLeaving={isFlyingOff} bioOf={hoveredAvatar} /* (the Agent's question unless a tank is hovered: Jamie, playtest 27) */ />
             <PlayConsole
               isReady={!isChoosingAvatar && pickedAbilities.length == 3}
-              playLabel={isLabPicker ? "Back to Lab" : "Play!"}
+              playLabel={isLabPicker ? "Back to Lab" : "Play"} /* (no "!": Jamie, playtest 28) */
               onPlay={playFromConsole}
               onBack={isChoosingAvatar ? backFromAvatarSelect : isLabPicker ? undefined : goBackFromPicker}
               isLeaving={isFlyingOff}

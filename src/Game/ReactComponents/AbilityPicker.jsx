@@ -1066,8 +1066,8 @@ const MetalButton = styled.button`
   ${props => props.$isCompact && css`font-size: 0.8cqw; padding: 0.5cqw 0.7cqw;`}
   /* Play! (Jamie, playtest 28): bigger, up in the console's middle and a little left (not lined up with Back) */
   ${props => props.$isMain && css`
-    font-size: 1.6cqw;
-    padding: 0.85cqw 1.5cqw;
+    font-size: 1.33cqw; /* (5/6 of the first try's: Jamie, playtest 28) */
+    padding: 0.71cqw 1.25cqw;
     translate: -0.6cqw -${(CONSOLE.height - 2 * CONSOLE.rim) / 4}cqw; /* ('translate': the press's transform still works) */
   `}
   &:disabled {
