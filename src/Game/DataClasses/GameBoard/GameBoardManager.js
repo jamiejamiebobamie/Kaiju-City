@@ -16,6 +16,7 @@ import { getCharXAndY, getTileCenter, getTileIndexAtLocation, getTileXAndY } fro
 
 // a chasing power goes straight at its target within this many tile widths (no soft turn: it circled them)
 const TRACKING_DIRECT_COLS = 3.2;
+const TRACKING_IS_SOFT = false; // (the soft, curving chase: off. Jamie, playtest 29)
 
 // powers aim at a Kaiju walking in, ahead of the closest enemy on the tiles, once it is this many tiles from stepping on (Jamie)
 export const AIM_ENTERING_TILES = 2;
@@ -342,7 +343,9 @@ export class GameBoardManager {
                         const { colStep, scale } = this.grid;
                         const from = this.getCharXAndYFromTileIndex(tileIndex);
                         const isClose = !!target.charLocation && getDistanceToFrom(target.charLocation, from) <= TRACKING_DIRECT_COLS * colStep * scale;
-                        newDirs = tileStatus.getTurnSteps() !== undefined && dirs.length && !isClose ? [turnToward(d, dirs[0], tileStatus.getTurnSteps())] : dirs;
+                        // (straight at it from anywhere now: the soft turn still left heals and ghosts circling. Jamie,
+                        // playtests 25 and 29)
+                        newDirs = TRACKING_IS_SOFT && tileStatus.getTurnSteps() !== undefined && dirs.length && !isClose ? [turnToward(d, dirs[0], tileStatus.getTurnSteps())] : dirs;
                     }
                 } else if (isReversing) {
                     newDirs = tileStatus.reverseDir(d);
