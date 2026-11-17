@@ -446,20 +446,66 @@ const getFlyOff = (device, time) => {
   return lerpPose(getStrain(1), { x: device.x, y: device.y, turn: device.turn * 2.2 }, e);
 };
 // (as keyframes, the same motion, step by step)
-const getFlyOffKeyframes = device => keyframes`${[...Array(121).keys()].map(k => {
-  const { x, y, turn } = getFlyOff(device, k / 120);
-  return `${((k * 100) / 120).toFixed(3)}% { transform: translate(${x.toFixed(3)}cqw, ${y.toFixed(3)}cqw) rotate(${turn.toFixed(2)}deg); }`;
-}).join("\n")}`;
-// a point on a device (the frame's units) where it is at that moment: moved, and turned about the device's middle
-const getMovedPoint = (point, device, time) => {
+/*
+  Hinged (Jamie, playtest 29): the side units no longer fly; each turns on a hinge at its left edge, on an arm from the
+  big monitor, swinging out from behind it into view (side first, then its face) and back the same way. The leaving
+  motion keeps its beats (lunge, snapped back by the wires, straining, torn free), read as a swing: its 'x' becomes how
+  far it has turned back (all the way, 'HINGE.awayDegrees', at its end). 'y' and 'turn' are kept small, a judder.
+*/
+export const HINGE = { awayDegrees: 100, perspectiveCqw: 70, inMs: 1100 };
+const getSwing = (device, time) => {
   const { x, y, turn } = getFlyOff(device, time);
-  const { box } = device;
-  const center = { x: box.left + box.width / 2, y: box.top + box.height / 2 };
-  const angle = (turn * Math.PI) / 180;
-  const dx = point.x - center.x;
-  const dy = point.y - center.y;
-  return { x: center.x + x + dx * Math.cos(angle) - dy * Math.sin(angle), y: center.y + y + dx * Math.sin(angle) + dy * Math.cos(angle) };
+  return { degrees: (x / device.x) * HINGE.awayDegrees, y: y * 0.3, turn: turn * 0.25 };
 };
+const getFlyOffKeyframes = device => keyframes`${[...Array(121).keys()].map(k => {
+  const { degrees, y, turn } = getSwing(device, k / 120);
+  return `${((k * 100) / 120).toFixed(3)}% { transform: perspective(${HINGE.perspectiveCqw}cqw) translateY(${y.toFixed(3)}cqw) rotateY(${degrees.toFixed(2)}deg) rotate(${turn.toFixed(2)}deg); }`;
+}).join("\n")}`;
+// a point on a device (the frame's units) where it is at that moment: turned about the device's left edge (its far
+// side drawn in toward the hinge as it turns; the perspective's shrink left out)
+const getMovedPoint = (point, device, time) => {
+  const { degrees, y } = getSwing(device, time);
+  const { box } = device;
+  const across = Math.cos((Math.min(90, Math.abs(degrees)) * Math.PI) / 180);
+  return { x: box.left + (point.x - box.left) * across, y: point.y + y };
+};
+// swinging in from behind the monitor: turned away past edge-on (its back hidden), round to face out, a little past, back
+const hingeIn = keyframes`
+  0% { transform: perspective(${HINGE.perspectiveCqw}cqw) rotateY(${HINGE.awayDegrees}deg); }
+  72% { transform: perspective(${HINGE.perspectiveCqw}cqw) rotateY(-5deg); }
+  88% { transform: perspective(${HINGE.perspectiveCqw}cqw) rotateY(1.5deg); }
+  100% { transform: perspective(${HINGE.perspectiveCqw}cqw) rotateY(0deg); }
+`;
+// the arm each unit swings on: from under the big monitor's casing (it hides the arm's root) out to the unit's hinge
+const ARM = { fromCqw: 58, thickness: 1.1 };
+const ArmBar = styled.div`
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  border-radius: 0.3cqw;
+  background: linear-gradient(to bottom, #6a6d73, #3a3c41 45%, #1c1d21);
+  box-shadow: 0 0.3cqw 0.5cqw rgba(0, 0, 0, 0.7), inset 0 0.08cqw 0 rgba(255, 255, 255, 0.25);
+  /* the hinge's knuckle, at the unit's edge */
+  &::after {
+    content: "";
+    position: absolute;
+    right: -0.5cqw;
+    top: 50%;
+    width: 1.2cqw;
+    height: 2.6cqw;
+    transform: translateY(-50%);
+    border-radius: 0.6cqw;
+    background: linear-gradient(to right, #2a2b2f, #7a7d83 45%, #33353a);
+    box-shadow: 0 0.2cqw 0.4cqw rgba(0, 0, 0, 0.7);
+  }
+`;
+const Arm = ({ box }) => (
+  <ArmBar style={{ left: `${ARM.fromCqw}cqw`, width: `${box.left - ARM.fromCqw}cqw`, top: `${box.top + box.height / 2 - ARM.thickness / 2}cqw`, height: `${ARM.thickness}cqw` }} />
+);
+const HINGED = css`
+  transform-origin: 0 50%;
+  backface-visibility: hidden;
+`;
 
 const miniFlyOff = getFlyOffKeyframes(FLY_OFF.devices.mini);
 const consoleFlyOff = getFlyOffKeyframes(FLY_OFF.devices.console);
@@ -525,7 +571,8 @@ const MiniMonitor = styled.div`
   border-radius: 2cqw;
   background: ${TV_LOOK.casing};
   box-shadow: inset 0 0.2cqw 0 ${TV_LOOK.casingLight}, 0 0.25cqw 0 ${TV_LOOK.casingLight}, 0 0 0 0.15cqw #080808, 0 1cqw 2.5cqw rgba(0, 0, 0, 0.8);
-  animation: ${flyIn} ${MINI_TIMING.flyMs}ms cubic-bezier(0.2, 0.9, 0.3, 1) ${MINI_TIMING.flyDelayMs}ms both;
+  ${HINGED}
+  animation: ${hingeIn} ${HINGE.inMs}ms cubic-bezier(0.25, 0.8, 0.3, 1) ${MINI_TIMING.flyDelayMs}ms both;
   ${props => props.$isLeaving && css`animation: ${miniFlyOff} ${FLY_OFF.ms}ms linear forwards;`}
   /* the same plastic as the big one's (its screen lies over this) */
   &::before {
@@ -619,7 +666,8 @@ const Console = styled.div`
     0 0.5cqw 0.3cqw rgba(0, 0, 0, 0.6),
     0 1.4cqw 3cqw rgba(0, 0, 0, 0.85);
   ${CASING_SHEEN}
-  animation: ${consoleRise} ${MINI_TIMING.flyMs}ms cubic-bezier(0.2, 0.9, 0.3, 1) ${MINI_TIMING.riseDelayMs}ms both;
+  ${HINGED}
+  animation: ${hingeIn} ${HINGE.inMs}ms cubic-bezier(0.25, 0.8, 0.3, 1) ${MINI_TIMING.riseDelayMs}ms both;
   ${props => props.$isLeaving && css`animation: ${consoleFlyOff} ${FLY_OFF.ms}ms linear forwards;`}
 `;
 
@@ -1187,10 +1235,11 @@ export const PlayConsole = ({ isReady, playLabel, onPlay, onBack, isLeaving = fa
   return (
     <>
       <Wires delayMs={MINI_TIMING.riseDelayMs + MINI_TIMING.flyMs - 250} wires={CONSOLE_WIRES} ripFor={isLeaving ? "console" : undefined} />
+      <Arm box={CONSOLE} />
       <Console $isLeaving={isLeaving}>
         {isLeaving
-          ? <Jets key="off" dx={-7} dy={3} delayMs={0} ms={FLY_OFF.ms} />
-          : <Jets key="in" dx={0} dy={7} delayMs={MINI_TIMING.riseDelayMs} ms={MINI_TIMING.flyMs} />}
+          ? null
+          : null /* (no thrusters: it swings on its hinge now) */}
         <ConsoleFace ref={faceRef}>
           {[[0.5, 0.5, 20], [null, 0.5, -35], [0.5, null, 60], [null, null, 5]].map(([screwLeft, top, turn], k) => (
             <Screw key={k} $turn={turn} style={{ zIndex: 2, left: screwLeft == null ? undefined : `${screwLeft}cqw`, right: screwLeft == null ? "0.5cqw" : undefined, top: top == null ? undefined : `${top}cqw`, bottom: top == null ? "0.5cqw" : undefined }} />
@@ -1276,10 +1325,11 @@ export const SideFrame = ({ children, brow = null, isPoweredOff = false, isLeavi
   return (
     <>
       <Wires delayMs={MINI_TIMING.wiresAtMs} ripFor={isLeaving ? "mini" : undefined} />
+      <Arm box={MINI} />
       <MiniMonitor $isLeaving={isLeaving}>
         {isLeaving
-          ? <Jets key="off" dx={-7} dy={3} delayMs={0} ms={FLY_OFF.ms} />
-          : <Jets key="in" dx={6} dy={5} delayMs={MINI_TIMING.flyDelayMs} ms={MINI_TIMING.flyMs} />}
+          ? null
+          : null /* (no thrusters: it swings on its hinge now) */}
         <MiniScreen>
           <CrtScreen isOn={isOn && !isPoweredOff}>{children}</CrtScreen>
           {overlay}
