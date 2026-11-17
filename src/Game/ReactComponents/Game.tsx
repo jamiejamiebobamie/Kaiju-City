@@ -648,7 +648,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const { selectedAvatar, setSelectedAvatar, selectedTeammate, setSelectedTeammate, selectedDifficulty, settingsManager } = useContext(GlobalSettingsContext);
   const { objectiveText, isObjectiveKaijuCount, objectiveCount } = useSnapshot(gameUiStore);
   const { takeOverCount, takeOverText } = useSnapshot(gameUiStore);
-  const { isPaused, winner, isPlayerDead, players, recruits, kaijuKillCount, kaijuToWin, activePhases, isWideShot, isCutscene, unlockMessage, unlockImage, speech, recruitScene, dialogueLog, isDialogueWaiting, isTalking, isRecruitTalkDone, speakingPieceIndex, isHudsKept } = useSnapshot(gameUiStore);
+  const { isPaused, winner, isPlayerDead, players, recruits, kaijuKillCount, kaijuToWin, activePhases, isWideShot, isCutscene, unlockMessage, unlockImage, speech, recruitScene, dialogueLog, isDialogueWaiting, isTalking, isRecruitTalkDone, speakingPieceIndex, isHudsKept, isBalloonScene } = useSnapshot(gameUiStore);
   const [isRadioAlarm, setIsRadioAlarm] = useState(false); // the radio call has told of Kaiju coming: the siren glows
   const recruitChoiceFrom = useRef(undefined); // where the pressed Recruit or Terminate button was, for its word to fly from
   const [isClickThrough, setClickThrough] = useState(getIsClickThrough); // a playtest: each line in the log waits for a key or a click
@@ -1557,7 +1557,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   // what stands beside the monitor in a game: the HUDs, the dialogue panel, the Lab's color vat
   const isHudsShowing = !isEditingTiles && !isLogClosing && !isSideLeaving && (!level.isWalkingLevel || isRewarding) && (!isCutscene || isHudsKept) && !recruitScene && !(matchEnd && matchEnd.isFinale);
   hudsShowingRef.current = isHudsShowing;
-  const isLogShowing = !isSideLeaving && labScreen != "colors" && (isCutscene || !!recruitScene || isTalking);
+  const isLogShowing = !isSideLeaving && labScreen != "colors" && ((isCutscene && !isBalloonScene) || !!recruitScene || isTalking);
   // the monitor holds its place through the game (Jamie, playtest 27: it eased to the middle whenever nothing was
   // beside it, and back as HUDs or the dialogue panel came: shifting after battles, at the Agent, at the Hazmat Worker)
   const gameWindow = playWindow;
@@ -1991,7 +1991,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
               )}
               entries={dialogueLog}
               isWaiting={isDialogueWaiting}
-              isVisible={!isSideLeaving && labScreen != "colors" && (isCutscene || !!recruitScene || isTalking)} // paused, it stays as it was (Jamie)
+              isVisible={isLogShowing} // paused, it stays as it was (Jamie)
               onContinue={() => gameManager.current && gameManager.current.advanceDialogue()}
               onBuilt={setIsLogBuilt}
               onClosing={isClosing => {

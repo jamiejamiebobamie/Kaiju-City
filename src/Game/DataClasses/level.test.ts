@@ -2038,7 +2038,7 @@ describe('recruit calls', () => {
 
   it('no one can be called during a cutscene', () => {
     const { gm } = makeGame();
-    gm.cutscene = { steps: [], index: 0, msLeft: 0, isMidFight: false, keepsHuds: false };
+    gm.cutscene = { steps: [], index: 0, msLeft: 0, isMidFight: false, keepsHuds: false, isBalloonOnly: false };
     expect(gm.callRecruit('punk')).toBe(false);
   });
 });

@@ -631,8 +631,7 @@ const ConsoleFace = styled.div`
   align-items: center;
   justify-content: center;
   gap: 1cqw;
-  /* the buttons' middle three quarters of the way down (Jamie): the face's lower half, centered */
-  padding-top: ${(CONSOLE.height - 2 * CONSOLE.rim) / 2}cqw;
+  /* the buttons in the face's middle, side by side (Jamie, playtest 28: Back level with Play; was the lower half) */
   border-radius: 0.7cqw;
   /* brushed metal, dimmer (Jamie): fine horizontal streaks, a little lighter toward the top. Recessed in the case:
      the case's lip throws a shadow in along its top and left, and its bottom edge catches the light */
@@ -1068,7 +1067,7 @@ const MetalButton = styled.button`
   ${props => props.$isMain && css`
     font-size: 1.33cqw; /* (5/6 of the first try's: Jamie, playtest 28) */
     padding: 0.71cqw 1.25cqw;
-    translate: -0.6cqw -${(CONSOLE.height - 2 * CONSOLE.rim) / 4}cqw; /* ('translate': the press's transform still works) */
+    translate: -0.6cqw 0; /* ('translate': the press's transform still works) */
   `}
   &:disabled {
     cursor: default;
@@ -1105,7 +1104,7 @@ export const PlayConsole = ({ isReady, playLabel, onPlay, onBack, isLeaving = fa
           {[[0.5, 0.5, 20], [null, 0.5, -35], [0.5, null, 60], [null, null, 5]].map(([screwLeft, top, turn], k) => (
             <Screw key={k} $turn={turn} style={{ left: screwLeft == null ? undefined : `${screwLeft}cqw`, right: screwLeft == null ? "0.5cqw" : undefined, top: top == null ? undefined : `${top}cqw`, bottom: top == null ? "0.5cqw" : undefined }} />
           ))}
-          <ReadyLight $isOn={isReady} />
+          {/* (no ready light: Jamie, playtest 28) */}
           <MetalButton disabled={!isReady} $isBacklit={isReady} $isCompact={isCompact} $isMain={!isCompact} onClick={onPlay}>{playLabel}</MetalButton>
           {onBack && <MetalButton disabled={isBackDisabled} $isCompact={isCompact} onClick={onBack}>{backLabel}</MetalButton>}
         </ConsoleFace>

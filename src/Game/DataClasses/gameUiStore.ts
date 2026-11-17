@@ -19,6 +19,7 @@ export const gameUiStore = proxy({
   isWideShot: false,
   isCutscene: false,
   isHudsKept: false, // (a scene that keeps the HUDs up: the Peninsula's arrival)
+  isBalloonScene: false, // (a scene whose words are a balloon: the dialogue panel stays shut)
   unlockMessage: '',
   unlockImage: '',
   speech: null,

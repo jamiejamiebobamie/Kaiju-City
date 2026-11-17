@@ -2228,13 +2228,15 @@ export class GameManager {
     // but the HUDs stay up and the log stays closed
     // 'isNoEstablish': no hold on the whole scene first (back from a training win: Jamie, playtest 20)
     // 'keepsHuds': the HUDs stay up through it (the Peninsula's arrival: each comes as its avatar shows: Jamie)
-    startCutscene(steps, { isMidFight = false, isPortalWalk = false, isNoEstablish = false, keepsHuds = false } = {}) {
+    // 'isBalloonOnly': its words are a balloon, not the log: the dialogue panel stays shut (the Hazmat Worker's word on
+    // the Street opened the panel on the Agent's old last line, as if his talk replayed: Jamie, playtest 28)
+    startCutscene(steps, { isMidFight = false, isPortalWalk = false, isNoEstablish = false, keepsHuds = false, isBalloonOnly = false } = {}) {
         if (!isPortalWalk) this.endTravelForScene();
         if (!isMidFight && !isPortalWalk) this.spreadOutForScene();
         // in the log, a conversation in a wide shot cuts to each speaker: first it holds on the whole scene
         const [first] = steps;
         if (!isNoEstablish && getIsDialogueLog() && first && first.speech && first.shot && first.shot.isWide) steps = [{ shot: { isWide: true }, ms: DIALOGUE.establishMs }, ...steps];
-        this.cutscene = { steps, index: -1, msLeft: 0, isMidFight, keepsHuds };
+        this.cutscene = { steps, index: -1, msLeft: 0, isMidFight, keepsHuds, isBalloonOnly };
         this.nextCutsceneStep();
     }
 
@@ -3321,7 +3323,7 @@ export class GameManager {
             { shot, ms: CUTSCENE.pullInMs },
             { shot, ms: getSpeechMs(text), speech },
             { shot, ms: 0, onStart: showCard }
-        ]);
+        ], { isBalloonOnly: true });
         if (this.level.greeting) this.nextGreetingAtMs = Math.max(this.nextGreetingAtMs || 0, this.accTime + this.level.greeting.repeatMs);
     }
 
@@ -3611,6 +3613,7 @@ export class GameManager {
             activePhases: this.getActivePhases(),
             isWideShot: this.getIsWideShot(),
             isCutscene: !!this.cutscene && !this.cutscene.isMidFight, // a mid-fight scene keeps the HUDs up
+            isBalloonScene: !!this.cutscene && !!this.cutscene.isBalloonOnly,
             isHudsKept: !!this.cutscene && !!this.cutscene.keepsHuds,
             unlockMessage: this.unlockMessage,
             unlockImage: this.unlockImage,
