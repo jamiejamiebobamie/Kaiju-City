@@ -77,10 +77,10 @@ const PlayButton = styled.div`
 // the cursor: an arrow, gliding from the lower right to Play
 const Cursor = styled.svg`
   position: absolute;
-  width: 2.2cqw;
-  height: 3cqw;
+  width: 0.75cqw; /* (a third of the first try's: Jamie, playtest 29) */
+  height: 1cqw;
   z-index: 2;
-  filter: drop-shadow(0.15cqw 0.2cqw 0 rgba(0, 0, 0, 0.6));
+  filter: drop-shadow(0.06cqw 0.08cqw 0 rgba(0, 0, 0, 0.6));
   transition: left ${BOOT.cursorMoveMs}ms cubic-bezier(0.45, 0.05, 0.25, 1), top ${BOOT.cursorMoveMs}ms cubic-bezier(0.45, 0.05, 0.25, 1), transform 120ms;
   ${props => props.$isPressed && css`transform: scale(0.85);`}
 `;

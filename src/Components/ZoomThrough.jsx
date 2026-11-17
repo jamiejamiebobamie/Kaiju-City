@@ -21,7 +21,7 @@ export const ZOOM_THROUGH = {
   blendSpan: 0.8,
   pictures: [
     // Jamie's window: the lit four-pane one in the grey tower, middle (about 26 px of 1365 wide)
-    { src: "/zoom-scene/1-city.png", target: { x: 727 / 1365, y: 430 / 768 }, span: Math.log(20), ms: 2200 },
+    { src: "/zoom-scene/1-city.png", target: { x: 727 / 1365, y: 430 / 768 }, span: Math.log(20), ms: 3000 }, // (eases in: longer, was 2200)
     { src: "/zoom-scene/2-window.png", target: { x: 0.511, y: 0.337 }, span: Math.log(2.87), ms: 1200 }, // the top two panes
     { src: ROOM.src, target: undefined, span: undefined, ms: 1500 } // to the monitor's spot (worked out for the screen)
   ],
@@ -149,6 +149,13 @@ export const ZoomThrough = ({ isOn, startMs, onDone, isReverse = false }) => {
           continue;
         }
         const share = left / own;
+        // the first eases in (Jamie, playtest 29: a slow, dramatic start), speeding up to just the next one's pace as it
+        // hands over: a cubic with no speed at its start and the next picture's at its end
+        if (k == 0 && pictures.length > 1) {
+          const next = pictures[1];
+          const endSlope = Math.max(0.2, Math.min(2.8, ((next.span / next.ms) * own) / span));
+          return zoom + span * ((3 - endSlope) * share * share + (endSlope - 2) * share * share * share);
+        }
         return zoom + span * (k == pictures.length - 1 ? 1 - Math.pow(1 - share, 2) : share);
       }
       return zoom;
