@@ -395,7 +395,8 @@ const CONSOLE = { left: 71, top: 40.5, width: 24, height: 10, rim: 1.2 };
 // (Jamie: after the picker's things fade in, the big monitor eases aside as the mini-monitor flies in, then the wires)
 // (the side monitor and the console come once the big monitor is nearly aside, so they never fly over it: Jamie.
 // 'consoleDelayMs': when the big monitor starts easing aside, 700 ms; 'riseDelayMs': the console's rise)
-export const MINI_TIMING = { flyDelayMs: 900, flyMs: 850, onAtMs: 1800, wiresAtMs: 2000, wiresMs: 1100, consoleDelayMs: 750, riseDelayMs: 1000 };
+// ('onAtMs': the side screen switches on once its wires have plugged in, both of them: Jamie, playtest 29; was 1800)
+export const MINI_TIMING = { flyDelayMs: 900, flyMs: 850, onAtMs: 3550, wiresAtMs: 2000, wiresMs: 1100, consoleDelayMs: 750, riseDelayMs: 1000 };
 
 /*
   On Play! (Jamie): the side monitor and the console fly off to the right, out of shot, ripping their wires out of the
@@ -1091,15 +1092,15 @@ const FitTitleRow = ({ text, children }) => {
 };
 
 // (a power used in the class battle: its icon blinks, twice: Jamie, playtest 29)
+// (softer, no scaling: Jamie, playtest 29): a gentle brighten and glow, once
 const iconBlink = keyframes`
-  0%, 50%, 100% { opacity: 1; filter: drop-shadow(0 0 0.2cqw currentColor); transform: scale(1); }
-  25%, 75% { opacity: 1; filter: brightness(1.9) drop-shadow(0 0 0.7cqw currentColor) drop-shadow(0 0 1.2cqw currentColor); transform: scale(1.18); }
-  12%, 62% { opacity: 0.35; }
+  0%, 100% { filter: drop-shadow(0 0 0.2cqw currentColor); }
+  40% { filter: brightness(1.35) drop-shadow(0 0 0.5cqw currentColor); }
 `;
 const Icon = styled.i`
   font-size: 1.9cqw;
   filter: drop-shadow(0 0 0.2cqw currentColor);
-  ${props => props.$isBlinking && css`animation: ${iconBlink} 600ms ease-out;`}
+  ${props => props.$isBlinking && css`animation: ${iconBlink} 700ms ease-in-out;`}
 `;
 
 const TINT = { turnDegrees: 28, saturation: 0.7, lightness: 80 };
@@ -1445,10 +1446,24 @@ export const AbilityPicker = ({
   const [frame, setFrame] = useState(null);
   // the side monitor's screen and border, for the picker's things (SideMonitor)
   const [side, setSide] = useState(null);
+  // (looked for until it's there, and again if it's made anew: the side monitor now comes after the monitor's boot, so
+  // it wasn't there yet as the picker opened, and its screen stayed empty. Jamie, playtest 29)
   useLayoutEffect(() => {
     const gameFrame = anchorRef.current && anchorRef.current.closest("[data-game-frame]");
     setFrame(gameFrame);
-    setSide(gameFrame && { screen: gameFrame.querySelector("[data-side-screen]"), brow: gameFrame.querySelector("[data-side-brow]") });
+    let frameId;
+    let last = { screen: null, brow: null };
+    const find = () => {
+      const screen = gameFrame && gameFrame.querySelector("[data-side-screen]");
+      const brow = gameFrame && gameFrame.querySelector("[data-side-brow]");
+      if (screen !== last.screen || brow !== last.brow) {
+        last = { screen, brow };
+        setSide(screen ? { screen, brow } : null);
+      }
+      frameId = requestAnimationFrame(find);
+    };
+    find();
+    return () => cancelAnimationFrame(frameId);
   }, []);
 
   HALO_RADIUS = getHaloRadiusFor(powers.length);
@@ -1560,7 +1575,8 @@ export const AbilityPicker = ({
     return () => cancelAnimationFrame(frameId);
   }, [isArenaShowing]);
   // (on a replay's picker, the tamagotchi first for a few seconds, whatever's hovered or picked: Jamie, playtest 29)
-  const [isTamaHeld, setIsTamaHeld] = useState(true);
+  // (not when three are picked already as it opens: the class shows at once. Jamie, playtest 29)
+  const [isTamaHeld, setIsTamaHeld] = useState(() => pickedAbilities.length < 3);
   useEffect(() => {
     const timeout = setTimeout(() => setIsTamaHeld(false), MINI_TIMING.onAtMs + TAMA_FIRST_MS);
     return () => clearTimeout(timeout);
@@ -1578,7 +1594,7 @@ export const AbilityPicker = ({
             {/* kept while a class is picked, faded with the details (Jamie, playtest 28: it unmounted on each hover, the
                 battle restarting and building itself in again from the top left) */}
             {!!playerClass && (
-              <ClassLayer style={{ opacity: hovered === undefined ? 1 : 0, transitionDelay: hovered === undefined ? `${CROSSFADE.holdMs}ms` : "0ms", pointerEvents: hovered === undefined ? undefined : "none" }}>
+              <ClassLayer style={{ opacity: hovered === undefined && !isTamaShowing ? 1 : 0, transitionDelay: hovered === undefined && !isTamaShowing ? `${CROSSFADE.holdMs}ms` : "0ms", pointerEvents: hovered === undefined && !isTamaShowing ? undefined : "none" }}>
                 <BattleBox ref={arenaRef} data-no-floating-words>
                   {arenaWindow && <ClassBattle powers={pickedAbilities} avatar={selectedAvatar} playWindow={arenaWindow} onCast={element => setBlinks(previous => ({ ...previous, [element]: (previous[element] || 0) + 1 }))} />}
                 </BattleBox>
