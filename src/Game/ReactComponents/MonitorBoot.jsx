@@ -47,6 +47,8 @@ const MatrixRain = () => {
     let height = 0;
     let cell = 10;
     let drops = [];
+    // a cell's digit: fixed for its column and row (a hash), so nothing changes in place
+    const glyphAt = (column, row) => RAIN.glyphs[(((column * 73856093) ^ (row * 19349663)) >>> 0) % RAIN.glyphs.length];
     const launchBand = (from, to, top) => {
       const speed = RAIN.speed[0] + Math.random() * (RAIN.speed[1] - RAIN.speed[0]);
       for (let k = from; k < to; k++) {
@@ -88,22 +90,18 @@ const MatrixRain = () => {
         const row = Math.floor(drop.y / cell);
         if (row != before && row >= 0) {
           const x = (k + 0.5) * cell;
-          // the one above the head turns purple; the head itself bright
+          // the one above the head turns purple; the head itself bright. Each cell keeps its own digit (Jamie, playtest
+          // 31: random digits each step made it jitter): the same one is drawn over it as it dims
           ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-          ctx.fillText(RAIN.glyphs[Math.floor(Math.random() * RAIN.glyphs.length)], x, (row - 1) * cell);
+          ctx.fillText(glyphAt(k, row - 1), x, (row - 1) * cell);
           ctx.fillStyle = RAIN.head;
-          ctx.fillText(RAIN.glyphs[Math.floor(Math.random() * RAIN.glyphs.length)], x, row * cell);
+          ctx.fillText(glyphAt(k, row), x, row * cell);
         }
         // a band starts again together, once all of it has run off the bottom
         if (k == drop.band && drops.slice(drop.band, drop.bandEnd).every(other => other.y > height + cell * 10) && Math.random() < 0.05) {
           launchBand(drop.band, drop.bandEnd, -Math.random() * height * 0.4);
         }
       });
-      // now and then a digit in a trail flickers
-      if (Math.random() < 0.3) {
-        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.8)`;
-        ctx.fillText(RAIN.glyphs[Math.floor(Math.random() * 2)], (Math.floor(Math.random() * RAIN.columns) + 0.5) * cell, Math.floor(Math.random() * (height / cell)) * cell);
-      }
       frameId = requestAnimationFrame(run);
     };
     frameId = requestAnimationFrame(run);
