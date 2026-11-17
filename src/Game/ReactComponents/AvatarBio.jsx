@@ -1,5 +1,5 @@
-import React from "react";
-import styled from "styled-components";
+import React, { useEffect, useState } from "react";
+import styled, { css, keyframes } from "styled-components";
 
 /*
   The avatar select's side screen (Jamie, 2026-11-16): the two candidates' files, in green, not the tamagotchi (that's
@@ -95,18 +95,77 @@ const Bio = styled.div`
   top left pointing up and right, at him. Always there while nothing's hovered.
 */
 const AGENT_CALL = { line: "who are you recruit?" }; // (Jamie's words)
+// (Jamie, playtest 28) he walks out of the shadows into a light from above, then his balloon pops in and types out;
+// the feed is unstable (grain, rolling bars, now and then a tear). The walk-in plays once a visit; back to him after
+// a hover, he's simply there (a quick fade)
+const AGENT_TIMING = { walkMs: 1700, balloonAtMs: 1750, typeMs: 55, quickMs: 260 };
+let isAgentIntroDone = false;
+
+const spotUp = keyframes`
+  0% { opacity: 0; }
+  35% { opacity: 1; }
+  100% { opacity: 1; }
+`;
+const walkIn = keyframes`
+  0% { opacity: 0; filter: grayscale(1) contrast(1.9) brightness(0) sepia(1) hue-rotate(70deg) saturate(2.4) blur(0.25cqw); transform: translateX(-50%) scale(0.93); }
+  45% { opacity: 0.55; filter: grayscale(1) contrast(1.9) brightness(0.35) sepia(1) hue-rotate(70deg) saturate(2.4) blur(0.12cqw); }
+  100% { opacity: 1; filter: grayscale(1) contrast(1.9) brightness(0.85) sepia(1) hue-rotate(70deg) saturate(2.4) blur(0); transform: translateX(-50%) scale(1); }
+`;
+const quickIn = keyframes`from { opacity: 0; } to { opacity: 1; }`;
+// the unstable feed: now and then a jolt sideways and a dip
+const feedJitter = keyframes`
+  0%, 100% { translate: 0 0; opacity: 1; }
+  41% { translate: 0 0; opacity: 1; }
+  42% { translate: 0.35cqw 0; opacity: 0.75; }
+  43% { translate: -0.2cqw 0; opacity: 0.95; }
+  44% { translate: 0 0; opacity: 1; }
+  77% { translate: 0 0; }
+  78% { translate: -0.45cqw 0.1cqw; opacity: 0.6; }
+  79.5% { translate: 0 0; opacity: 1; }
+`;
+const grainShift = keyframes`
+  0% { background-position: 0 0; }
+  25% { background-position: 13px -7px; }
+  50% { background-position: -9px 11px; }
+  75% { background-position: 6px 4px; }
+  100% { background-position: 0 0; }
+`;
+const tear = keyframes`
+  0%, 70%, 100% { opacity: 0; }
+  71% { opacity: 1; top: 38%; }
+  73% { opacity: 0; }
+  88% { opacity: 1; top: 62%; }
+  89.5% { opacity: 0; }
+`;
+
+const AgentFeed = styled.div`
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  animation: ${feedJitter} 3.7s steps(1) infinite;
+`;
+// the light from above: a soft cone falling on where he stands
+const Spotlight = styled.div`
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 32% 70% at 50% 0%, rgba(150, 255, 150, 0.16), rgba(150, 255, 150, 0.05) 55%, transparent 80%);
+  animation: ${spotUp} ${props => props.$isQuick ? AGENT_TIMING.quickMs : AGENT_TIMING.walkMs}ms ease-out both;
+`;
 const AgentFace = styled.div`
   position: absolute;
   left: 50%;
-  top: -6%;
+  top: 3%;
   width: 78%;
-  height: 72%;
+  height: 68%;
   transform: translateX(-50%);
   background-size: cover;
-  background-position: center 18%;
+  background-position: center 4%;
   filter: grayscale(1) contrast(1.9) brightness(0.85) sepia(1) hue-rotate(70deg) saturate(2.4);
   -webkit-mask-image: radial-gradient(ellipse 62% 66% at 50% 42%, black 52%, transparent 100%);
   mask-image: radial-gradient(ellipse 62% 66% at 50% 42%, black 52%, transparent 100%);
+  ${props => props.$isQuick
+    ? css`animation: ${quickIn} ${AGENT_TIMING.quickMs}ms ease-out both;`
+    : css`animation: ${walkIn} ${AGENT_TIMING.walkMs}ms cubic-bezier(0.3, 0.1, 0.3, 1) both;`}
   &::after {
     content: "";
     position: absolute;
@@ -114,11 +173,47 @@ const AgentFace = styled.div`
     background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.45) 0 1px, transparent 1px 3px);
   }
 `;
+// grain and a slow rolling bar over the feed
+const Static = styled.div`
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.32;
+  mix-blend-mode: screen;
+  background: repeating-radial-gradient(circle at 17% 33%, rgba(160, 255, 160, 0.5) 0 0.5px, transparent 0.6px 2.3px);
+  background-size: 37px 29px;
+  animation: ${grainShift} 0.18s steps(4) infinite;
+`;
+const barRoll = keyframes`from { transform: translateY(-40%); } to { transform: translateY(140%); }`;
+const RollBar = styled.div`
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 30%;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, rgba(160, 255, 160, 0.07) 45%, rgba(160, 255, 160, 0.11) 50%, rgba(160, 255, 160, 0.07) 55%, transparent);
+  animation: ${barRoll} 4.5s linear infinite;
+`;
+const Tear = styled.div`
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0.5cqw;
+  background: linear-gradient(to right, transparent, rgba(180, 255, 180, 0.55) 20%, rgba(180, 255, 180, 0.2) 70%, transparent);
+  animation: ${tear} 3.7s steps(1) infinite;
+`;
+const balloonPop = keyframes`
+  0% { opacity: 0; transform: scale(0.6); }
+  70% { opacity: 1; transform: scale(1.06); }
+  100% { opacity: 1; transform: scale(1); }
+`;
 const AgentBalloon = styled.div`
   position: absolute;
   left: 9%;
   right: 9%;
   bottom: 9%;
+  min-height: 2.6cqw;
   padding: 1cqw 1.2cqw;
   font-family: gameboy;
   font-size: 1.15cqw;
@@ -131,6 +226,8 @@ const AgentBalloon = styled.div`
   border: 0.15cqw solid ${GREEN};
   border-radius: 0.3cqw;
   box-shadow: 0 0 0.8cqw rgba(128, 239, 128, 0.45), inset 0 0 0.8cqw rgba(128, 239, 128, 0.2);
+  transform-origin: 18% 0;
+  animation: ${balloonPop} 320ms ease-out both;
   /* the tail: at the top left, up and to the right, at him */
   &::before {
     content: "";
@@ -154,15 +251,37 @@ const AgentBalloon = styled.div`
   }
 `;
 
+const AgentCall = () => {
+  const [isQuick] = useState(isAgentIntroDone);
+  const [isBalloonUp, setIsBalloonUp] = useState(isQuick);
+  const [typed, setTyped] = useState(isQuick ? AGENT_CALL.line.length : 0);
+  useEffect(() => {
+    if (isQuick) return;
+    const timeouts = [setTimeout(() => setIsBalloonUp(true), AGENT_TIMING.balloonAtMs)];
+    [...AGENT_CALL.line].forEach((_, k) => timeouts.push(setTimeout(() => setTyped(k + 1), AGENT_TIMING.balloonAtMs + 250 + k * AGENT_TIMING.typeMs)));
+    timeouts.push(setTimeout(() => { isAgentIntroDone = true; }, AGENT_TIMING.balloonAtMs + 250 + AGENT_CALL.line.length * AGENT_TIMING.typeMs));
+    return () => timeouts.forEach(clearTimeout);
+  }, []);
+  return (
+    <Screen>
+      <AgentFeed>
+        <Spotlight $isQuick={isQuick} />
+        <AgentFace $isQuick={isQuick} style={{ backgroundImage: "url(/levels/portraits/agent.png)" }} />
+        <Static />
+        <RollBar />
+        <Tear />
+      </AgentFeed>
+      {isBalloonUp && <AgentBalloon style={isQuick ? { animation: "none" } : undefined}>{AGENT_CALL.line.slice(0, typed)}</AgentBalloon>}
+    </Screen>
+  );
+};
+
 // 'avatar': the one hovered ("guy" or "girl"), or none
 export const AvatarBio = ({ avatar }) => {
   const file = avatar && AVATAR_BIOS[avatar];
   if (!file) {
     return (
-      <Screen>
-        <AgentFace style={{ backgroundImage: "url(/levels/portraits/agent.png)" }} />
-        <AgentBalloon>{AGENT_CALL.line}</AgentBalloon>
-      </Screen>
+      <AgentCall />
     );
   }
   return (
