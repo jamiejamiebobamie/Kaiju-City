@@ -320,17 +320,22 @@ const AgentBalloon = styled.div`
   }
 `;
 
-const AgentCall = () => {
+// 'startDelayMs': how long till the side screen is on (it waits for its wires): his walk-in and words start then, so
+// they're seen (Jamie, playtest 29: they were over before the screen came on)
+const AgentCall = ({ startDelayMs = 0 }) => {
   const [isQuick] = useState(isAgentIntroDone);
+  const [isStarted, setIsStarted] = useState(isQuick || startDelayMs <= 0);
   const [isBalloonUp, setIsBalloonUp] = useState(isQuick);
   const [typed, setTyped] = useState(isQuick ? AGENT_CALL.line.length : 0);
   useEffect(() => {
     if (isQuick) return;
-    const timeouts = [setTimeout(() => setIsBalloonUp(true), AGENT_TIMING.balloonAtMs)];
-    [...AGENT_CALL.line].forEach((_, k) => timeouts.push(setTimeout(() => setTyped(k + 1), AGENT_TIMING.balloonAtMs + 250 + k * AGENT_TIMING.typeMs)));
-    timeouts.push(setTimeout(() => { isAgentIntroDone = true; }, AGENT_TIMING.balloonAtMs + 250 + AGENT_CALL.line.length * AGENT_TIMING.typeMs));
+    const at = Math.max(0, startDelayMs);
+    const timeouts = [setTimeout(() => setIsStarted(true), at), setTimeout(() => setIsBalloonUp(true), at + AGENT_TIMING.balloonAtMs)];
+    [...AGENT_CALL.line].forEach((_, k) => timeouts.push(setTimeout(() => setTyped(k + 1), at + AGENT_TIMING.balloonAtMs + 250 + k * AGENT_TIMING.typeMs)));
+    timeouts.push(setTimeout(() => { isAgentIntroDone = true; }, at + AGENT_TIMING.balloonAtMs + 250 + AGENT_CALL.line.length * AGENT_TIMING.typeMs));
     return () => timeouts.forEach(clearTimeout);
   }, []);
+  if (!isStarted) return <Screen />;
   return (
     <Screen>
       <AgentFeed>
@@ -348,11 +353,11 @@ const AgentCall = () => {
 };
 
 // 'avatar': the one hovered ("guy" or "girl"), or none
-export const AvatarBio = ({ avatar }) => {
+export const AvatarBio = ({ avatar, agentDelayMs = 0 }) => {
   const file = avatar && AVATAR_BIOS[avatar];
   if (!file) {
     return (
-      <AgentCall />
+      <AgentCall startDelayMs={agentDelayMs} />
     );
   }
   return (
