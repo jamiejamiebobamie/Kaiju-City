@@ -89,11 +89,69 @@ const Bio = styled.div`
   line-height: 1.6;
 `;
 
-const Idle = styled.div`
-  margin: auto;
+/*
+  Nothing hovered (Jamie, playtest 27): the Agent, watching, oversized and centered, a "1984" telescreen look (hard
+  green monochrome, scanlines, a dark vignette), his question in a green techno balloon below him, its tail at its
+  top left pointing up and right, at him. Always there while nothing's hovered.
+*/
+const AGENT_CALL = { line: "who are you recruit?" }; // (Jamie's words)
+const AgentFace = styled.div`
+  position: absolute;
+  left: 50%;
+  top: -6%;
+  width: 78%;
+  height: 72%;
+  transform: translateX(-50%);
+  background-size: cover;
+  background-position: center 18%;
+  filter: grayscale(1) contrast(1.9) brightness(0.85) sepia(1) hue-rotate(70deg) saturate(2.4);
+  -webkit-mask-image: radial-gradient(ellipse 62% 66% at 50% 42%, black 52%, transparent 100%);
+  mask-image: radial-gradient(ellipse 62% 66% at 50% 42%, black 52%, transparent 100%);
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.45) 0 1px, transparent 1px 3px);
+  }
+`;
+const AgentBalloon = styled.div`
+  position: absolute;
+  left: 9%;
+  right: 9%;
+  bottom: 9%;
+  padding: 1cqw 1.2cqw;
+  font-family: gameboy;
+  font-size: 1.15cqw;
+  letter-spacing: 0.06cqw;
+  line-height: 1.5;
   text-align: center;
-  font-size: 0.95cqw;
-  line-height: 1.8;
+  color: ${GREEN};
+  text-shadow: 0 0 0.4cqw rgba(128, 239, 128, 0.7);
+  background: rgba(6, 30, 10, 0.85);
+  border: 0.15cqw solid ${GREEN};
+  border-radius: 0.3cqw;
+  box-shadow: 0 0 0.8cqw rgba(128, 239, 128, 0.45), inset 0 0 0.8cqw rgba(128, 239, 128, 0.2);
+  /* the tail: at the top left, up and to the right, at him */
+  &::before {
+    content: "";
+    position: absolute;
+    left: 14%;
+    top: -1.5cqw;
+    width: 1.7cqw;
+    height: 1.5cqw;
+    background: ${GREEN};
+    clip-path: polygon(0 100%, 100% 0, 55% 100%);
+  }
+  &::after {
+    content: "";
+    position: absolute;
+    left: calc(14% + 0.2cqw);
+    top: -1.05cqw;
+    width: 1.2cqw;
+    height: 1.1cqw;
+    background: rgba(6, 30, 10, 1);
+    clip-path: polygon(0 100%, 100% 0, 55% 100%);
+  }
 `;
 
 // 'avatar': the one hovered ("guy" or "girl"), or none
@@ -102,8 +160,8 @@ export const AvatarBio = ({ avatar }) => {
   if (!file) {
     return (
       <Screen>
-        <Header>Subject files</Header>
-        <Idle>Two candidates.<br />Hover one to open<br />their file.</Idle>
+        <AgentFace style={{ backgroundImage: "url(/levels/portraits/agent.png)" }} />
+        <AgentBalloon>{AGENT_CALL.line}</AgentBalloon>
       </Screen>
     );
   }

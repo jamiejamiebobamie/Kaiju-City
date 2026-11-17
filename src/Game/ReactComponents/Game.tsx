@@ -1654,7 +1654,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
         {isMonitorOn && (
           <>
             {/* from the avatar select on, flying in with the console (Jamie) */}
-            <SideMonitor isPickerShowing={!isChoosingAvatar} isPoweredOff={isSideOff} isLeaving={isFlyingOff} bioOf={hoveredAvatar || handOverAvatar} />
+            <SideMonitor isPickerShowing={!isChoosingAvatar} isPoweredOff={isSideOff} isLeaving={isFlyingOff} bioOf={hoveredAvatar} /* (the Agent's question unless a tank is hovered: Jamie, playtest 27) */ />
             <PlayConsole
               isReady={!isChoosingAvatar && pickedAbilities.length == 3}
               playLabel={isLabPicker ? "Back to Lab" : "Play!"}
