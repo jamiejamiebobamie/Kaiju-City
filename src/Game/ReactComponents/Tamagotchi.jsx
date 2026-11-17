@@ -98,8 +98,11 @@ const getSpeakMs = line => TAMA.speakMs + line.length * 45;
 const between = ([low, high]) => low + Math.random() * (high - low);
 let thingId = 0;
 
+// one name, a mascot's (Jamie, playtest 29: "Stompy"); the next ones from the egg by their generation (NAMES kept, the
+// old pool)
+const MASCOT = "Stompy";
 const newPet = (generation = 1) => ({
-  name: NAMES[Math.floor(Math.random() * NAMES.length)],
+  name: generation > 1 ? `${MASCOT} Gen ${generation}` : MASCOT,
   generation,
   clock: 0,
   happiness: TAMA.happinessMax,
@@ -199,9 +202,11 @@ const step = pet => {
   const isDueToSpeak = !isSpeaking && !food && now >= next.nextSpeakAt;
   if (isDueToSpeak && walkTo(0.5, TAMA.walkPerSecond * 1.6)) {
     // its first words, first time out or new from its egg: who it is (Jamie), before anything else
+    const isHello = !next.hasIntroduced;
     next.line = next.hasIntroduced ? getNextLine() : `Hi, I am ${next.name}, your virtual Kaiju!`;
     next.hasIntroduced = true;
-    next.speakingUntil = now + getSpeakMs(next.line);
+    // (its hello up twice as long, so it's seen: Jamie, playtest 29)
+    next.speakingUntil = now + getSpeakMs(next.line) * (isHello ? 2 : 1);
     next.nextSpeakAt = next.speakingUntil + between(TAMA.speakEveryMs);
     next.frame = 0;
     isSpeaking = true;
@@ -533,7 +538,7 @@ export const Tamagotchi = ({ actRef }) => {
       {pet.poops.map(({ id, x }) => <Poop key={id} style={{ left: `${x * 100}%`, top: y }} />)}
       {(pet.cleaned || []).map(({ id, x }) => <Poop key={id} $isCleaned style={{ left: `${x * 100}%`, top: y }} />)}
       {pet.mode == "burn" && <Flames style={{ left: `${pet.x * 100}%`, top: `${(TAMA.groundY - TAMA.feetAbove) * 100}%` }} />}
-      {pet.mode == "egg" && <Egg style={{ left: `${pet.x * 100}%`, top: `${(TAMA.groundY - TAMA.feetAbove) * 100}%` }} />}
+      {pet.mode == "egg" && <Egg style={{ left: "50%" /* (in the middle, where the new one comes out: Jamie, playtest 29) */, top: `${(TAMA.groundY - TAMA.feetAbove) * 100}%` }} />}
       {pet.mode != "burn" && pet.mode != "egg" && (
         <Body style={{ left: `${pet.x * 100}%`, top: y, WebkitMaskImage: `url(${SHEET.src})`, maskImage: `url(${SHEET.src})`, WebkitMaskPosition: maskPosition, maskPosition }} />
       )}
