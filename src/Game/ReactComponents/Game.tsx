@@ -444,6 +444,37 @@ const FadeToBlack = styled.div`
 // leaving a scene with HUDs up: this long for them to fly off before the next scene (playtest 26)
 const SIDE_EXIT_MS = 900;
 
+/*
+  The avatar select's Lab, its lights coming on (Jamie, playtest 29): from a tenth of its brightness, as an office's
+  fluorescent tubes do: a couple of weak blinks, a stutter, catching, one last dip, then steady. A dark layer over the
+  scene, cleared in those steps.
+*/
+const labLights = keyframes`
+  0%, 7% { opacity: 0.9; }
+  8% { opacity: 0.55; }
+  10%, 17% { opacity: 0.9; }
+  18% { opacity: 0.4; }
+  19.5% { opacity: 0.88; }
+  29% { opacity: 0.88; }
+  30% { opacity: 0.2; }
+  31% { opacity: 0.7; }
+  32.5% { opacity: 0.15; }
+  34% { opacity: 0.6; }
+  44% { opacity: 0.08; }
+  58% { opacity: 0.05; }
+  60% { opacity: 0.45; }
+  62% { opacity: 0.02; }
+  100% { opacity: 0; }
+`;
+const LabLightsOn = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  background: black;
+  animation: ${labLights} 2200ms steps(1, end) both;
+`;
+
 // between scenes. the clouds pass over these.
 const SCENE_FADE = {
   outMs: 450,
@@ -1658,6 +1689,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
           )}
           {/* some bubbles over the avatars, in step with the backdrop (Jamie) */}
           <MonitorLabBackdrop layer="front" mode={isChoosingAvatar ? "choice" : "picker"} focus={isChoosingAvatar ? handOverAvatar : selectedAvatar} />
+          {isChoosingAvatar && isBooted && <LabLightsOn />}
           {screenFade == 'out' && <ScreenBlack />}
         </PlayWindow>
         {isMonitorOn && isBooted && (
