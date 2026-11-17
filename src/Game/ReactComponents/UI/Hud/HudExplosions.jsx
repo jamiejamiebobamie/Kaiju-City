@@ -29,7 +29,11 @@ export const BLAST = {
     { at: 1, rgb: [30, 28, 30] }
   ],
   // the room's flash: rising fast, then fading through the colors (s)
-  flash: { peak: 0.08, fade: 2.2, strength: 0.42, colors: [[255, 236, 120], [255, 150, 40], [220, 40, 20]] }
+  flash: { peak: 0.08, fade: 2.2, strength: 0.42, colors: [[255, 236, 120], [255, 150, 40], [220, 40, 20]] },
+  // the room lit by it (Jamie, playtest 26: the bookcase catching its colors): a light from where it went off, strong
+  // near it and falling off across the room ('reach': its radius, as a share of the window's width), the room's
+  // surfaces taking its color ('screen'); a faint wash over all of it ('ambient')
+  light: { reach: 0.75, strength: 0.75, ambient: 0.12 }
 };
 
 const listeners = new Set();
@@ -53,15 +57,21 @@ const Canvas = styled.canvas`
   pointer-events: none;
 `;
 
+// the blast's light, over the room: its colors added to what's there (the bookcase catching them)
+const LightCanvas = styled(Canvas)`
+  mix-blend-mode: screen;
+`;
+
 export const HudExplosions = () => {
   const canvasRef = useRef(null);
+  const lightRef = useRef(null);
   useEffect(() => {
     const blasts = []; // { born }
     const puffs = [];
     const sparks = [];
     const onBlast = ({ x, y }) => {
       const born = performance.now();
-      blasts.push({ born });
+      blasts.push({ born, x, y });
       for (let k = 0; k < BLAST.puffs; k++) {
         puffs.push({
           x: x + (Math.random() - 0.5) * BLAST.spread * 2, y: y + 40 + Math.random() * 120,
@@ -88,8 +98,14 @@ export const HudExplosions = () => {
         }
         const ctx = canvas.getContext("2d");
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        // the flash over the room: each blast's, added up
-        ctx.globalCompositeOperation = "lighter";
+        // the flash over the room: each blast's, added up, on the light's own canvas
+        const lightCanvas = lightRef.current;
+        const lightCtx = lightCanvas && lightCanvas.getContext("2d");
+        if (lightCanvas && (lightCanvas.width != canvas.width || lightCanvas.height != canvas.height)) {
+          lightCanvas.width = canvas.width;
+          lightCanvas.height = canvas.height;
+        }
+        if (lightCtx) lightCtx.clearRect(0, 0, canvas.width, canvas.height);
         for (let k = blasts.length - 1; k >= 0; k--) {
           const seconds = (now - blasts[k].born) / 1000;
           const { peak, fade, strength, colors } = BLAST.flash;
@@ -100,8 +116,19 @@ export const HudExplosions = () => {
           }
           const stage = Math.min(colors.length - 1, Math.floor((seconds / 0.9) * colors.length));
           const [r, g, b] = colors[stage];
-          ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${strength * level})`;
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          const { light } = BLAST;
+          const { x = canvas.width, y = canvas.height } = blasts[k];
+          if (!lightCtx) continue;
+          lightCtx.globalCompositeOperation = "lighter";
+          const radius = canvas.width * light.reach;
+          const glow = lightCtx.createRadialGradient(x, y, 0, x, y, radius);
+          glow.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${light.strength * level})`);
+          glow.addColorStop(0.45, `rgba(${r}, ${g}, ${b}, ${light.strength * 0.45 * level})`);
+          glow.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+          lightCtx.fillStyle = glow;
+          lightCtx.fillRect(0, 0, canvas.width, canvas.height);
+          lightCtx.fillStyle = `rgba(${r}, ${g}, ${b}, ${light.ambient * level})`;
+          lightCtx.fillRect(0, 0, canvas.width, canvas.height);
         }
         // the fire: cooled puffs first, as smoke, then the hot ones over them, added as light (so smoke never blots
         // the flame)
@@ -168,5 +195,10 @@ export const HudExplosions = () => {
       cancelAnimationFrame(frameId);
     };
   }, []);
-  return <Canvas ref={canvasRef} aria-hidden="true" />;
+  return (
+    <>
+      <LightCanvas ref={lightRef} aria-hidden="true" />
+      <Canvas ref={canvasRef} aria-hidden="true" />
+    </>
+  );
 };
