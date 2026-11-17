@@ -403,30 +403,52 @@ export const MINI_TIMING = { flyDelayMs: 900, flyMs: 850, onAtMs: 1800, wiresAtM
   back, then off, faster and faster, tipping as they go. One motion for the casing and the wires' ends on it, so they
   stay together: in the frame's units (cqw).
 */
+/*
+  Caught by its wires (Jamie, playtest 26): it lunges off, the wires go taut and snap it back, it strains against them,
+  shaking, until they tear out of both ends (current arcing at the sockets and at the torn plugs), then it's off,
+  tumbling, its wires trailing and flailing behind it. 'phases': where each part ends, as shares of the time.
+*/
 export const FLY_OFF = {
-  ms: 700,
-  windup: 0.16, // its share of the time
+  ms: 1500,
+  phases: { windup: 0.07, lunge: 0.19, caught: 0.26, pop: 0.56 },
   back: { x: -0.9, y: -0.3, turn: -1.5 },
+  lunge: { x: 5.2, y: -0.7, turn: 5 },
+  caught: { x: 3.4, y: 0.2, turn: -3 },
+  strain: { x: 4.6, shake: 0.55, turn: 4 },
   devices: {
     mini: { box: MINI, x: 64, y: -6, turn: 12, delayShare: 0 },
     console: { box: CONSOLE, x: 64, y: 5, turn: 8, delayShare: 0.08 }
   }
 };
 // where a device is at a moment of its fly-off (0 to 1): its move and its turn
+export const getDeviceTime = (device, time) => Math.max(0, Math.min(1, (time - device.delayShare) / (1 - device.delayShare)));
+const lerpPose = (a, b, s) => ({ x: a.x + (b.x - a.x) * s, y: a.y + (b.y - a.y) * s, turn: a.turn + (b.turn - a.turn) * s });
+// straining: pulling a little further, shaking harder as it goes
+const getStrain = s => {
+  const { caught, strain } = FLY_OFF;
+  return {
+    x: caught.x + (strain.x - caught.x) * s + Math.sin(s * Math.PI * 14) * strain.shake * (0.4 + s),
+    y: caught.y + Math.sin(s * Math.PI * 10 + 1) * strain.shake * 0.7 * (0.4 + s),
+    turn: caught.turn + (strain.turn - caught.turn) * s + Math.sin(s * Math.PI * 18) * 2.5 * (0.3 + s)
+  };
+};
 const getFlyOff = (device, time) => {
-  const t = Math.max(0, Math.min(1, (time - device.delayShare) / (1 - device.delayShare)));
-  const { back, windup } = FLY_OFF;
-  if (t < windup) {
-    const s = 1 - Math.pow(1 - t / windup, 2);
-    return { x: back.x * s, y: back.y * s, turn: back.turn * s };
-  }
-  const e = Math.pow((t - windup) / (1 - windup), 3);
-  return { x: back.x + (device.x - back.x) * e, y: back.y + (device.y - back.y) * e, turn: back.turn + (device.turn - back.turn) * e };
+  const t = getDeviceTime(device, time);
+  const { back, lunge, caught, phases } = FLY_OFF;
+  const rest = { x: 0, y: 0, turn: 0 };
+  if (t < phases.windup) return lerpPose(rest, back, 1 - Math.pow(1 - t / phases.windup, 2));
+  if (t < phases.lunge) return lerpPose(back, lunge, 1 - Math.pow(1 - (t - phases.windup) / (phases.lunge - phases.windup), 2));
+  // the wires snap taut: yanked back
+  if (t < phases.caught) return lerpPose(lunge, caught, 1 - Math.pow(1 - (t - phases.lunge) / (phases.caught - phases.lunge), 3));
+  if (t < phases.pop) return getStrain((t - phases.caught) / (phases.pop - phases.caught));
+  // torn free: off, faster and faster, tumbling
+  const e = Math.pow((t - phases.pop) / (1 - phases.pop), 2.2);
+  return lerpPose(getStrain(1), { x: device.x, y: device.y, turn: device.turn * 2.2 }, e);
 };
 // (as keyframes, the same motion, step by step)
-const getFlyOffKeyframes = device => keyframes`${[...Array(21).keys()].map(k => {
-  const { x, y, turn } = getFlyOff(device, k / 20);
-  return `${k * 5}% { transform: translate(${x.toFixed(3)}cqw, ${y.toFixed(3)}cqw) rotate(${turn.toFixed(2)}deg); }`;
+const getFlyOffKeyframes = device => keyframes`${[...Array(121).keys()].map(k => {
+  const { x, y, turn } = getFlyOff(device, k / 120);
+  return `${((k * 100) / 120).toFixed(3)}% { transform: translate(${x.toFixed(3)}cqw, ${y.toFixed(3)}cqw) rotate(${turn.toFixed(2)}deg); }`;
 }).join("\n")}`;
 // a point on a device (the frame's units) where it is at that moment: moved, and turned about the device's middle
 const getMovedPoint = (point, device, time) => {
@@ -765,7 +787,7 @@ const useArcs = (delayMs, pathRefs, wires) => {
   the wire pulled taut, then tears out and whips after it, current arcing from the socket to the torn end and off to
   the right.
 */
-const RIP = { popAt: 0.24, arcsUntil: 0.62, everyMs: 50, sparks: 3 };
+const RIP = { everyMs: 45, sparks: 3, arcsAfterPop: 0.14, trail: { x: -4, y: 7 }, swingShare: 0.12 };
 const useRip = (device, wires, refs) => {
   const [bolts, setBolts] = useState([]);
   useEffect(() => {
@@ -776,15 +798,20 @@ const useRip = (device, wires, refs) => {
     const run = () => {
       const now = performance.now();
       const time = Math.min((now - start) / FLY_OFF.ms, 1);
+      const t = getDeviceTime(device, time);
+      const { phases } = FLY_OFF;
       const ends = wires.map((wire, k) => {
         const from = getMovedPoint(wire.from, device, time);
-        // after it tears out: trailing below the device's edge, whipping as it goes
-        const pull = time < RIP.popAt ? 0 : 1 - Math.pow(1 - (time - RIP.popAt) / (1 - RIP.popAt), 2);
-        const trail = { x: from.x - 3, y: from.y + 5 };
-        const whip = pull > 0 ? Math.sin(pull * Math.PI * 3) * (1 - pull) * 4 : 0;
-        const to = { x: wire.to.x + (trail.x - wire.to.x) * pull, y: wire.to.y + (trail.y - wire.to.y) * pull + whip * 0.5 };
-        const taut = Math.min(time / RIP.popAt, 1);
-        const d = getWirePath({ from, to, sag: wire.sag * (1 - 0.85 * taut * (1 - pull)) }, whip);
+        // held in its socket until the pop; then trailing behind the device, flailing (each its own way: tangling)
+        const sincePop = t < phases.pop ? 0 : (t - phases.pop) / (1 - phases.pop);
+        const swing = Math.min(1, sincePop / RIP.swingShare);
+        const flail = sincePop > 0 ? (Math.sin(sincePop * Math.PI * (7 + k * 2.5) + k) * 3.5 + Math.sin(sincePop * Math.PI * 13 + k * 2) * 1.5) : 0;
+        const trail = { x: from.x + RIP.trail.x + flail * 0.4, y: from.y + RIP.trail.y + flail * 0.5 };
+        const to = { x: wire.to.x + (trail.x - wire.to.x) * swing, y: wire.to.y + (trail.y - wire.to.y) * swing };
+        // slack, then taut from when it's caught (trembling), loose again once torn
+        const taut = t < phases.lunge ? (t / phases.lunge) * 0.6 : t < phases.pop ? 0.95 : 0;
+        const tremble = t >= phases.caught && t < phases.pop ? (Math.random() - 0.5) * 0.5 : 0;
+        const d = getWirePath({ from, to, sag: wire.sag * (1 - taut) + tremble }, sincePop > 0 ? flail : tremble * 2);
         const { main, shine, plug } = refs.current[k] || {};
         if (main) main.setAttribute("d", d);
         if (shine) shine.setAttribute("d", d);
@@ -797,13 +824,23 @@ const useRip = (device, wires, refs) => {
       if (now - lastBoltsAt > RIP.everyMs) {
         lastBoltsAt = now;
         const next = [];
-        if (time > RIP.popAt * 0.5 && time < RIP.arcsUntil) {
+        // crackling at the sockets as it strains; at the pop and a moment after, at both ends: the sockets and the
+        // torn plugs
+        const isStraining = t > phases.caught + (phases.pop - phases.caught) * 0.5 && t < phases.pop;
+        const isTorn = t >= phases.pop && t < phases.pop + RIP.arcsAfterPop;
+        if (isStraining || isTorn) {
           wires.forEach((wire, k) => {
             const socket = { x: wire.to.x - 0.05, y: wire.to.y };
-            next.push({ key: `rip-${k}`, d: getBolt(socket, ends[k]) });
-            for (let s = 0; s < RIP.sparks; s++) {
-              const off = { x: socket.x + 1.5 + Math.random() * 5, y: socket.y + (Math.random() - 0.5) * 4 };
-              next.push({ key: `spark-${k}-${s}`, d: getBolt(socket, off) });
+            const sparks = (from, spread, tag) => {
+              for (let s = 0; s < RIP.sparks; s++) {
+                const off = { x: from.x + (Math.random() - 0.3) * spread, y: from.y + (Math.random() - 0.5) * spread };
+                next.push({ key: `spark-${tag}-${k}-${s}`, d: getBolt(from, off) });
+              }
+            };
+            sparks(socket, isTorn ? 5 : 2.5, "socket");
+            if (isTorn) {
+              next.push({ key: `rip-${k}`, d: getBolt(socket, ends[k]) });
+              sparks(ends[k], 4, "plug");
             }
           });
         }
