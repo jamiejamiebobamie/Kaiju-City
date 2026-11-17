@@ -1040,7 +1040,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     else startMatch(LEVELS[sectionLevelId], false, kills);
   };
 
-  if (import.meta.env.DEV) Object.assign((window as any).__kaiju || {}, { showSection }); // dev only: scripted browser checks
+  if (import.meta.env.DEV) Object.assign((window as any).__kaiju || {}, { showSection, endWithMonitorOff }); // dev only: scripted browser checks
 
   // after a loss: the same fight again, without the call or the opening words a second time
   const retrySection = index => {

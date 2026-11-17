@@ -189,8 +189,17 @@ const landingShiftIn = keyframes`
   to { transform: translateX(0); }
 `;
 
-const ShiftingWrapper = styled(Wrapper)`
-  ${props => props.$isShiftingIn && css`animation: ${landingShiftIn} ${LANDING_SHIFT_MS}ms cubic-bezier(0.2, 0.7, 0.3, 1) both;`}
+// the slide is on a layer the window's size, and leaves no transform behind when done (Jamie, playtest 26: after a win,
+// "[Press any key]" sat off-center with its side bars gone: the 750px box kept a transform, so the fixed row was placed,
+// and cut, by that box instead of the window)
+const ShiftLayer = styled.div`
+  display: contents;
+  ${props => props.$isShiftingIn && css`
+    display: block;
+    position: fixed;
+    inset: 0;
+    animation: ${landingShiftIn} ${LANDING_SHIFT_MS}ms cubic-bezier(0.2, 0.7, 0.3, 1) backwards;
+  `}
 `;
 
 // the city's first picture comes up as the zoom's own clouds sweep past (ZoomThrough), the logo's zoom ending under them
@@ -279,17 +288,19 @@ export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = ()
     </ButtonsWrapper> */}
   </ButtonGroup>);
 
-  return <ShiftingWrapper $isShiftingIn={isShiftingIn}>
+  return <Wrapper>
+    <ShiftLayer $isShiftingIn={isShiftingIn && isLandingShifting}>
     <SpeedBlurFilter />
     <EmberSlide $isLeaving={isLeaving}><Embers /></EmberSlide>
     <SceneSlide $isLeaving={isLeaving} $isZoomingBack={isLogoZoomingOut}><Logo /></SceneSlide>
     <ZoomThrough isOn={isLeaving} startMs={ZOOM_START_MS} onDone={enterRoom || handleClickGame} />
     {isZoomingBack && <ZoomThrough isOn isReverse startMs={0} onDone={() => setIsZoomingBack(false)} />}
-    {navButtons}
     <PressAnyKey $isLeaving={isLeaving} style={{ opacity: isZoomingBack ? 0 : undefined, transition: "opacity 600ms ease-out" }}>
       <PressKeyRow settings={pressSettings} isLeaving={isLeaving} />
     </PressAnyKey>
+    </ShiftLayer>
+    {navButtons}
     {getIsPressPanel() && <PressKeyPanel settings={pressSettings} setSettings={setPressSettings} />}
     {toolScreen == "colors" && <IrradiationVat avatar={selectedAvatar} startColor={getAvatarColor(selectedAvatar) || PIECES_INFO[selectedAvatar].color} onIrradiate={color => saveAvatarColor(selectedAvatar, color)} onClose={() => setToolScreen(undefined)} />}
-  </ShiftingWrapper>
+  </Wrapper>
 }
