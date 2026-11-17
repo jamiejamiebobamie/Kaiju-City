@@ -870,10 +870,6 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     setTimeout(callback, isAsideUp ? Math.max(SCENE_FADE.outMs, SIDE_EXIT_MS) : SCENE_FADE.outMs);
   };
 
-  const leaveWithClouds = callback => {
-    fadeOutThen(callback);
-    triggerTransition();
-  };
 
   // the game stops when the player leaves the page
   useEffect(() => endMatch, []);
@@ -1205,8 +1201,10 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
       fadeOutThen(callback);
       return;
     }
+    // (the swirl spins, zooms and blurs the map away, then the monitor's own fade: no clouds, they're full-screen and
+    // only the landing's now. Jamie, playtest 29)
     setIsSwirling(true);
-    setTimeout(() => leaveWithClouds(() => { setIsSwirling(false); callback(); }), SWIRL.swirlMs);
+    setTimeout(() => fadeOutThen(() => { setIsSwirling(false); callback(); }), SWIRL.swirlMs);
   };
 
   // a stop off a map walk: the Lab, or a battleground won on before. the walk carries on after.
