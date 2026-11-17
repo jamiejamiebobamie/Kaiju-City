@@ -151,7 +151,9 @@ const DeathWords = styled(Part)`
   -webkit-text-stroke: 0.5px ${HUD_LOOK.deathWords.color};
 `;
 
-const getCapsuleShare = total => total < HUD_LOOK.health.equalFrom ? 100 / (HUD_LOOK.health.equalFrom + 1) : HUD_LOOK.health.shareOfBar / total;
+// 4 or fewer: their own size; 5 or more: shrunk to fill the whole slot, gaps and all (Jamie, playtest 26: a blank was
+// left at the right). (The row's gap is 2% of it.)
+const getCapsuleShare = total => total <= HUD_LOOK.health.equalFrom ? 100 / (HUD_LOOK.health.equalFrom + 1) : (100 - 2 * (total - 1)) / total;
 
 const Health = ({ box, health = 0, modifier = 0 }) => {
   const { maxCapsules, from, to, bonus, lost } = HUD_LOOK.health;
