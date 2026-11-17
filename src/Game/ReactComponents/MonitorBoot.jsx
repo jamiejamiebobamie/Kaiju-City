@@ -29,13 +29,14 @@ const Screen = styled.div`
   columns falling at their own speeds, each with a bright head and a trail that fades, now and then a digit flickering.
 */
 // (Jamie, playtest 31: in cascades: neighbouring columns fall together in bands, like a waterfall, with longer trails)
-const RAIN = { columns: 42, speed: [6, 12], fade: 0.045, head: "#f1dcff", body: [178, 92, 255], glyphs: "01", band: [3, 8], jitter: 0.12 };
+// (denser: more columns, longer trails, bands back sooner: Jamie, playtest 31; was 42 columns, fade 0.045)
+const RAIN = { columns: 64, speed: [6, 12], fade: 0.03, head: "#f1dcff", body: [178, 92, 255], glyphs: "01", band: [3, 8], jitter: 0.12 };
 const RainCanvas = styled.canvas`
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  opacity: 0.55;
+  opacity: 0.7;
 `;
 const MatrixRain = () => {
   const ref = useRef(null);
@@ -63,7 +64,7 @@ const MatrixRain = () => {
       // bands of neighbouring columns: each band one cascade, its columns a little apart in step and speed
       for (let k = 0; k < RAIN.columns;) {
         const size = Math.round(RAIN.band[0] + Math.random() * (RAIN.band[1] - RAIN.band[0]));
-        launchBand(k, Math.min(RAIN.columns, k + size), Math.random() * -height);
+        launchBand(k, Math.min(RAIN.columns, k + size), Math.random() * height * 1.2 - height * 0.3); // (all down the screen from the start)
         k += size;
       }
       ctx.fillStyle = "#05030a";
@@ -98,8 +99,8 @@ const MatrixRain = () => {
           ctx.fillText(glyphAt(k, row), x, row * cell);
         }
         // a band starts again together, once all of it has run off the bottom
-        if (k == drop.band && drops.slice(drop.band, drop.bandEnd).every(other => other.y > height + cell * 10) && Math.random() < 0.05) {
-          launchBand(drop.band, drop.bandEnd, -Math.random() * height * 0.4);
+        if (k == drop.band && drops.slice(drop.band, drop.bandEnd).every(other => other.y > height + cell * 10) && Math.random() < 0.5) {
+          launchBand(drop.band, drop.bandEnd, -Math.random() * height * 0.1);
         }
       });
       frameId = requestAnimationFrame(run);
@@ -148,9 +149,10 @@ const Label = styled.div`
   letter-spacing: 0.12cqw;
   color: #c9a6ff;
 `;
+// (eased between bright and dim, not snapping: Jamie, playtest 31)
 const playBlink = keyframes`
-  0%, 49% { color: #c8ffb8; text-shadow: 0 0 0.5cqw #3aff3a; border-color: #3aff3a; box-shadow: 0 0 1cqw rgba(58, 255, 58, 0.4); }
-  50%, 100% { color: #3e8a3a; text-shadow: none; border-color: #2a6a28; box-shadow: none; }
+  0%, 100% { color: #c8ffb8; text-shadow: 0 0 0.5cqw #3aff3a; border-color: #3aff3a; box-shadow: 0 0 1cqw rgba(58, 255, 58, 0.4); }
+  50% { color: #3e8a3a; text-shadow: 0 0 0 rgba(58, 255, 58, 0); border-color: #2a6a28; box-shadow: 0 0 0 rgba(58, 255, 58, 0); }
 `;
 const PlayButton = styled.div`
   position: absolute;
@@ -171,7 +173,7 @@ const PlayButton = styled.div`
   background: #05030a;
   outline: none;
   /* blinking once a second (Jamie, playtest 31) */
-  animation: ${playBlink} 1s steps(1, end) infinite;
+  animation: ${playBlink} 1s ease-in-out infinite;
   &:hover { background: #0f2a10; }
   ${props => props.$isPressed && css`
     transform: translate(-50%, -50%) scale(0.94);
