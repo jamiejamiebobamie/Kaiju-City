@@ -73,6 +73,7 @@ describe('open items', () => {
     // not before one of her Haunt ghosts is in view (playtest 25: a cast out of shot means nothing to the player)
     gm.updateGuardianLine();
     expect(gm.speech).toBeFalsy();
+    for (let k = 0; k < 3000 && gm.cutscene; k += 1) gm.stepPieces(); // (the line waits for any scene on)
     const player = gm.getControlledPiece();
     const near = gm.gameBoardManager.getTilesInFlatArray().find(tile => {
       const { x, y } = gm.gameBoardManager.getCharXAndYFromTileIndex(tile.tileIndex);
@@ -81,10 +82,14 @@ describe('open items', () => {
     near.getTileStatus = () => ({ getAppliedStatus: () => 'isGhosted' });
     near.cast = { casterIndex: gm.rivalPiece.pieceIndex };
     gm.updateGuardianLine();
-    expect(gm.speech && gm.speech.text).toBe("Let's stick together. I'll block her ghosts.");
-    gm.speech = null;
+    // (playtest 26: a scene of its own, as the Street's Agent: in on the teammate, up to the balloon, then the line)
+    expect(gm.cutscene && gm.cutscene.isMidFight).toBe(true);
+    const lines = gm.cutscene.steps.filter(step => step.speech).map(step => step.speech.text);
+    expect(lines).toEqual(["Let's stick together. I'll block her ghosts."]);
+    // once only
+    gm.cutscene = undefined;
     gm.updateGuardianLine();
-    expect(gm.speech).toBeNull();
+    expect(gm.cutscene).toBeUndefined();
   });
 
   it('5. the Mermaid’s words from the top floor sit over her head, however near the top of the scene', () => {

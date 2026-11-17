@@ -1914,10 +1914,21 @@ export class GameManager {
             return Math.hypot(x - player.charLocation.x, y - player.charLocation.y) <= seePx;
         });
         if (!isGhostSeen) return;
+        if (this.cutscene) return; // (after whatever scene is on)
         this.hasGuardianSpoken = true;
         const { text } = getDialogueLine('rooftop.guardian');
-        this.speech = this.fillSpeech({ ...this.getSpeechOver(guardian, this.getTeammateName(), text), isShout: true });
-        this.timeoutHandler.registerTimeout(() => { if (this.speech && this.speech.text == text) this.speech = null; }, getSpeechMs(text));
+        // as the Street's Agent (Jamie, playtest 26): the fight holds, the camera pans to the teammate, then up to the
+        // balloon, held there while the line shows (Enter moves on, as it did); then back to the fight
+        const speech = this.fillSpeech({ ...this.getSpeechOver(guardian, this.getTeammateName(), text), isShout: true });
+        const rowPx = this.getGhostRowPx();
+        const extreme = { zoomScale: PENINSULA.cameraZoom * CUTSCENE.outcomeZoomScale, isPeninsulaSized: true };
+        const onTeammate = { point: { x: guardian.charLocation.x, y: guardian.charLocation.y - CUTSCENE.shotHeadRows * rowPx * 0.5 }, ...extreme, panMs: CUTSCENE.outcomePullMs };
+        const onBalloon = { point: { x: speech.x, y: speech.y }, ...extreme, panMs: CUTSCENE.pullInMs };
+        this.startCutscene([
+            { shot: onTeammate, ms: CUTSCENE.outcomePullMs },
+            { shot: onBalloon, ms: CUTSCENE.pullInMs },
+            { shot: onBalloon, ms: getSpeechMs(text), speech }
+        ], { isMidFight: true });
     }
 
     getDispelCasterAt = spot => {
