@@ -642,8 +642,8 @@ const WordsRow = styled.div`
   font-family: gameboy;
   font-size: 0.8cqw;
   letter-spacing: 0.06cqw;
-  color: #ffd24a;
-  text-shadow: 0 0 0.3cqw rgba(255, 210, 74, 0.6);
+  color: #80EF80;
+  text-shadow: 0 0 0.3cqw rgba(128, 239, 128, 0.6);
   & > div {
     flex: 1 1 0;
     display: flex;
@@ -657,7 +657,7 @@ const WordsRow = styled.div`
     flex: 1;
     width: 0.12cqw;
     margin-top: 0.35cqw;
-    background: linear-gradient(to bottom, #ffd24a, rgba(255, 210, 74, 0.35));
+    background: linear-gradient(to bottom, #80EF80, rgba(128, 239, 128, 0.35));
   }
 `;
 const ButtonWords = () => (

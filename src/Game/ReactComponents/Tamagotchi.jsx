@@ -13,9 +13,10 @@ import styled, { css, keyframes } from "styled-components";
     fed or petted in that time. At none, it bursts into flames; 5 s later a new one hatches from an egg, with a new name.
   - It lives on between visits to the picker (this module keeps it), and its clock runs only while it's on screen.
 */
+// (green, the Agent's, as a trial: Jamie, playtest 32; was yellow #ffd24a, glow #ffb020)
 const TAMA = {
-  color: "#ffd24a",
-  glow: "0 0 0.35cqw #ffb020",
+  color: "#80EF80",
+  glow: "0 0 0.35cqw #3cd43c",
   tickMs: 100,
   nameSize: 1.7, // cqw (a little smaller, under its "Pet Kaiju:" label: Jamie), smaller for a long name
   groundY: 0.78, // the bottom of its sprite's frame as it walks, of the LCD's height from the top (Jamie: up a little
@@ -86,12 +87,13 @@ const getNextLine = () => {
 };
 // the bubble shrink-wrapped to its line (Jamie): as few, even lines as fit in 'maxCqw', its text's width from the
 // font's (about one em a letter)
-const BUBBLE = { maxCqw: 15, letterEm: 1.0 };
+const BUBBLE = { maxCqw: 15, letterEm: 1.0, longSize: 1.12 };
 const getBubbleWidth = line => {
-  const size = line.length > 24 ? 0.95 : 1.2;
+  const size = line.length > 24 ? BUBBLE.longSize : 1.2;
   const full = line.length * size * BUBBLE.letterEm;
   const lines = Math.ceil(full / BUBBLE.maxCqw);
-  return Math.min(BUBBLE.maxCqw, full / lines + size * 2.5);
+  // (room for the padding, both sides, so no letter meets the border)
+  return Math.min(BUBBLE.maxCqw + 2, full / lines + size * 2.5 + 2);
 };
 const getSpeakMs = line => TAMA.speakMs + line.length * 45;
 
@@ -280,9 +282,9 @@ const Lcd = styled.div`
   color: ${TAMA.color};
   font-family: gameboy;
   text-shadow: ${TAMA.glow};
-  background: radial-gradient(ellipse at 50% 45%, rgba(255, 210, 74, 0.11), rgba(255, 190, 60, 0.04) 75%);
-  border: 0.12cqw solid rgba(255, 210, 74, 0.35);
-  box-shadow: 0 0 0.8cqw rgba(255, 190, 60, 0.25), inset 0 0 1.2cqw rgba(255, 190, 60, 0.12);
+  background: radial-gradient(ellipse at 50% 45%, rgba(128, 239, 128, 0.11), rgba(110, 220, 110, 0.04) 75%);
+  border: 0.12cqw solid rgba(128, 239, 128, 0.35);
+  box-shadow: 0 0 0.8cqw rgba(110, 220, 110, 0.25), inset 0 0 1.2cqw rgba(110, 220, 110, 0.12);
   /* an old LCD's dot grid over it all */
   &::after {
     content: "";
@@ -328,14 +330,17 @@ const Body = styled.div`
   mask-repeat: no-repeat;
   -webkit-mask-size: ${SHEET.frames * 100}% ${SHEET.rows * 100}%;
   mask-size: ${SHEET.frames * 100}% ${SHEET.rows * 100}%;
-  filter: drop-shadow(0 0 0.3cqw #ffb020);
+  filter: drop-shadow(0 0 0.3cqw #3cd43c);
 `;
 
 const Bubble = styled.div`
   position: absolute;
   transform: translate(-50%, -100%);
-  padding: 0.5cqw 0.8cqw;
-  font-size: ${props => props.$isLong ? 0.95 : 1.2}cqw; /* (a long line a little smaller) */
+  padding: 0.65cqw 1cqw;
+  /* (a long line only a touch smaller now, easier to read; the bubble grows up over the name if it must, above it:
+     Jamie, playtest 32; was 0.95) */
+  font-size: ${props => props.$isLong ? BUBBLE.longSize : 1.2}cqw;
+  z-index: 5;
   line-height: 1.3;
   text-wrap: balance;
   text-align: center;
@@ -383,7 +388,7 @@ const Poop = styled.div`
   width: 1.7cqw;
   height: 1.5cqw;
   transform: translate(-50%, -100%);
-  filter: drop-shadow(0 0 0.3cqw #ffb020);
+  filter: drop-shadow(0 0 0.3cqw #3cd43c);
   ${props => props.$isCleaned && css`animation: ${poopBlink} ${TAMA.cleanFlashMs}ms steps(1, end) forwards;`}
   background:
     radial-gradient(ellipse 50% 32% at 50% 82%, ${POOP_BROWN} 98%, transparent),
@@ -403,7 +408,7 @@ const Heart = styled.div`
   position: absolute;
   font-size: 1.2cqw;
   color: transparent;
-  text-shadow: 0 0 0 ${TAMA.color}, 0 0 0.35cqw #ffb020;
+  text-shadow: 0 0 0 ${TAMA.color}, 0 0 0.35cqw #3cd43c;
   animation: ${heartUp} ${TAMA.heartMs}ms ease-out forwards;
 `;
 
@@ -471,7 +476,7 @@ const Hand = styled.div`
   line-height: 1;
   color: transparent;
   text-shadow: 0 0 0 ${TAMA.color};
-  filter: drop-shadow(0 0 0.3cqw #ffb020);
+  filter: drop-shadow(0 0 0.3cqw #3cd43c);
   animation: ${handIn} 300ms ease-out both, ${stroke} 700ms ease-in-out 300ms infinite;
 `;
 
@@ -505,7 +510,7 @@ const Block = styled.div`
   height: 1.5cqw;
   background: ${props => props.$isOn ? TAMA.color : "transparent"};
   box-shadow: ${props => props.$isOn ? TAMA.glow : "none"};
-  outline: 0.08cqw solid rgba(255, 210, 74, 0.25);
+  outline: 0.08cqw solid rgba(128, 239, 128, 0.25);
 `;
 
 // 'actRef': the side monitor's buttons call actRef.current(label)
@@ -533,7 +538,10 @@ export const Tamagotchi = ({ actRef }) => {
       <Lcd>
       {/* its name: an egg's is not known yet (Jamie): "???" until it hatches with its own */}
       <NameLabel>Pet Kaiju:</NameLabel>
-      <Name style={{ fontSize: `${Math.min(TAMA.nameSize, 14 / pet.name.length)}cqw` }}>{pet.mode == "egg" ? "???" : pet.name.toUpperCase()}</Name>
+      {/* the name first; "Gen #" after it, smaller (Jamie, playtest 32: the name has primacy) */}
+      <Name style={{ fontSize: `${Math.min(TAMA.nameSize, 14 / MASCOT.length)}cqw` }}>{pet.mode == "egg" ? "???" : (
+        <>{MASCOT.toUpperCase()}{pet.generation > 1 && <span style={{ fontSize: "0.5em", marginLeft: "0.6em", verticalAlign: "0.15em" }}>GEN {pet.generation}</span>}</>
+      )}</Name>
       {pet.pellets.map(({ id, x, y: pelletY }) => <Pellet key={id} style={{ left: `${x * 100}%`, top: `${pelletY * 100}%` }} />)}
       {pet.poops.map(({ id, x }) => <Poop key={id} style={{ left: `${x * 100}%`, top: y }} />)}
       {(pet.cleaned || []).map(({ id, x }) => <Poop key={id} $isCleaned style={{ left: `${x * 100}%`, top: y }} />)}
