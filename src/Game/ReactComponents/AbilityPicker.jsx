@@ -388,7 +388,9 @@ const DevPanel = styled.div`
   Sizes in cqw of the game frame (100 wide, 56.25 high).
 */
 // 'brow': the top border, tall enough for its buttons (Jamie: swapped with the bottom's); the console sits below it
-const MINI = { left: 69, top: 2.2, width: 28, height: 34, casing: 1.3, brow: 4.2 };
+// ('foot': the strip along its bottom with the three round buttons; the top border as thin as the sides now: Jamie,
+// playtest 30. 'brow' was the top's, with worded buttons)
+const MINI = { left: 69, top: 2.2, width: 28, height: 34, casing: 1.3, brow: 1.3, foot: 3.6 };
 // (less tall, a thicker rim jutting out round a recessed face: Jamie). Under the side monitor's place: the big monitor
 // eases aside for it as it comes, from the avatar select on (Jamie)
 const CONSOLE = { left: 71, top: 40.5, width: 24, height: 10, rim: 1.2 };
@@ -591,7 +593,7 @@ const MiniScreen = styled.div`
   left: ${MINI.casing}cqw;
   right: ${MINI.casing}cqw;
   top: ${MINI.brow}cqw;
-  bottom: ${MINI.casing}cqw;
+  bottom: ${MINI.foot}cqw;
   border-radius: 1.1cqw;
   overflow: hidden;
   background: #030404;
@@ -610,26 +612,66 @@ const MiniGlass = styled.div`
 `;
 
 // the top border's buttons for the tamagotchi (Jamie): Feed, Pet, Clean up, in its middle
+// the buttons' strip, at the bottom now (Jamie, playtest 30: as a tamagotchi's, in a row): each in a third of the width,
+// under its word on the screen
 const MiniBrow = styled.div`
   position: absolute;
   left: ${MINI.casing}cqw;
   right: ${MINI.casing}cqw;
-  top: 0;
-  height: ${MINI.brow}cqw;
-  box-sizing: border-box;
-  padding-top: 0.9cqw; /* a little lower in the border (Jamie) */
+  bottom: 0;
+  height: ${MINI.foot}cqw;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.9cqw;
 `;
+const ButtonSlot = styled.span`
+  flex: 1 1 0;
+  display: flex;
+  justify-content: center;
+`;
+export const SIDE_BUTTON_LABELS = ["Feed", "Pet", "Clean up"];
 
-const BrowButton = styled.button`
-  padding: 0.45cqw 1.05cqw;
+// the buttons' words, digital, along the bottom of the tamagotchi's screen, each with a line down to its button
+const WordsRow = styled.div`
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3.4cqw;
+  display: flex;
+  pointer-events: none;
   font-family: gameboy;
-  font-size: 0.95cqw; /* (larger, more readable: Jamie; was 0.7) */
+  font-size: 0.8cqw;
+  letter-spacing: 0.06cqw;
+  color: #ffd24a;
+  text-shadow: 0 0 0.3cqw rgba(255, 210, 74, 0.6);
+  & > div {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding-top: 0.3cqw;
+  }
+  & > div::after {
+    content: "";
+    flex: 1;
+    width: 0.12cqw;
+    margin-top: 0.35cqw;
+    background: linear-gradient(to bottom, #ffd24a, rgba(255, 210, 74, 0.35));
+  }
+`;
+const ButtonWords = () => (
+  <WordsRow>{SIDE_BUTTON_LABELS.map(label => <div key={label}>{label}</div>)}</WordsRow>
+);
+
+// round, wordless (their words are on the screen, over them: Jamie, playtest 30); the rubber as before
+const BrowButtonShape = styled.button`
+  width: 2.1cqw;
+  height: 2.1cqw;
+  padding: 0;
+  font-size: 0;
   cursor: pointer;
-  border-radius: 0.35cqw;
+  border-radius: 50%;
   ${RUBBER_BUTTON}
   &:disabled {
     cursor: default;
@@ -1403,7 +1445,7 @@ export const SideMonitor = ({ isPickerShowing, isPoweredOff = false, isLeaving =
     isLeaving={isLeaving}
     overlay={burned && <PowerCut data-burn-in><BurnIn><AvatarBio avatar={burned.avatar} /></BurnIn></PowerCut>}
     brow={isPickerShowing ? <div data-side-brow style={{ display: "contents" }} /> : ["Feed", "Pet", "Clean up"].map(label => (
-      <BrowButton key={label} disabled>{label}</BrowButton>
+      <ButtonSlot key={label}><BrowButtonShape disabled aria-label={label} title={label} /></ButtonSlot>
     ))}
   >
     {/* the avatar select: the candidates' files (Jamie: not the tamagotchi, that's on the picker) */}
@@ -1588,7 +1630,9 @@ export const AbilityPicker = ({
     <>
             {/* the tamagotchi stays on (its own state), faded in and out as the rest crossfades (Jamie, playtest 29) */}
             <ClassLayer style={{ opacity: isTamaShowing ? 1 : 0, transitionDelay: isTamaShowing ? `${CROSSFADE.holdMs}ms` : "0ms", pointerEvents: isTamaShowing ? undefined : "none" }}>
-              <Tamagotchi actRef={tamaRef} />
+              {/* (the pet's own screen lifted, a band left under it for the buttons' words: Jamie, playtest 30) */}
+              <div style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: "3.2cqw" }}><Tamagotchi actRef={tamaRef} /></div>
+              <ButtonWords />
             </ClassLayer>
             <CrossFade id={isTamaShowing ? "none" : hovered === undefined ? "class" : `power-${hovered}`} restIds={["none", "class"]}>
               {isTamaShowing ? null : <Info $isClass={hovered === undefined && !!playerClass}>{getInfo()}</Info>}
@@ -1610,7 +1654,7 @@ export const AbilityPicker = ({
   );
   // the tamagotchi's: off while the class shows
   const sideBrow = ["Feed", "Pet", "Clean up"].map(label => (
-    <BrowButton key={label} disabled={!isTamaShowing} onClick={() => tamaRef.current && tamaRef.current(label)}>{label}</BrowButton>
+    <ButtonSlot key={label}><BrowButtonShape disabled={!isTamaShowing} aria-label={label} title={label} onClick={() => tamaRef.current && tamaRef.current(label)} /></ButtonSlot>
   ));
   const beside = (
     <>
