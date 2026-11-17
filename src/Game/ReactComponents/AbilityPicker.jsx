@@ -1095,9 +1095,74 @@ const backlitBlink = keyframes`
 const CONSOLE_WIRES = [{ from: { x: CONSOLE.left + 2.5, y: CONSOLE.top + CONSOLE.height }, to: { x: 64.9, y: 50 }, sag: 3, color: "#0e0f10" }];
 
 // 'backLabel': the other button's words (the color vat's: Back to Lab)
+/*
+  Rings etched into the console's face round its buttons (Jamie, playtest 29): three thin outlines of each button's
+  shape, further apart as they go out; where one button's rings run into the other's, they break off (each set is cut
+  where the other's outermost ring reaches). Engraved: a dark line, a faint light one just under it.
+*/
+const ETCH = { offsets: [0.2, 0.46, 0.84], radius: 0.18, dark: "rgba(0, 0, 0, 0.5)", light: "rgba(255, 255, 255, 0.16)" };
+const EtchedRings = ({ faceRef, buttonRefs }) => {
+  const [boxes, setBoxes] = useState([]);
+  useEffect(() => {
+    let frameId;
+    let last = "";
+    const measure = () => {
+      const face = faceRef.current;
+      if (face) {
+        const f = face.getBoundingClientRect();
+        const next = buttonRefs.map(ref => ref.current).filter(Boolean).map(element => {
+          const b = element.getBoundingClientRect();
+          return { x: b.left - f.left, y: b.top - f.top, width: b.width, height: b.height };
+        });
+        const key = JSON.stringify(next.map(box => [box.x, box.y, box.width, box.height].map(Math.round)));
+        if (key != last) {
+          last = key;
+          setBoxes(next);
+        }
+      }
+      frameId = requestAnimationFrame(measure);
+    };
+    measure();
+    return () => cancelAnimationFrame(frameId);
+  }, []);
+  const ringsOf = (box, k) => ETCH.offsets.map(share => {
+    const o = box.height * share;
+    return { key: `${k}-${share}`, x: box.x - o, y: box.y - o, width: box.width + 2 * o, height: box.height + 2 * o, rx: box.height * ETCH.radius + o };
+  });
+  const sets = boxes.map(ringsOf);
+  return (
+    <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", overflow: "visible" }} aria-hidden="true">
+      <defs>
+        {sets.map((rings, k) => (
+          <mask key={k} id={`etch-cut-${k}`} maskUnits="userSpaceOnUse" x="-50%" y="-50%" width="200%" height="200%">
+            <rect x="-1000" y="-1000" width="3000" height="3000" fill="white" />
+            {sets.filter((_, other) => other != k).map(otherRings => {
+              const outer = otherRings[otherRings.length - 1];
+              return <rect key={outer.key} x={outer.x} y={outer.y} width={outer.width} height={outer.height} rx={outer.rx} fill="black" />;
+            })}
+          </mask>
+        ))}
+      </defs>
+      {sets.map((rings, k) => (
+        <g key={k} mask={`url(#etch-cut-${k})`} fill="none">
+          {rings.map(({ key, x, y, width, height, rx }) => (
+            <g key={key}>
+              <rect x={x} y={y + 1} width={width} height={height} rx={rx} stroke={ETCH.light} strokeWidth="1" />
+              <rect x={x} y={y} width={width} height={height} rx={rx} stroke={ETCH.dark} strokeWidth="1" />
+            </g>
+          ))}
+        </g>
+      ))}
+    </svg>
+  );
+};
+
 // 'isBackDisabled': shown, but not to be pressed (the color vat's Back to Lab while it dunks: Jamie, playtest 26)
 export const PlayConsole = ({ isReady, playLabel, onPlay, onBack, isLeaving = false, backLabel = "Back", isBackDisabled = false }) => {
   const isCompact = `${playLabel}${onBack ? backLabel : ""}`.length > 14;
+  const faceRef = useRef(null);
+  const playRef = useRef(null);
+  const backRef = useRef(null);
   return (
     <>
       <Wires delayMs={MINI_TIMING.riseDelayMs + MINI_TIMING.flyMs - 250} wires={CONSOLE_WIRES} ripFor={isLeaving ? "console" : undefined} />
@@ -1105,13 +1170,14 @@ export const PlayConsole = ({ isReady, playLabel, onPlay, onBack, isLeaving = fa
         {isLeaving
           ? <Jets key="off" dx={-7} dy={3} delayMs={0} ms={FLY_OFF.ms} />
           : <Jets key="in" dx={0} dy={7} delayMs={MINI_TIMING.riseDelayMs} ms={MINI_TIMING.flyMs} />}
-        <ConsoleFace>
+        <ConsoleFace ref={faceRef}>
           {[[0.5, 0.5, 20], [null, 0.5, -35], [0.5, null, 60], [null, null, 5]].map(([screwLeft, top, turn], k) => (
             <Screw key={k} $turn={turn} style={{ left: screwLeft == null ? undefined : `${screwLeft}cqw`, right: screwLeft == null ? "0.5cqw" : undefined, top: top == null ? undefined : `${top}cqw`, bottom: top == null ? "0.5cqw" : undefined }} />
           ))}
           {/* (no ready light: Jamie, playtest 28) */}
-          <MetalButton disabled={!isReady} $isBacklit={isReady} $isCompact={isCompact} $isMain={!isCompact} onClick={onPlay}>{playLabel}</MetalButton>
-          {onBack && <MetalButton disabled={isBackDisabled} $isCompact={isCompact} onClick={onBack}>{backLabel}</MetalButton>}
+          <EtchedRings faceRef={faceRef} buttonRefs={[playRef, backRef]} />
+          <MetalButton ref={playRef} style={{ position: "relative", zIndex: 1 }} disabled={!isReady} $isBacklit={isReady} $isCompact={isCompact} $isMain={!isCompact} onClick={onPlay}>{playLabel}</MetalButton>
+          {onBack && <MetalButton ref={backRef} style={{ position: "relative", zIndex: 1 }} disabled={isBackDisabled} $isCompact={isCompact} onClick={onBack}>{backLabel}</MetalButton>}
         </ConsoleFace>
       </Console>
     </>
