@@ -1383,7 +1383,16 @@ const useBurnIn = (isPickerShowing, bioOf) => {
   return burned;
 };
 
-export const SideMonitor = ({ isPickerShowing, isPoweredOff = false, isLeaving = false, bioOf = undefined }) => {
+// (the Agent at least this long when the avatar select first shows, whatever's hovered, so he's seen: Jamie, playtest 29)
+const AGENT_FIRST_MS = 3500;
+const TAMA_FIRST_MS = 3000;
+export const SideMonitor = ({ isPickerShowing, isPoweredOff = false, isLeaving = false, bioOf: hoveredBio = undefined }) => {
+  const [isAgentHeld, setIsAgentHeld] = useState(true);
+  useEffect(() => {
+    const timeout = setTimeout(() => setIsAgentHeld(false), MINI_TIMING.onAtMs + AGENT_FIRST_MS);
+    return () => clearTimeout(timeout);
+  }, []);
+  const bioOf = isAgentHeld ? undefined : hoveredBio;
   const burned = useBurnIn(isPickerShowing, bioOf);
   return (
   <SideFrame
@@ -1397,7 +1406,7 @@ export const SideMonitor = ({ isPickerShowing, isPoweredOff = false, isLeaving =
     {/* the avatar select: the candidates' files (Jamie: not the tamagotchi, that's on the picker) */}
     {/* the Agent and the files crossfade too (Jamie, playtest 29) */}
     {isPickerShowing ? <SideSlot data-side-screen /> : (
-      <CrossFade id={bioOf || "agent"} restIds={["agent"]}><AvatarBio avatar={bioOf} /></CrossFade>
+      <CrossFade id={bioOf || "agent"}><AvatarBio avatar={bioOf} /></CrossFade> /* (no hold here: straight on to what's next) */
     )}
   </SideFrame>
   );
@@ -1550,7 +1559,13 @@ export const AbilityPicker = ({
     keepMeasuring();
     return () => cancelAnimationFrame(frameId);
   }, [isArenaShowing]);
-  const isTamaShowing = hovered === undefined && !playerClass;
+  // (on a replay's picker, the tamagotchi first for a few seconds, whatever's hovered or picked: Jamie, playtest 29)
+  const [isTamaHeld, setIsTamaHeld] = useState(true);
+  useEffect(() => {
+    const timeout = setTimeout(() => setIsTamaHeld(false), MINI_TIMING.onAtMs + TAMA_FIRST_MS);
+    return () => clearTimeout(timeout);
+  }, []);
+  const isTamaShowing = isTamaHeld || (hovered === undefined && !playerClass);
   const sideScreen = (
     <>
             {/* the tamagotchi stays on (its own state), faded in and out as the rest crossfades (Jamie, playtest 29) */}
