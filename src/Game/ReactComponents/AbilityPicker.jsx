@@ -1104,6 +1104,53 @@ const SideSlot = styled.div`
   inset: 0;
 `;
 
+/*
+  The side screen's details crossfade (Jamie, playtest 26): the old ones fade out as the new fade in. 'id': what's
+  showing (a power, the class, the tamagotchi); the one before stays a moment, fading.
+*/
+const CROSSFADE = { ms: 220, holdMs: 160 };
+const crossIn = keyframes`from { opacity: 0; } to { opacity: 1; }`;
+const crossOut = keyframes`from { opacity: 1; } to { opacity: 0; }`;
+const FadeLayer = styled.div`
+  position: absolute;
+  inset: 0;
+  animation: ${props => props.$isLeaving ? crossOut : crossIn} ${CROSSFADE.ms}ms ease-in-out both;
+  ${props => props.$isLeaving && css`pointer-events: none;`}
+`;
+// 'restIds': what shows with nothing hovered; going to one waits a moment ('holdMs'), so moving from one power to the
+// next (through the gap between them) crossfades the two
+const CrossFade = ({ id, children, restIds = [] }) => {
+  const [shownId, setShownId] = useState(id);
+  const [leaving, setLeaving] = useState(undefined); // { id, node }
+  const nodes = useRef({});
+  nodes.current[id] = children;
+  const shownRef = useRef(id);
+  useEffect(() => {
+    if (id == shownRef.current) return;
+    const commit = () => {
+      const previous = shownRef.current;
+      shownRef.current = id;
+      setShownId(id);
+      // (not the tamagotchi: a second one, fading, would take over its buttons)
+      setLeaving(previous == "tama" ? undefined : { id: previous, node: nodes.current[previous] });
+    };
+    const isToRest = restIds.includes(id) && !restIds.includes(shownRef.current);
+    const hold = setTimeout(commit, isToRest ? CROSSFADE.holdMs : 0);
+    return () => clearTimeout(hold);
+  }, [id]);
+  useEffect(() => {
+    if (!leaving) return;
+    const timeout = setTimeout(() => setLeaving(undefined), CROSSFADE.ms);
+    return () => clearTimeout(timeout);
+  }, [leaving]);
+  return (
+    <>
+      {leaving && leaving.id != shownId && <FadeLayer key={`out-${leaving.id}`} $isLeaving>{leaving.node}</FadeLayer>}
+      <FadeLayer key={`in-${shownId}`}>{shownId == id ? children : nodes.current[shownId]}</FadeLayer>
+    </>
+  );
+};
+
 // 'bioOf': on the avatar select, the avatar whose file shows (the one hovered: Jamie)
 /*
   The side monitor's set, for whatever goes on its screen ('children') and its top border ('brow'): it flies in, its
@@ -1342,7 +1389,9 @@ export const AbilityPicker = ({
   const isTamaShowing = hovered === undefined && !playerClass;
   const sideScreen = (
     <>
-            {isTamaShowing ? <Tamagotchi actRef={tamaRef} /> : <Info $isClass={hovered === undefined && !!playerClass}>{getInfo()}</Info>}
+            <CrossFade id={isTamaShowing ? "tama" : hovered === undefined ? "class" : `power-${hovered}`} restIds={["tama", "class"]}>
+              {isTamaShowing ? <Tamagotchi actRef={tamaRef} /> : <Info $isClass={hovered === undefined && !!playerClass}>{getInfo()}</Info>}
+            </CrossFade>
             {hovered === undefined && !!playerClass && (
               <>
                 <BattleBox ref={arenaRef} data-no-floating-words style={{ visibility: hovered === undefined ? "visible" : "hidden" }}>
