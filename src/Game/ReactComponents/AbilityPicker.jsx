@@ -1165,7 +1165,8 @@ export const AbilityPicker = ({
           </Part>
           <Part $align="left">
             <PartHeader>Passive:</PartHeader>
-            <FitTitleRow text={power.passiveName}>{power.passiveName}<Icon className={`fa ${power.passiveIcon}`} style={{ color: power.color }} /></FitTitleRow>
+            {/* the icon first, as the active's (Jamie, playtest 26); Charm's passive (Spurned) shows the Spurned status icon */}
+            <FitTitleRow text={power.passiveName}><Icon className={`fa ${power.element == "wink" ? "fa-frown-o" : power.passiveIcon}`} style={{ color: power.element == "wink" ? "#ff4040" : power.color }} />{power.passiveName}</FitTitleRow>
             <div style={{ color: getTint(power.color, TINT.turnDegrees) }}>{power.passiveDesc}</div>
             {power.passiveEffect1 && <Effect $color={power.color}>{power.passiveEffect1}</Effect>}
           </Part>
