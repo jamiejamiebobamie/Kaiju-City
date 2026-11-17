@@ -203,6 +203,49 @@ const Tear = styled.div`
   background: linear-gradient(to right, transparent, rgba(180, 255, 180, 0.55) 20%, rgba(180, 255, 180, 0.2) 70%, transparent);
   animation: ${tear} 3.7s steps(1) infinite;
 `;
+/*
+  Glitches (Jamie, playtest 28): now and then a few thin bands of his picture jump sideways, their colors split, for a
+  moment, at random heights each time; the rest of him stays as he is
+*/
+const GLITCH = { everyMs: [450, 1700], showMs: [70, 180], bands: [1, 3], heightPct: [3, 11], shiftCqw: 1.4 };
+const between = ([low, high]) => low + Math.random() * (high - low);
+const GlitchBand = styled(AgentFace)`
+  animation: none;
+  pointer-events: none;
+`;
+const AgentGlitches = ({ isOn }) => {
+  const [bands, setBands] = useState([]);
+  useEffect(() => {
+    if (!isOn) return;
+    let timeout;
+    const next = () => {
+      const count = Math.round(between(GLITCH.bands));
+      setBands([...Array(count)].map((_, k) => {
+        const height = between(GLITCH.heightPct);
+        const top = Math.random() * (100 - height);
+        return { key: `${Date.now()}-${k}`, top, bottom: 100 - top - height, shift: (Math.random() - 0.5) * 2 * GLITCH.shiftCqw, hue: Math.random() < 0.5 ? 40 : 130 };
+      }));
+      timeout = setTimeout(() => {
+        setBands([]);
+        timeout = setTimeout(next, between(GLITCH.everyMs));
+      }, between(GLITCH.showMs));
+    };
+    timeout = setTimeout(next, between(GLITCH.everyMs));
+    return () => clearTimeout(timeout);
+  }, [isOn]);
+  return bands.map(({ key, top, bottom, shift, hue }) => (
+    <GlitchBand
+      key={key}
+      style={{
+        backgroundImage: "url(/levels/portraits/agent.png)",
+        clipPath: `inset(${top}% 0 ${bottom}% 0)`,
+        transform: `translateX(calc(-50% + ${shift}cqw))`,
+        filter: `grayscale(1) contrast(2.2) brightness(1.1) sepia(1) hue-rotate(${hue}deg) saturate(3)`
+      }}
+    />
+  ));
+};
+
 const balloonPop = keyframes`
   0% { opacity: 0; transform: scale(0.6); }
   70% { opacity: 1; transform: scale(1.06); }
@@ -267,6 +310,7 @@ const AgentCall = () => {
       <AgentFeed>
         <Spotlight $isQuick={isQuick} />
         <AgentFace $isQuick={isQuick} style={{ backgroundImage: "url(/levels/portraits/agent.png)" }} />
+        <AgentGlitches isOn={isBalloonUp} />
         <Static />
         <RollBar />
         <Tear />
