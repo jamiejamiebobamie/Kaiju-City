@@ -17,7 +17,8 @@ export const RADAR = {
   sweepSeconds: 4, // one turn
   sweepTrail: 0.9, // the fading light behind the sweep, in radians
   // the outline lit by the sweep as it passes (Jamie, 2026-11-15), then fading over the turn, never below 'outlineLeast'
-  outlineLeast: 0.3, outlineFadeShare: 0.45, outlineSteps: 8,
+  // (Jamie, playtest 29: far more dramatic: the outline all but gone until the sweep "saves" it, flaring and glowing)
+  outlineLeast: 0.06, outlineFadeShare: 0.6, outlineSteps: 10, outlineGlow: 16, outlineWidthLit: 3.2,
   rings: 4, // range rings round the Lab
   dotColor: "#ff4a4a", // red, glowing (Jamie, 2026-11-10; was a soft purple)
   dotGlow: "#ff1a1a",
@@ -188,7 +189,7 @@ export const RadarMap = ({ dotCount = 0, alarmAtMs = undefined, radarTiles = und
       for (let k = 0; k < trailSteps; k += 1) {
         const share = k / trailSteps;
         const from = angle - RADAR.sweepTrail * share;
-        ctx.globalAlpha = 0.18 * (1 - share);
+        ctx.globalAlpha = 0.3 * (1 - share);
         ctx.fillStyle = RADAR.color;
         ctx.beginPath();
         ctx.moveTo(lab.x, lab.y);
@@ -196,12 +197,15 @@ export const RadarMap = ({ dotCount = 0, alarmAtMs = undefined, radarTiles = und
         ctx.closePath();
         ctx.fill();
       }
-      ctx.globalAlpha = 0.9;
-      ctx.lineWidth = 2;
+      ctx.globalAlpha = 1;
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = RADAR.color;
+      ctx.shadowBlur = 18;
       ctx.beginPath();
       ctx.moveTo(lab.x, lab.y);
       ctx.lineTo(lab.x + Math.cos(angle) * reach, lab.y + Math.sin(angle) * reach);
       ctx.stroke();
+      ctx.shadowBlur = 0;
 
       // the Peninsula, in outline, going on out of the shot at its foot and along its bridges
       ctx.globalAlpha = 1;
@@ -225,9 +229,15 @@ export const RadarMap = ({ dotCount = 0, alarmAtMs = undefined, radarTiles = und
         const start = toScreen(from);
         lit[getLight(start)].push([start, { x: start.x + dir.x * reach, y: start.y + dir.y * reach }]);
       });
+      const baseWidth = ctx.lineWidth;
       lit.forEach((lines, step) => {
         if (!lines.length) return;
-        ctx.globalAlpha = (step + 1) / RADAR.outlineSteps;
+        const share = (step + 1) / RADAR.outlineSteps;
+        ctx.globalAlpha = share;
+        // the freshly swept bits flare: thicker, glowing
+        ctx.lineWidth = baseWidth + (RADAR.outlineWidthLit - baseWidth) * Math.max(0, share * share);
+        ctx.shadowColor = RADAR.color;
+        ctx.shadowBlur = RADAR.outlineGlow * share * share;
         ctx.beginPath();
         lines.forEach(([from, to]) => {
           ctx.moveTo(from.x, from.y);
@@ -235,6 +245,8 @@ export const RadarMap = ({ dotCount = 0, alarmAtMs = undefined, radarTiles = und
         });
         ctx.stroke();
       });
+      ctx.shadowBlur = 0;
+      ctx.lineWidth = baseWidth;
       ctx.globalAlpha = 1;
       // the Lab
       ctx.fillStyle = RADAR.color;

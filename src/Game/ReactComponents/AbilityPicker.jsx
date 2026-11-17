@@ -1131,28 +1131,27 @@ const EtchedRings = ({ faceRef, buttonRefs }) => {
   });
   const sets = boxes.map(ringsOf);
   return (
-    <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", overflow: "visible" }} aria-hidden="true">
+    // (inside the face only, under the casing's lip; the screws go over it)
+    <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", overflow: "hidden", borderRadius: "inherit" }} aria-hidden="true">
+      {/* (Jamie, playtest 29: the innermost ring whole; the others stop where they meet the other button's ring of the
+          same rank, so each pair ends at their crossing) */}
       <defs>
-        {sets.map((rings, k) => (
-          <mask key={k} id={`etch-cut-${k}`} maskUnits="userSpaceOnUse" x="-50%" y="-50%" width="200%" height="200%">
+        {sets.map((rings, k) => rings.map((ring, n) => n == 0 ? null : (
+          <mask key={`${k}-${n}`} id={`etch-cut-${k}-${n}`} maskUnits="userSpaceOnUse" x="-1000" y="-1000" width="3000" height="3000">
             <rect x="-1000" y="-1000" width="3000" height="3000" fill="white" />
             {sets.filter((_, other) => other != k).map(otherRings => {
-              const outer = otherRings[otherRings.length - 1];
-              return <rect key={outer.key} x={outer.x} y={outer.y} width={outer.width} height={outer.height} rx={outer.rx} fill="black" />;
+              const meet = otherRings[n];
+              return <rect key={meet.key} x={meet.x} y={meet.y} width={meet.width} height={meet.height} rx={meet.rx} fill="black" />;
             })}
           </mask>
-        ))}
+        )))}
       </defs>
-      {sets.map((rings, k) => (
-        <g key={k} mask={`url(#etch-cut-${k})`} fill="none">
-          {rings.map(({ key, x, y, width, height, rx }) => (
-            <g key={key}>
-              <rect x={x} y={y + 1} width={width} height={height} rx={rx} stroke={ETCH.light} strokeWidth="1" />
-              <rect x={x} y={y} width={width} height={height} rx={rx} stroke={ETCH.dark} strokeWidth="1" />
-            </g>
-          ))}
+      {sets.map((rings, k) => rings.map(({ key, x, y, width, height, rx }, n) => (
+        <g key={key} mask={n == 0 ? undefined : `url(#etch-cut-${k}-${n})`} fill="none">
+          <rect x={x} y={y + 1} width={width} height={height} rx={rx} stroke={ETCH.light} strokeWidth="1" />
+          <rect x={x} y={y} width={width} height={height} rx={rx} stroke={ETCH.dark} strokeWidth="1" />
         </g>
-      ))}
+      )))}
     </svg>
   );
 };
@@ -1172,7 +1171,7 @@ export const PlayConsole = ({ isReady, playLabel, onPlay, onBack, isLeaving = fa
           : <Jets key="in" dx={0} dy={7} delayMs={MINI_TIMING.riseDelayMs} ms={MINI_TIMING.flyMs} />}
         <ConsoleFace ref={faceRef}>
           {[[0.5, 0.5, 20], [null, 0.5, -35], [0.5, null, 60], [null, null, 5]].map(([screwLeft, top, turn], k) => (
-            <Screw key={k} $turn={turn} style={{ left: screwLeft == null ? undefined : `${screwLeft}cqw`, right: screwLeft == null ? "0.5cqw" : undefined, top: top == null ? undefined : `${top}cqw`, bottom: top == null ? "0.5cqw" : undefined }} />
+            <Screw key={k} $turn={turn} style={{ zIndex: 2, left: screwLeft == null ? undefined : `${screwLeft}cqw`, right: screwLeft == null ? "0.5cqw" : undefined, top: top == null ? undefined : `${top}cqw`, bottom: top == null ? "0.5cqw" : undefined }} />
           ))}
           {/* (no ready light: Jamie, playtest 28) */}
           <EtchedRings faceRef={faceRef} buttonRefs={[playRef, backRef]} />
@@ -1324,7 +1323,10 @@ export const SideMonitor = ({ isPickerShowing, isPoweredOff = false, isLeaving =
     ))}
   >
     {/* the avatar select: the candidates' files (Jamie: not the tamagotchi, that's on the picker) */}
-    {isPickerShowing ? <SideSlot data-side-screen /> : <AvatarBio avatar={bioOf} />}
+    {/* the Agent and the files crossfade too (Jamie, playtest 29) */}
+    {isPickerShowing ? <SideSlot data-side-screen /> : (
+      <CrossFade id={bioOf || "agent"} restIds={["agent"]}><AvatarBio avatar={bioOf} /></CrossFade>
+    )}
   </SideFrame>
   );
 };
