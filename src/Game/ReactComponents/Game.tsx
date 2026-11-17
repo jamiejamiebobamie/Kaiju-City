@@ -450,7 +450,11 @@ const SIDE_EXIT_MS = 900;
   catches, and throws a pool of light down the scene; the dark lifts a step as each one catches, and the avatars,
   black silhouettes at first, come up with it.
 */
-const LAB_TUBES = { count: 4, stepMs: 420, flickerMs: 1100 };
+// (more dramatic: Jamie, playtest 31: longer flickers, and each blink floods the room before it drops back to dark)
+const LAB_TUBES = { count: 4, stepMs: 600, flickerMs: 1800, darkest: 0.95, flash: 0.6 };
+// a tube's blinks (shares of its flicker), and where it catches for good: the room's dark follows them
+const TUBE_BLINKS = [[0.10, 0.14], [0.28, 0.31], [0.34, 0.36], [0.50, 0.63]];
+const TUBE_CATCH = 0.66;
 const LAB_LIGHTS_TOTAL_MS = LAB_TUBES.stepMs * (LAB_TUBES.count - 1) + LAB_TUBES.flickerMs;
 const tubeFlicker = keyframes`
   0%, 9% { opacity: 0; }
@@ -465,14 +469,27 @@ const tubeFlicker = keyframes`
   64% { opacity: 0.4; }
   66%, 100% { opacity: 1; }
 `;
-// the dark over the scene: down a step as each tube catches (each a little after its own flicker's start)
-const labDark = keyframes`
-  ${[...Array(LAB_TUBES.count + 1).keys()].map(k => {
-    const at = k == 0 ? 0 : ((LAB_TUBES.stepMs * (k - 1) + LAB_TUBES.flickerMs * 0.5) / LAB_LIGHTS_TOTAL_MS) * 100;
-    return `${at.toFixed(2)}% { opacity: ${(0.93 * (1 - k / LAB_TUBES.count)).toFixed(3)}; }`;
-  }).join("\n")}
-  100% { opacity: 0; }
-`;
+// the dark over the scene, worked out from the tubes: a step lighter as each catches, and flooded light on each blink
+const getRoomDark = ms => {
+  let caught = 0;
+  let isFlashing = false;
+  for (let k = 0; k < LAB_TUBES.count; k++) {
+    const share = (ms - k * LAB_TUBES.stepMs) / LAB_TUBES.flickerMs;
+    if (share >= TUBE_CATCH) caught += 1;
+    else if (TUBE_BLINKS.some(([from, to]) => share >= from && share < to)) isFlashing = true;
+  }
+  const level = LAB_TUBES.darkest * (1 - caught / LAB_TUBES.count);
+  return Math.max(0, isFlashing ? level - LAB_TUBES.flash : level);
+};
+const ROOM_DARK_STOPS = (() => {
+  const times = new Set([0, LAB_LIGHTS_TOTAL_MS]);
+  for (let k = 0; k < LAB_TUBES.count; k++) {
+    const start = k * LAB_TUBES.stepMs;
+    [...TUBE_BLINKS.flat(), TUBE_CATCH].forEach(share => times.add(Math.round(start + share * LAB_TUBES.flickerMs)));
+  }
+  return [...times].sort((a, b) => a - b).map(ms => `${((ms / LAB_LIGHTS_TOTAL_MS) * 100).toFixed(2)}% { opacity: ${getRoomDark(ms).toFixed(3)}; }`).join(" ");
+})();
+const labDark = keyframes`${ROOM_DARK_STOPS}`;
 const LabDark = styled.div`
   position: absolute;
   inset: 0;
@@ -490,8 +507,8 @@ const LabTube = styled.div`
   pointer-events: none;
   mix-blend-mode: screen;
   background:
-    linear-gradient(to bottom, rgba(225, 255, 255, 0.95) 0 0.35cqw, transparent 0.35cqw) center top / 70% 100% no-repeat,
-    radial-gradient(ellipse 60% 85% at 50% 0%, rgba(190, 240, 255, 0.28), rgba(150, 220, 255, 0.1) 45%, transparent 75%);
+    linear-gradient(to bottom, rgba(240, 255, 255, 1) 0 0.5cqw, rgba(200, 245, 255, 0.5) 0.5cqw 0.8cqw, transparent 0.8cqw) center top / 72% 100% no-repeat,
+    radial-gradient(ellipse 65% 90% at 50% 0%, rgba(200, 245, 255, 0.5), rgba(160, 225, 255, 0.18) 45%, transparent 78%);
   animation: ${tubeFlicker} ${LAB_TUBES.flickerMs}ms steps(1, end) both;
 `;
 const LabLightsOn = () => (
