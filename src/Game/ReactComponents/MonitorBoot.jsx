@@ -58,7 +58,7 @@ const Label = styled.div`
 const PlayButton = styled.div`
   position: absolute;
   left: 50%;
-  top: 68%;
+  top: 83.3%; /* (5/6 of the way down: Jamie, playtest 29) */
   transform: translate(-50%, -50%);
   padding: 1cqw 3cqw;
   font-size: 2cqw;
@@ -120,7 +120,7 @@ export const MonitorBoot = ({ onDone }) => {
       ) : (
         <>
           <PlayButton $isPressed={phase == "pressed"}>PLAY</PlayButton>
-          <Cursor viewBox="0 0 22 30" $isPressed={phase == "pressed"} style={{ left: isAtPlay ? "52%" : "86%", top: isAtPlay ? "69%" : "90%" }}>
+          <Cursor viewBox="0 0 22 30" $isPressed={phase == "pressed"} style={{ left: isAtPlay ? "52%" : "86%", top: isAtPlay ? "84.3%" : "95%" }}>
             <path d="M1 1 L1 23 L7 17 L11 27 L15 25 L11 15 L19 15 Z" fill="white" stroke="black" strokeWidth="1.5" strokeLinejoin="round" />
           </Cursor>
         </>

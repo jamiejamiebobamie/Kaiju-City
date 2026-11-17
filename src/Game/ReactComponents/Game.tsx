@@ -779,7 +779,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     if (!isMonitorOn || isConsoleIn || isPlayingGame || !isBooted) return;
     const aside = setTimeout(() => setIsConsoleIn(true), MINI_TIMING.consoleDelayMs);
     return () => clearTimeout(aside);
-  }, [isMonitorOn, isPlayingGame]);
+  }, [isMonitorOn, isPlayingGame, isBooted]); // (isBooted too: the boot's end never eased the monitor aside. Jamie, playtest 29)
   // the side monitor and the console: switched off (Back from the avatar select), flying off (Play!: Jamie)
   const [isSideOff, setIsSideOff] = useState(false);
   const [isFlyingOff, setIsFlyingOff] = useState(false);

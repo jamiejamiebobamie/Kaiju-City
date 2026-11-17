@@ -39,6 +39,7 @@ export const savePlayWindow = playWindow => {
 
 const Window = styled.div`
   position: absolute;
+  z-index: 5; /* (the whole monitor over the hinged side units and their arms, which sit behind it: Jamie, playtest 29) */
   background: #000; /* (the room behind the monitor never shows through its screen: Jamie) */
 `;
 
