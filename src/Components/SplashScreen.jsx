@@ -100,7 +100,9 @@ const Progress = styled.div`
   }
 `;
 export const SplashScreen = ({ progress = 0 }) => <>
-  <Loading style={{ top: "calc(50% - 20px)" }}>
+  {/* (centred on the window, as its bar: Jamie, playtest 32: it sat a little right; the letters' trailing spacing
+      balanced with as much on the left) */}
+  <Loading style={{ top: "calc(50% - 20px)", left: "50%", transform: "translateX(-50%)", alignSelf: "auto", paddingLeft: "3px" }}>
     {"Loading".split("").map((letter, k) => <Letter key={k} style={{ animationDelay: `${k * LETTER_WAVE.stepSeconds}s` }}>{letter}</Letter>)}
   </Loading>
   <Progress><div style={{ width: `${Math.round(progress * 100)}%` }} /></Progress>
