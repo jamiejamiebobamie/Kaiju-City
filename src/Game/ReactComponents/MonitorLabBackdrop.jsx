@@ -24,7 +24,7 @@ const HANDOVER_MS = 1100; // the avatar select's slide (CHOICE.slideMs)
   share of the screen's height. The spots below are before it.
 */
 // (Jamie, playtest 31: the whole of it lower, "Choose your character" too, the spacing kept: SCENE_DROP_MORE more)
-export const SCENE_DROP_MORE = 0.048;
+export const SCENE_DROP_MORE = 0.032; // (a smidge back up: Jamie, playtest 31; was 0.048)
 export const SCENE_DROP = 0.072 + SCENE_DROP_MORE;
 
 export const BACKDROP_SPOTS = {
