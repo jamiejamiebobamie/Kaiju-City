@@ -94,7 +94,7 @@ const Bio = styled.div`
   green monochrome, scanlines, a dark vignette), his question in a green techno balloon below him, its tail at its
   top left pointing up and right, at him. Always there while nothing's hovered.
 */
-const AGENT_CALL = { line: "who are you recruit?" }; // (Jamie's words)
+const AGENT_CALL = { line: "Welcome, soldier. who are you?" }; // (Jamie's words, playtest 29)
 // (Jamie, playtest 28) he walks out of the shadows into a light from above, then his balloon pops in and types out;
 // the feed is unstable (grain, rolling bars, now and then a tear). The walk-in plays once a visit; back to him after
 // a hover, he's simply there (a quick fade)
