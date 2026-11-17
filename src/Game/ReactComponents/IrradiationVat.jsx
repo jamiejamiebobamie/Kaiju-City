@@ -352,7 +352,7 @@ export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose }) => 
         </Panel>
         </SideFrame>
         {/* Irradiate and Back to Lab on the power picker's console (Jamie, playtest 25) */}
-        <PlayConsole isReady={!isBusy} playLabel="Irradiate" onPlay={irradiate} onBack={isBusy ? undefined : onClose} backLabel="Back to Lab" />
+        <PlayConsole isReady={!isBusy} playLabel="Irradiate" onPlay={irradiate} onBack={onClose} isBackDisabled={isBusy} backLabel="Back to Lab" />
       </SideUnits>, document.querySelector("[data-game-frame]") || document.body)}
     </Page>,
     document.querySelector("[data-play-screen]") || document.body

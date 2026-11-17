@@ -1051,7 +1051,10 @@ const MetalButton = styled.button`
   font-size: 1.1cqw;
   cursor: pointer;
   border-radius: 0.45cqw;
+  white-space: nowrap;
   ${RUBBER_BUTTON}
+  /* (long labels, as the color vat's Irradiate and Back to Lab: smaller, so both fit the console. Jamie, playtest 26) */
+  ${props => props.$isCompact && css`font-size: 0.8cqw; padding: 0.5cqw 0.7cqw;`}
   &:disabled {
     cursor: default;
     opacity: 0.35;
@@ -1073,7 +1076,9 @@ const backlitBlink = keyframes`
 const CONSOLE_WIRES = [{ from: { x: CONSOLE.left + 2.5, y: CONSOLE.top + CONSOLE.height }, to: { x: 64.9, y: 50 }, sag: 3, color: "#0e0f10" }];
 
 // 'backLabel': the other button's words (the color vat's: Back to Lab)
-export const PlayConsole = ({ isReady, playLabel, onPlay, onBack, isLeaving = false, backLabel = "Back" }) => {
+// 'isBackDisabled': shown, but not to be pressed (the color vat's Back to Lab while it dunks: Jamie, playtest 26)
+export const PlayConsole = ({ isReady, playLabel, onPlay, onBack, isLeaving = false, backLabel = "Back", isBackDisabled = false }) => {
+  const isCompact = `${playLabel}${onBack ? backLabel : ""}`.length > 14;
   return (
     <>
       <Wires delayMs={MINI_TIMING.riseDelayMs + MINI_TIMING.flyMs - 250} wires={CONSOLE_WIRES} ripFor={isLeaving ? "console" : undefined} />
@@ -1086,8 +1091,8 @@ export const PlayConsole = ({ isReady, playLabel, onPlay, onBack, isLeaving = fa
             <Screw key={k} $turn={turn} style={{ left: screwLeft == null ? undefined : `${screwLeft}cqw`, right: screwLeft == null ? "0.5cqw" : undefined, top: top == null ? undefined : `${top}cqw`, bottom: top == null ? "0.5cqw" : undefined }} />
           ))}
           <ReadyLight $isOn={isReady} />
-          <MetalButton disabled={!isReady} $isBacklit={isReady} onClick={onPlay}>{playLabel}</MetalButton>
-          {onBack && <MetalButton onClick={onBack}>{backLabel}</MetalButton>}
+          <MetalButton disabled={!isReady} $isBacklit={isReady} $isCompact={isCompact} onClick={onPlay}>{playLabel}</MetalButton>
+          {onBack && <MetalButton disabled={isBackDisabled} $isCompact={isCompact} onClick={onBack}>{backLabel}</MetalButton>}
         </ConsoleFace>
       </Console>
     </>
