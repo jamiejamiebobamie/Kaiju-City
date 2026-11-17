@@ -80,9 +80,28 @@ const Letter = styled.span`
   animation: ${letterRise} ${LETTER_WAVE.seconds}s ease-in-out infinite;
 `;
 
-export const SplashScreen = () => <>
-  <LogoGif src={"./Logo.gif"} />
-  <Loading>
+// how far the landing's images have come in (Jamie, playtest 29: a loader before the landing; the logo moved to the
+// monitor's boot, so it's off this screen)
+const Progress = styled.div`
+  position: absolute;
+  z-index: 9;
+  top: calc(50% + 34px);
+  left: 50%;
+  width: 260px;
+  height: 6px;
+  transform: translateX(-50%);
+  border: 1px solid rgba(201, 166, 255, 0.6);
+  box-shadow: 0 0 8px rgba(150, 60, 255, 0.5);
+  & > div {
+    height: 100%;
+    background: #c9a6ff;
+    box-shadow: 0 0 8px rgba(200, 120, 255, 0.9);
+    transition: width 200ms linear;
+  }
+`;
+export const SplashScreen = ({ progress = 0 }) => <>
+  <Loading style={{ top: "calc(50% - 20px)" }}>
     {"Loading".split("").map((letter, k) => <Letter key={k} style={{ animationDelay: `${k * LETTER_WAVE.stepSeconds}s` }}>{letter}</Letter>)}
   </Loading>
+  <Progress><div style={{ width: `${Math.round(progress * 100)}%` }} /></Progress>
 </>;

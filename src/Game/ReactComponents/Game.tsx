@@ -28,6 +28,7 @@ import { getAvatarColor, saveAvatarColor, saveTeamAvatars, unlockEverything, unl
 import { AbilityPicker, FLY_OFF, MINI_TIMING, PlayConsole, SideMonitor } from "./AbilityPicker";
 import { holdTamagotchi } from "./Tamagotchi";
 import { FOCUS_MOVE, getFocusTransform, MonitorLabBackdrop } from "./MonitorLabBackdrop";
+import { getHasBooted, MonitorBoot } from "./MonitorBoot";
 import { ROOM_HANDOFF, RoomBackdrop } from "Components/RoomScene";
 import { ZOOM_BACK } from "Components/ZoomThrough";
 import { HudExplosions } from "./UI/Hud/HudExplosions";
@@ -772,8 +773,10 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   };
   // the console's coming (Jamie): the monitor eases aside for it, from the avatar select on
   const [isConsoleIn, setIsConsoleIn] = useState(false);
+  // the monitor's first boot (logo, the game's load, its start screen): the side units wait for it (Jamie, playtest 29)
+  const [isBooted, setIsBooted] = useState(getHasBooted());
   useEffect(() => {
-    if (!isMonitorOn || isConsoleIn || isPlayingGame) return;
+    if (!isMonitorOn || isConsoleIn || isPlayingGame || !isBooted) return;
     const aside = setTimeout(() => setIsConsoleIn(true), MINI_TIMING.consoleDelayMs);
     return () => clearTimeout(aside);
   }, [isMonitorOn, isPlayingGame]);
@@ -1606,6 +1609,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
           isPauseOff: true, // nothing to pause yet
           ticker: <ObjectiveTicker text="" isKaijuCount={false} count={0} toWin={0} />
         })}>
+          {isMonitorOn && !isBooted && <MonitorBoot onDone={() => setIsBooted(true)} />}
           {/* the Lab behind them, darkened, lit round the avatars (Jamie) */}
           <MonitorLabBackdrop mode={isChoosingAvatar ? "choice" : "picker"} hovered={hoveredAvatar} focus={isChoosingAvatar ? handOverAvatar : selectedAvatar} />
           {isChoosingAvatar ? (
@@ -1656,7 +1660,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
           <MonitorLabBackdrop layer="front" mode={isChoosingAvatar ? "choice" : "picker"} focus={isChoosingAvatar ? handOverAvatar : selectedAvatar} />
           {screenFade == 'out' && <ScreenBlack />}
         </PlayWindow>
-        {isMonitorOn && (
+        {isMonitorOn && isBooted && (
           <>
             {/* from the avatar select on, flying in with the console (Jamie) */}
             <SideMonitor isPickerShowing={!isChoosingAvatar} isPoweredOff={isSideOff} isLeaving={isFlyingOff} bioOf={hoveredAvatar || handOverAvatar} /* (the Agent's question unless a tank is hovered; once one's chosen, its file stays: Jamie, playtests 27 and 29) */ />

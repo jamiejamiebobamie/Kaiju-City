@@ -13,8 +13,8 @@ import { PICKER_FIGURE } from "./AbilityPicker";
 */
 // (the catwalk painted out, for these screens only: Jamie, playtest 28. The Lab fight keeps lab.png)
 const LAB = { src: "/levels/lab-select.png", darkness: 0.82, darknessPicker: 0.9 };
-// (TEMPORARY, playtest 28: the leftover patch marked red for Jamie to confirm; back to lab-tank-empty.png, cleared, after)
-const TANK = { src: "/levels/lab-tank-empty-check.png", width: 98, height: 217 };
+// (its leftover background, from the picture it was cut from, cleared: Jamie, playtest 28-29)
+const TANK = { src: "/levels/lab-tank-empty.png", width: 98, height: 217 };
 const BUBBLES = { src: "/spritesheet/disc_bubbles.png", frames: 7, frameWidth: 177, frameHeight: 528, seconds: 2.4 };
 const HANDOVER_MS = 1100; // the avatar select's slide (CHOICE.slideMs)
 
