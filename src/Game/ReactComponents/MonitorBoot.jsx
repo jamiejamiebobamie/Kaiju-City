@@ -148,6 +148,10 @@ const Label = styled.div`
   letter-spacing: 0.12cqw;
   color: #c9a6ff;
 `;
+const playBlink = keyframes`
+  0%, 49% { color: #c8ffb8; text-shadow: 0 0 0.5cqw #3aff3a; border-color: #3aff3a; box-shadow: 0 0 1cqw rgba(58, 255, 58, 0.4); }
+  50%, 100% { color: #3e8a3a; text-shadow: none; border-color: #2a6a28; box-shadow: none; }
+`;
 const PlayButton = styled.div`
   position: absolute;
   left: 50%;
@@ -163,9 +167,12 @@ const PlayButton = styled.div`
   box-shadow: 0 0 1cqw rgba(58, 255, 58, 0.4);
   transition: transform 120ms, background 120ms;
   font-family: gameboy;
-  background: transparent;
+  /* (the rain's own dark, so no digits show through it: Jamie, playtest 31) */
+  background: #05030a;
   outline: none;
-  &:hover { background: rgba(58, 255, 58, 0.12); }
+  /* blinking once a second (Jamie, playtest 31) */
+  animation: ${playBlink} 1s steps(1, end) infinite;
+  &:hover { background: #0f2a10; }
   ${props => props.$isPressed && css`
     transform: translate(-50%, -50%) scale(0.94);
     background: rgba(58, 255, 58, 0.25);
