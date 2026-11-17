@@ -63,7 +63,7 @@ const Panel = styled.div`
   background:
     repeating-linear-gradient(to bottom, rgba(109, 255, 160, 0.05) 0 1px, transparent 1px 4px),
     linear-gradient(to right, rgba(4, 30, 16, 0.72), rgba(4, 22, 12, 0.5));
-  border-left: 0.15cqw solid ${LOG_LOOK.dim};
+  border: 0.15cqw solid ${LOG_LOOK.dim}; /* (all round now, set off from the room: Jamie, playtest 26) */
   box-shadow: -0.4cqw 0 1.6cqw rgba(60, 255, 140, 0.18), inset 0.4cqw 0 1.2cqw rgba(60, 255, 140, 0.08);
   text-shadow: 0 0 0.4cqw rgba(109, 255, 160, 0.7);
   animation: ${flicker} ${LOG_LOOK.flickerSeconds}s linear infinite, ${drift} 3s linear infinite,

@@ -134,6 +134,8 @@ const KeyNumber = styled.span`
   display: inline-block;
   font-family: gameboy;
   font-size: 18px;
+  -webkit-text-stroke: 1px white; /* (outlined, as the names: playtest 26) */
+  paint-order: stroke fill;
   color: #c9c3d6;
   transition: color 120ms;
   visibility: ${props => props.$isHidden ? "hidden" : "visible"};
@@ -349,6 +351,9 @@ const AvatarName = styled.span`
   font-family: gameboy;
   font-size: 18px;
   text-transform: uppercase;
+  /* a white outline, so it reads against the Lab (Jamie, playtest 26) */
+  -webkit-text-stroke: 1px white;
+  paint-order: stroke fill;
   color: ${CHOICE.textColor};
   text-shadow: 0 0 4px ${CHOICE.textColor};
   opacity: 0.8;
