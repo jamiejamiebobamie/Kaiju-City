@@ -1110,7 +1110,7 @@ const SideSlot = styled.div`
   screen switches on, its wires slither to the big monitor (the avatar select's and picker's, and the color vat's:
   Jamie, playtest 25, the same set beside both Lab screens).
 */
-export const SideFrame = ({ children, brow = null, isPoweredOff = false, isLeaving = false }) => {
+export const SideFrame = ({ children, brow = null, isPoweredOff = false, isLeaving = false, overlay = null }) => {
   const [isOn, setIsOn] = useState(false);
   useEffect(() => {
     const timeout = setTimeout(() => setIsOn(true), MINI_TIMING.onAtMs);
@@ -1125,6 +1125,7 @@ export const SideFrame = ({ children, brow = null, isPoweredOff = false, isLeavi
           : <Jets key="in" dx={6} dy={5} delayMs={MINI_TIMING.flyDelayMs} ms={MINI_TIMING.flyMs} />}
         <MiniScreen>
           <CrtScreen isOn={isOn && !isPoweredOff}>{children}</CrtScreen>
+          {overlay}
           <MiniGlass />
         </MiniScreen>
         <MiniBrow>{brow}</MiniBrow>
@@ -1133,10 +1134,55 @@ export const SideFrame = ({ children, brow = null, isPoweredOff = false, isLeavi
   );
 };
 
-export const SideMonitor = ({ isPickerShowing, isPoweredOff = false, isLeaving = false, bioOf = undefined }) => (
+/*
+  From the avatar select to the picker (Jamie, playtest 26): the side screen's power cuts out, black at once, the last
+  bio left burned into the glass, fading; then it boots up again (the CRT's power-on) with the tamagotchi.
+*/
+const BURN_IN = { ms: 1200 };
+const burnFade = keyframes`
+  0% { opacity: 0.55; }
+  15% { opacity: 0.4; }
+  100% { opacity: 0; }
+`;
+const PowerCut = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: #030404;
+  pointer-events: none;
+  overflow: hidden;
+`;
+const BurnIn = styled.div`
+  position: absolute;
+  inset: 0;
+  filter: grayscale(1) sepia(1) hue-rotate(70deg) saturate(1.6) blur(0.06cqw) brightness(0.9);
+  mix-blend-mode: screen;
+  animation: ${burnFade} ${BURN_IN.ms}ms ease-out both;
+`;
+const useBurnIn = (isPickerShowing, bioOf) => {
+  const lastBio = useRef(bioOf);
+  const wasPicker = useRef(isPickerShowing);
+  const [burned, setBurned] = useState(undefined);
+  if (!isPickerShowing && bioOf) lastBio.current = bioOf;
+  useEffect(() => {
+    if (isPickerShowing && !wasPicker.current) {
+      setBurned({ avatar: lastBio.current });
+      const timeout = setTimeout(() => setBurned(undefined), BURN_IN.ms);
+      wasPicker.current = isPickerShowing;
+      return () => clearTimeout(timeout);
+    }
+    wasPicker.current = isPickerShowing;
+  }, [isPickerShowing]);
+  return burned;
+};
+
+export const SideMonitor = ({ isPickerShowing, isPoweredOff = false, isLeaving = false, bioOf = undefined }) => {
+  const burned = useBurnIn(isPickerShowing, bioOf);
+  return (
   <SideFrame
-    isPoweredOff={isPoweredOff}
+    isPoweredOff={isPoweredOff || !!burned}
     isLeaving={isLeaving}
+    overlay={burned && <PowerCut data-burn-in><BurnIn><AvatarBio avatar={burned.avatar} /></BurnIn></PowerCut>}
     brow={isPickerShowing ? <div data-side-brow style={{ display: "contents" }} /> : ["Feed", "Pet", "Clean up"].map(label => (
       <BrowButton key={label} disabled>{label}</BrowButton>
     ))}
@@ -1144,7 +1190,8 @@ export const SideMonitor = ({ isPickerShowing, isPoweredOff = false, isLeaving =
     {/* the avatar select: the candidates' files (Jamie: not the tamagotchi, that's on the picker) */}
     {isPickerShowing ? <SideSlot data-side-screen /> : <AvatarBio avatar={bioOf} />}
   </SideFrame>
-);
+  );
+};
 
 export const AbilityPicker = ({
   handleClickHome,
