@@ -66,6 +66,7 @@ export const ClassBattle = ({ powers, avatar, playWindow }) => {
       isWindowOpen={false}
       activePhases={[]}
       isWholeScene={false}
+      isPreview
       viewHexes={PREVIEW_VIEW.hexes}
       playWindow={playWindow}
       isShowingWindowSize={false}

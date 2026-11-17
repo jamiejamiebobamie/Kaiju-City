@@ -709,7 +709,8 @@ const getIsTouchScreen = () => window.matchMedia("(pointer: coarse)").matches;
 // 'viewHexes': seen this many hexes across, following the player (the class battle's: Jamie, playtest 26); 'kaijuFade':
 // { from, to } in tiles from the player: Kaiju farther than 'to' are unseen, nearer than 'from' whole
 const VIEW_LIFT_ROWS = 0.7;
-export const GameBoard = ({ viewHexes = undefined, kaijuFade = undefined, isCurtained = false, controlMarker = "outline", speakingLineLength = 0, isSwirling = false, speakingPieceIndex = undefined, choiceFromRef = undefined, isWindowOpen = true, isPaused, gameManager, level, activePhases, isWholeScene, playWindow, isShowingWindowSize, isEditingTiles, isMouseLook, isEnemyZoom, isSlowMotion, isTeamColors, speech, recruitScene, recruitChoice, onChooseRecruit, onHotspot }) => {
+// 'isPreview': the class battle's board (Jamie, playtest 29): no health bars, no status icons, no off-screen markers
+export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade = undefined, isCurtained = false, controlMarker = "outline", speakingLineLength = 0, isSwirling = false, speakingPieceIndex = undefined, choiceFromRef = undefined, isWindowOpen = true, isPaused, gameManager, level, activePhases, isWholeScene, playWindow, isShowingWindowSize, isEditingTiles, isMouseLook, isEnemyZoom, isSlowMotion, isTeamColors, speech, recruitScene, recruitChoice, onChooseRecruit, onHotspot }) => {
   // redraws the pieces when the game updates. the tiles draw themselves.
   useSyncExternalStore(gameManager.subscribeToBoard, gameManager.getBoardRevision);
   const pieces = gameManager.getPieces();
@@ -1195,7 +1196,7 @@ export const GameBoard = ({ viewHexes = undefined, kaijuFade = undefined, isCurt
       lives={Math.max(p.lives + Math.min(p.livesModifier || 0, 0), 0)}
       hitLives={p.lives} // the health that hits and heals change: the numbers and the shake follow this, not a passive's // a passive that costs health (Haunt's Lichdom) shows on the bar: at none, they are down
       isGoingToSpewFire={p.isGoingToSpewFire}
-      isShowHealthBarOnComponent={p.isShowHealthBarOnComponent}
+      isShowHealthBarOnComponent={!isPreview && p.isShowHealthBarOnComponent}
       isQuiet={!!recruitScene}
       isSpeaking={p.pieceIndex === speakingPieceIndex}
       speakingLineLength={speakingLineLength}
@@ -1206,7 +1207,7 @@ export const GameBoard = ({ viewHexes = undefined, kaijuFade = undefined, isCurt
       isFaded={false} // (Sewer 2's touch: no fade of their own; the scene's white covers them. Jamie, playtest 20)
       opacity={kaijuFade && p.avatar == 'kaiju' ? getKaijuFade(p) : undefined}
       pieceIndex={p.pieceIndex}
-      statusEffects={p.getStatusEffects && p.isVisible && !p.isDead ? p.getStatusEffects(gameManager.gameBoardPiecesManager.getPlayerTeamIndex()) : []}
+      statusEffects={!isPreview && p.getStatusEffects && p.isVisible && !p.isDead ? p.getStatusEffects(gameManager.gameBoardPiecesManager.getPlayerTeamIndex()) : []}
       cleanSlateCount={p.cleanSlateCount || 0}
       isPlayer={p === gameManager.gameBoardPiecesManager.getPlayerPiece()}
       controlMarker={controlMarker != "none" && !p.isNpc && !p.isDead && p.isOnTiles ? controlMarker : undefined}
@@ -1331,7 +1332,7 @@ export const GameBoard = ({ viewHexes = undefined, kaijuFade = undefined, isCurt
       </SceneShake>
       {gameManager.ghostFlashCount > 0 && createPortal(<ScreamFlash key={gameManager.ghostFlashCount} style={{ background: (level && level.rival && level.rival.screamFlashColor) || SCREAM_FLASH.color }} />, document.querySelector("[data-play-screen]") || document.body)}
       {recruitScene && recruitChoice && <ChoiceConfirm choice={recruitChoice} from={choiceFrom.current} board={boardRef.current} />}
-      {!isPaused && !isCurtained && edgeCarets}
+      {!isPaused && !isCurtained && !isPreview && edgeCarets}
       {!isPaused && !isCurtained && <GiantMeters gameManager={gameManager} />}
       {!isPaused && !isCurtained && trainWarning}
       {isShowingWindowSize && (

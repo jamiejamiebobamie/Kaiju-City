@@ -442,6 +442,7 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
       fadeMaskCtx.fill();
     };
 
+    let ringExtras = []; // (the class battle's ring tiles past the board's edge: { tile, opacity })
     const fadeGrid = playerCenter => {
       fadeMaskCtx.globalCompositeOperation = "source-over";
       fadeMaskCtx.clearRect(0, 0, width, height);
@@ -456,29 +457,33 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
         const board = gameManager.gameBoardManager;
         const keyOf = ({ i, j }) => `${i} ${j}`;
         // round the player, and round each Kaiju on the board (Jamie, playtest 28)
+        // (past the board's edge too: those tiles are drawn as outlines on their own, so the grid seems to go on: Jamie,
+        // playtest 29. The board's own tiles show through the mask)
         const ringsAround = center => {
           let ring = [center];
           const seen = new Set(ring.map(keyOf));
           level.hexRings.forEach((opacity, n) => {
             if (n > 0) {
-              ring = ring.flatMap(tile => board.getAdjacentTileIndices(tile)).filter(board.getIsInBounds).filter(tile => {
+              ring = ring.flatMap(tile => board.getNeighborTiles(tile)).filter(tile => {
                 if (seen.has(keyOf(tile))) return false;
                 seen.add(keyOf(tile));
                 return true;
               });
             }
             // (the first ring holds the tile itself and its neighbors: both full)
-            const tiles = n == 0 ? [...ring, ...board.getAdjacentTileIndices(ring[0]).filter(board.getIsInBounds)] : ring;
+            const tiles = n == 0 ? [...ring, ...board.getNeighborTiles(ring[0])] : ring;
             if (n == 0) tiles.forEach(tile => seen.add(keyOf(tile)));
             if (n == 0) ring = tiles;
+            tiles.filter(tile => !board.getIsInBounds(tile)).forEach(tile => ringExtras.push({ tile, opacity }));
             fadeMaskCtx.fillStyle = `rgba(0, 0, 0, ${opacity})`;
-            tiles.forEach(tile => {
+            tiles.filter(board.getIsInBounds).forEach(tile => {
               fadeMaskCtx.beginPath();
               traceTile(fadeMaskCtx, getTileCenter(grid, tile), shape);
               fadeMaskCtx.fill();
             });
           });
         };
+        ringExtras = [];
         ringsAround(gameManager.getFocusPiece().getTileIndex());
         gameManager.getPieces().filter(piece => piece.avatar == "kaiju" && !piece.isDead && piece.isOnTiles !== false && piece.getTileIndex()).forEach(piece => {
           const tile = piece.getTileIndex();
@@ -654,11 +659,24 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
         [from, to].forEach(tileIndex => drawPortal(ctx, getTileCenter(grid, tileIndex), getHexRadius(grid), closing));
       });
       ctx.globalAlpha = 1;
-      // (the class battle's rings: what's on the tiles past them goes too)
+      // (the class battle's rings: what's on the tiles past them goes too; then the rings' tiles past the board's edge)
       if (level.hexRings) {
         ctx.globalCompositeOperation = "destination-in";
         ctx.drawImage(fadeMask, 0, 0, width, height);
         ctx.globalCompositeOperation = "source-over";
+        ringExtras.forEach(({ tile, opacity }) => {
+          ctx.beginPath();
+          traceTile(ctx, getTileCenter(grid, tile), shape);
+          ctx.strokeStyle = tone.casing;
+          ctx.globalAlpha = tone.casingOpacity * opacity;
+          ctx.lineWidth = TILE_LOOK.casingWidth / zoom;
+          ctx.stroke();
+          ctx.strokeStyle = tone.line;
+          ctx.globalAlpha = tone.lineOpacity * opacity;
+          ctx.lineWidth = TILE_LOOK.lineWidth / zoom;
+          ctx.stroke();
+        });
+        ctx.globalAlpha = 1;
       }
     };
 
