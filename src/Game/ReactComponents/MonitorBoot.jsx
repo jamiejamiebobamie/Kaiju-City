@@ -122,7 +122,8 @@ const Logo = styled.img`
   top: 33.8%; /* (30% bigger, its bottom kept where it was, so the gap to Play's the same: Jamie, playtest 31; was 40%) */
   width: 93.6%; /* (was 72%) */
   transform: translate(-50%, -50%);
-  filter: drop-shadow(0 0 1.2cqw rgba(150, 60, 255, 0.85));
+  /* (a brighter, whiter purple edge, so its dark Kaiju at the sides stand out: Jamie, playtest 31; was a deep purple) */
+  filter: drop-shadow(0 0 0.25cqw rgba(236, 214, 255, 0.95)) drop-shadow(0 0 1cqw rgba(196, 140, 255, 0.8));
   animation: ${logoIn} 900ms ease-out both;
 `;
 const Bar = styled.div`
