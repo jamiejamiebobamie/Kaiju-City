@@ -1055,6 +1055,12 @@ const MetalButton = styled.button`
   ${RUBBER_BUTTON}
   /* (long labels, as the color vat's Irradiate and Back to Lab: smaller, so both fit the console. Jamie, playtest 26) */
   ${props => props.$isCompact && css`font-size: 0.8cqw; padding: 0.5cqw 0.7cqw;`}
+  /* Play! (Jamie, playtest 28): bigger, up in the console's middle and a little left (not lined up with Back) */
+  ${props => props.$isMain && css`
+    font-size: 1.6cqw;
+    padding: 0.85cqw 1.5cqw;
+    translate: -0.6cqw -${(CONSOLE.height - 2 * CONSOLE.rim) / 4}cqw; /* ('translate': the press's transform still works) */
+  `}
   &:disabled {
     cursor: default;
     opacity: 0.35;
@@ -1091,7 +1097,7 @@ export const PlayConsole = ({ isReady, playLabel, onPlay, onBack, isLeaving = fa
             <Screw key={k} $turn={turn} style={{ left: screwLeft == null ? undefined : `${screwLeft}cqw`, right: screwLeft == null ? "0.5cqw" : undefined, top: top == null ? undefined : `${top}cqw`, bottom: top == null ? "0.5cqw" : undefined }} />
           ))}
           <ReadyLight $isOn={isReady} />
-          <MetalButton disabled={!isReady} $isBacklit={isReady} $isCompact={isCompact} onClick={onPlay}>{playLabel}</MetalButton>
+          <MetalButton disabled={!isReady} $isBacklit={isReady} $isCompact={isCompact} $isMain={!isCompact} onClick={onPlay}>{playLabel}</MetalButton>
           {onBack && <MetalButton disabled={isBackDisabled} $isCompact={isCompact} onClick={onBack}>{backLabel}</MetalButton>}
         </ConsoleFace>
       </Console>
