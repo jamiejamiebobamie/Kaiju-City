@@ -44,8 +44,11 @@ export class GameBoardPieceAbility {
             // only the buffs: Haunt's Lichdom and Ice Slice's Inclement Weather (the costs) stay (Jamie)
             const others = piece.abilities.filter(other => other !== this && !CLEAN_SLATE_KEEPS.includes(other.gameBoardPieceAbilityData.element));
             // "Clean Slate!" over them when it wipes something (GameBoardPieceComponent)
-            if (others.some(other => other.isPassiveApplied)) piece.cleanSlateCount = (piece.cleanSlateCount || 0) + 1;
+            // (and Spurned: it has a good side now, no Charm takes: Jamie, playtest 26)
+            const isSpurned = piece.getIsSpurned && piece.getIsSpurned();
+            if (others.some(other => other.isPassiveApplied) || isSpurned) piece.cleanSlateCount = (piece.cleanSlateCount || 0) + 1;
             others.forEach(other => other.endAllPassives(piece));
+            if (isSpurned) piece.spurnedBy = undefined;
         }
 
         const triggerPassive = () => {

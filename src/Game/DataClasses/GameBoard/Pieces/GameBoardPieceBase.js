@@ -311,13 +311,21 @@ export class GameBoardPieceBase {
 
     // a charmed piece fights for the other team for a while. the player keeps their piece, but its keys are reversed,
     // and its power keys scrambled.
+    // Spurned: after a Charm wears off, while the one who charmed them lives (and Clean Slate hasn't cleared it)
+    getIsSpurned() {
+        if (this.isCharmed || this.spurnedBy === undefined || this.spurnedBy < 0) return false;
+        const charmer = this.gameManagerProxy.getPiece(this.spurnedBy);
+        return !!charmer && !charmer.getIsDead();
+    }
+
     updateCharm(accTime) {
         const hasNoOneToFight = this.isNpc && this.isCharmed && !this.gameManagerProxy.getHasAllyOnBoard(this.pieceIndex, this.homeTeamIndex);
         if (this.isCharmed && (accTime >= this.charmEndsAt || hasNoOneToFight)) {
             this.isCharmed = false;
             this.setTeamIndex(this.homeTeamIndex);
-            // Spurned: an NPC goes after whoever charmed them, for as long as the charmer lives
-            if (this.isNpc) this.spurnedBy = this.charmedBy;
+            // Spurned: they go after whoever charmed them, for as long as the charmer lives (the player can be Spurned too:
+            // Jamie, playtest 26)
+            this.spurnedBy = this.charmedBy;
             return;
         }
         if (!this.isOnTiles) return;
@@ -328,6 +336,8 @@ export class GameBoardPieceBase {
         // a Charm is spent on the first enemy it touches
         this.gameManagerProxy.clearTileStatusUnderPiece(this.pieceIndex);
         if (this.isCharmed) return;
+        // Spurned: no one can charm them while it lasts (Jamie, playtest 26)
+        if (this.getIsSpurned()) return;
 
         // with no one left on their old side to turn on, it hurts them instead
         if (this.isNpc && !this.gameManagerProxy.getHasAllyOnBoard(this.pieceIndex, this.teamIndex)) {
@@ -939,8 +949,7 @@ export class GameBoardPieceBase {
         // counted from 1: the first cast's passive is one stack (Jamie, playtest 22: it read one short)
         if (isTeam && burn) effects.push({ id: 'burn', count: (burn.stacks || 0) + 1 });
         if (isTeam && passive('metal')) effects.push({ id: 'builder' });
-        const charmer = this.isNpc && this.spurnedBy !== undefined && this.spurnedBy >= 0 ? this.gameManagerProxy.getPiece(this.spurnedBy) : undefined;
-        if (charmer && !charmer.getIsDead() && !this.isCharmed) effects.push({ id: 'spurned' });
+        if (this.getIsSpurned()) effects.push({ id: 'spurned' });
         if (this.isCharmed) effects.push({ id: 'charmed' });
         return effects;
     }
