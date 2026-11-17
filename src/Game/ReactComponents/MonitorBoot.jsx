@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import styled, { css, keyframes } from "styled-components";
 import { loadAssets } from "Utils/assetLoader";
 
@@ -20,6 +20,84 @@ const Screen = styled.div`
   font-family: gameboy;
   overflow: hidden;
 `;
+/*
+  Behind the logo and Play (Jamie, playtest 30: the screens were dull): a cascade of 1s and 0s in purple, matrix-style:
+  columns falling at their own speeds, each with a bright head and a trail that fades, now and then a digit flickering.
+*/
+const RAIN = { columns: 42, speed: [5, 13], fade: 0.09, head: "#f1dcff", body: [178, 92, 255], glyphs: "01" };
+const RainCanvas = styled.canvas`
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.55;
+`;
+const MatrixRain = () => {
+  const ref = useRef(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    let width = 0;
+    let height = 0;
+    let cell = 10;
+    let drops = [];
+    const resize = () => {
+      width = canvas.width = Math.max(1, canvas.clientWidth);
+      height = canvas.height = Math.max(1, canvas.clientHeight);
+      cell = width / RAIN.columns;
+      drops = [...Array(RAIN.columns)].map(() => ({ y: Math.random() * -height, speed: RAIN.speed[0] + Math.random() * (RAIN.speed[1] - RAIN.speed[0]) }));
+      ctx.fillStyle = "#05030a";
+      ctx.fillRect(0, 0, width, height);
+    };
+    resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(canvas);
+    let frameId;
+    let last = performance.now();
+    const run = () => {
+      const now = performance.now();
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      // the trails fade
+      ctx.fillStyle = `rgba(5, 3, 10, ${RAIN.fade})`;
+      ctx.fillRect(0, 0, width, height);
+      ctx.font = `${Math.round(cell * 0.95)}px gameboy, monospace`;
+      ctx.textAlign = "center";
+      const [r, g, b] = RAIN.body;
+      drops.forEach((drop, k) => {
+        const before = Math.floor(drop.y / cell);
+        drop.y += drop.speed * cell * dt;
+        const row = Math.floor(drop.y / cell);
+        if (row != before && row >= 0) {
+          const x = (k + 0.5) * cell;
+          // the one above the head turns purple; the head itself bright
+          ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+          ctx.fillText(RAIN.glyphs[Math.floor(Math.random() * RAIN.glyphs.length)], x, (row - 1) * cell);
+          ctx.fillStyle = RAIN.head;
+          ctx.fillText(RAIN.glyphs[Math.floor(Math.random() * RAIN.glyphs.length)], x, row * cell);
+        }
+        if (drop.y > height + cell * 6 && Math.random() < 0.04) {
+          drop.y = Math.random() * -height * 0.3;
+          drop.speed = RAIN.speed[0] + Math.random() * (RAIN.speed[1] - RAIN.speed[0]);
+        }
+      });
+      // now and then a digit in a trail flickers
+      if (Math.random() < 0.3) {
+        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.8)`;
+        ctx.fillText(RAIN.glyphs[Math.floor(Math.random() * 2)], (Math.floor(Math.random() * RAIN.columns) + 0.5) * cell, Math.floor(Math.random() * (height / cell)) * cell);
+      }
+      frameId = requestAnimationFrame(run);
+    };
+    frameId = requestAnimationFrame(run);
+    return () => {
+      cancelAnimationFrame(frameId);
+      observer.disconnect();
+    };
+  }, []);
+  return <RainCanvas ref={ref} aria-hidden="true" />;
+};
+
 const logoIn = keyframes`from { opacity: 0; transform: translate(-50%, -50%) scale(0.92); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); }`;
 const Logo = styled.img`
   position: absolute;
@@ -111,6 +189,7 @@ export const MonitorBoot = ({ onDone }) => {
   const isAtPlay = phase == "moving" || phase == "pressed";
   return (
     <Screen>
+      <MatrixRain />
       <Logo src="/Logo.gif" alt="" /> {/* (the splash's, moved here) */}
       {phase == "loading" ? (
         <>
