@@ -259,19 +259,21 @@ const PENDANT_LOOKS = {
 // a pendant: a round bezel with its power's icon, hung on its trace
 // "Pick three abilities" (Jamie, playtest 32): the unpicked pendants light up one after another, from the bottom-left
 // one, round clockwise
-const PENDANT_FLASH = { stepMs: 140, ms: 560 };
+// (slower and bolder, one at a time, "doo, doo, doo": Jamie, playtest 32; was 140 ms apart, 560 ms each)
+const PENDANT_FLASH = { stepMs: 800, ms: 850 };
 const pendantFlashKeys = keyframes`
-  0% { opacity: 0; transform: scale(0.9); }
-  30% { opacity: 1; transform: scale(1.08); }
-  100% { opacity: 0; transform: scale(1.15); }
+  0% { opacity: 0; transform: scale(0.92); }
+  25% { opacity: 1; transform: scale(1.12); }
+  60% { opacity: 0.85; transform: scale(1.18); }
+  100% { opacity: 0; transform: scale(1.26); }
 `;
 const PendantFlash = styled.span`
   position: absolute;
   inset: -12%;
   border-radius: 50%;
   pointer-events: none;
-  border: 0.18cqw solid ${props => props.$color};
-  box-shadow: 0 0 1cqw ${props => props.$color}, inset 0 0 0.8cqw ${props => props.$color};
+  border: 0.3cqw solid ${props => props.$color};
+  box-shadow: 0 0 1.6cqw ${props => props.$color}, 0 0 0.5cqw white, inset 0 0 1.2cqw ${props => props.$color}, inset 0 0 0.4cqw white;
   opacity: 0;
   animation: ${pendantFlashKeys} ${PENDANT_FLASH.ms}ms ease-out both;
 `;

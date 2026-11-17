@@ -190,6 +190,7 @@ export type LevelConfig = {
   spawnTiles: Array<TileIndex>; // where the player's team starts, in order. random if empty.
   goalTiles: Array<TileIndex>; // tiles highlighted to show the player where to go
   layers: Array<LevelLayer>;
+  waterTile?: { src: string; size: number; ofWidth: number }; // the sea round the picture, repeating (the Peninsula)
   foregroundLayers: Array<ForegroundLayer>;
   phases: Array<LevelPhase>;
   defaultPhases: Array<string>; // phases that are on when the level starts
@@ -824,6 +825,8 @@ const LEVEL_BUILDERS: Record<string, (file) => LevelConfig> = {
       { src: '/Map.gif', zIndex: -4 },
       { src: '/landDimmer.png', zIndex: -3 }
     ],
+    // (the sea round the picture, in its own pixels: a 128 px tile of the 500 px wide Map.gif. Jamie, playtest 32)
+    waterTile: { src: '/levels/peninsula-water-tile.gif', size: 128, ofWidth: 500 },
     kaijuEntry: {
       perimeterTiles: file.tileSets.kaijuEntry,
       bounds: { minX: -5, minY: 0, maxX: 485, maxY: 770 }

@@ -710,6 +710,7 @@ const getIsTouchScreen = () => window.matchMedia("(pointer: coarse)").matches;
 // { from, to } in tiles from the player: Kaiju farther than 'to' are unseen, nearer than 'from' whole
 const VIEW_LIFT_ROWS = 0.7;
 // 'isPreview': the class battle's board (Jamie, playtest 29): no health bars, no status icons, no off-screen markers
+const WATER_REACH_PX = 4000;
 export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade = undefined, isCurtained = false, controlMarker = "outline", speakingLineLength = 0, isSwirling = false, speakingPieceIndex = undefined, choiceFromRef = undefined, isWindowOpen = true, isPaused, gameManager, level, activePhases, isWholeScene, playWindow, isShowingWindowSize, isEditingTiles, isMouseLook, isEnemyZoom, isSlowMotion, isTeamColors, speech, recruitScene, recruitChoice, onChooseRecruit, onHotspot }) => {
   // redraws the pieces when the game updates. the tiles draw themselves.
   useSyncExternalStore(gameManager.subscribeToBoard, gameManager.getBoardRevision);
@@ -1261,6 +1262,11 @@ export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade 
   // the world, drawn once, or twice for a split screen: the second copy has no words or buttons on it
   const renderWorld = isMain => (
     <World ref={isMain ? worldRef : rightWorldRef} data-game-world={isMain ? "" : undefined} style={{ width: `${world.width}px`, height: `${world.height}px`, opacity: isPaused ? 0 : 1, transition: "opacity 0.3s", ...(!isMain && splitCameras ? { transform: splitCameras.right.getTransform() } : {}) }}>
+        {/* the sea past the picture's edges (Jamie, playtest 32: the Peninsula's wide shot showed black at its sides):
+            its water as a repeating tile, under the picture, far out round it, moving with the world */}
+        {level.waterTile && (
+          <div style={{ position: "absolute", left: -WATER_REACH_PX, top: -WATER_REACH_PX, width: world.width + 2 * WATER_REACH_PX, height: world.height + 2 * WATER_REACH_PX, zIndex: -6, pointerEvents: "none", imageRendering: "pixelated", backgroundImage: `url(${level.waterTile.src})`, backgroundSize: `${level.waterTile.size * (world.width / level.waterTile.ofWidth)}px`, backgroundPosition: `${WATER_REACH_PX}px ${WATER_REACH_PX}px`, opacity: isPaused ? 0 : 1 }} />
+        )}
         {levelLayers}
         {foregroundLayers}
         <SceneElements level={level} activePhases={activePhases} isPaused={isPaused} onHotspot={onHotspot} isDialogueLog={getIsDialogueLog()} isSettled={!isMain || !!gameManager.isRetry} />
