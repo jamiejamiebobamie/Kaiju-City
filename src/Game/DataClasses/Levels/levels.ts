@@ -572,7 +572,7 @@ const AQUARIUM_SCENE = {
   rival: {
     ...RIVAL_LOOK,
     avatar: 'mermaid',
-    abilities: ['love', 'bubble', 'wink'], touchPhase: 'tongueTouched', spot: { x: 872, y: 655 }, recruitSpot: { x: 430, y: 700 }, pronoun: 'her',
+    abilities: ['glass', 'bubble', 'wink'], touchPhase: 'tongueTouched', spot: { x: 872, y: 655 }, recruitSpot: { x: 430, y: 700 }, pronoun: 'her', // (Teleport, not Heal: Jamie, playtest 26)
     roam: { everyMs: 6000, minRows: 8, topFloorMinRows: 5 }, // all over the hall (Jamie); the top floor in the flood (playtest 18)
     linkRestMs: 15000, // a stairway she took rests: she runs to the other one
     screamFlashColor: '#ff7ad9', // her teleport flash: pink, as her Charm's, not the Rooftop's red (Jamie)

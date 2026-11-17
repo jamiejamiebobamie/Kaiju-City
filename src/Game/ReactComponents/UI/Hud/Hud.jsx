@@ -21,7 +21,7 @@ const LOADER_ICON = "fa-spinner";
 const place = (box, layer) => ({ left: `${box.x}px`, top: `${box.y}px`, width: `${box.width}px`, height: `${box.height}px`, zIndex: HUD_LAYERS[layer] });
 
 // the avatar's color: its radiation color if it has been irradiated, else its own
-export const getHudColor = avatar => getAvatarColor(avatar) || (PIECES_INFO[avatar] || {}).color || "#9fd8ff";
+export const getHudColor = (avatar, pieceColor = undefined) => getAvatarColor(avatar) || (avatar == "hazmat" && pieceColor) || (PIECES_INFO[avatar] || {}).color || "#9fd8ff";
 
 const getPortraitSrc = avatar => avatar == "guy" ? "/player_avatar.png" : avatar == "girl" ? "/teammate_avatar.png" : `/levels/portraits/hud-${avatar}.png`;
 
@@ -104,7 +104,7 @@ const Portrait = styled(Part)`
   border-radius: 50%;
   overflow: hidden;
   background: no-repeat center top / ${HUD_LOOK.portraitImageWidth * 100}% auto;
-  filter: drop-shadow(0 0 6px var(--color));
+  filter: brightness(1.25) saturate(1.1) drop-shadow(0 0 6px var(--color)) drop-shadow(0 0 2px rgba(255, 255, 255, 0.5)); /* (a little emissive: playtest 26) */
 `;
 const rewardPulse = keyframes`
   0%, 100% { box-shadow: 0 0 0 2px ${HUD_LOOK.reward.color}, 0 0 8px 2px ${HUD_LOOK.reward.color}; }
@@ -307,7 +307,7 @@ export const Hud = ({ pd, variant = "player", isPaused, damage = 0, powerDownMs 
   const damageStyle = { ...(isDamaged ? { "--dip": String(0.12 + 0.28 * damage), "--flicker-ms": `${Math.round(2600 - 1700 * damage)}ms` } : {}), ...(powerDownMs ? { "--power-down-ms": `${powerDownMs}ms` } : {}) };
   const { plate: plateId, scale } = HUD_VARIANTS[variant];
   const plate = PLATES[plateId];
-  const color = getHudColor(pd.gender);
+  const color = getHudColor(pd.gender, pd.color);
   const abilities = pd.abilities || [];
   return (
       <Root style={{ width: `${plate.width * scale}px`, height: `${plate.height * scale}px` }}>

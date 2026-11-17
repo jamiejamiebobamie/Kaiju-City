@@ -914,7 +914,8 @@ export class GameBoardPieceBase {
             tileCountModifier,
             isRewardPulse: this.getIsRewardPulse(), // health won sparring: the HUD's portrait glows red a while
             isControlled: !this.isNpc && !this.isDead, // the one the player plays as: only their HUD shows the keys 1 to 3
-            isOnBoard: this.isVisible !== false && this.isOnTiles !== false, // (its HUD comes a beat after it shows: Jamie)
+            isOnBoard: this.isVisible !== false && this.isOnTiles !== false,
+            color: this.color, // (the Hazmat Worker's orange, for his HUD: playtest 26) // (its HUD comes a beat after it shows: Jamie)
             abilities: this.abilities.map(a => a.getUiState(this.isNpc, this.accTime))
         };
     }

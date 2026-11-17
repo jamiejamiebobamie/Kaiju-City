@@ -42,7 +42,9 @@ export class GameBoardPiecesManager {
 
     getRecruitsUiState() {
         // the Hazmat Worker has a HUD again, and can be played as (Jamie, playtest 25): all of them, in the order they came
-        return this.pieces.filter(piece => piece.isRecruit).map(piece => piece.getUiState());
+        // (the Hazmat Worker first, right after the teammate: he's recruited first, on the Street: playtest 26)
+        const recruits = this.pieces.filter(piece => piece.isRecruit);
+        return [...recruits.filter(piece => piece.avatar == 'hazmat'), ...recruits.filter(piece => piece.avatar != 'hazmat')].map(piece => piece.getUiState());
     }
 
     getPlayerTeamUiState() {

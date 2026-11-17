@@ -3396,7 +3396,8 @@ export class GameManager {
         const team = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
         const recruits = team.filter(piece => piece.isRecruit);
         // the Hazmat Worker too now, in the order they came (Jamie, playtest 25: he can be played as)
-        return [...team.filter(piece => !piece.isRecruit), ...recruits];
+        // (the Hazmat Worker right after the teammate: playtest 26)
+        return [...team.filter(piece => !piece.isRecruit), ...recruits.filter(piece => piece.avatar == 'hazmat'), ...recruits.filter(piece => piece.avatar != 'hazmat')];
     }
 
     // who the camera stays with: the player, then their teammate once the player is down

@@ -30,6 +30,7 @@ export const UI = ({
   isPaused
 }) => {
   const hudsRef = useRef(null);
+  const shownKeys = useRef(new Set()); // HUDs that have shown: they stay through portals and stairs (playtest 26)
   // everyone with a HUD: the team, then the recruits in the order they came (the Hazmat Worker among them: Jamie)
   const all = [
     ...players.map((pd, i) => ({ pd, key: `player ${i}` })),
@@ -37,7 +38,8 @@ export const UI = ({
   ];
   const getHudOrder = () => {
     // only those on the board (a HUD comes a beat after its avatar shows: Jamie), and alive
-    const alive = all.filter(({ pd }) => !pd.isDead && pd.isOnBoard !== false);
+    const alive = all.filter(({ pd, key }) => !pd.isDead && (pd.isOnBoard !== false || shownKeys.current.has(key)));
+    alive.forEach(({ key }) => shownKeys.current.add(key));
     // the fight is lost (no one alive, only a restart left): no HUDs (Jamie: the original avatar's came back here)
     if (!alive.length) return [];
     const controlled = alive.find(({ pd }) => pd.isControlled);

@@ -1272,8 +1272,8 @@ describe('Charm', () => {
     expect(board.getDmg(player.pieceIndex)).toBeLessThan(0);
   });
 
-  it('the Mermaid fights with Heal, Bubble and Charm', () => {
-    expect(LEVELS.aquarium.rival.abilities).toEqual(['love', 'bubble', 'wink']);
+  it('the Mermaid fights with Teleport, Bubble and Charm', () => {
+    expect(LEVELS.aquarium.rival.abilities).toEqual(['glass', 'bubble', 'wink']);
     expect(makeFight().rival.abilities.length).toBe(3);
   });
 });

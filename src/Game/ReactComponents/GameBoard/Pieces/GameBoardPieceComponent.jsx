@@ -513,7 +513,7 @@ const StatusRow = styled.div`
   left: -15px;
   /* lower, nearer the head (Jamie, playtest 19); over a health bar, right on top of it (the bar's capsules are at about
      -43: measured in the page, playtest 20) */
-  top: ${props => props.$isAboveBar ? "-55px" : "-60px"};
+  top: ${props => props.$isAboveBar ? "-63px" : "-66px"}; /* (higher: playtest 26) */
   width: 40px;
   display: flex;
   justify-content: center;
