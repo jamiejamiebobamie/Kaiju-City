@@ -1042,9 +1042,16 @@ const FitTitleRow = ({ text, children }) => {
   return <TitleRow ref={ref} style={{ fontSize: `${size}cqw` }}>{children}</TitleRow>;
 };
 
+// (a power used in the class battle: its icon blinks, twice: Jamie, playtest 29)
+const iconBlink = keyframes`
+  0%, 50%, 100% { opacity: 1; filter: drop-shadow(0 0 0.2cqw currentColor); transform: scale(1); }
+  25%, 75% { opacity: 1; filter: brightness(1.9) drop-shadow(0 0 0.7cqw currentColor) drop-shadow(0 0 1.2cqw currentColor); transform: scale(1.18); }
+  12%, 62% { opacity: 0.35; }
+`;
 const Icon = styled.i`
   font-size: 1.9cqw;
   filter: drop-shadow(0 0 0.2cqw currentColor);
+  ${props => props.$isBlinking && css`animation: ${iconBlink} 600ms ease-out;`}
 `;
 
 const TINT = { turnDegrees: 28, saturation: 0.7, lightness: 80 };
@@ -1457,6 +1464,7 @@ export const AbilityPicker = ({
   // the battle preview's box, as a share of the game frame: the board sizes its view from it (its tiles the Peninsula's)
   const arenaRef = useRef(null);
   const [arenaWindow, setArenaWindow] = useState(null);
+  const [blinks, setBlinks] = useState({}); // each power's casts in the class battle, by element: its icon blinks on each
   const isArenaShowing = !!playerClass;
   useLayoutEffect(() => {
     if (!isArenaShowing) {
@@ -1507,11 +1515,11 @@ export const AbilityPicker = ({
             {!!playerClass && (
               <ClassLayer style={{ opacity: hovered === undefined ? 1 : 0, transitionDelay: hovered === undefined ? `${CROSSFADE.holdMs}ms` : "0ms", pointerEvents: hovered === undefined ? undefined : "none" }}>
                 <BattleBox ref={arenaRef} data-no-floating-words>
-                  {arenaWindow && <ClassBattle powers={pickedAbilities} avatar={selectedAvatar} playWindow={arenaWindow} />}
+                  {arenaWindow && <ClassBattle powers={pickedAbilities} avatar={selectedAvatar} playWindow={arenaWindow} onCast={element => setBlinks(previous => ({ ...previous, [element]: (previous[element] || 0) + 1 }))} />}
                 </BattleBox>
                 {/* the class's icons, at the screen's top (Jamie) */}
                 <IconGroup>
-                  {pickedPowers.map(({ element, activeIcon, color }) => <Icon key={element} className={`fa ${activeIcon}`} style={{ color }} />)}
+                  {pickedPowers.map(({ element, activeIcon, color }) => <Icon key={blinks[element] ? `${element}-${blinks[element]}` : element} $isBlinking={!!blinks[element]} className={`fa ${activeIcon}`} style={{ color }} />)}
                 </IconGroup>
               </ClassLayer>
             )}

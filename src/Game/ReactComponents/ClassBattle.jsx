@@ -19,7 +19,10 @@ const PREVIEW_BOARD = { pad: 6 };
 // (Kaiju seen whenever they're in the shot, their own rings lit as the avatar's: Jamie, playtest 28)
 const PREVIEW_VIEW = { hexes: 9, hexRings: [1, 0.3] };
 
-export const ClassBattle = ({ powers, avatar, playWindow }) => {
+// 'onCast': told each power the avatar uses (its element), for the class's icons to blink (Jamie, playtest 29)
+export const ClassBattle = ({ powers, avatar, playWindow, onCast = undefined }) => {
+  const onCastRef = React.useRef(onCast);
+  onCastRef.current = onCast;
   // (Jamie, playtest 26: in close on the avatar, about 6 hexes round it, the camera following; a wider board for it to
   // roam, the Kaiju coming in from its sides, seen once within 3 tiles)
   // (only the avatar's tile and its neighbors, and the next ring dim: Jamie, playtest 27)
@@ -40,13 +43,25 @@ export const ClassBattle = ({ powers, avatar, playWindow }) => {
       player.isNpc = true;
       player.decrementHealth = () => {};
     }
+    const lastCasts = {};
     const loop = new GameLoop({
       steps: [
         { everyMs: GAME_TICK.pieceMs, run: () => manager.stepPieces() },
         { everyMs: GAME_TICK.tileMs, run: () => manager.stepTiles() }
       ],
       maxCatchUpMs: GAME_TICK.maxCatchUpMs,
-      onAdvanced: () => manager.notifyBoard()
+      onAdvanced: () => {
+        manager.notifyBoard();
+        const piece = manager.gameBoardPiecesManager.getPlayerPiece();
+        if (!piece || !onCastRef.current) return;
+        piece.abilities.forEach(ability => {
+          const { element } = ability.gameBoardPieceAbilityData;
+          if (ability.accTime && ability.accTime !== lastCasts[element]) {
+            if (lastCasts[element] !== undefined || ability.accTime > 0) onCastRef.current(element);
+            lastCasts[element] = ability.accTime;
+          }
+        });
+      }
     });
     loop.start();
     setGameManager(manager);
