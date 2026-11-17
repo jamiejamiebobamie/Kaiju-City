@@ -934,6 +934,15 @@ const BATTLE = { top: 0.45, hex: { columns: 9, rows: 5 } }; // 'top': where it s
 // the live preview's box: the game's board inside it, seen through it
 // (where Jamie drew it on the side screen, then a little larger: Jamie); its edges fade to black, so the Kaiju walk
 // into the shot rather than cut into it
+// the side screen's details crossfade ('holdMs': leaving a power waits so long first): see CrossFade
+const CROSSFADE = { ms: 220, holdMs: 160 };
+
+const ClassLayer = styled.div`
+  position: absolute;
+  inset: 0;
+  transition: opacity ${CROSSFADE.ms}ms ease-in-out;
+`;
+
 const BattleBox = styled.div`
   position: absolute;
   left: 3%;
@@ -1119,7 +1128,6 @@ const SideSlot = styled.div`
   The side screen's details crossfade (Jamie, playtest 26): the old ones fade out as the new fade in. 'id': what's
   showing (a power, the class, the tamagotchi); the one before stays a moment, fading.
 */
-const CROSSFADE = { ms: 220, holdMs: 160 };
 const crossIn = keyframes`from { opacity: 0; } to { opacity: 1; }`;
 const crossOut = keyframes`from { opacity: 1; } to { opacity: 0; }`;
 const FadeLayer = styled.div`
@@ -1403,16 +1411,18 @@ export const AbilityPicker = ({
             <CrossFade id={isTamaShowing ? "tama" : hovered === undefined ? "class" : `power-${hovered}`} restIds={["tama", "class"]}>
               {isTamaShowing ? <Tamagotchi actRef={tamaRef} /> : <Info $isClass={hovered === undefined && !!playerClass}>{getInfo()}</Info>}
             </CrossFade>
-            {hovered === undefined && !!playerClass && (
-              <>
-                <BattleBox ref={arenaRef} data-no-floating-words style={{ visibility: hovered === undefined ? "visible" : "hidden" }}>
+            {/* kept while a class is picked, faded with the details (Jamie, playtest 28: it unmounted on each hover, the
+                battle restarting and building itself in again from the top left) */}
+            {!!playerClass && (
+              <ClassLayer style={{ opacity: hovered === undefined ? 1 : 0, transitionDelay: hovered === undefined ? `${CROSSFADE.holdMs}ms` : "0ms", pointerEvents: hovered === undefined ? undefined : "none" }}>
+                <BattleBox ref={arenaRef} data-no-floating-words>
                   {arenaWindow && <ClassBattle powers={pickedAbilities} avatar={selectedAvatar} playWindow={arenaWindow} />}
                 </BattleBox>
                 {/* the class's icons, at the screen's top (Jamie) */}
                 <IconGroup>
                   {pickedPowers.map(({ element, activeIcon, color }) => <Icon key={element} className={`fa ${activeIcon}`} style={{ color }} />)}
                 </IconGroup>
-              </>
+              </ClassLayer>
             )}
     </>
   );
