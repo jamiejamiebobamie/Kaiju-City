@@ -956,7 +956,7 @@ const BattleBox = styled.div`
   mask-image: linear-gradient(to right, transparent, black 9%, black 91%, transparent), linear-gradient(to bottom, transparent, black 3%, black 95%, transparent);
   mask-composite: intersect;
   overflow: hidden;
-  opacity: 0.6; /* (the whole battle, a little faded: Jamie, playtest 29) */
+  opacity: 0.9; /* (the whole battle, a little faded: Jamie, playtest 29: 0.6, then 50% brighter) */
   border-radius: 0.4cqw;
   box-shadow: inset 0 0 0.6cqw rgba(0, 0, 0, 0.8);
 `;
