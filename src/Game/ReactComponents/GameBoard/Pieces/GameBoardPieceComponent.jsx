@@ -597,6 +597,7 @@ export const GameBoardPieceComponent = ({
   hitLives = undefined, // health without the passives' (Haunt's Lichdom): what the "-1" and the shake follow
   isFaded = false,
   opacity = undefined,
+  pieceIndex = undefined, // (for the class battle's steadicam: it finds the sprite by it)
   speakingLineLength = 0
 }) => {
   // talking: they shake as long as their line takes, then rest a moment, and again (Jamie)
@@ -710,7 +711,7 @@ export const GameBoardPieceComponent = ({
   const bars = !isShowHealthBarOnComponent ? undefined : Array(lives).fill(0).map((_, i) => <Bar lives={lives} key={i} />)
   const isBarShown = !!isShowHealthBarOnComponent && lives > 0;
   return (
-    <Wrapper zIndex={zIndex} isVisible={isVisible} charLocation={charLocation} pieceScale={pieceScale} $isFaded={isFaded} $opacity={opacity}>
+    <Wrapper data-piece-index={pieceIndex} zIndex={zIndex} isVisible={isVisible} charLocation={charLocation} pieceScale={pieceScale} $isFaded={isFaded} $opacity={opacity}>
       <NumberAnchor ref={numberAnchor} />
       {!isQuiet && modifierText}
       <HealthBarWrapper lives={lives}>{bars}</HealthBarWrapper>

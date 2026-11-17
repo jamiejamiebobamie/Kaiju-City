@@ -343,7 +343,9 @@ export const buildBattlePreviewLevel = ({ columns = undefined as number | undefi
   const headroom = 4 * grid.rowStep + padPx; // (and the icons over a head: Jamie)
   const footroom = 0.3 * grid.rowStep;
   const sceneHeight = grid.originY + (rows + 1.2) * grid.rowStep + headroom + footroom + padPx;
-  columns = columns ?? Math.max(4, Math.floor((aspect * sceneHeight - 2 * grid.colStep - grid.originX) / grid.colStep - 0.5));
+  // (the board's own size from the scene's without the padding: with it, the board grew past the grid's tiles)
+  const boardSceneHeight = sceneHeight - 2 * padPx;
+  columns = columns ?? Math.max(4, Math.floor((aspect * boardSceneHeight - 2 * grid.colStep - grid.originX) / grid.colStep - 0.5));
   // (from the grid's corner, in a world just the board's size, seen whole: its edges always in view. Jamie)
   const firstI = 0;
   const firstJ = 0;
@@ -354,7 +356,7 @@ export const buildBattlePreviewLevel = ({ columns = undefined as number | undefi
   // room round the board: headroom above (a character on the top row stands well above it: Jamie saw a head cut off),
   // a little below, and at the sides as much as makes the world the box's shape
   const boardWidth = grid.originX + (columns + 0.5) * grid.colStep;
-  const sideroom = Math.max(grid.colStep, (aspect * sceneHeight - boardWidth) / 2) + padPx;
+  const sideroom = Math.max(grid.colStep, (aspect * boardSceneHeight - boardWidth) / 2) + padPx;
   const sceneWidth = boardWidth + 2 * sideroom;
   const shiftedGrid = { ...grid, originX: grid.originX + sideroom, originY: grid.originY + headroom };
   const file = { ...(peninsula as any), grid: shiftedGrid, id: 'battlePreview', sceneWidth, sceneHeight, tileLinks: [], tileSets: { base, kaijuEntry: edges, spawn: [middle], goal: [], radar: [] } };

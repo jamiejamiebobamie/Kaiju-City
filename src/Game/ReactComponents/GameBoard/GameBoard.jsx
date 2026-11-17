@@ -948,8 +948,15 @@ export const GameBoard = ({ viewHexes = undefined, kaijuFade = undefined, isCurt
         // locked on it: dead center every frame, no easing, no leaning (Jamie, playtest 27)
         const lookAt = getWorldLocation(player.charLocation);
         if (viewHexes) {
-          closeCamera.centerOn({ ...lookAt, y: lookAt.y - VIEW_LIFT_ROWS * grid.rowStep * grid.scale });
-          worldRef.current.style.transition = "";
+          // on the middle of its sprite as drawn (a piece hangs down and right of its spot: it sat off center)
+          const element = worldRef.current.querySelector(`[data-piece-index="${player.pieceIndex}"]`);
+          const middle = element
+            ? getWorldLocation({ x: player.charLocation.x + 3.5 + (element.offsetWidth * pieceScale) / 2, y: player.charLocation.y + (element.offsetHeight * pieceScale) / 2 })
+            : { ...lookAt, y: lookAt.y - VIEW_LIFT_ROWS * grid.rowStep * grid.scale };
+          closeCamera.centerOn(middle);
+          // ("none": an empty value fell back to the World's own transform transition, so the camera eased after the
+          // avatar, off center, and slid in from the top left at first: Jamie, playtest 28)
+          worldRef.current.style.transition = "none";
           worldRef.current.style.transform = closeCamera.getTransform();
           return;
         }
@@ -1198,6 +1205,7 @@ export const GameBoard = ({ viewHexes = undefined, kaijuFade = undefined, isCurt
       isRewardPulse={!!p.getIsRewardPulse && p.getIsRewardPulse()}
       isFaded={false} // (Sewer 2's touch: no fade of their own; the scene's white covers them. Jamie, playtest 20)
       opacity={kaijuFade && p.avatar == 'kaiju' ? getKaijuFade(p) : undefined}
+      pieceIndex={p.pieceIndex}
       statusEffects={p.getStatusEffects && p.isVisible && !p.isDead ? p.getStatusEffects(gameManager.gameBoardPiecesManager.getPlayerTeamIndex()) : []}
       cleanSlateCount={p.cleanSlateCount || 0}
       isPlayer={p === gameManager.gameBoardPiecesManager.getPlayerPiece()}

@@ -14,8 +14,10 @@ import { GameBoard } from "./GameBoard/GameBoard";
   can't die (its health never goes down; it doesn't show).
   'playWindow': the arena's place in the game frame, as fractions of it (the board sizes its view from it).
 */
-const PREVIEW_BOARD = { columns: 17, rows: 5, pad: 6 };
-const PREVIEW_VIEW = { hexes: 9, hexRings: [1, 0.3], kaijuFade: { from: 1.9, to: 2.7 } };
+// (the board as before the steadicam, so the Kaiju reach the avatar as soon: Jamie, playtest 28; room round it for the camera)
+const PREVIEW_BOARD = { pad: 6 };
+// (Kaiju seen whenever they're in the shot, their own rings lit as the avatar's: Jamie, playtest 28)
+const PREVIEW_VIEW = { hexes: 9, hexRings: [1, 0.3] };
 
 export const ClassBattle = ({ powers, avatar, playWindow }) => {
   // (Jamie, playtest 26: in close on the avatar, about 6 hexes round it, the camera following; a wider board for it to
@@ -65,7 +67,6 @@ export const ClassBattle = ({ powers, avatar, playWindow }) => {
       activePhases={[]}
       isWholeScene={false}
       viewHexes={PREVIEW_VIEW.hexes}
-      kaijuFade={PREVIEW_VIEW.kaijuFade}
       playWindow={playWindow}
       isShowingWindowSize={false}
       isEditingTiles={false}

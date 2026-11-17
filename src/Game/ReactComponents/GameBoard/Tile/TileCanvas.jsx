@@ -454,28 +454,35 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
         fadeMaskCtx.globalCompositeOperation = "source-over";
         fadeMaskCtx.clearRect(0, 0, width, height);
         const board = gameManager.gameBoardManager;
-        const focus = gameManager.getFocusPiece();
         const keyOf = ({ i, j }) => `${i} ${j}`;
-        let ring = [focus.getTileIndex()];
-        const seen = new Set(ring.map(keyOf));
-        level.hexRings.forEach((opacity, n) => {
-          if (n > 0) {
-            ring = ring.flatMap(tile => board.getAdjacentTileIndices(tile)).filter(board.getIsInBounds).filter(tile => {
-              if (seen.has(keyOf(tile))) return false;
-              seen.add(keyOf(tile));
-              return true;
+        // round the player, and round each Kaiju on the board (Jamie, playtest 28)
+        const ringsAround = center => {
+          let ring = [center];
+          const seen = new Set(ring.map(keyOf));
+          level.hexRings.forEach((opacity, n) => {
+            if (n > 0) {
+              ring = ring.flatMap(tile => board.getAdjacentTileIndices(tile)).filter(board.getIsInBounds).filter(tile => {
+                if (seen.has(keyOf(tile))) return false;
+                seen.add(keyOf(tile));
+                return true;
+              });
+            }
+            // (the first ring holds the tile itself and its neighbors: both full)
+            const tiles = n == 0 ? [...ring, ...board.getAdjacentTileIndices(ring[0]).filter(board.getIsInBounds)] : ring;
+            if (n == 0) tiles.forEach(tile => seen.add(keyOf(tile)));
+            if (n == 0) ring = tiles;
+            fadeMaskCtx.fillStyle = `rgba(0, 0, 0, ${opacity})`;
+            tiles.forEach(tile => {
+              fadeMaskCtx.beginPath();
+              traceTile(fadeMaskCtx, getTileCenter(grid, tile), shape);
+              fadeMaskCtx.fill();
             });
-          }
-          // (the first ring holds the player's tile and its neighbors: both full)
-          const tiles = n == 0 ? [...ring, ...board.getAdjacentTileIndices(ring[0]).filter(board.getIsInBounds)] : ring;
-          if (n == 0) tiles.forEach(tile => seen.add(keyOf(tile)));
-          if (n == 0) ring = tiles;
-          fadeMaskCtx.fillStyle = `rgba(0, 0, 0, ${opacity})`;
-          tiles.forEach(tile => {
-            fadeMaskCtx.beginPath();
-            traceTile(fadeMaskCtx, getTileCenter(grid, tile), shape);
-            fadeMaskCtx.fill();
           });
+        };
+        ringsAround(gameManager.getFocusPiece().getTileIndex());
+        gameManager.getPieces().filter(piece => piece.avatar == "kaiju" && !piece.isDead && piece.isOnTiles !== false && piece.getTileIndex()).forEach(piece => {
+          const tile = piece.getTileIndex();
+          if (board.getIsInBounds(tile)) ringsAround(tile);
         });
         ctx.globalCompositeOperation = "destination-in";
         ctx.drawImage(fadeMask, 0, 0, width, height);
