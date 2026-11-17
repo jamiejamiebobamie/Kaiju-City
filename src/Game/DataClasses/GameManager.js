@@ -3222,10 +3222,15 @@ export class GameManager {
         // standing beside them, they lie on a tile of their own, on the same row as the team: never across the scenery behind (the Rooftop's graves)
         const { x, y } = isStandingBeside ? getTileCenter(this.level.grid, getTileNearSpot(0, CUTSCENE.besideBodyRows)) : recruitSpot;
         const getTileNear = (columns, rows) => this.gameBoardManager.getClosestWalkableTileToLocation({ x: x + columns * colStep * scale, y: y + rows * rowStep * scale });
-        const [player, teammate] = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
+        // the teammate by who they are, not by place in the team: a recruit there would be stood back up, dead (Jamie,
+        // playtest 26: the punk, fallen on the Rooftop, stood at its choice, then was gone from the next battle)
+        const team = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
+        const player = team[0];
+        const teammate = team.find(piece => piece != player && !piece.isRecruit);
 
         const stand = (piece, tile, facingDir = 'down') => {
-            if (piece.getIsDead()) piece.respawn(this.accTime);
+            // (a fallen recruit is gone for good: only the player and the teammate get up again)
+            if (piece.getIsDead() && !piece.isRecruit) piece.respawn(this.accTime);
             piece.initCharLocation(true, tile);
             piece.facingDir = facingDir;
         };
