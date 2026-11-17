@@ -1412,8 +1412,12 @@ export const AbilityPicker = ({
   const isTamaShowing = hovered === undefined && !playerClass;
   const sideScreen = (
     <>
-            <CrossFade id={isTamaShowing ? "tama" : hovered === undefined ? "class" : `power-${hovered}`} restIds={["tama", "class"]}>
-              {isTamaShowing ? <Tamagotchi actRef={tamaRef} /> : <Info $isClass={hovered === undefined && !!playerClass}>{getInfo()}</Info>}
+            {/* the tamagotchi stays on (its own state), faded in and out as the rest crossfades (Jamie, playtest 29) */}
+            <ClassLayer style={{ opacity: isTamaShowing ? 1 : 0, transitionDelay: isTamaShowing ? `${CROSSFADE.holdMs}ms` : "0ms", pointerEvents: isTamaShowing ? undefined : "none" }}>
+              <Tamagotchi actRef={tamaRef} />
+            </ClassLayer>
+            <CrossFade id={isTamaShowing ? "none" : hovered === undefined ? "class" : `power-${hovered}`} restIds={["none", "class"]}>
+              {isTamaShowing ? null : <Info $isClass={hovered === undefined && !!playerClass}>{getInfo()}</Info>}
             </CrossFade>
             {/* kept while a class is picked, faded with the details (Jamie, playtest 28: it unmounted on each hover, the
                 battle restarting and building itself in again from the top left) */}
