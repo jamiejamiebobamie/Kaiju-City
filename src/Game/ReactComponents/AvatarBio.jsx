@@ -260,6 +260,17 @@ const BalloonGrain = styled.div`
   animation: ${grainShift} 0.2s steps(4) infinite;
 `;
 
+// each letter pops in as it's typed (Jamie, playtest 29): a little big and bright, settling
+const charPop = keyframes`
+  0% { transform: scale(1.9); opacity: 0; color: white; }
+  45% { transform: scale(0.9); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+`;
+const PopChar = styled.span`
+  display: inline-block;
+  ${props => !props.$isQuick && css`animation: ${charPop} 220ms ease-out both;`}
+`;
+
 const balloonPop = keyframes`
   0% { opacity: 0; transform: scale(0.6); }
   70% { opacity: 1; transform: scale(1.06); }
@@ -328,7 +339,7 @@ const AgentCall = () => {
         <Static />
         <Tear />
       </AgentFeed>
-      {isBalloonUp && <AgentBalloon style={isQuick ? { animation: "none" } : undefined}><BalloonGrain />{AGENT_CALL.line.slice(0, typed)}</AgentBalloon>}
+      {isBalloonUp && <AgentBalloon style={isQuick ? { animation: "none" } : undefined}><BalloonGrain />{[...AGENT_CALL.line.slice(0, typed)].map((char, k) => char == " " ? " " : <PopChar key={k} $isQuick={isQuick}>{char}</PopChar>)}</AgentBalloon>}
       {/* the rolling bar over everything on the screen, the balloon too (Jamie, playtest 29) */}
       <RollBar />
     </Screen>
