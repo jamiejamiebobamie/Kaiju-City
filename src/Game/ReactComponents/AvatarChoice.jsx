@@ -136,6 +136,8 @@ const KeyNumber = styled.span`
   font-size: 18px;
   -webkit-text-stroke: 1px white; /* (outlined, as the names: playtest 26) */
   paint-order: stroke fill;
+  /* and a dark shadow down and to the right, outline and all (Jamie, playtest 27: still hard to read) */
+  filter: drop-shadow(2px 2px 0 #1b0a2a);
   color: #c9c3d6;
   transition: color 120ms;
   visibility: ${props => props.$isHidden ? "hidden" : "visible"};
@@ -354,6 +356,7 @@ const AvatarName = styled.span`
   /* a white outline, so it reads against the Lab (Jamie, playtest 26) */
   -webkit-text-stroke: 1px white;
   paint-order: stroke fill;
+  filter: drop-shadow(2px 2px 0 #1b0a2a); /* (a dark shadow, down and to the right: Jamie, playtest 27) */
   color: ${CHOICE.textColor};
   text-shadow: 0 0 4px ${CHOICE.textColor};
   opacity: 0.8;

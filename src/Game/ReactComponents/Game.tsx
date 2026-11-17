@@ -256,9 +256,12 @@ const titleArrive = keyframes`
   to { opacity: 1; transform: scale(1); }
 `;
 
+// (larger, and on two lines where it breaks well: Jamie, playtest 27)
 const EndTitle = styled.div`
   font-family: gameboy;
-  font-size: min(5.2cqw, 4.3vw);
+  font-size: min(7.4cqw, 6.1vw);
+  line-height: 1.15;
+  white-space: pre-line;
   text-transform: uppercase;
   text-align: center;
   color: #ff2a4d;
@@ -271,6 +274,20 @@ const EndTitle = styled.div`
     0 0 2.5cqw #ff0040;
   animation: ${titleArrive} 1.4s ease-out both;
 `;
+
+// a title of more than one word on two lines, split where the two are most even ("Kaiju" over "Terminated")
+const breakTitle = (title: string) => {
+  const words = String(title).split(" ");
+  if (words.length < 2) return title;
+  let best = 1;
+  words.forEach((_, k) => {
+    if (k == 0) return;
+    const gap = (split: number) => Math.abs(words.slice(0, split).join(" ").length - words.slice(split).join(" ").length);
+    if (gap(k) < gap(best)) best = k;
+  });
+  return `${words.slice(0, best).join(" ")}
+${words.slice(best).join(" ")}`;
+};
 
 // on the button Enter (and 1) presses: "[ENTER]" in yellow (Jamie, playtest 24). gameboy has no brackets: a monospace's
 const EnterHint = styled.span`
@@ -1924,7 +1941,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
               </SlideAway></SlideClip>
               {matchEnd && (
                 <EndScreen>
-                  {matchEnd.isFinale ? <FinaleCredits title={matchEnd.title} onDone={endWithMonitorOff} /> : <EndTitle>{matchEnd.title}</EndTitle>}
+                  {matchEnd.isFinale ? <FinaleCredits title={matchEnd.title} onDone={endWithMonitorOff} /> : <EndTitle>{breakTitle(matchEnd.title)}</EndTitle>}
                   {(!level.rival || level.isTraining || winner !== GameResult.PlayerWon) && <EndButtons>{matchEnd.buttons.map(({ text, onClick }, index) => <EndButton key={text} data-enter={index == 0 ? "" : undefined} data-choice-key={index == 0 ? 1 : undefined} onClick={onClick}>{text}{index == 0 && <EnterKeyHint />}</EndButton>)}</EndButtons>}
                 </EndScreen>
               )}
