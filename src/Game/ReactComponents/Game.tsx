@@ -1176,8 +1176,10 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   // from the walking Peninsula into a scene (Jamie, playtest 26: the Street's blur-rotate, every time): the map spins
   // and blurs away, then the clouds carry on into it
   const swirlThenClouds = callback => {
+    // (other walking scenes, as the sewers: the monitor's own fade, no clouds: clouds are only the landing's and the
+    // walking Peninsula's ways into scenes. Jamie, playtests 25 and 26: sewer 1 to 2, sewer 2 to the Lab fight)
     if (!level.isMapWalk) {
-      leaveWithClouds(callback);
+      fadeOutThen(callback);
       return;
     }
     setIsSwirling(true);
