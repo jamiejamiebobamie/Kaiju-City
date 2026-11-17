@@ -1173,6 +1173,17 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     setTimeout(() => fadeOutThen(() => { setIsSwirling(false); showSection(index); }), SWIRL.panMs + SWIRL.swirlMs);
   };
 
+  // from the walking Peninsula into a scene (Jamie, playtest 26: the Street's blur-rotate, every time): the map spins
+  // and blurs away, then the clouds carry on into it
+  const swirlThenClouds = callback => {
+    if (!level.isMapWalk) {
+      leaveWithClouds(callback);
+      return;
+    }
+    setIsSwirling(true);
+    setTimeout(() => leaveWithClouds(() => { setIsSwirling(false); callback(); }), SWIRL.swirlMs);
+  };
+
   // a stop off a map walk: the Lab, or a battleground won on before. the walk carries on after.
   const visitSite = site => {
     const visitLevelId = site.visitLevelId || 'labIntro';
@@ -1450,7 +1461,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     if (fallen.length) setFallenRecruits(list => [...list, ...fallen.filter(avatar => !list.includes(avatar))]);
     if (level.isWalkingLevel && isWon && gameManager.current && gameManager.current.isTrainingChosen) {
       const trainingLevelId = gameManager.current.trainingLevelId || level.training.levelId;
-      leaveWithClouds(() => startTraining(trainingLevelId));
+      swirlThenClouds(() => startTraining(trainingLevelId));
       return;
     }
     // the training's end (Jamie): won, the recruit's power (or, sparring, a training point each for the player and the
@@ -1480,7 +1491,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     }
     if (level.isWalkingLevel && isWon) {
       const site = gameManager.current && gameManager.current.reachedSite;
-      leaveWithClouds(site && site.isDetour ? () => visitSite(site) : leaveLevel);
+      swirlThenClouds(site && site.isDetour ? () => visitSite(site) : leaveLevel);
       return;
     }
     if (isWon && level.agentDrops) unlockRecruitSkill("agent");
