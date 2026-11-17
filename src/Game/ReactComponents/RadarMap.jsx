@@ -18,7 +18,7 @@ export const RADAR = {
   sweepTrail: 0.9, // the fading light behind the sweep, in radians
   // the outline lit by the sweep as it passes (Jamie, 2026-11-15), then fading over the turn, never below 'outlineLeast'
   // (Jamie, playtest 29: far more dramatic: the outline all but gone until the sweep "saves" it, flaring and glowing)
-  outlineLeast: 0.06, outlineFadeShare: 0.6, outlineSteps: 10, outlineGlow: 16, outlineWidthLit: 3.2,
+  outlineLeast: 0.06, outlineFadeShare: 0.22, outlineSteps: 10, outlineGlow: 16, outlineWidthLit: 3.2,
   rings: 4, // range rings round the Lab
   dotColor: "#ff4a4a", // red, glowing (Jamie, 2026-11-10; was a soft purple)
   dotGlow: "#ff1a1a",
