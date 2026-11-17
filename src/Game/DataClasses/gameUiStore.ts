@@ -18,6 +18,7 @@ export const gameUiStore = proxy({
   activePhases: [],
   isWideShot: false,
   isCutscene: false,
+  isHudsKept: false, // (a scene that keeps the HUDs up: the Peninsula's arrival)
   unlockMessage: '',
   unlockImage: '',
   speech: null,

@@ -30,25 +30,30 @@ export const UI = ({
   isPaused
 }) => {
   const hudsRef = useRef(null);
-  const getHudOrder = (players, recruits) => {
-    const all = [
-      ...players.map((pd, i) => ({ pd, playerIndex: i, isRecruit: false })),
-      ...(recruits || []).map((pd, i) => ({ pd, playerIndex: players.length + i, isRecruit: true }))
-    ];
-    const alive = all.filter(({ pd }) => !pd.isDead);
+  // everyone with a HUD: the team, then the recruits in the order they came (the Hazmat Worker among them: Jamie)
+  const all = [
+    ...players.map((pd, i) => ({ pd, key: `player ${i}` })),
+    ...(recruits || []).map(pd => ({ pd, key: `recruit ${pd.gender}` }))
+  ];
+  const getHudOrder = () => {
+    // only those on the board (a HUD comes a beat after its avatar shows: Jamie), and alive
+    const alive = all.filter(({ pd }) => !pd.isDead && pd.isOnBoard !== false);
     // the fight is lost (no one alive, only a restart left): no HUDs (Jamie: the original avatar's came back here)
     if (!alive.length) return [];
     const controlled = alive.find(({ pd }) => pd.isControlled);
     return controlled ? [controlled, ...alive.filter(hud => hud !== controlled)] : alive;
   };
   // the HUDs that show, top to bottom: the one played as at the player's size, the rest teammates', compact in a
-  // crowd (more than three: Jamie). They fly as drones (HudFlock).
-  const order = isShowingHuds ? getHudOrder(players, recruits) : [];
-  const hudOrder = order.map(({ pd, playerIndex, isRecruit }, k) => ({
-    key: isRecruit ? `recruit ${playerIndex}` : `player ${playerIndex}`,
+  // crowd (more than three: Jamie). The one played as just died, and no one's taken over yet: the top waits for whoever
+  // does (their HUD rises into it then). They fly as drones (HudFlock).
+  const order = isShowingHuds ? getHudOrder() : [];
+  const hasControlled = order.some(({ pd }) => pd.isControlled);
+  const hudOrder = order.map(({ pd, key }, k) => ({
+    key,
     pd,
-    variant: k == 0 ? "player" : order.length > 3 ? "compact" : "teammate"
+    variant: k == 0 && hasControlled ? "player" : order.length > 3 ? "compact" : "teammate"
   }));
+  const deadKeys = all.filter(({ pd }) => pd.isDead).map(({ key }) => key);
 
   const [hudScale, setHudScale] = useState(1);
 
@@ -68,7 +73,7 @@ export const UI = ({
       </TopBar>
       {/* paused: everything fades, and only the word "Paused" shows */}
       <div ref={hudsRef} style={{ display: "contents" }} />
-      <HudFlock order={hudOrder} isShowing={isShowingHuds} scale={hudScale} isPaused={isPaused} />
+      <HudFlock order={hudOrder} isShowing={isShowingHuds} scale={hudScale} isPaused={isPaused} deadKeys={deadKeys} isTopReserved={order.length > 0 && !hasControlled} />
     </>
   );
 };

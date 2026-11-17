@@ -41,8 +41,8 @@ export class GameBoardPiecesManager {
     }
 
     getRecruitsUiState() {
-        // no HUD for the Hazmat Worker (a helper: Jamie, playtest 23)
-        return this.pieces.filter(piece => piece.isRecruit && piece.avatar != 'hazmat').map(piece => piece.getUiState());
+        // the Hazmat Worker has a HUD again, and can be played as (Jamie, playtest 25): all of them, in the order they came
+        return this.pieces.filter(piece => piece.isRecruit).map(piece => piece.getUiState());
     }
 
     getPlayerTeamUiState() {

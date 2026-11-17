@@ -70,6 +70,7 @@ export const PLATES = {
 */
 const LAYER_ORDER = [
   "plateBack", // the plate behind
+  "readouts", // everything shown in the holes, together (so it can flicker as one, and go dark: never the metal)
   "portraitBack", // the portrait's circuit disc, in the avatar's color
   "portrait",
   "health",
@@ -106,7 +107,9 @@ export const HUD_LOOK = {
   passiveIcon: 0.62,
   passiveDim: 0.2,
   // the passive's smoke when it first works: the sprite's shape, as many socket-widths wide
-  smoke: { src: "spritesheet/passiveAbilityActivationSprite_TEST.png", frames: 11, frameWidth: 77.46, frameHeight: 214, widthInSockets: 3.2, ms: 750 },
+  // (passiveSmoke.png: the old sheet with room above, its smoke fading out before the top: it ended on a hard edge.
+  // 'ring': the ring at a frame's foot, its middle and width as shares of the frame: it wraps the passive's icon)
+  smoke: { src: "/spritesheet/passiveSmoke.png", frames: 11, frameWidth: 77.46, frameHeight: 284, ring: { y: 249 / 284, width: 0.49 }, ringOverIcon: 1.18, ms: 750 },
   health: { equalFrom: 4, maxCapsules: 16, shareOfBar: 80, from: "#d22b2b", to: "#880808", bonus: ["#2bd24a", "#065d1c"], lost: ["#dfdfdf", "#c8c8c8"] },
   deathWords: { text: "Wasted!", color: "rgb(113, 255, 113)" },
   healthFlicker: { low: 0.6, high: 0.9, ms: 50 }, // the health's hologram flicker (brighter: it is under the glass now)

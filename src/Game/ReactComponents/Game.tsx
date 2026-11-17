@@ -594,7 +594,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const { selectedAvatar, setSelectedAvatar, selectedTeammate, setSelectedTeammate, selectedDifficulty, settingsManager } = useContext(GlobalSettingsContext);
   const { objectiveText, isObjectiveKaijuCount, objectiveCount } = useSnapshot(gameUiStore);
   const { takeOverCount, takeOverText } = useSnapshot(gameUiStore);
-  const { isPaused, winner, isPlayerDead, players, recruits, kaijuKillCount, kaijuToWin, activePhases, isWideShot, isCutscene, unlockMessage, unlockImage, speech, recruitScene, dialogueLog, isDialogueWaiting, isTalking, isRecruitTalkDone, speakingPieceIndex } = useSnapshot(gameUiStore);
+  const { isPaused, winner, isPlayerDead, players, recruits, kaijuKillCount, kaijuToWin, activePhases, isWideShot, isCutscene, unlockMessage, unlockImage, speech, recruitScene, dialogueLog, isDialogueWaiting, isTalking, isRecruitTalkDone, speakingPieceIndex, isHudsKept } = useSnapshot(gameUiStore);
   const [isRadioAlarm, setIsRadioAlarm] = useState(false); // the radio call has told of Kaiju coming: the siren glows
   const recruitChoiceFrom = useRef(undefined); // where the pressed Recruit or Terminate button was, for its word to fly from
   const [isClickThrough, setClickThrough] = useState(getIsClickThrough); // a playtest: each line in the log waits for a key or a click
@@ -1462,7 +1462,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   );
 
   // what stands beside the monitor in a game: the HUDs, the dialogue panel, the Lab's color vat
-  const isHudsShowing = !isEditingTiles && !isLogClosing && (!level.isWalkingLevel || isRewarding) && !isCutscene && !recruitScene && !(matchEnd && matchEnd.isFinale);
+  const isHudsShowing = !isEditingTiles && !isLogClosing && (!level.isWalkingLevel || isRewarding) && (!isCutscene || isHudsKept) && !recruitScene && !(matchEnd && matchEnd.isFinale);
   const isLogShowing = labScreen != "colors" && (isCutscene || !!recruitScene || isTalking);
   const isBesideShowing = isHudsShowing || isLogShowing || labScreen == "colors";
   const gameWindow = isBesideShowing || isAdjustingWindow ? playWindow : getCenteredWindow(playWindow);
@@ -1903,7 +1903,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
               kaijuKilledToWin={kaijuToWin}
               isKaijuLevel={!!level.kaijuEntry}
               isCountOnBezel={!isWindowOpen}
-              isShowingHuds={(!level.isWalkingLevel || isRewarding) && !isCutscene && !recruitScene && !(matchEnd && matchEnd.isFinale)}
+              isShowingHuds={(!level.isWalkingLevel || isRewarding) && (!isCutscene || isHudsKept) && !recruitScene && !(matchEnd && matchEnd.isFinale)}
               isShowingTopBar={!isCutscene && !recruitScene}
               isPaused={isPaused}
             />}

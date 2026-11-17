@@ -92,12 +92,11 @@ describe('playtest 18', () => {
     expect(rival.moveToTiles).toEqual([]);
   });
 
-  it('F1: the player down, they play on as the teammate, then the recruits, the Hazmat Worker last', () => {
+  it('F1: the player down, they play on as the teammate, then the recruits in the order they came, the Hazmat Worker among them', () => {
     const gm = makeGame(LEVELS.peninsula, { isTakeOverOnDeath: true, autoRecruits: ['hazmat', 'punk'], recruits: ['hazmat', 'punk'] });
     for (let k = 0; k < 4000 && gm.cutscene; k++) gm.stepPieces();
     const order = gm.getTakeOverOrder().map(({ avatar, isRecruit }) => isRecruit ? avatar : 'team');
-    expect(order).not.toContain('hazmat'); // a helper: never played as (playtest 23)
-    expect(order).toContain('punk');
+    expect(order).toEqual(['team', 'team', 'hazmat', 'punk']); // he can be played as now (playtest 25)
     const [player, teammate] = gm.getPieces();
     player.isDead = true;
     player.getIsDead = () => true;

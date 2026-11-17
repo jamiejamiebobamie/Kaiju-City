@@ -63,8 +63,21 @@ const malfunction = keyframes`
 const flickering = css`
   animation: ${malfunction} var(--flicker-ms) steps(1) infinite;
 `;
-const FlickerPlate = styled(Plate)`
-  ${props => props.$isDamaged && flickering}
+// dying (Jamie): the readouts blink and fade into the dark, and stay dark: its power's gone
+const powerDown = keyframes`
+  0% { filter: brightness(1); }
+  12% { filter: brightness(0.25); }
+  18% { filter: brightness(1.1); }
+  34% { filter: brightness(0.2); }
+  40% { filter: brightness(0.8); }
+  62% { filter: brightness(0.12); }
+  68% { filter: brightness(0.45); }
+  100% { filter: brightness(0.04); }
+`;
+// everything in the holes, as one layer under the metal
+const Readouts = styled(Part)`
+  ${props => props.$isDamaged && !props.$isPoweringDown && flickering}
+  ${props => props.$isPoweringDown && css`animation: ${powerDown} var(--power-down-ms) linear forwards;`}
 `;
 
 // ---- the portrait: a circuit disc in the avatar's color, its glow, and the figure ----
@@ -73,7 +86,6 @@ const discTurn = keyframes`
   to { -webkit-mask-position: 100% 50%; mask-position: 100% 50%; }
 `;
 const PortraitBack = styled(Part)`
-  ${props => props.$isDamaged && flickering}
   border-radius: 50%;
   overflow: hidden;
   background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--color) ${HUD_LOOK.portraitGlow * 100}%, transparent), #05070a 72%);
@@ -249,8 +261,8 @@ const Smoke = styled(Part)`
   ${props => props.$isPlaying && css`animation: ${smokePlay} ${HUD_LOOK.smoke.ms}ms steps(${HUD_LOOK.smoke.frames - 1}) forwards;`}
 `;
 
-const Passive = ({ box, ability }) => {
-  const { element, passiveName, color, isPassiveApplied, accTime } = ability;
+const PassiveSmoke = ({ box, ability }) => {
+  const { color, isPassiveApplied, accTime } = ability;
   const [isSmoking, setIsSmoking] = useState(false);
   const smokeKey = useRef(0);
   // the smoke each time it works anew
@@ -261,16 +273,25 @@ const Passive = ({ box, ability }) => {
     const done = setTimeout(() => setIsSmoking(false), HUD_LOOK.smoke.ms + 50);
     return () => clearTimeout(done);
   }, [isPassiveApplied, accTime]);
-  const smokeWidth = box.width * HUD_LOOK.smoke.widthInSockets;
-  const smokeHeight = smokeWidth * (HUD_LOOK.smoke.frameHeight / HUD_LOOK.smoke.frameWidth);
-  const smokeBox = { x: box.x + box.width / 2 - smokeWidth / 2, y: box.y + box.height * 0.6 - smokeHeight, width: smokeWidth, height: smokeHeight };
+  const smokeBox = getSmokeBox(box);
+  return isSmoking ? <Smoke key={smokeKey.current} $isPlaying style={{ ...place(smokeBox, "passiveSmoke"), "--color": color }} /> : null;
+};
+
+// the smoke's box: its ring round the passive's icon, centered on it
+export const getSmokeBox = box => {
+  const { smoke } = HUD_LOOK;
+  const width = (Math.max(box.width, box.height) * smoke.ringOverIcon) / smoke.ring.width;
+  const height = width * (smoke.frameHeight / smoke.frameWidth);
+  const middle = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  return { x: middle.x - width / 2, y: middle.y - height * smoke.ring.y, width, height };
+};
+
+const Passive = ({ box, ability }) => {
+  const { element, passiveName, color, isPassiveApplied } = ability;
   return (
-    <>
-      <PassiveSocket title={passiveName} $isLit={!!isPassiveApplied} style={{ ...place(box, "passives"), "--color": color, fontSize: `${box.height * HUD_LOOK.passiveIcon}px` }}>
-        <i className={`fa ${PASSIVE_ICONS[element]}`} />
-      </PassiveSocket>
-      {isSmoking && <Smoke key={smokeKey.current} $isPlaying style={{ ...place(smokeBox, "passiveSmoke"), "--color": color }} />}
-    </>
+    <PassiveSocket title={passiveName} $isLit={!!isPassiveApplied} style={{ ...place(box, "passives"), "--color": color, fontSize: `${box.height * HUD_LOOK.passiveIcon}px` }}>
+      <i className={`fa ${PASSIVE_ICONS[element]}`} />
+    </PassiveSocket>
   );
 };
 
@@ -278,10 +299,10 @@ const Passive = ({ box, ability }) => {
   'pd': the piece's HUD data (GameBoardPieceBase.getUiState); 'variant': "player", "teammate" or "compact"
   (HUD_VARIANTS); 'isControlled': the one the player plays as (only its powers show their keys).
 */
-// 'damage': 0 (whole) to 1 (dead): how much its decorative layers flicker
-export const Hud = ({ pd, variant = "player", isPaused, damage = 0 }) => {
+// 'damage': 0 (whole) to 1 (dead): how much its readouts flicker; 'powerDownMs': dying, its readouts go dark over this long
+export const Hud = ({ pd, variant = "player", isPaused, damage = 0, powerDownMs = undefined }) => {
   const isDamaged = damage > 0.05;
-  const damageStyle = isDamaged ? { "--dip": String(0.15 + 0.3 * damage), "--flicker-ms": `${Math.round(2600 - 1700 * damage)}ms` } : undefined;
+  const damageStyle = { ...(isDamaged ? { "--dip": String(0.12 + 0.28 * damage), "--flicker-ms": `${Math.round(2600 - 1700 * damage)}ms` } : {}), ...(powerDownMs ? { "--power-down-ms": `${powerDownMs}ms` } : {}) };
   const { plate: plateId, scale } = HUD_VARIANTS[variant];
   const plate = PLATES[plateId];
   const color = getHudColor(pd.gender);
@@ -290,18 +311,23 @@ export const Hud = ({ pd, variant = "player", isPaused, damage = 0 }) => {
       <Root style={{ width: `${plate.width * scale}px`, height: `${plate.height * scale}px` }}>
         <Art style={{ width: `${plate.width}px`, height: `${plate.height}px`, transform: `scale(${scale})`, "--color": color }}>
           <Plate style={{ ...place({ x: 0, y: 0, width: plate.width, height: plate.height }, "plateBack"), backgroundImage: `url(${plate.back})`, filter: HUD_LOOK.plateBackFilter }} />
-          <PortraitBack $isDamaged={isDamaged} style={{ ...place(plate.portrait, "portraitBack"), ...damageStyle }} />
-          <Portrait style={{ ...place(plate.portrait, "portrait"), backgroundImage: `url(${getPortraitSrc(pd.gender)})` }} />
+          <Readouts $isDamaged={isDamaged} $isPoweringDown={!!powerDownMs} style={{ ...place({ x: 0, y: 0, width: plate.width, height: plate.height }, "readouts"), ...damageStyle }}>
+            <PortraitBack style={place(plate.portrait, "portraitBack")} />
+            <Portrait style={{ ...place(plate.portrait, "portrait"), backgroundImage: `url(${getPortraitSrc(pd.gender)})` }} />
+            {!pd.isDead && <Health box={plate.health} health={pd.lives} modifier={pd.livesModifier} />}
+            {abilities.slice(0, plate.actives.length).map((ability, k) => (
+              <Active key={k} box={plate.actives[k]} keyBox={plate.keys[k]} ability={ability} keyNum={pd.isControlled ? k + 1 : undefined} isPaused={isPaused} />
+            ))}
+            {abilities.slice(0, plate.passives.length).map((ability, k) => (
+              <Passive key={k} box={plate.passives[k]} ability={ability} />
+            ))}
+          </Readouts>
+          <Plate style={{ ...place({ x: 0, y: 0, width: plate.width, height: plate.height }, "plateFront"), backgroundImage: `url(${plate.front})` }} />
+          {!powerDownMs && abilities.slice(0, plate.passives.length).map((ability, k) => (
+            <PassiveSmoke key={k} box={plate.passives[k]} ability={ability} />
+          ))}
           {pd.isRewardPulse && <RewardGlow style={place(plate.portrait, "rewardGlow")} />}
-          {!pd.isDead && <Health box={plate.health} health={pd.lives} modifier={pd.livesModifier} />}
           {pd.isDead && <DeathWords style={place(plate.health, "deathWords")}>{HUD_LOOK.deathWords.text}</DeathWords>}
-          {abilities.slice(0, plate.actives.length).map((ability, k) => (
-            <Active key={k} box={plate.actives[k]} keyBox={plate.keys[k]} ability={ability} keyNum={pd.isControlled ? k + 1 : undefined} isPaused={isPaused} />
-          ))}
-          {abilities.slice(0, plate.passives.length).map((ability, k) => (
-            <Passive key={k} box={plate.passives[k]} ability={ability} />
-          ))}
-          <FlickerPlate $isDamaged={isDamaged} style={{ ...place({ x: 0, y: 0, width: plate.width, height: plate.height }, "plateFront"), backgroundImage: `url(${plate.front})`, ...damageStyle }} />
         </Art>
       </Root>
   );

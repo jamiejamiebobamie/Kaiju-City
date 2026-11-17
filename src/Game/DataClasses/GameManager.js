@@ -97,7 +97,8 @@ export const CAMERA_THREATS = {
   statuses: ['isGhosted', 'isWooded', 'isCold', 'isCharming', 'isSeaGhost'], // powers that chase their target. not Heal.
   kaijuNearRows: 16, // a Kaiju still walking in counts once it is this close to the player, in tile rows
   ghostDangerRows: 4, // an NPC's defensive powers answer a launched ghost this close (getIsBossThreatNear)
-  deathHoldMs: 3500 // whoever the camera follows dies: it stays on them this long (wall time) before it moves on
+  deathHoldMs: 4000 // whoever the camera follows dies: it stays on them this long (wall time) before it moves on (long enough
+  // for their HUD to go dark, fall and explode first: Jamie, playtest 25)
 };
 
 // the final battle's end (onGiantDrained), in milliseconds
@@ -2192,13 +2193,14 @@ export class GameManager {
     // 'isMidFight': a scene in the middle of a fight (a boss's scream, a walk through a portal): it holds the fight,
     // but the HUDs stay up and the log stays closed
     // 'isNoEstablish': no hold on the whole scene first (back from a training win: Jamie, playtest 20)
-    startCutscene(steps, { isMidFight = false, isPortalWalk = false, isNoEstablish = false } = {}) {
+    // 'keepsHuds': the HUDs stay up through it (the Peninsula's arrival: each comes as its avatar shows: Jamie)
+    startCutscene(steps, { isMidFight = false, isPortalWalk = false, isNoEstablish = false, keepsHuds = false } = {}) {
         if (!isPortalWalk) this.endTravelForScene();
         if (!isMidFight && !isPortalWalk) this.spreadOutForScene();
         // in the log, a conversation in a wide shot cuts to each speaker: first it holds on the whole scene
         const [first] = steps;
         if (!isNoEstablish && getIsDialogueLog() && first && first.speech && first.shot && first.shot.isWide) steps = [{ shot: { isWide: true }, ms: DIALOGUE.establishMs }, ...steps];
-        this.cutscene = { steps, index: -1, msLeft: 0, isMidFight };
+        this.cutscene = { steps, index: -1, msLeft: 0, isMidFight, keepsHuds };
         this.nextCutsceneStep();
     }
 
@@ -2461,7 +2463,7 @@ export class GameManager {
                 { shot: heldShot, ms: getSpeechMs(ARRIVAL_LINE), speech: { name: this.getTeammateName(), text: ARRIVAL_LINE, x, y: y - CUTSCENE.recruitSpeechRows * rowStep * scale, isShout: true, speakerIndex: teammate.pieceIndex } }
             );
         }
-        this.startCutscene(steps);
+        this.startCutscene(steps, { keepsHuds: true });
     }
 
     // the whole level, a pull in on the bystander and the part, their words, then the touch
@@ -3371,11 +3373,8 @@ export class GameManager {
     getTakeOverOrder() {
         const team = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
         const recruits = team.filter(piece => piece.isRecruit);
-        // never the Hazmat Worker: a helper with no attack, he can't be played as (Jamie, playtest 23)
-        return [
-            ...team.filter(piece => !piece.isRecruit),
-            ...recruits.filter(piece => piece.avatar != 'hazmat')
-        ];
+        // the Hazmat Worker too now, in the order they came (Jamie, playtest 25: he can be played as)
+        return [...team.filter(piece => !piece.isRecruit), ...recruits];
     }
 
     // who the camera stays with: the player, then their teammate once the player is down
@@ -3571,6 +3570,7 @@ export class GameManager {
             activePhases: this.getActivePhases(),
             isWideShot: this.getIsWideShot(),
             isCutscene: !!this.cutscene && !this.cutscene.isMidFight, // a mid-fight scene keeps the HUDs up
+            isHudsKept: !!this.cutscene && !!this.cutscene.keepsHuds,
             unlockMessage: this.unlockMessage,
             unlockImage: this.unlockImage,
             speech: this.speech,
