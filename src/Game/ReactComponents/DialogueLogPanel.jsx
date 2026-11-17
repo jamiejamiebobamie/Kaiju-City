@@ -391,8 +391,101 @@ const TypedText = ({ text, isTyping, isRushed = false, onType, onDone }) => {
   'footer': anything else to choose from, stacked under the words (the Recruit or Terminate buttons).
 */
 // 'onClosing': told when it starts and stops coming apart, so the HUDs can wait for it
+/*
+  The panel's hologram (Jamie, playtest 29): it's projected from a point on the main monitor's side: a green,
+  see-through cone of light from there out to the panel's corners, its edges glowing; it opens out from the point as the
+  panel builds, and flickers with it.
+*/
+const HOLO = { apexDown: 0.42, inset: 6, color: "109, 255, 160" };
+const holoOpen = keyframes`
+  from { transform: scale(0.02); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+`;
+const holoFlicker = keyframes`
+  0%, 100% { opacity: 1; }
+  47% { opacity: 1; }
+  48% { opacity: 0.7; }
+  50% { opacity: 1; }
+  83% { opacity: 0.85; }
+  84% { opacity: 1; }
+`;
+const HoloConeWrap = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 2147483639;
+  pointer-events: none;
+  animation: ${holoFlicker} 2.7s steps(1) infinite;
+`;
+const HoloOpen = styled.g`
+  transform-box: view-box;
+  animation: ${holoOpen} 450ms ease-out both;
+`;
+const HoloLayer = styled.svg`
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2147483639;
+  pointer-events: none;
+  overflow: visible;
+`;
+const HoloCone = ({ panelRef }) => {
+  const layerRef = useRef(null);
+  const [shape, setShape] = useState(null);
+  useEffect(() => {
+    let frameId;
+    let last = "";
+    const measure = () => {
+      const layer = layerRef.current;
+      const panel = panelRef.current;
+      const casing = document.querySelector("[data-tv-casing]");
+      if (layer && panel && casing) {
+        const l = layer.getBoundingClientRect();
+        const p = panel.getBoundingClientRect();
+        const c = casing.getBoundingClientRect();
+        const next = {
+          apex: { x: c.right - l.left - HOLO.inset, y: c.top - l.top + c.height * HOLO.apexDown },
+          tl: { x: p.left - l.left, y: p.top - l.top }, tr: { x: p.right - l.left, y: p.top - l.top },
+          br: { x: p.right - l.left, y: p.bottom - l.top }, bl: { x: p.left - l.left, y: p.bottom - l.top }
+        };
+        const key = JSON.stringify(next);
+        if (key != last) {
+          last = key;
+          setShape(next);
+        }
+      }
+      frameId = requestAnimationFrame(measure);
+    };
+    measure();
+    return () => cancelAnimationFrame(frameId);
+  }, []);
+  const pt = ({ x, y }) => `${x.toFixed(1)},${y.toFixed(1)}`;
+  return (
+    <HoloLayer ref={layerRef} aria-hidden="true">
+      {shape && (
+        <>
+          <defs>
+            <linearGradient id="holoFade" gradientUnits="userSpaceOnUse" x1={shape.apex.x} y1={shape.apex.y} x2={shape.tl.x} y2={shape.apex.y}>
+              <stop offset="0" stopColor={`rgba(${HOLO.color}, 0.55)`} />
+              <stop offset="1" stopColor={`rgba(${HOLO.color}, 0.08)`} />
+            </linearGradient>
+          </defs>
+          <HoloOpen style={{ transformOrigin: `${shape.apex.x}px ${shape.apex.y}px` }}>
+            <polygon points={[shape.apex, shape.tl, shape.bl].map(pt).join(" ")} fill="url(#holoFade)" />
+            <polygon points={[shape.apex, shape.tl, shape.tr, shape.br, shape.bl].map(pt).join(" ")} fill={`rgba(${HOLO.color}, 0.04)`} />
+            <line x1={shape.apex.x} y1={shape.apex.y} x2={shape.tl.x} y2={shape.tl.y} stroke={`rgba(${HOLO.color}, 0.6)`} strokeWidth="1.2" style={{ filter: `drop-shadow(0 0 3px rgb(${HOLO.color}))` }} />
+            <line x1={shape.apex.x} y1={shape.apex.y} x2={shape.bl.x} y2={shape.bl.y} stroke={`rgba(${HOLO.color}, 0.6)`} strokeWidth="1.2" style={{ filter: `drop-shadow(0 0 3px rgb(${HOLO.color}))` }} />
+          </HoloOpen>
+          <circle cx={shape.apex.x} cy={shape.apex.y} r="3.5" fill={`rgb(${HOLO.color})`} style={{ filter: `drop-shadow(0 0 6px rgb(${HOLO.color}))` }} />
+        </>
+      )}
+    </HoloLayer>
+  );
+};
+
 export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, actions = [], footer = null, onClosing = undefined, onBuilt = undefined }) => {
   const scrollRef = useRef(null);
+  const panelRef = useRef(null);
   // Continue (Enter, 1, a click) while the newest line still types: it finishes the line first; the next press goes on
   // (Jamie, playtest 19)
   const newestKey = entries.length ? entries[entries.length - 1].key : undefined;
@@ -485,7 +578,8 @@ export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, ac
   return (
     <>
     <BuildEffect />
-    <Panel onClick={() => isWaiting && handleContinue()}>
+    <HoloConeWrap><HoloCone panelRef={panelRef} /></HoloConeWrap>
+    <Panel ref={panelRef} onClick={() => isWaiting && handleContinue()}>
       <GreenBar $isTop />
       <Scroll ref={scrollRef} style={{ top: `${headerHeight}px`, paddingTop: "0.8cqw" }} onScroll={({ currentTarget }) => setIsMoreAbove(currentTarget.scrollTop > 2)} onWheel={() => { isFollowing.current = false; }} onTouchMove={() => { isFollowing.current = false; }}>
         {isBuilt && entries.map(({ key, who, name, text, avatar, chain }, index) => {
