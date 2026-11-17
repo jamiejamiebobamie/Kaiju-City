@@ -524,10 +524,27 @@ const ArmBar = styled.div`
 const Arm = ({ box }) => (
   <ArmBar style={{ left: `${ARM.fromCqw}cqw`, width: `${box.left - ARM.fromCqw}cqw`, top: `${box.top + box.height / 2 - ARM.thickness / 2}cqw`, height: `${ARM.thickness}cqw` }} />
 );
+// (Jamie, playtest 32: they looked paper-thin as they turned: real depth now, a back and two sides in 3D; the front's
+// parts hide when turned away, so the back shows instead of a mirror of the front)
+const DEPTH_CQW = 1.6;
 const HINGED = css`
   transform-origin: 0 50%;
-  backface-visibility: hidden;
+  transform-style: preserve-3d;
+  & > *:not([data-depth]) { backface-visibility: hidden; }
 `;
+const DepthFace = styled.div`
+  position: absolute;
+  pointer-events: none;
+  backface-visibility: visible;
+`;
+// the unit's back and its two sides, 'radius' its corners' rounding (the sides kept within it)
+const Depth = ({ radius = 1.4 }) => (
+  <>
+    <DepthFace data-depth style={{ inset: 0, borderRadius: `${radius}cqw`, transform: `translateZ(-${DEPTH_CQW}cqw) rotateY(180deg)`, background: "linear-gradient(to bottom, #2a2725, #121110)", boxShadow: "inset 0 0 0 0.15cqw #080808" }} />
+    <DepthFace data-depth style={{ left: "100%", top: `${radius * 0.6}cqw`, bottom: `${radius * 0.6}cqw`, width: `${DEPTH_CQW}cqw`, transformOrigin: "left center", transform: "rotateY(90deg)", background: "linear-gradient(to right, #3a3633, #1a1817)" }} />
+    <DepthFace data-depth style={{ right: "100%", top: `${radius * 0.6}cqw`, bottom: `${radius * 0.6}cqw`, width: `${DEPTH_CQW}cqw`, transformOrigin: "right center", transform: "rotateY(-90deg)", background: "linear-gradient(to left, #3a3633, #1a1817)" }} />
+  </>
+);
 
 const miniFlyOff = getFlyOffKeyframes(FLY_OFF.devices.mini);
 const consoleFlyOff = getFlyOffKeyframes(FLY_OFF.devices.console);
@@ -1307,6 +1324,7 @@ export const PlayConsole = ({ isReady, playLabel, onPlay, onBack, isLeaving = fa
       <Wires delayMs={MINI_TIMING.riseDelayMs + MINI_TIMING.flyMs - 250} wires={CONSOLE_WIRES} ripFor={isLeaving ? "console" : undefined} />
       <Arm box={CONSOLE} />
       <Console $isLeaving={isLeaving}>
+        <Depth radius={1.4} />
         {isLeaving
           ? null
           : null /* (no thrusters: it swings on its hinge now) */}
@@ -1397,6 +1415,7 @@ export const SideFrame = ({ children, brow = null, isPoweredOff = false, isLeavi
       <Wires delayMs={MINI_TIMING.wiresAtMs} ripFor={isLeaving ? "mini" : undefined} />
       <Arm box={MINI} />
       <MiniMonitor $isLeaving={isLeaving}>
+        <Depth radius={2} />
         {isLeaving
           ? null
           : null /* (no thrusters: it swings on its hinge now) */}
