@@ -417,6 +417,9 @@ const FadeToBlack = styled.div`
   animation: ${fadeIn} 0.9s ease-in both;
 `;
 
+// leaving a scene with HUDs up: this long for them to fly off before the next scene (playtest 26)
+const SIDE_EXIT_MS = 900;
+
 // between scenes. the clouds pass over these.
 const SCENE_FADE = {
   outMs: 450,
@@ -769,6 +772,9 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
       return;
     }
     if (pullOrigin) return;
+    // every side element goes as the zoom back starts (Jamie, playtest 26): HUDs, dialogue panel, side monitor, console
+    setIsSideLeaving(true);
+    setIsFlyingOff(true);
     const casing = document.querySelector("[data-tv-casing]");
     const box = casing && casing.getBoundingClientRect();
     ROOM_HANDOFF.isFrozen = true;
@@ -813,6 +819,9 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const [labCover, setLabCover] = useState(undefined); // 'in' or 'out': the Lab screen's fade from or to black
   const [fadeCards, setFadeCards] = useState(undefined); // the screen is fading to black, and these are the unlocks shown on it
   const [isFadingOut, setIsFadingOut] = useState(false);
+  // leaving the scene (or the game, by Leave): the HUDs and the dialogue panel go
+  const [isSideLeaving, setIsSideLeaving] = useState(false);
+  const hudsShowingRef = useRef(false);
   const [isWiping, setIsWiping] = useState(false);
   const isLeavingScene = useRef(false);
 
@@ -822,15 +831,20 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     gameManager.current = null;
     isLeavingScene.current = false;
     setIsFadingOut(false);
+    setIsSideLeaving(false);
     setIsWiping(false);
   };
 
   // the next scene only ever comes up out of a black screen
+  // (and everything beside the monitor goes first: the HUDs fly off, the dialogue panel comes apart, and the scene waits
+  // for them. Jamie, playtest 26: after every battle)
   const fadeOutThen = callback => {
     if (isLeavingScene.current) return;
     isLeavingScene.current = true;
     setIsFadingOut(true);
-    setTimeout(callback, SCENE_FADE.outMs);
+    const isAsideUp = hudsShowingRef.current;
+    setIsSideLeaving(true);
+    setTimeout(callback, isAsideUp ? Math.max(SCENE_FADE.outMs, SIDE_EXIT_MS) : SCENE_FADE.outMs);
   };
 
   const leaveWithClouds = callback => {
@@ -885,6 +899,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     gameLoop.current.start();
     isLeavingScene.current = false;
     setIsFadingOut(false);
+    setIsSideLeaving(false);
     if (matchLevel.id == 'labIntro') unlockTool('abilityEditor');
     setIsEditingTiles(false);
     setMatchCount(count => count + 1);
@@ -1040,7 +1055,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     else startMatch(LEVELS[sectionLevelId], false, kills);
   };
 
-  if (import.meta.env.DEV) Object.assign((window as any).__kaiju || {}, { showSection, endWithMonitorOff }); // dev only: scripted browser checks
+  if (import.meta.env.DEV) Object.assign((window as any).__kaiju || {}, { showSection, endWithMonitorOff, openLabScreen: (screen: string) => openLabScreen(screen) }); // dev only: scripted browser checks
 
   // after a loss: the same fight again, without the call or the opening words a second time
   const retrySection = index => {
@@ -1504,8 +1519,9 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   );
 
   // what stands beside the monitor in a game: the HUDs, the dialogue panel, the Lab's color vat
-  const isHudsShowing = !isEditingTiles && !isLogClosing && (!level.isWalkingLevel || isRewarding) && (!isCutscene || isHudsKept) && !recruitScene && !(matchEnd && matchEnd.isFinale);
-  const isLogShowing = labScreen != "colors" && (isCutscene || !!recruitScene || isTalking);
+  const isHudsShowing = !isEditingTiles && !isLogClosing && !isSideLeaving && (!level.isWalkingLevel || isRewarding) && (!isCutscene || isHudsKept) && !recruitScene && !(matchEnd && matchEnd.isFinale);
+  hudsShowingRef.current = isHudsShowing;
+  const isLogShowing = !isSideLeaving && labScreen != "colors" && (isCutscene || !!recruitScene || isTalking);
   const isBesideShowing = isHudsShowing || isLogShowing || labScreen == "colors";
   const gameWindow = isBesideShowing || isAdjustingWindow ? playWindow : getCenteredWindow(playWindow);
 
@@ -1525,13 +1541,20 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   // Play! (Jamie): the side monitor and the console fly off right, ripping their wires out, gone before the first
   // scene; the screen's fade to black runs as they go. (From the Lab, straight back.)
   const playFromConsole = () => {
+    if (isFlyingOff) return;
+    // (back to the Lab too: the side units fly off first. Jamie, playtest 26)
     if (isLabPicker) {
-      handleClickPlay();
+      flyOffThen(handleClickPlay);
       return;
     }
-    if (isFlyingOff) return;
     setIsFlyingOff(true);
     setTimeout(handleClickPlay, Math.max(0, FLY_OFF.ms - SCREEN_FADE.ms + 100));
+  };
+  // the side units fly off, then 'callback' (the picker's own buttons too)
+  const flyOffThen = callback => {
+    if (isFlyingOff) return;
+    setIsFlyingOff(true);
+    setTimeout(callback, Math.max(0, FLY_OFF.ms - SCREEN_FADE.ms + 100));
   };
   // Back from the avatar select (Jamie): the side screen switches off first, as it came on
   const backFromAvatarSelect = () => {
@@ -1581,9 +1604,9 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
               handleClickHome={handleClickHome}
               pickedAbilities={pickedAbilities}
               setPickedAbilities={setPickedAbilities}
-              handleClickPlay={handleClickPlay}
+              handleClickPlay={playFromConsole}
               playLabel={isLabPicker ? "Back to Lab" : undefined}
-              onBack={isLabPicker ? returnToLab : undefined}
+              onBack={isLabPicker ? () => flyOffThen(returnToLab) : undefined}
               isTeammate={isTeammate}
               setIsTeammate={setIsTeammate}
             />
@@ -1931,7 +1954,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
               )}
               entries={dialogueLog}
               isWaiting={isDialogueWaiting}
-              isVisible={labScreen != "colors" && (isCutscene || !!recruitScene || isTalking)} // paused, it stays as it was (Jamie)
+              isVisible={!isSideLeaving && labScreen != "colors" && (isCutscene || !!recruitScene || isTalking)} // paused, it stays as it was (Jamie)
               onContinue={() => gameManager.current && gameManager.current.advanceDialogue()}
               onBuilt={setIsLogBuilt}
               onClosing={isClosing => {
@@ -1947,7 +1970,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
               kaijuKilledToWin={kaijuToWin}
               isKaijuLevel={!!level.kaijuEntry}
               isCountOnBezel={!isWindowOpen}
-              isShowingHuds={(!level.isWalkingLevel || isRewarding) && (!isCutscene || isHudsKept) && !recruitScene && !(matchEnd && matchEnd.isFinale)}
+              isShowingHuds={isHudsShowing}
               isShowingTopBar={!isCutscene && !recruitScene}
               isPaused={isPaused}
             />}
