@@ -62,7 +62,7 @@ describe('open items', () => {
     gm.ghostRing = undefined;
   });
 
-  it('4. the Rooftop without the player’s Dispel: the teammate brings it, stays with them, and says so the first time she casts Haunt', () => {
+  it('4. the Rooftop without the player’s Dispel: the teammate brings it, stays with them, and says so the first time one of her Haunt ghosts is in view', () => {
     const gm = makeGame(LEVELS.rooftop);
     const teammate = gm.getPieces()[1];
     expect(teammate.isGuardian).toBe(true);
@@ -70,12 +70,16 @@ describe('open items', () => {
     // with the player's own Dispel, the teammate is as usual
     const withDispel = makeGame(LEVELS.rooftop, { elements: ['Fire', 'Bubble', 'Metal'] });
     expect(withDispel.getPieces()[1].isGuardian).toBeFalsy();
-    // not before she has cast Haunt (playtest 25: it waited for her ghosts to meet their Dispel)
-    const haunt = gm.rivalPiece.abilities.find(ability => ability.gameBoardPieceAbilityData.element == 'death');
+    // not before one of her Haunt ghosts is in view (playtest 25: a cast out of shot means nothing to the player)
     gm.updateGuardianLine();
     expect(gm.speech).toBeFalsy();
-    // her first Haunt: their line, once
-    haunt.lastCastAt = 1;
+    const player = gm.getControlledPiece();
+    const near = gm.gameBoardManager.getTilesInFlatArray().find(tile => {
+      const { x, y } = gm.gameBoardManager.getCharXAndYFromTileIndex(tile.tileIndex);
+      return Math.hypot(x - player.charLocation.x, y - player.charLocation.y) < 40;
+    });
+    near.getTileStatus = () => ({ getAppliedStatus: () => 'isGhosted' });
+    near.cast = { casterIndex: gm.rivalPiece.pieceIndex };
     gm.updateGuardianLine();
     expect(gm.speech && gm.speech.text).toBe("Let's stick together. I'll block her ghosts.");
     gm.speech = null;

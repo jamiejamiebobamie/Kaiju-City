@@ -61,6 +61,8 @@ const CLONES_SWEEP = { zoomScale: 2.4, pxPerMs: 0.22, gapPxPerMs: 1.5, gapPx: 40
 
 // taking over an ally (updateTakeOver): the camera's move in on them, and how long the fight holds there
 const TAKE_OVER = { panMs: 600, holdMs: 1800 };
+// the Rooftop's no-Bubble line: her Haunt's ghost within this many rows of the player (as if on screen: playtest 25)
+const GUARDIAN_LINE = { seeRows: 7 };
 
 // the Aquarium: within this many rows of the stairs, the player is going up for the Mermaid (getIsAtAquariumStairs)
 const AQUARIUM_STAIRS_NEAR_ROWS = 2.5;
@@ -1891,15 +1893,26 @@ export class GameManager {
     getIsDispelledByTeam = spot => this.getIsDispelledAt(spot);
 
     /*
-        The guardian's line (once): the first time Ghost Girl casts Haunt (Jamie, playtest 25: it waited for her phase
-        ghosts to meet their Dispel).
+        The guardian's line (once): the first time her Haunt's ghost is where the player can see it (Jamie, playtest 25:
+        it waited for her ghosts to meet their Dispel; and a cast out of shot means nothing to the player). The game
+        doesn't know the camera's view: within GUARDIAN_LINE.seeRows rows of the player stands in for it (in his runs,
+        crossing the bridge to her building).
     */
     updateGuardianLine() {
         const guardian = this.ghostGuardian;
         const rival = this.rivalPiece;
         if (!guardian || guardian.isDead || this.hasGuardianSpoken || !rival) return;
-        const haunt = rival.abilities.find(ability => ability.gameBoardPieceAbilityData.element == 'death');
-        if (!haunt || haunt.lastCastAt === undefined) return;
+        const player = this.getControlledPiece();
+        if (!player || !player.charLocation) return;
+        const { rowStep, scale } = this.level.grid;
+        const seePx = GUARDIAN_LINE.seeRows * rowStep * scale;
+        const isGhostSeen = this.gameBoardManager.getTilesInFlatArray().some(tile => {
+            const status = tile.getTileStatus && tile.getTileStatus();
+            if (!status || status.getAppliedStatus() != 'isGhosted' || !tile.cast || tile.cast.casterIndex != rival.pieceIndex) return false;
+            const { x, y } = this.gameBoardManager.getCharXAndYFromTileIndex(tile.tileIndex);
+            return Math.hypot(x - player.charLocation.x, y - player.charLocation.y) <= seePx;
+        });
+        if (!isGhostSeen) return;
         this.hasGuardianSpoken = true;
         const { text } = getDialogueLine('rooftop.guardian');
         this.speech = this.fillSpeech({ ...this.getSpeechOver(guardian, this.getTeammateName(), text), isShout: true });
