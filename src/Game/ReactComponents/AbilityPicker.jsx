@@ -101,7 +101,7 @@ const FadingIn = styled.div`
 // the count of powers picked, "0/3" to "3/3", at the top right (Jamie)
 const PickCount = styled.div`
   position: absolute;
-  right: ${(40 / STAGE.width) * 100}%;
+  left: ${(40 / STAGE.width) * 100}%; /* (on the left now, as far in: Jamie, playtest 32; was on the right) */
   top: ${(36 / STAGE.height) * 100}%;
   font-family: gameboy;
   font-size: ${(44 / STAGE.height) * 100}cqh; /* (bigger: Jamie; was 26) */
@@ -257,6 +257,25 @@ const PENDANT_LOOKS = {
 };
 
 // a pendant: a round bezel with its power's icon, hung on its trace
+// "Pick three abilities" (Jamie, playtest 32): the unpicked pendants light up one after another, from the bottom-left
+// one, round clockwise
+const PENDANT_FLASH = { stepMs: 140, ms: 560 };
+const pendantFlashKeys = keyframes`
+  0% { opacity: 0; transform: scale(0.9); }
+  30% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 0; transform: scale(1.15); }
+`;
+const PendantFlash = styled.span`
+  position: absolute;
+  inset: -12%;
+  border-radius: 50%;
+  pointer-events: none;
+  border: 0.18cqw solid ${props => props.$color};
+  box-shadow: 0 0 1cqw ${props => props.$color}, inset 0 0 0.8cqw ${props => props.$color};
+  opacity: 0;
+  animation: ${pendantFlashKeys} ${PENDANT_FLASH.ms}ms ease-out both;
+`;
+
 const Pendant = styled.button`
   position: absolute;
   pointer-events: auto;
@@ -1521,6 +1540,12 @@ export const AbilityPicker = ({
   const stubs = useMemo(() => getStubs(angles), [angles]);
 
   const getIsPicked = power => pickedAbilities.includes(power.getElementUppercase());
+  // the flash's order: the unpicked ones from the bottom-left (the halo's last angle) round clockwise (falling angles)
+  const flashOrder = {};
+  powers.map((power, k) => ({ k, degrees: angles[k], isPicked: getIsPicked(power) }))
+    .filter(({ isPicked }) => !isPicked)
+    .sort((a, b) => b.degrees - a.degrees)
+    .forEach(({ k }, order) => { flashOrder[k] = order; });
 
   const togglePower = power => {
     const element = power.getElementUppercase();
@@ -1585,7 +1610,8 @@ export const AbilityPicker = ({
   // the battle preview's box, as a share of the game frame: the board sizes its view from it (its tiles the Peninsula's)
   const arenaRef = useRef(null);
   const [arenaWindow, setArenaWindow] = useState(null);
-  const [blinks, setBlinks] = useState({}); // each power's casts in the class battle, by element: its icon blinks on each
+  const [blinks, setBlinks] = useState({});
+  const [pendantFlash, setPendantFlash] = useState(0); // each "Pick three abilities": the unpicked pendants flash in turn // each power's casts in the class battle, by element: its icon blinks on each
   const isArenaShowing = !!playerClass;
   useLayoutEffect(() => {
     if (!isArenaShowing) {
@@ -1634,7 +1660,7 @@ export const AbilityPicker = ({
             {/* the tamagotchi stays on (its own state), faded in and out as the rest crossfades (Jamie, playtest 29) */}
             <ClassLayer style={{ opacity: isTamaShowing ? 1 : 0, transitionDelay: isTamaShowing ? `${CROSSFADE.holdMs}ms` : "0ms", pointerEvents: isTamaShowing ? undefined : "none" }}>
               {/* (the pet's own screen lifted, a band left under it for the buttons' words: Jamie, playtest 30) */}
-              <div style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: "3.2cqw" }}><Tamagotchi actRef={tamaRef} /></div>
+              <div style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: "3.2cqw" }}><Tamagotchi actRef={tamaRef} onPickThree={() => setPendantFlash(count => count + 1)} /></div>
               <ButtonWords />
             </ClassLayer>
             <CrossFade id={isTamaShowing ? "none" : hovered === undefined ? "class" : `power-${hovered}`} restIds={["none", "class"]}>
@@ -1746,6 +1772,9 @@ export const AbilityPicker = ({
               onMouseEnter={() => setHovered(k)}
               onMouseLeave={() => setHovered(undefined)}
             >
+              {pendantFlash > 0 && !getIsPicked(power) && flashOrder[k] !== undefined && (
+                <PendantFlash key={`flash-${pendantFlash}`} $color={power.color} style={{ animationDelay: `${flashOrder[k] * PENDANT_FLASH.stepMs}ms` }} />
+              )}
               {getIsPicked(power) && lockIns[power.getElementUppercase()] && (
                 <React.Fragment key={lockIns[power.getElementUppercase()]}>
                   <ConfirmRays $color={power.color} />

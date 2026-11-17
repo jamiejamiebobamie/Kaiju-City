@@ -1,4 +1,4 @@
-import React, { useEffect, useImperativeHandle, useState } from "react";
+import React, { useEffect, useImperativeHandle, useRef, useState } from "react";
 import styled, { css, keyframes } from "styled-components";
 
 /*
@@ -514,8 +514,14 @@ const Block = styled.div`
 `;
 
 // 'actRef': the side monitor's buttons call actRef.current(label)
-export const Tamagotchi = ({ actRef }) => {
+// 'onPickThree': told each time it says "Pick three abilities" (the picker's pendants flash: Jamie, playtest 32)
+export const Tamagotchi = ({ actRef, onPickThree = undefined }) => {
   const [pet, setPet] = useState(PET);
+  const onPickThreeRef = useRef(onPickThree);
+  onPickThreeRef.current = onPickThree;
+  useEffect(() => {
+    if (pet.clock < pet.speakingUntil && /pick three/i.test(pet.line || "") && onPickThreeRef.current) onPickThreeRef.current();
+  }, [pet.speakingUntil]);
   useEffect(() => {
     const tick = setInterval(() => {
       if (isHeld || document.hidden) return;
