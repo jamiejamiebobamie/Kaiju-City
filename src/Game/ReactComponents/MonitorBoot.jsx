@@ -159,7 +159,7 @@ const playBlink = keyframes`
 const PlayButton = styled.div`
   position: absolute;
   left: 50%;
-  top: 79%; /* (low, a smidge above 5/6 of the way down: Jamie, playtest 29) */
+  top: 73.7%; /* (up 2/5 of the gap under the logo: Jamie, playtest 31; was 79%) */
   transform: translate(-50%, -50%);
   padding: 1cqw 3cqw;
   font-size: 2cqw;
