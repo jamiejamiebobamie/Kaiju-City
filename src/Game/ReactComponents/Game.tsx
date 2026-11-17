@@ -1552,8 +1552,9 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const isHudsShowing = !isEditingTiles && !isLogClosing && !isSideLeaving && (!level.isWalkingLevel || isRewarding) && (!isCutscene || isHudsKept) && !recruitScene && !(matchEnd && matchEnd.isFinale);
   hudsShowingRef.current = isHudsShowing;
   const isLogShowing = !isSideLeaving && labScreen != "colors" && (isCutscene || !!recruitScene || isTalking);
-  const isBesideShowing = isHudsShowing || isLogShowing || labScreen == "colors";
-  const gameWindow = isBesideShowing || isAdjustingWindow ? playWindow : getCenteredWindow(playWindow);
+  // the monitor holds its place through the game (Jamie, playtest 27: it eased to the middle whenever nothing was
+  // beside it, and back as HUDs or the dialogue panel came: shifting after battles, at the Agent, at the Hazmat Worker)
+  const gameWindow = playWindow;
 
   // the screens before a game (the avatar select and the power picker) are on the Kaiju-Vision monitor (Jamie, 2026-11-14),
   // one and the same monitor through both (its bezel buttons, display and light as in a game: Jamie), with the
