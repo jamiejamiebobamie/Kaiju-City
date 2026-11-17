@@ -184,7 +184,8 @@ const Static = styled.div`
   background-size: 37px 29px;
   animation: ${grainShift} 0.18s steps(4) infinite;
 `;
-const barRoll = keyframes`from { transform: translateY(-40%); } to { transform: translateY(140%); }`;
+// (the whole screen's height, top to bottom: it stopped halfway, moved by its own height. Jamie, playtest 29)
+const barRoll = keyframes`from { top: -30%; } to { top: 100%; }`;
 const RollBar = styled.div`
   position: absolute;
   left: 0;
@@ -245,6 +246,19 @@ const AgentGlitches = ({ isOn }) => {
     />
   ));
 };
+
+// a little grain on the balloon (Jamie, playtest 29), no glitches
+const BalloonGrain = styled.div`
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0.22;
+  mix-blend-mode: screen;
+  background: repeating-radial-gradient(circle at 23% 41%, rgba(160, 255, 160, 0.6) 0 0.5px, transparent 0.6px 2.1px);
+  background-size: 31px 23px;
+  animation: ${grainShift} 0.2s steps(4) infinite;
+`;
 
 const balloonPop = keyframes`
   0% { opacity: 0; transform: scale(0.6); }
@@ -312,10 +326,11 @@ const AgentCall = () => {
         <AgentFace $isQuick={isQuick} style={{ backgroundImage: "url(/levels/portraits/agent.png)" }} />
         <AgentGlitches isOn={isBalloonUp} />
         <Static />
-        <RollBar />
         <Tear />
       </AgentFeed>
-      {isBalloonUp && <AgentBalloon style={isQuick ? { animation: "none" } : undefined}>{AGENT_CALL.line.slice(0, typed)}</AgentBalloon>}
+      {isBalloonUp && <AgentBalloon style={isQuick ? { animation: "none" } : undefined}><BalloonGrain />{AGENT_CALL.line.slice(0, typed)}</AgentBalloon>}
+      {/* the rolling bar over everything on the screen, the balloon too (Jamie, playtest 29) */}
+      <RollBar />
     </Screen>
   );
 };
