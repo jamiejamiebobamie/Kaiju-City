@@ -31,7 +31,7 @@ const Screen = styled.div`
 // (Jamie, playtest 31: in cascades: neighbouring columns fall together in bands, like a waterfall, with longer trails)
 // (denser: more columns, longer trails, bands back sooner: Jamie, playtest 31; was 42 columns, fade 0.045)
 // (the digits 2.5 times as big: Jamie, playtest 31: a digit fills its column, so 64 / 2.5 columns across)
-const RAIN = { columns: 26, speed: [6, 12], fade: 0.03, head: "#f1dcff", body: [178, 92, 255], glyphs: "01", band: [2, 5], jitter: 0.12 };
+const RAIN = { columns: 33, /* (0.8 of the last size: 26 / 0.8) */ speed: [6, 12], fade: 0.03, head: "#f1dcff", body: [178, 92, 255], glyphs: "01", band: [2, 5], jitter: 0.12 };
 const RainCanvas = styled.canvas`
   position: absolute;
   inset: 0;
@@ -175,7 +175,7 @@ const PlayButton = styled.div`
   background: #05030a;
   outline: none;
   /* blinking once a second (Jamie, playtest 31) */
-  animation: ${playBlink} 1s ease-in-out infinite;
+  animation: ${playBlink} 1.5s ease-in-out infinite; /* (slower: Jamie, playtest 31; was 1 s) */
   &:hover { background: #0f2a10; }
   ${props => props.$isPressed && css`
     transform: translate(-50%, -50%) scale(0.94);
