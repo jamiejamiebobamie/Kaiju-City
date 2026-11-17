@@ -30,7 +30,8 @@ const Screen = styled.div`
 */
 // (Jamie, playtest 31: in cascades: neighbouring columns fall together in bands, like a waterfall, with longer trails)
 // (denser: more columns, longer trails, bands back sooner: Jamie, playtest 31; was 42 columns, fade 0.045)
-const RAIN = { columns: 64, speed: [6, 12], fade: 0.03, head: "#f1dcff", body: [178, 92, 255], glyphs: "01", band: [3, 8], jitter: 0.12 };
+// (the digits 2.5 times as big: Jamie, playtest 31: a digit fills its column, so 64 / 2.5 columns across)
+const RAIN = { columns: 26, speed: [6, 12], fade: 0.03, head: "#f1dcff", body: [178, 92, 255], glyphs: "01", band: [2, 5], jitter: 0.12 };
 const RainCanvas = styled.canvas`
   position: absolute;
   inset: 0;
@@ -151,7 +152,8 @@ const Label = styled.div`
 `;
 // (eased between bright and dim, not snapping: Jamie, playtest 31)
 const playBlink = keyframes`
-  0%, 100% { color: #c8ffb8; text-shadow: 0 0 0.5cqw #3aff3a; border-color: #3aff3a; box-shadow: 0 0 1cqw rgba(58, 255, 58, 0.4); }
+  /* (its brightest at three quarters: Jamie, playtest 31) */
+  0%, 100% { color: #96bf8a; text-shadow: 0 0 0.5cqw rgba(58, 255, 58, 0.75); border-color: #2cbf2c; box-shadow: 0 0 1cqw rgba(58, 255, 58, 0.3); }
   50% { color: #3e8a3a; text-shadow: 0 0 0 rgba(58, 255, 58, 0); border-color: #2a6a28; box-shadow: 0 0 0 rgba(58, 255, 58, 0); }
 `;
 const PlayButton = styled.div`
