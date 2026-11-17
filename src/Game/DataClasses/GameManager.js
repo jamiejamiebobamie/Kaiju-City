@@ -907,7 +907,8 @@ export class GameManager {
         A level can say where a link's edge is ('linkWalls'): the Aquarium's stairs go behind a pillar.
     */
     startPortalWalk = (piece, toTile) => {
-        if (this.portalWalk || this.cutscene || piece != this.gameBoardPiecesManager.getPlayerPiece()) return false;
+        // (whoever the player plays as: a taken-over avatar walks through as the player does. Jamie, playtest 26)
+        if (this.portalWalk || this.cutscene || piece != this.getControlledPiece()) return false;
         const board = this.gameBoardManager;
         const fromTile = piece.getTileIndex();
         const rowPx = this.getGhostRowPx();
