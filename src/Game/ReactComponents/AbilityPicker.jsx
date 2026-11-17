@@ -1218,7 +1218,9 @@ const CONSOLE_WIRES = [{ from: { x: CONSOLE.left + 2.5, y: CONSOLE.top + CONSOLE
   shape, further apart as they go out; where one button's rings run into the other's, they break off (each set is cut
   where the other's outermost ring reaches). Engraved: a dark line, a faint light one just under it.
 */
-const ETCH = { offsets: [0.2, 0.46, 0.84], radius: 0.18, dark: "rgba(0, 0, 0, 0.5)", light: "rgba(255, 255, 255, 0.16)" };
+// (Jamie, playtest 32: the outermost in clear sight on the face, never off it or under the screws: tighter, and each
+// button's rings shrunk to fit if they'd come within 'edgeShare' of the face's height of an edge)
+const ETCH = { offsets: [0.16, 0.36, 0.6], edgeShare: 0.07, radius: 0.18, dark: "rgba(0, 0, 0, 0.5)", light: "rgba(255, 255, 255, 0.16)" };
 // Play's rings pulse green outward with its blinking word (Jamie, playtest 29): each ring a beat after the one inside it
 const ringPulse = keyframes`
   0% { opacity: 0.95; }
@@ -1240,7 +1242,12 @@ const EtchedRings = ({ faceRef, buttonRefs, glowingIndex = undefined }) => {
         const f = face.getBoundingClientRect();
         const next = buttonRefs.map(ref => ref.current).filter(Boolean).map(element => {
           const b = element.getBoundingClientRect();
-          return { x: b.left - f.left, y: b.top - f.top, width: b.width, height: b.height };
+          const box = { x: b.left - f.left, y: b.top - f.top, width: b.width, height: b.height };
+          // room to the face's edges, less a margin clear of the screws
+          const margin = f.height * ETCH.edgeShare;
+          const room = Math.min(box.x, box.y, f.width - box.x - box.width, f.height - box.y - box.height) - margin;
+          const outer = box.height * ETCH.offsets[ETCH.offsets.length - 1];
+          return { ...box, fit: Math.max(0.2, Math.min(1, room / outer)) };
         });
         const key = JSON.stringify(next.map(box => [box.x, box.y, box.width, box.height].map(Math.round)));
         if (key != last) {
@@ -1254,7 +1261,7 @@ const EtchedRings = ({ faceRef, buttonRefs, glowingIndex = undefined }) => {
     return () => cancelAnimationFrame(frameId);
   }, []);
   const ringsOf = (box, k) => ETCH.offsets.map(share => {
-    const o = box.height * share;
+    const o = box.height * share * (box.fit || 1);
     return { key: `${k}-${share}`, x: box.x - o, y: box.y - o, width: box.width + 2 * o, height: box.height + 2 * o, rx: box.height * ETCH.radius + o };
   });
   const sets = boxes.map(ringsOf);
