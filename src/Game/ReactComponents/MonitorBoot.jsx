@@ -21,7 +21,7 @@ const Screen = styled.div`
   overflow: hidden;
   /* the normal arrow over it (the game's own screen may hide the pointer) */
   cursor: default;
-  & * { cursor: default; }
+  & *:not(button) { cursor: default; }
   pointer-events: auto;
 `;
 /*
@@ -171,6 +171,7 @@ const PlayButton = styled.div`
   box-shadow: 0 0 1cqw rgba(58, 255, 58, 0.4);
   transition: transform 120ms, background 120ms;
   font-family: gameboy;
+  cursor: pointer; /* (the finger over it: Jamie, playtest 31) */
   /* (the rain's own dark, so no digits show through it: Jamie, playtest 31) */
   background: #05030a;
   outline: none;
