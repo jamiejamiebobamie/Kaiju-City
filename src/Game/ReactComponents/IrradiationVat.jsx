@@ -1,5 +1,6 @@
 import React, { useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { PlayConsole, SideFrame } from "./AbilityPicker";
 import styled, { keyframes } from "styled-components";
 import { PIECES_INFO } from "Utils/gameState";
 import { SpeechBalloon } from "Game/ReactComponents/GameBoard/SceneElements";
@@ -195,20 +196,33 @@ const PraiseSpot = styled.div`
   height: 0;
 `;
 
+// the picker, on the side monitor's screen (Jamie, playtest 25: the same set as beside the power picker)
 const Panel = styled.div`
   position: absolute;
-  top: 6cqw;
-  right: 6cqw;
-  width: 27cqw;
-  z-index: 2147483640;
+  inset: 0;
   display: flex;
   flex-direction: column;
-  gap: 1.4cqw;
-  padding: 1.4cqw;
+  justify-content: center;
+  gap: 1cqw;
+  padding: 1.4cqw 1.6cqw;
+  box-sizing: border-box;
   font-family: gameboy;
-  background: linear-gradient(#3a3c42, #1c1d21);
-  border: 0.15cqw solid #8d9097;
-  box-shadow: 0 0 2cqw black;
+  background: #050607;
+`;
+
+const PanelTitle = styled.div`
+  font-size: 0.85cqw;
+  letter-spacing: 0.08cqw;
+  color: #ffd24a;
+`;
+
+// (on top of the side units, which sit at z 3 in the frame)
+const SideUnits = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 2147483640;
+  pointer-events: none;
+  & > * { pointer-events: auto; }
 `;
 
 const Picker = styled.div`
@@ -219,7 +233,7 @@ const Picker = styled.div`
 
 const ColorField = styled.div`
   position: relative;
-  height: 20cqw;
+  height: 15cqw;
   cursor: crosshair;
   touch-action: none;
   background: linear-gradient(to top, black, transparent), linear-gradient(to right, white, transparent);
@@ -252,27 +266,6 @@ const HexInput = styled.input`
   color: #d9dade;
   background: #111214;
   border: 0.1cqw solid #5a5d64;
-`;
-
-const Actions = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.8cqw;
-`;
-
-const ActionButton = styled.button`
-  padding: 1cqw;
-  font-family: gameboy;
-  font-size: ${props => props.$isMain ? "1.4cqw" : "1.1cqw"};
-  cursor: pointer;
-  color: ${props => props.$isMain ? "#0b0c0e" : "#d9dade"};
-  background: ${props => props.$isMain ? "#d9dade" : "#26282c"};
-  border: 0.12cqw solid #8d9097;
-  flex-grow: ${props => props.$isMain ? 1 : 0};
-  &:disabled {
-    opacity: 0.5;
-    cursor: default;
-  }
 `;
 
 export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose }) => {
@@ -339,7 +332,10 @@ export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose }) => 
       </Scene>
       <Heading>Choose Color</Heading>
       {isPraising && <PraiseSpot><SpeechBalloon name={VAT_PRAISE.name} text={VAT_PRAISE.text} x={0} y={0} isFlipped scale={(document.querySelector("[data-play-screen]") || document.body).clientWidth / VAT_LOOK.praiseBaseWidth * VAT_LOOK.praiseScale} /></PraiseSpot>}
-      {createPortal(<Panel>
+      {createPortal(<SideUnits>
+        <SideFrame>
+        <Panel>
+        <PanelTitle>Color:</PanelTitle>
         <Picker>
           <ColorField
             ref={fieldRef}
@@ -353,11 +349,11 @@ export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose }) => 
           <HueSlider aria-label="Hue" type="range" min="0" max="359" value={hue} onChange={e => changeHue(Number(e.target.value))} />
           <HexInput aria-label="Hex" value={color} onChange={e => /^#[0-9a-fA-F]{0,6}$/.test(e.target.value) && setColor(e.target.value)} />
         </Picker>
-        <Actions>
-          <ActionButton $isMain disabled={isBusy} onClick={irradiate}>Irradiate</ActionButton>
-          <ActionButton disabled={isBusy} onClick={onClose}>Back to Lab</ActionButton>
-        </Actions>
-      </Panel>, document.querySelector("[data-game-frame]") || document.body)}
+        </Panel>
+        </SideFrame>
+        {/* Irradiate and Back to Lab on the power picker's console (Jamie, playtest 25) */}
+        <PlayConsole isReady={!isBusy} playLabel="Irradiate" onPlay={irradiate} onBack={isBusy ? undefined : onClose} backLabel="Back to Lab" />
+      </SideUnits>, document.querySelector("[data-game-frame]") || document.body)}
     </Page>,
     document.querySelector("[data-play-screen]") || document.body
   );

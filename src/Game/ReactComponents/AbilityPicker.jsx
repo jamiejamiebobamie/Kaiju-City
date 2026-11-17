@@ -1006,7 +1006,8 @@ const backlitBlink = keyframes`
 */
 const CONSOLE_WIRES = [{ from: { x: CONSOLE.left + 2.5, y: CONSOLE.top + CONSOLE.height }, to: { x: 64.9, y: 50 }, sag: 3, color: "#0e0f10" }];
 
-export const PlayConsole = ({ isReady, playLabel, onPlay, onBack, isLeaving = false }) => {
+// 'backLabel': the other button's words (the color vat's: Back to Lab)
+export const PlayConsole = ({ isReady, playLabel, onPlay, onBack, isLeaving = false, backLabel = "Back" }) => {
   return (
     <>
       <Wires delayMs={MINI_TIMING.riseDelayMs + MINI_TIMING.flyMs - 250} wires={CONSOLE_WIRES} ripFor={isLeaving ? "console" : undefined} />
@@ -1020,7 +1021,7 @@ export const PlayConsole = ({ isReady, playLabel, onPlay, onBack, isLeaving = fa
           ))}
           <ReadyLight $isOn={isReady} />
           <MetalButton disabled={!isReady} $isBacklit={isReady} onClick={onPlay}>{playLabel}</MetalButton>
-          {onBack && <MetalButton onClick={onBack}>Back</MetalButton>}
+          {onBack && <MetalButton onClick={onBack}>{backLabel}</MetalButton>}
         </ConsoleFace>
       </Console>
     </>
@@ -1038,13 +1039,17 @@ const SideSlot = styled.div`
 `;
 
 // 'bioOf': on the avatar select, the avatar whose file shows (the one hovered: Jamie)
-export const SideMonitor = ({ isPickerShowing, isPoweredOff = false, isLeaving = false, bioOf = undefined }) => {
+/*
+  The side monitor's set, for whatever goes on its screen ('children') and its top border ('brow'): it flies in, its
+  screen switches on, its wires slither to the big monitor (the avatar select's and picker's, and the color vat's:
+  Jamie, playtest 25, the same set beside both Lab screens).
+*/
+export const SideFrame = ({ children, brow = null, isPoweredOff = false, isLeaving = false }) => {
   const [isOn, setIsOn] = useState(false);
   useEffect(() => {
     const timeout = setTimeout(() => setIsOn(true), MINI_TIMING.onAtMs);
     return () => clearTimeout(timeout);
   }, []);
-  const tamaRef = useRef(null);
   return (
     <>
       <Wires delayMs={MINI_TIMING.wiresAtMs} ripFor={isLeaving ? "mini" : undefined} />
@@ -1053,21 +1058,27 @@ export const SideMonitor = ({ isPickerShowing, isPoweredOff = false, isLeaving =
           ? <Jets key="off" dx={-7} dy={3} delayMs={0} ms={FLY_OFF.ms} />
           : <Jets key="in" dx={6} dy={5} delayMs={MINI_TIMING.flyDelayMs} ms={MINI_TIMING.flyMs} />}
         <MiniScreen>
-          <CrtScreen isOn={isOn && !isPoweredOff}>
-            {/* the avatar select: the candidates' files (Jamie: not the tamagotchi, that's on the picker) */}
-            {isPickerShowing ? <SideSlot data-side-screen /> : <AvatarBio avatar={bioOf} />}
-          </CrtScreen>
+          <CrtScreen isOn={isOn && !isPoweredOff}>{children}</CrtScreen>
           <MiniGlass />
         </MiniScreen>
-        <MiniBrow>
-          {isPickerShowing ? <div data-side-brow style={{ display: "contents" }} /> : ["Feed", "Pet", "Clean up"].map(label => (
-            <BrowButton key={label} disabled>{label}</BrowButton>
-          ))}
-        </MiniBrow>
+        <MiniBrow>{brow}</MiniBrow>
       </MiniMonitor>
     </>
   );
 };
+
+export const SideMonitor = ({ isPickerShowing, isPoweredOff = false, isLeaving = false, bioOf = undefined }) => (
+  <SideFrame
+    isPoweredOff={isPoweredOff}
+    isLeaving={isLeaving}
+    brow={isPickerShowing ? <div data-side-brow style={{ display: "contents" }} /> : ["Feed", "Pet", "Clean up"].map(label => (
+      <BrowButton key={label} disabled>{label}</BrowButton>
+    ))}
+  >
+    {/* the avatar select: the candidates' files (Jamie: not the tamagotchi, that's on the picker) */}
+    {isPickerShowing ? <SideSlot data-side-screen /> : <AvatarBio avatar={bioOf} />}
+  </SideFrame>
+);
 
 export const AbilityPicker = ({
   handleClickHome,

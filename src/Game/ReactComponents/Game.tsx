@@ -425,12 +425,38 @@ const SCENE_FADE = {
 };
 
 const SceneCover = styled.div`
-  position: fixed;
+  position: absolute;
   inset: 0;
-  z-index: 2147483646;
   pointer-events: none;
   background: black;
 `;
+
+/*
+  The fades between scenes are on the monitor's screen only (Jamie, playtest 25: the whole page went black, the room
+  with it). This holds them over the screen wherever it is (it moves), each frame; with no monitor about, the page.
+*/
+const OnMonitor = ({ zIndex = 2147483646, children }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    let frameId;
+    const place = () => {
+      const element = ref.current;
+      const screen = document.querySelector("[data-play-screen]");
+      if (element) {
+        const box = screen ? screen.getBoundingClientRect() : undefined;
+        element.style.left = box ? `${box.left}px` : "0";
+        element.style.top = box ? `${box.top}px` : "0";
+        element.style.width = box ? `${box.width}px` : "100vw";
+        element.style.height = box ? `${box.height}px` : "100vh";
+        element.style.borderRadius = box ? getComputedStyle(screen).borderRadius : "0";
+      }
+      frameId = requestAnimationFrame(place);
+    };
+    place();
+    return () => cancelAnimationFrame(frameId);
+  }, []);
+  return <div ref={ref} style={{ position: "fixed", left: 0, top: 0, width: "100vw", height: "100vh", zIndex, pointerEvents: "none", overflow: "hidden" }}>{children}</div>;
+};
 
 const fadeOutOfBlack = keyframes`
   from { opacity: 1; }
@@ -777,6 +803,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const [matchEnd, setMatchEnd] = useState(undefined); // the title over the board once a match is decided
   const [recruitChoice, setRecruitChoice] = useState(undefined);
   const [leavingFor, setLeavingFor] = useState(undefined); // the Lab screen the scene is sliding away for
+  const [isSlidingBack, setIsSlidingBack] = useState(false); // coming back from it: the slide in reverse
   const [isResumingRadio, setIsResumingRadio] = useState(false);
   const [isRadioPaused, setIsRadioPaused] = useState(false); // the radar call paused from the bezel (Jamie, playtest 23)
   useEffect(() => setIsRadioPaused(false), [radioLines]);
@@ -1050,11 +1077,19 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     const labLevel = LEVELS[level.id];
     const tank = (labLevel.sceneElements || []).find(({ action }) => action == "powers");
     const returnSpot = tank ? { x: tank.x + tank.width / 2, y: tank.y + tank.height } : undefined;
-    triggerTransition(() => {
-      setIsLabPicker(false); // only once the clouds cover the picker: its other buttons don't flash up first
+    // (the reverse of going, Jamie: the picker fades out on the monitor, and the Lab pans back in from the right)
+    setScreenFade('out');
+    setTimeout(() => {
+      setIsLabPicker(false);
+      sceneFadeSkips.current.until = Date.now() + 1500;
+      setIsSlidingBack(true);
+      setLeavingFor("powers");
       startMatch(labLevel, false, undefined, { returnSpot, isRetry: true });
       setIsPlayingGame(true);
-    });
+      setScreenFade(undefined);
+      requestAnimationFrame(() => requestAnimationFrame(() => setLeavingFor(undefined)));
+      setTimeout(() => setIsSlidingBack(false), LAB_SLIDE_MS + 100);
+    }, SCREEN_FADE.ms);
   };
 
   const handleChangePowers = lastLine => {
@@ -1100,13 +1135,13 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     const isDestroyed = !!gameManager.current && gameManager.current.finalTurnState == "destroyed";
     if (isWon && (level.giantKaiju || (campaignIndex !== null && getIsLastSection(campaignIndex)))) return { title: isDestroyed ? "You turned into a Kaiju and destroyed the city!" : "You saved the city!", buttons: [], isFinale: true };
     if (campaignIndex === null) {
-      return { title, buttons: [{ text: "Play again", onClick: () => triggerTransition(resetMatch) }, { text: "Leave", onClick: () => leaveByZoom() } /* (the way back out, as the bezel's Leave: Jamie) */] };
+      return { title, buttons: [{ text: "Play again", onClick: () => fadeOutThen(resetMatch) }, { text: "Leave", onClick: () => leaveByZoom() } /* (the way back out, as the bezel's Leave: Jamie) */] };
     }
     if (!isWon) {
       return { title, buttons: [{ text: "Try again", onClick: () => fadeOutThen(() => retrySection(campaignIndex)) }, { text: "Leave", onClick: () => leaveByZoom() } /* (the way back out, as the bezel's Leave: Jamie) */] };
     }
     if (getIsLastSection(campaignIndex)) {
-      return { title: "You saved the city!", buttons: [{ text: "Play again", onClick: () => { setCampaignIndex(0); triggerTransition(resetMatch); } }, { text: "Leave", onClick: () => leaveByZoom() } /* (the way back out, as the bezel's Leave: Jamie) */] };
+      return { title: "You saved the city!", buttons: [{ text: "Play again", onClick: () => { setCampaignIndex(0); fadeOutThen(resetMatch); } }, { text: "Leave", onClick: () => leaveByZoom() } /* (the way back out, as the bezel's Leave: Jamie) */] };
     }
     // the first fight to the Street: in on the city, then the map swirls away (Jamie)
     if (campaignIndex === 0) return { title, buttons: [{ text: "Continue", onClick: () => swirlToSection(campaignIndex + 1) }] };
@@ -1149,7 +1184,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
 
   const openLabScreen = screen => {
     if (screen == "exit") {
-      leaveWithClouds(leaveLevel);
+      fadeOutThen(leaveLevel); // (no clouds: only the landing and the walking Peninsula's ways into scenes have them: Jamie)
       return;
     }
     if (screen == "agentTalk") {
@@ -1179,12 +1214,15 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     }, SCENE_SLIDE_MS);
   };
 
+  // (the reverse of going, Jamie: the screen fades on the monitor, and the Lab slides back in from the side it went)
   const closeLabScreen = () => {
     setLabCover("out");
     setTimeout(() => {
       setLabScreen(undefined);
       setLabCover(undefined);
+      setIsSlidingBack(true);
       setLeavingFor(undefined);
+      setTimeout(() => setIsSlidingBack(false), LAB_SLIDE_MS + 100);
     }, SCENE_FADE.outMs);
   };
 
@@ -1450,10 +1488,10 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
 
   const sceneFades = isPlayingGame && createPortal(
     <>
-      {!getIsSceneFadeSkipped(radioLines ? `radio ${campaignIndex}` : `match ${matchCount}`) && <SceneFadeIn key={radioLines ? `radio ${campaignIndex}` : `match ${matchCount}`} />}
-      {isFadingOut && <SceneFadeOut />}
-      {labCover == "in" && <SceneFadeIn style={{ zIndex: 2147483647 }} />}
-      {labCover == "out" && <SceneFadeOut style={{ zIndex: 2147483647 }} />}
+      {!getIsSceneFadeSkipped(radioLines ? `radio ${campaignIndex}` : `match ${matchCount}`) && <OnMonitor key={radioLines ? `radio ${campaignIndex}` : `match ${matchCount}`}><SceneFadeIn /></OnMonitor>}
+      {isFadingOut && <OnMonitor><SceneFadeOut /></OnMonitor>}
+      {labCover == "in" && <OnMonitor zIndex={2147483647}><SceneFadeIn /></OnMonitor>}
+      {labCover == "out" && <OnMonitor zIndex={2147483647}><SceneFadeOut /></OnMonitor>}
     </>,
     document.body
   );
@@ -1813,7 +1851,9 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
               ticker: !isWindowOpen && <ObjectiveTicker text={objectiveText || ""} isKaijuCount={isObjectiveKaijuCount} count={kaijuKillCount} toWin={kaijuToWin} />
             })}>
               {/* for a Lab screen, the scene slides away inside the monitor, and the screen takes its place there */}
-              <SlideClip><SlideAway style={leavingFor ? { transform: `translateX(${leavingFor == "colors" ? -45 : 45}%)`, opacity: 0 } : undefined}>
+              <SlideClip><SlideAway style={leavingFor
+                ? { transform: `translateX(${leavingFor == "colors" ? -45 : 45}%)`, opacity: 0, transition: isSlidingBack ? "none" : undefined }
+                : isSlidingBack ? { transition: `transform ${LAB_SLIDE_MS}ms ease-out, opacity ${LAB_SLIDE_MS}ms ease-out` } : undefined}>
               <GameBoard
                 isCurtained={!!matchEnd && !!matchEnd.isFinale}
                 key={`${level.id} ${matchCount}`}
