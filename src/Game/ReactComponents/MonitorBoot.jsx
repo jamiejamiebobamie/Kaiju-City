@@ -119,7 +119,7 @@ const logoIn = keyframes`from { opacity: 0; transform: translate(-50%, -50%) sca
 const Logo = styled.img`
   position: absolute;
   left: 50%;
-  top: 33.8%; /* (30% bigger, its bottom kept where it was, so the gap to Play's the same: Jamie, playtest 31; was 40%) */
+  top: 40.8%; /* (logo and Play down together, centered on the screen: Jamie, playtest 31; was 33.8%) (30% bigger, its bottom kept where it was, so the gap to Play's the same: Jamie, playtest 31; was 40%) */
   width: 93.6%; /* (was 72%) */
   transform: translate(-50%, -50%);
   /* (a brighter, whiter purple edge, so its dark Kaiju at the sides stand out: Jamie, playtest 31; was a deep purple) */
@@ -129,7 +129,7 @@ const Logo = styled.img`
 const Bar = styled.div`
   position: absolute;
   left: 50%;
-  top: 70%;
+  top: 77%; /* (down with the logo: was 70%) */
   width: 46%;
   height: 0.6cqw;
   transform: translateX(-50%);
@@ -145,7 +145,7 @@ const Label = styled.div`
   position: absolute;
   left: 0;
   right: 0;
-  top: calc(70% + 1.6cqw);
+  top: calc(77% + 1.6cqw);
   text-align: center;
   font-size: 1cqw;
   letter-spacing: 0.12cqw;
@@ -160,7 +160,7 @@ const playBlink = keyframes`
 const PlayButton = styled.div`
   position: absolute;
   left: 50%;
-  top: 73.7%; /* (up 2/5 of the gap under the logo: Jamie, playtest 31; was 79%) */
+  top: 80.7%; /* (down with the logo: was 73.7%) (up 2/5 of the gap under the logo: Jamie, playtest 31; was 79%) */
   transform: translate(-50%, -50%);
   padding: 1cqw 3cqw;
   font-size: 2cqw;
