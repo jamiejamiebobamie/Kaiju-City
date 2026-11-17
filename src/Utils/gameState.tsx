@@ -2308,7 +2308,7 @@ export const PIECES_INFO = {
   'agent': {
     color: "#bf40bf",
     spriteSheetSrc: 'spritesheet/agent.png',
-    deadSpriteSrc:  'dead_teammate.png',
+    deadSpriteSrc: 'dead_teammate.png',
     avatar: 'agent'
   },
   'hazmat': {
@@ -2423,12 +2423,14 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     passiveIcon: "fa-two-hearts",
 
     activeName: "Charm",
-    activeDesc: "An enemy fights for you for a few seconds.",
-    activeEffect1: "Charm pursues its target and is spent when it touches an enemy. A target with no allies on the board takes 1 damage instead. A charmed enemy that dies still counts as your kill.",
+    activeDesc: "Send out a false heart that seeks out the closest enemy",
+    activeEffect1: "On overlap, the enemy will fight for you for a while",
 
     passiveName: "Spurned",
-    passiveDesc: "Hell hath no fury...",
-    passiveEffect1: "When the charm breaks, they come for you first, wherever you are",
+    // passiveDesc: "Hell hath no fury...",
+    // passiveEffect1: "When Charmed wears off, the once-charmed enemy will viciously seek out and attack the charmer",
+    passiveDesc: "When the effect ends, the once-charmed enemy will viciously seek out and attack the charmer",
+    passiveEffect1: "",
 
     activeEffect2: '',
     passiveEffect2: ''
@@ -2491,11 +2493,13 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
 
     activeName: "Ice Slice",
     activeDesc: "Conjure a vortex of ice that hunts your closest enemy", // draft (2026-11-15: it said "stationary", but it pursues)
-    activeEffect1: "After a delay, ice pursues the closest enemy",
+    activeEffect1: "",
 
     passiveName: "Inclement Weather",
-    passiveDesc: "The forecast calls for snow",
-    passiveEffect1: "-1 speed",
+    // passiveDesc: "The forecast calls for snow",
+    // passiveEffect1: "-1 speed",
+    passiveDesc: "-1 speed",
+    passiveEffect1: "",
 
     activeEffect2: '',
     passiveEffect2: '',
@@ -2569,12 +2573,15 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     passiveIcon: "fa-fire",
 
     activeName: "Wildfire",
-    activeDesc: "Create a single, lateral line of fire",
-    activeEffect1: "Fire travels in the direction of your closest enemy",
+    activeDesc: "Create a single, lateral line of fire that travels in the direction of your closest enemy",
+    // activeEffect1: "Fire travels in the direction of your closest enemy",
+    activeEffect1: "",
 
     passiveName: "Uncontrolled Burn",
-    passiveDesc: "You've cleared a path...",
-    passiveEffect1: "Cast again within 6 seconds: +3 range each time, up to +12. Fire that hits the edge burns out as smoke",
+    // passiveDesc: "You've cleared a path...",
+    // passiveEffect1: "Cast again within 6 seconds: +3 range each time, up to +12. Fire that hits the edge burns out as smoke",
+    passiveDesc: "Adds +3 range to Wildfire for the next 6 seconds",
+    passiveEffect1: "Effect stacks up to 4 times",
 
     activeEffect2: '',
     passiveEffect2: '',
@@ -2725,8 +2732,10 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     activeEffect1: "Status remains on the tile until walked on",
 
     passiveName: "Healthy",
-    passiveDesc: "You're extra healthy from all the vegetables",
-    passiveEffect1: "+1 health",
+    // passiveDesc: "You're extra healthy from all the vegetables",
+    // passiveEffect1: "+1 health",
+    passiveDesc: "+1 health",
+    passiveEffect1: "",
 
     activeEffect2: '',
     passiveEffect2: '',
@@ -2794,8 +2803,10 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     activeEffect1: "Bolts ricochet off the walls of the map",
 
     passiveName: "Charged Step",
-    passiveDesc: "Electrical energy courses through your body",
-    passiveEffect1: "+2 speed",
+    // passiveDesc: "Electrical energy courses through your body",
+    // passiveEffect1: "+2 speed",
+    passiveDesc: "+2 speed",
+    passiveEffect1: "",
 
     activeEffect2: '',
     passiveEffect2: '',
@@ -2862,8 +2873,11 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     activeEffect1: "",
 
     passiveName: "Lichdom",
-    passiveDesc: "Power comes at a price.",
-    passiveEffect1: "-1 health",
+    // passiveDesc: "Power comes at a price.",
+    // passiveEffect1: "-1 health",
+
+    passiveDesc: "-1 health",
+    passiveEffect1: "",
 
     activeEffect2: '',
     passiveEffect2: '',
@@ -2927,12 +2941,15 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     passiveIcon: "fa-universal-access",
 
     activeName: "Dispel",
-    activeDesc: "Dispel all tile effects around you",
-    activeEffect1: "Clears both positive and negative statuses",
+    activeDesc: "Clears all tile effects around you",
+    // activeEffect1: "Clears both positive and negative statuses",
+    activeEffect1: "",
 
     passiveName: "Clean Slate",
-    passiveDesc: "Squeaky clean!", // (Jamie, 2026-11-15; was "...they fade and die.", from its old passive)
-    passiveEffect1: "A Dispel ends your other powers' passives",
+    // passiveDesc: "Squeaky clean!", // (Jamie, 2026-11-15; was "...they fade and die.", from its old passive)
+    // passiveEffect1: "A Dispel ends your other powers' passives",
+    passiveDesc: "Removes beneficial passives and ends those active powers' cooldowns", // (Jamie, 2026-11-15; was "...they fade and die.", from its old passive)
+    passiveEffect1: "",
 
     activeEffect2: '',
     passiveEffect2: '',
@@ -2999,11 +3016,13 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
 
     activeName: "Aegis",
     activeDesc: "Create an area of protection around you. Blocking many ranged attacks",
-    activeEffect1: "Shields fade after about 8 seconds, or when walked on",
+    activeEffect1: "Shields fade after 8 seconds and when walked on",
 
     passiveName: "Seasoned Builder",
-    passiveDesc: "You are prolific",
-    passiveEffect1: "Shield again soon after: +1 range, lasts 4 seconds longer",
+    // passiveDesc: "You are prolific",
+    // passiveEffect1: "Shield again soon after: +1 range, lasts 4 seconds longer",
+    passiveDesc: "Increases the range of your next Aegis by +1",
+    passiveEffect1: "",
 
     activeEffect2: '',
     passiveEffect2: '',
@@ -3067,12 +3086,13 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     passiveIcon: "fa-tencent-weibo",
 
     activeName: "Escape",
-    activeDesc: "Instantly travel to a safe tile",
+    activeDesc: "Instantly travel to a safe tile in the direction you select",
     activeEffect1: "",
 
     passiveName: "Wormhole",
-    passiveDesc: "You leave a hole in space behind you. Anyone can follow.",
-    passiveEffect1: "Leaves a two-way wormhole for 6 seconds",
+    passiveDesc: "You leave a hole in space behind you",
+    // passiveEffect1: "Leaves a two-way wormhole for 6 seconds",
+    passiveEffect1: "Anyone can follow",
 
     activeEffect2: '',
     passiveEffect2: '',
@@ -3136,12 +3156,14 @@ export const TILE_STATUSES_AND_ABILITY_DATA = [
     passiveIcon: "fa-gratipay",
 
     activeName: "Heal",
-    activeDesc: "Heal your teammate or yourself with the power of love!",
-    activeEffect1: "Heal will pursue the teammate with the least health",
+    activeDesc: "Heal your teammate or yourself",
+    activeEffect1: "Heal targets the teammate with the least health",
 
     passiveName: "Good Vibes",
-    passiveDesc: "Everyone feels a little better about themselves. Statistically, nothing changes.",
-    passiveEffect1: "No effect. Just vibes.",
+    // passiveDesc: "Everyone feels a little better about themselves. Statistically, nothing changes.",
+    // passiveEffect1: "No effect. Just vibes.",
+    passiveDesc: "Teamwork makes the dream work",
+    passiveEffect1: "",
 
     activeEffect2: '',
     passiveEffect2: '',
