@@ -1154,14 +1154,15 @@ const FitTitleRow = ({ text, children }) => {
 
 // (a power used in the class battle: its icon blinks, twice: Jamie, playtest 29)
 // (softer, no scaling: Jamie, playtest 29): a gentle brighten and glow, once
+// (twice, the glow about double the last try's: Jamie, playtest 32: too quiet. Still no scaling)
 const iconBlink = keyframes`
-  0%, 100% { filter: drop-shadow(0 0 0.2cqw currentColor); }
-  40% { filter: brightness(1.35) drop-shadow(0 0 0.5cqw currentColor); }
+  0%, 50%, 100% { filter: drop-shadow(0 0 0.2cqw currentColor); }
+  22%, 72% { filter: brightness(1.7) drop-shadow(0 0 0.6cqw currentColor) drop-shadow(0 0 1cqw currentColor); }
 `;
 const Icon = styled.i`
   font-size: 1.9cqw;
   filter: drop-shadow(0 0 0.2cqw currentColor);
-  ${props => props.$isBlinking && css`animation: ${iconBlink} 700ms ease-in-out;`}
+  ${props => props.$isBlinking && css`animation: ${iconBlink} 900ms ease-in-out;`}
 `;
 
 const TINT = { turnDegrees: 28, saturation: 0.7, lightness: 80 };
@@ -1595,7 +1596,7 @@ export const AbilityPicker = ({
     if (playerClass) {
       return (
         <Part $align="left">
-          <PartHeader>Class:</PartHeader>
+          <PartHeader style={{ textDecoration: "underline", textDecorationThickness: "0.08cqw", textUnderlineOffset: "0.3cqw" }}>Class:</PartHeader>{/* (a thin underline: Jamie, playtest 32) */}
           <FitTitleRow text={playerClass[0]}>{playerClass[0]}</FitTitleRow>
           <ClassText style={{ color: getClassTint(pickedPowers.map(({ color }) => color)) }}>{playerClass[1]}</ClassText>
         </Part>
