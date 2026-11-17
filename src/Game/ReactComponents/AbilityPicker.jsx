@@ -1101,7 +1101,17 @@ const CONSOLE_WIRES = [{ from: { x: CONSOLE.left + 2.5, y: CONSOLE.top + CONSOLE
   where the other's outermost ring reaches). Engraved: a dark line, a faint light one just under it.
 */
 const ETCH = { offsets: [0.2, 0.46, 0.84], radius: 0.18, dark: "rgba(0, 0, 0, 0.5)", light: "rgba(255, 255, 255, 0.16)" };
-const EtchedRings = ({ faceRef, buttonRefs }) => {
+// Play's rings pulse green outward with its blinking word (Jamie, playtest 29): each ring a beat after the one inside it
+const ringPulse = keyframes`
+  0% { opacity: 0.95; }
+  28% { opacity: 0; }
+  100% { opacity: 0; }
+`;
+const PulseRing = styled.rect`
+  animation: ${ringPulse} 0.9s ease-out infinite;
+  filter: drop-shadow(0 0 2px #2ee02a);
+`;
+const EtchedRings = ({ faceRef, buttonRefs, glowingIndex = undefined }) => {
   const [boxes, setBoxes] = useState([]);
   useEffect(() => {
     let frameId;
@@ -1130,6 +1140,10 @@ const EtchedRings = ({ faceRef, buttonRefs }) => {
     return { key: `${k}-${share}`, x: box.x - o, y: box.y - o, width: box.width + 2 * o, height: box.height + 2 * o, rx: box.height * ETCH.radius + o };
   });
   const sets = boxes.map(ringsOf);
+  // (in step with the word's blink: where its 0.9 s loop is now, so each ring lights just after the word does)
+  const glowing = glowingIndex !== undefined && buttonRefs[glowingIndex] && buttonRefs[glowingIndex].current;
+  const blink = glowing && glowing.getAnimations ? glowing.getAnimations().find(animation => animation.effect && animation.effect.getTiming && animation.effect.getTiming().duration == 900) : undefined;
+  const phaseSeconds = blink && blink.currentTime != null ? (Number(blink.currentTime) % 900) / 1000 : 0;
   return (
     // (inside the face only, under the casing's lip; the screws go over it)
     <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", overflow: "hidden", borderRadius: "inherit" }} aria-hidden="true">
@@ -1150,6 +1164,7 @@ const EtchedRings = ({ faceRef, buttonRefs }) => {
         <g key={key} mask={n == 0 ? undefined : `url(#etch-cut-${k}-${n})`} fill="none">
           <rect x={x} y={y + 1} width={width} height={height} rx={rx} stroke={ETCH.light} strokeWidth="1" />
           <rect x={x} y={y} width={width} height={height} rx={rx} stroke={ETCH.dark} strokeWidth="1" />
+          {k === glowingIndex && <PulseRing x={x} y={y} width={width} height={height} rx={rx} stroke="#5cff4a" strokeWidth="1.3" style={{ animationDelay: `${n * 0.13 - phaseSeconds}s` }} />}
         </g>
       )))}
     </svg>
@@ -1174,7 +1189,7 @@ export const PlayConsole = ({ isReady, playLabel, onPlay, onBack, isLeaving = fa
             <Screw key={k} $turn={turn} style={{ zIndex: 2, left: screwLeft == null ? undefined : `${screwLeft}cqw`, right: screwLeft == null ? "0.5cqw" : undefined, top: top == null ? undefined : `${top}cqw`, bottom: top == null ? "0.5cqw" : undefined }} />
           ))}
           {/* (no ready light: Jamie, playtest 28) */}
-          <EtchedRings faceRef={faceRef} buttonRefs={[playRef, backRef]} />
+          <EtchedRings faceRef={faceRef} buttonRefs={[playRef, backRef]} glowingIndex={isReady && !isCompact ? 0 : undefined} />
           <MetalButton ref={playRef} style={{ position: "relative", zIndex: 1 }} disabled={!isReady} $isBacklit={isReady} $isCompact={isCompact} $isMain={!isCompact} onClick={onPlay}>{playLabel}</MetalButton>
           {onBack && <MetalButton ref={backRef} style={{ position: "relative", zIndex: 1 }} disabled={isBackDisabled} $isCompact={isCompact} onClick={onBack}>{backLabel}</MetalButton>}
         </ConsoleFace>

@@ -52,8 +52,8 @@ const Outline = styled.div`
 
 // an 80s-90s television around the window: a thick plastic casing, a rounded glass screen, scan lines and a rolling bar
 export const TV_LOOK = {
-  casingWidth: 2.6, // in cqw
-  casingRadius: 3.2,
+  casingWidth: 3.2, // in cqw (chunkier, more 80s: Jamie, playtest 29; was 2.6. The screen itself unchanged)
+  casingRadius: 2.7, // (a little squarer: was 3.2)
   screenRadius: 1.8,
   casing: "#1d1b1a",
   casingLight: "#4a4542",

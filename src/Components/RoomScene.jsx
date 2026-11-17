@@ -15,7 +15,8 @@ export const ROOM = {
   size: { width: 1365, height: 768 },
   // (the clock left of it, the coffee right: Jamie); its bottom above the shelf, on its stand (Jamie: not floating)
   monitor: { centerX: 532, bottom: 548, height: 350, aspect: 0.98 },
-  stand: { shelfTop: 582, neckWidth: 44, footWidth: 170, footHeight: 10 },
+  // (chunkier, retro: a thick neck, a swivel collar under the set, a broad heavy foot. Jamie, playtest 29)
+  stand: { shelfTop: 582, neckWidth: 78, footWidth: 250, footHeight: 18, collarWidth: 130, collarHeight: 12 },
   settleMs: 900, // from where the zoom ended to the monitor's spot
   brightness: 0.5 // behind the monitor (Jamie: much darker; a CSS filter, so it's easy to change)
 };
@@ -92,10 +93,11 @@ const Foot = styled.div`
 `;
 export const MonitorStand = () => {
   const { centerX, bottom } = ROOM.monitor;
-  const { shelfTop, neckWidth, footWidth, footHeight } = ROOM.stand;
+  const { shelfTop, neckWidth, footWidth, footHeight, collarWidth, collarHeight } = ROOM.stand;
   return (
     <>
       <Neck style={at(centerX - neckWidth / 2, bottom - 4, neckWidth, shelfTop - footHeight - bottom + 6)} />
+      <Foot style={{ ...at(centerX - collarWidth / 2, bottom - 2, collarWidth, collarHeight), borderRadius: "0 0 30% 30% / 0 0 80% 80%" }} />
       <Foot style={at(centerX - footWidth / 2, shelfTop - footHeight, footWidth, footHeight)} />
     </>
   );
