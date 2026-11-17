@@ -448,6 +448,40 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
       fadeMaskCtx.fillStyle = `rgba(0, 0, 0, ${TILE_LOOK.fadeMinOpacity})`;
       fadeMaskCtx.fillRect(0, 0, width, height);
       fadeMaskCtx.globalCompositeOperation = "lighter";
+      // 'hexRings' (the class battle's: Jamie, playtest 27): no light, but rings of whole tiles round the player's,
+      // each its own opacity (the player's tile and its six neighbors, then the next ring), none beyond
+      if (level.hexRings) {
+        fadeMaskCtx.globalCompositeOperation = "source-over";
+        fadeMaskCtx.clearRect(0, 0, width, height);
+        const board = gameManager.gameBoardManager;
+        const focus = gameManager.getFocusPiece();
+        const keyOf = ({ i, j }) => `${i} ${j}`;
+        let ring = [focus.getTileIndex()];
+        const seen = new Set(ring.map(keyOf));
+        level.hexRings.forEach((opacity, n) => {
+          if (n > 0) {
+            ring = ring.flatMap(tile => board.getAdjacentTileIndices(tile)).filter(board.getIsInBounds).filter(tile => {
+              if (seen.has(keyOf(tile))) return false;
+              seen.add(keyOf(tile));
+              return true;
+            });
+          }
+          // (the first ring holds the player's tile and its neighbors: both full)
+          const tiles = n == 0 ? [...ring, ...board.getAdjacentTileIndices(ring[0]).filter(board.getIsInBounds)] : ring;
+          if (n == 0) tiles.forEach(tile => seen.add(keyOf(tile)));
+          if (n == 0) ring = tiles;
+          fadeMaskCtx.fillStyle = `rgba(0, 0, 0, ${opacity})`;
+          tiles.forEach(tile => {
+            fadeMaskCtx.beginPath();
+            traceTile(fadeMaskCtx, getTileCenter(grid, tile), shape);
+            fadeMaskCtx.fill();
+          });
+        });
+        ctx.globalCompositeOperation = "destination-in";
+        ctx.drawImage(fadeMask, 0, 0, width, height);
+        ctx.globalCompositeOperation = "source-over";
+        return;
+      }
       addLight(playerCenter, TILE_LOOK.fadeStartTiles, TILE_LOOK.fadeEndTiles);
       const hoveredTile = gameManager.getHoveredTileIndex();
       if (hoveredTile) addLight(getTileCenter(grid, hoveredTile), TILE_LOOK.hoverFadeStartTiles, TILE_LOOK.hoverFadeEndTiles);
@@ -523,10 +557,13 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
       }
       ctx.clearRect(0, 0, width, height);
       ctx.globalAlpha = 1;
+      // (a board with no size yet, as the class battle's before its box is measured: nothing to draw. Drawing a
+      // 0-sized canvas threw and blanked the avatar select: Jamie, playtest 27)
+      if (!emptyTiles.width || !emptyTiles.height || !width || !height) return;
       ctx.drawImage(emptyTiles, 0, 0, width, height);
       const playerCenter = getPlayerCenter();
       fadeGrid(playerCenter);
-      drawPerimeter(playerCenter);
+      if (!level.hexRings) drawPerimeter(playerCenter);
       level.tileLinks.flat().forEach(tileIndex => {
         drawSprite(ctx, getSoftSprite(TILE_LOOK.linkColor, TILE_LOOK.linkTintOpacity), getTileCenter(grid, tileIndex), pixelRatio);
       });
@@ -610,6 +647,12 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
         [from, to].forEach(tileIndex => drawPortal(ctx, getTileCenter(grid, tileIndex), getHexRadius(grid), closing));
       });
       ctx.globalAlpha = 1;
+      // (the class battle's rings: what's on the tiles past them goes too)
+      if (level.hexRings) {
+        ctx.globalCompositeOperation = "destination-in";
+        ctx.drawImage(fadeMask, 0, 0, width, height);
+        ctx.globalCompositeOperation = "source-over";
+      }
     };
 
     draw();

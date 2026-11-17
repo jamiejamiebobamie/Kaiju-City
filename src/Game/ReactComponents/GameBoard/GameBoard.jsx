@@ -708,7 +708,7 @@ const getIsTouchScreen = () => window.matchMedia("(pointer: coarse)").matches;
 // 'isCurtained': the credits are over the screen: nothing of the game's own shows over them (Jamie, playtest 21)
 // 'viewHexes': seen this many hexes across, following the player (the class battle's: Jamie, playtest 26); 'kaijuFade':
 // { from, to } in tiles from the player: Kaiju farther than 'to' are unseen, nearer than 'from' whole
-const VIEW_LIFT_ROWS = 1.5;
+const VIEW_LIFT_ROWS = 0.7;
 export const GameBoard = ({ viewHexes = undefined, kaijuFade = undefined, isCurtained = false, controlMarker = "outline", speakingLineLength = 0, isSwirling = false, speakingPieceIndex = undefined, choiceFromRef = undefined, isWindowOpen = true, isPaused, gameManager, level, activePhases, isWholeScene, playWindow, isShowingWindowSize, isEditingTiles, isMouseLook, isEnemyZoom, isSlowMotion, isTeamColors, speech, recruitScene, recruitChoice, onChooseRecruit, onHotspot }) => {
   // redraws the pieces when the game updates. the tiles draw themselves.
   useSyncExternalStore(gameManager.subscribeToBoard, gameManager.getBoardRevision);
@@ -944,10 +944,17 @@ export const GameBoard = ({ viewHexes = undefined, kaijuFade = undefined, isCurt
         // the keys are in charge when the mouse's hover is hidden
         const isLooking = isMouseLook && !!gameManager.getHoveredTileIndex();
         const closestEnemy = isEnemyZoom ? pickEnemy(player, getEnemyTargets(player, gameManager), nowMs) : undefined;
-        // (the class battle's view, about the avatar's middle rather than its feet: its head was cut off)
+        // (the class battle's view, about the avatar's middle rather than its feet: its head was cut off). A steadicam
+        // locked on it: dead center every frame, no easing, no leaning (Jamie, playtest 27)
         const lookAt = getWorldLocation(player.charLocation);
+        if (viewHexes) {
+          closeCamera.centerOn({ ...lookAt, y: lookAt.y - VIEW_LIFT_ROWS * grid.rowStep * grid.scale });
+          worldRef.current.style.transition = "";
+          worldRef.current.style.transform = closeCamera.getTransform();
+          return;
+        }
         closeCamera.lookToward(
-          viewHexes ? { ...lookAt, y: lookAt.y - VIEW_LIFT_ROWS * grid.rowStep * grid.scale } : lookAt,
+          lookAt,
           isLooking ? mouseAim.current : { x: 0, y: 0 },
           closestEnemy ? getWorldLocation(closestEnemy.charLocation) : undefined,
           !!closestEnemy && !!closestEnemy.isTense, // a sea creature after the player: in tighter and quicker

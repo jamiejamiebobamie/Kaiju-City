@@ -15,12 +15,13 @@ import { GameBoard } from "./GameBoard/GameBoard";
   'playWindow': the arena's place in the game frame, as fractions of it (the board sizes its view from it).
 */
 const PREVIEW_BOARD = { columns: 17, rows: 5, pad: 6 };
-const PREVIEW_VIEW = { hexes: 9, kaijuFade: { from: 3, to: 3.8 } };
+const PREVIEW_VIEW = { hexes: 9, hexRings: [1, 0.3], kaijuFade: { from: 1.9, to: 2.7 } };
 
 export const ClassBattle = ({ powers, avatar, playWindow }) => {
   // (Jamie, playtest 26: in close on the avatar, about 6 hexes round it, the camera following; a wider board for it to
   // roam, the Kaiju coming in from its sides, seen once within 3 tiles)
-  const level = useMemo(() => buildBattlePreviewLevel(PREVIEW_BOARD), []);
+  // (only the avatar's tile and its neighbors, and the next ring dim: Jamie, playtest 27)
+  const level = useMemo(() => ({ ...buildBattlePreviewLevel(PREVIEW_BOARD), hexRings: PREVIEW_VIEW.hexRings }), []);
   const [gameManager, setGameManager] = useState(null);
   const powersKey = powers.join(",");
 
