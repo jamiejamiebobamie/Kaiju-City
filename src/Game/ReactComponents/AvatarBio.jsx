@@ -94,7 +94,8 @@ const Bio = styled.div`
   green monochrome, scanlines, a dark vignette), his question in a green techno balloon below him, its tail at its
   top left pointing up and right, at him. Always there while nothing's hovered.
 */
-const AGENT_CALL = { line: "Welcome, soldier. who are you?" }; // (Jamie's words, playtest 29)
+const AGENT_CALL = { line: "Welcome, recruit.
+Who are you?" }; // (Jamie's words, playtest 29: two lines)
 // (Jamie, playtest 28) he walks out of the shadows into a light from above, then his balloon pops in and types out;
 // the feed is unstable (grain, rolling bars, now and then a tear). The walk-in plays once a visit; back to him after
 // a hover, he's simply there (a quick fade)
@@ -284,9 +285,10 @@ const AgentBalloon = styled.div`
   min-height: 2.6cqw;
   padding: 1cqw 1.2cqw;
   font-family: gameboy;
-  font-size: 1.15cqw;
+  font-size: 1.05cqw; /* (a little smaller: each of the two lines on one line: Jamie, playtest 29) */
   letter-spacing: 0.06cqw;
-  line-height: 1.5;
+  line-height: 1.6;
+  white-space: nowrap;
   text-align: center;
   color: ${GREEN};
   text-shadow: 0 0 0.4cqw rgba(128, 239, 128, 0.7);
@@ -339,7 +341,8 @@ const AgentCall = () => {
         <Static />
         <Tear />
       </AgentFeed>
-      {isBalloonUp && <AgentBalloon style={isQuick ? { animation: "none" } : undefined}><BalloonGrain />{[...AGENT_CALL.line.slice(0, typed)].map((char, k) => char == " " ? " " : <PopChar key={k} $isQuick={isQuick}>{char}</PopChar>)}</AgentBalloon>}
+      {isBalloonUp && <AgentBalloon style={isQuick ? { animation: "none" } : undefined}><BalloonGrain />{[...AGENT_CALL.line.slice(0, typed)].map((char, k) => char == "
+" ? <br key={k} /> : char == " " ? " " : <PopChar key={k} $isQuick={isQuick}>{char}</PopChar>)}</AgentBalloon>}
       {/* the rolling bar over everything on the screen, the balloon too (Jamie, playtest 29) */}
       <RollBar />
     </Screen>
