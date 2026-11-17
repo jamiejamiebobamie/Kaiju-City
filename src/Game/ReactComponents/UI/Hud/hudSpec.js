@@ -89,7 +89,7 @@ export const HUD_LAYERS = Object.fromEntries(LAYER_ORDER.map((name, k) => [name,
 export const HUD_VARIANTS = {
   player: { plate: "player", scale: 381 / 483 }, // (as it was: 381 wide)
   teammate: { plate: "teammate", scale: 284 / 355 }, // (as it was: 284 wide)
-  compact: { plate: "teammate", scale: 210 / 355 } // for a crowd (more than three HUDs): not the player's
+  compact: { plate: "teammate", scale: 240 / 355 } // for a crowd (more than three HUDs): not the player's
 };
 
 export const HUD_LOOK = {

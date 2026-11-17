@@ -26,37 +26,43 @@ export const FLOCK = {
   damping: 7.5, // per s
   enter: { from: { x: 520, y: -260 }, delayMs: 450, staggerMs: 130 }, // (a beat after its avatar shows on the board)
   exit: { to: { x: 640, y: -360 }, thrust: 2600, staggerMs: 110 },
-  hover: { amplitude: 2.6, seconds: 3.4 }, // the drift round the slot
-  tilt: { perSpeed: 0.035, max: 9, spring: 60, damping: 10 }, // degrees per px/s of sideways speed
+  // the drift round the slot: two swells, the second quicker (Jamie, playtest 26: busier, more dramatic)
+  hover: { amplitude: 6, seconds: 2.6, quick: 0.45 },
+  tilt: { perSpeed: 0.05, max: 13, spring: 60, damping: 9 }, // degrees per px/s of sideways speed
   // shoving apart when they touch: only settled HUDs (near their slots), an overlap counted up to 'maxOverlap' px, and
   // a top speed, so a reflow never flings one off
   bump: { push: 900, margin: 4, maxOverlap: 10, settledWithin: 60 },
   maxSpeed: 1400,
-  jostle: { everyMs: [2200, 5200], kick: 26 }, // now and then, a small knock (air, or a neighbor)
+  jostle: { everyMs: [700, 2200], kick: 70 }, // now and then, a small knock (air, or a neighbor)
   // casting: each cast adds 'perCast' energy (up to 'max'), which drains 'decay' a second; at full energy the drift is
   // 'hover' times bigger, knocks come 'knocks' times as often and 'kick' times as hard
-  energy: { perCast: 0.55, max: 1.6, decay: 0.32, hover: 3, knocks: 4, kick: 3.2 },
+  energy: { perCast: 0.7, max: 1.8, decay: 0.3, hover: 2.4, knocks: 3, kick: 2.6 },
   // low health: a drunken flight. 'sag': how far below its slot it hangs at worst; sputtering (jets cutting out) now
   // and then, dropping, then catching
   struggle: { from: 0.15, sag: 16, wobble: 9, sputterEveryMs: [500, 1600], sputterMs: [180, 520], drop: 520 },
-  // the steam jets (the side units' puffs: soft, white at the heart): down, away from the way it's going
+  // the thrusters (Jamie, playtest 26: forceful, directed jets, not exhaust puffs): fast narrow streaks from its two
+  // nozzles, fired against the way it's being pushed (down, for lift, and away from where it's heading), harder as it
+  // works
   jets: {
-    idlePerSecond: 7,
-    idleStrength: 0.32,
-    movingPerSecond: 60,
+    idlePerSecond: 26,
+    idleStrength: 0.45,
+    movingPerSecond: 150,
     movingFrom: 40, // px/s
-    speed: [80, 150], // px/s, down
-    sideways: 0.55, // of the HUD's sideways speed, the other way
-    lifeMs: [360, 520],
-    size: [9, 16], // its width, as it starts (it widens 2.2 times)
-    color: [240, 246, 250],
-    edge: [200, 214, 224]
+    speed: [340, 560], // px/s, along the jet
+    spread: 0.12, // radians either side
+    push: 0.0035, // how far the jet turns per px/s² of push
+    lifeMs: [150, 260],
+    size: [7, 11], // its width, as it starts (it widens a little)
+    stretch: 3.2, // how long a streak is, to its width
+    color: [244, 250, 255],
+    edge: [170, 214, 255]
   },
   // beside the monitor: just right of the casing, never over it, never taller than the frame. Shares of the frame's
   // width. 'smokeRoom': how much of the top HUD's passive smoke the column leaves room for (Jamie: some cut is fine)
   place: { gap: 0.012, top: 0.01, smokeRoom: 0.4 },
   // a crowd (compact HUDs): two to a row, each row after the first set over half a HUD, into the gap above (Jamie)
-  crowd: { perRow: 2, gap: 10, rowGap: 8 },
+  // (Jamie, playtest 26: rows fine, but no orderly columns): each row set in by its own amount, each HUD nudged a little
+  crowd: { perRow: 2, gap: 6, rowGap: 6, rowShifts: [0, -0.32, -0.08, -0.42, -0.18], nudge: { x: 9, y: 8 } },
   damage: {
     from: 0.85, // the health share where it starts
     // smoke off the console: soft wisps, stretched and turning, swaying as they rise and spread, a trail behind it
@@ -207,9 +213,13 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused, deadKeys = [],
           const row = Math.floor(crowdIndex / perRow);
           const col = crowdIndex % perRow;
           // (rows right-aligned; every other one set over half a HUD toward the monitor, into the gap above)
-          const offset = row % 2 ? -(size.width + gap) / 2 : 0;
-          const x = FLOCK.columnWidth - (perRow - col) * (size.width + gap) + gap + offset;
-          slots.set(entry.key, { x, y: crowdTop + row * (size.height + rowGap), ...size });
+          const { rowShifts, nudge } = FLOCK.crowd;
+          const offset = rowShifts[row % rowShifts.length] * (size.width + gap);
+          // (its own nudge, the same every frame: from its key)
+          const hash = [...String(entry.key)].reduce((sum, char) => (sum * 31 + char.charCodeAt(0)) % 9973, 7);
+          // (never past the column's right edge: off the frame)
+          const x = Math.min(FLOCK.columnWidth - size.width, FLOCK.columnWidth - (perRow - col) * (size.width + gap) + gap + offset + ((hash % 100) / 50 - 1) * nudge.x);
+          slots.set(entry.key, { x, y: crowdTop + row * (size.height + rowGap) + (((hash >> 3) % 100) / 50 - 1) * nudge.y, ...size });
           y = crowdTop + (row + 1) * (size.height + rowGap);
           crowdIndex += 1;
         } else {
@@ -328,8 +338,8 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused, deadKeys = [],
           const t = (now / 1000 + body.seed) * ((2 * Math.PI) / FLOCK.hover.seconds);
           const amplitude = FLOCK.hover.amplitude * (1 + FLOCK.energy.hover * body.energy) + FLOCK.struggle.wobble * struggle;
           const target = {
-            x: slot.x + Math.sin(t * 0.7) * amplitude * 0.5 + Math.sin(t * 2.3) * struggle * FLOCK.struggle.wobble * 0.6,
-            y: slot.y + Math.sin(t) * amplitude + struggle * FLOCK.struggle.sag
+            x: slot.x + Math.sin(t * 0.7) * amplitude * 0.6 + Math.sin(t * 1.9 + 1.3) * amplitude * FLOCK.hover.quick * 0.5 + Math.sin(t * 2.3) * struggle * FLOCK.struggle.wobble * 0.6,
+            y: slot.y + Math.sin(t) * amplitude + Math.sin(t * 2.7 + 0.6) * amplitude * FLOCK.hover.quick + struggle * FLOCK.struggle.sag
           };
           const spring = FLOCK.spring * (1 - 0.45 * struggle);
           ax = spring * (target.x - body.x) - FLOCK.damping * body.vx;
@@ -350,6 +360,8 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused, deadKeys = [],
         }
         body.vx += ax * dt;
         body.vy += ay * dt;
+        body.ax = ax;
+        body.ay = ay;
       });
 
       // shoving: settled ones that overlap push each other apart, and pass on some of their speed
@@ -458,11 +470,15 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused, deadKeys = [],
           if (count < 1 && Math.random() > count) break;
           count -= 1;
           const side = Math.random() < 0.5 ? 0.18 : 0.62;
+          // the jet: straight down for lift, turned against the push (its spring and its knocks)
+          const { jets } = FLOCK;
+          const aim = Math.atan2(1 - (body.ay || 0) * jets.push, -(body.ax || 0) * jets.push) + (Math.random() - 0.5) * 2 * jets.spread;
+          const jetSpeed = between(jets.speed) * (isMoving ? 1 : 0.75);
           back.push({
             kind: "jet", x: body.x + slot.width * side, y: body.y + slot.height * 0.9,
-            vx: -body.vx * FLOCK.jets.sideways + (Math.random() - 0.5) * 30,
-            vy: between(FLOCK.jets.speed) + Math.max(0, -body.vy) * 0.4,
-            life: between(FLOCK.jets.lifeMs), age: 0, size: between(FLOCK.jets.size) * (isMoving ? 1 : 0.7), strength
+            vx: Math.cos(aim) * jetSpeed + body.vx * 0.3,
+            vy: Math.sin(aim) * jetSpeed + body.vy * 0.3,
+            life: between(jets.lifeMs), age: 0, size: between(jets.size) * (isMoving ? 1 : 0.75), strength
           });
         }
       });
@@ -495,11 +511,11 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused, deadKeys = [],
           }
           p.x += p.vx * dt;
           p.y += p.vy * dt;
-          p.vx *= 1 - 1.5 * dt;
-          p.vy *= 1 - 1.2 * dt;
+          p.vx *= 1 - 2.2 * dt;
+          p.vy *= 1 - 2.2 * dt;
           const share = p.age / p.life;
-          // (the side units' puff: a soft white heart, widening and fading)
-          softPuff(ctx, p.x + MARGIN, p.y + MARGIN, (p.size / 2) * (0.35 + 1.85 * share), FLOCK.jets.color, 0.9 * p.strength * (1 - share), 1, 0, FLOCK.jets.edge);
+          // (a streak along its way: a hot white heart, blue at the edge, widening a little and fading)
+          softPuff(ctx, p.x + MARGIN, p.y + MARGIN, (p.size / 2) * (0.6 + 0.9 * share), FLOCK.jets.color, 0.95 * p.strength * (1 - share), FLOCK.jets.stretch * (1 - 0.4 * share), Math.atan2(p.vy, p.vx), FLOCK.jets.edge);
         }
       }
       const frontCanvas = frontRef.current;
