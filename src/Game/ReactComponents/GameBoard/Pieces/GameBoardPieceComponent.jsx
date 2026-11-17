@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import styled, { css, keyframes } from "styled-components";
 
-const Wrapper = styled.i.attrs(({ zIndex, charLocation, isVisible, pieceScale, $isFaded }) => ({
+const Wrapper = styled.i.attrs(({ zIndex, charLocation, isVisible, pieceScale, $isFaded, $opacity }) => ({
   style: {
     transform: `scale(${pieceScale})`,
     transformOrigin: "0 0",
@@ -11,7 +11,7 @@ const Wrapper = styled.i.attrs(({ zIndex, charLocation, isVisible, pieceScale, $
     top: `${charLocation.y}px`,
     display: isVisible ? "flex" : "none",
     // Sewer 2's climax: they fade back into the parts' light
-    opacity: $isFaded ? 0 : 1,
+    opacity: $isFaded ? 0 : $opacity ?? 1, // ('$opacity': the class battle's Kaiju, fading in as they near)
     transition: $isFaded ? "opacity 2.5s ease-in" : undefined
   }
 }))`
@@ -596,6 +596,7 @@ export const GameBoardPieceComponent = ({
   controlMarker = undefined, // the one the player plays as: which marker shows on them (CONTROL_MARKERS)
   hitLives = undefined, // health without the passives' (Haunt's Lichdom): what the "-1" and the shake follow
   isFaded = false,
+  opacity = undefined,
   speakingLineLength = 0
 }) => {
   // talking: they shake as long as their line takes, then rest a moment, and again (Jamie)
@@ -709,7 +710,7 @@ export const GameBoardPieceComponent = ({
   const bars = !isShowHealthBarOnComponent ? undefined : Array(lives).fill(0).map((_, i) => <Bar lives={lives} key={i} />)
   const isBarShown = !!isShowHealthBarOnComponent && lives > 0;
   return (
-    <Wrapper zIndex={zIndex} isVisible={isVisible} charLocation={charLocation} pieceScale={pieceScale} $isFaded={isFaded}>
+    <Wrapper zIndex={zIndex} isVisible={isVisible} charLocation={charLocation} pieceScale={pieceScale} $isFaded={isFaded} $opacity={opacity}>
       <NumberAnchor ref={numberAnchor} />
       {!isQuiet && modifierText}
       <HealthBarWrapper lives={lives}>{bars}</HealthBarWrapper>

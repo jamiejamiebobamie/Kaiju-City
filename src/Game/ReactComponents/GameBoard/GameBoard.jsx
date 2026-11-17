@@ -706,7 +706,10 @@ const MOVEMENT_KEYS = ["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowLeft", "
 const getIsTouchScreen = () => window.matchMedia("(pointer: coarse)").matches;
 
 // 'isCurtained': the credits are over the screen: nothing of the game's own shows over them (Jamie, playtest 21)
-export const GameBoard = ({ isCurtained = false, controlMarker = "outline", speakingLineLength = 0, isSwirling = false, speakingPieceIndex = undefined, choiceFromRef = undefined, isWindowOpen = true, isPaused, gameManager, level, activePhases, isWholeScene, playWindow, isShowingWindowSize, isEditingTiles, isMouseLook, isEnemyZoom, isSlowMotion, isTeamColors, speech, recruitScene, recruitChoice, onChooseRecruit, onHotspot }) => {
+// 'viewHexes': seen this many hexes across, following the player (the class battle's: Jamie, playtest 26); 'kaijuFade':
+// { from, to } in tiles from the player: Kaiju farther than 'to' are unseen, nearer than 'from' whole
+const VIEW_LIFT_ROWS = 1.5;
+export const GameBoard = ({ viewHexes = undefined, kaijuFade = undefined, isCurtained = false, controlMarker = "outline", speakingLineLength = 0, isSwirling = false, speakingPieceIndex = undefined, choiceFromRef = undefined, isWindowOpen = true, isPaused, gameManager, level, activePhases, isWholeScene, playWindow, isShowingWindowSize, isEditingTiles, isMouseLook, isEnemyZoom, isSlowMotion, isTeamColors, speech, recruitScene, recruitChoice, onChooseRecruit, onHotspot }) => {
   // redraws the pieces when the game updates. the tiles draw themselves.
   useSyncExternalStore(gameManager.subscribeToBoard, gameManager.getBoardRevision);
   const pieces = gameManager.getPieces();
@@ -747,7 +750,7 @@ export const GameBoard = ({ isCurtained = false, controlMarker = "outline", spea
     return new Camera({
       ...sizes,
       // zoomed for the whole frame: a smaller window shows less of the level, with tiles at the same size
-      zoom: isWholeScene ? getFitZoom(sizes) : getCloseZoom({
+      zoom: viewHexes ? sizes.viewWidth / (viewHexes * grid.colStep * grid.scale) : isWholeScene ? getFitZoom(sizes) : getCloseZoom({
         ...worldSizes,
         viewWidth: frame.width,
         viewHeight: frame.height,
@@ -756,7 +759,7 @@ export const GameBoard = ({ isCurtained = false, controlMarker = "outline", spea
         isTouch: getIsTouchScreen()
       })
     });
-  }, [level, frame, isWholeScene, playWindow]);
+  }, [level, frame, isWholeScene, playWindow, viewHexes]);
 
   // the window opens up to the whole frame for wide shots, unless the monitor always stays: then every shot is framed inside it
   const shotView = isWindowOpen ? { viewWidth: frame.width, viewHeight: frame.height } : { viewWidth: windowWidth, viewHeight: windowHeight };
@@ -941,8 +944,10 @@ export const GameBoard = ({ isCurtained = false, controlMarker = "outline", spea
         // the keys are in charge when the mouse's hover is hidden
         const isLooking = isMouseLook && !!gameManager.getHoveredTileIndex();
         const closestEnemy = isEnemyZoom ? pickEnemy(player, getEnemyTargets(player, gameManager), nowMs) : undefined;
+        // (the class battle's view, about the avatar's middle rather than its feet: its head was cut off)
+        const lookAt = getWorldLocation(player.charLocation);
         closeCamera.lookToward(
-          getWorldLocation(player.charLocation),
+          viewHexes ? { ...lookAt, y: lookAt.y - VIEW_LIFT_ROWS * grid.rowStep * grid.scale } : lookAt,
           isLooking ? mouseAim.current : { x: 0, y: 0 },
           closestEnemy ? getWorldLocation(closestEnemy.charLocation) : undefined,
           !!closestEnemy && !!closestEnemy.isTense, // a sea creature after the player: in tighter and quicker
@@ -1151,6 +1156,12 @@ export const GameBoard = ({ isCurtained = false, controlMarker = "outline", spea
     };
   }, []);
 
+  const getKaijuFade = piece => {
+    const focus = gameManager.getFocusPiece();
+    if (!focus || !focus.charLocation) return 1;
+    const tiles = Math.hypot(piece.charLocation.x - focus.charLocation.x, piece.charLocation.y - focus.charLocation.y) / (grid.colStep * grid.scale);
+    return Math.max(0, Math.min(1, (kaijuFade.to - tiles) / (kaijuFade.to - kaijuFade.from)));
+  };
   const piecesComponents = pieces.map(p =>
     <GameBoardPieceComponent
       key={p.pieceIndex}
@@ -1179,6 +1190,7 @@ export const GameBoard = ({ isCurtained = false, controlMarker = "outline", spea
       isOnBoard={p.isOnTiles !== false}
       isRewardPulse={!!p.getIsRewardPulse && p.getIsRewardPulse()}
       isFaded={false} // (Sewer 2's touch: no fade of their own; the scene's white covers them. Jamie, playtest 20)
+      opacity={kaijuFade && p.avatar == 'kaiju' ? getKaijuFade(p) : undefined}
       statusEffects={p.getStatusEffects && p.isVisible && !p.isDead ? p.getStatusEffects(gameManager.gameBoardPiecesManager.getPlayerTeamIndex()) : []}
       cleanSlateCount={p.cleanSlateCount || 0}
       isPlayer={p === gameManager.gameBoardPiecesManager.getPlayerPiece()}
