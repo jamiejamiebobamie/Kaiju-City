@@ -111,7 +111,7 @@ export const MonitorBoot = ({ onDone }) => {
   const isAtPlay = phase == "moving" || phase == "pressed";
   return (
     <Screen>
-      <Logo src="/staticLogo.png" alt="" />
+      <Logo src="/Logo.gif" alt="" /> {/* (the splash's, moved here) */}
       {phase == "loading" ? (
         <>
           <Bar><div style={{ width: `${Math.round(progress * 100)}%` }} /></Bar>
