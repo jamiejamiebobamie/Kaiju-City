@@ -201,6 +201,14 @@ const ActiveIcon = styled.i`
   ${props => props.$cooldownMs && css`animation: ${cooldownSpin} ${props.$cooldownMs}ms linear;`}
   animation-play-state: ${props => props.$isPaused ? "paused" : "running"};
 `;
+// a key socket's cap, for a HUD with no keys (Jamie, playtest 26: the empty little circle looked unfinished): the console's
+// metal, domed
+const KeyCap = styled(Part)`
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%, #6a6d73, #34363b 55%, #17181b);
+  box-shadow: inset 0 -1px 2px rgba(0, 0, 0, 0.7), 0 0 0 1px #0d0e10;
+`;
+
 const Key = styled(Part)`
   display: flex;
   align-items: center;
@@ -328,6 +336,7 @@ export const Hud = ({ pd, variant = "player", isPaused, damage = 0, powerDownMs 
           {!powerDownMs && abilities.slice(0, plate.passives.length).map((ability, k) => (
             <PassiveSmoke key={k} box={plate.passives[k]} ability={ability} />
           ))}
+          {!pd.isControlled && plate.keys.slice(0, abilities.length).map((box, k) => <KeyCap key={k} style={place(box, "keyCaps")} />)}
           {pd.isRewardPulse && <RewardGlow style={place(plate.portrait, "rewardGlow")} />}
           {pd.isDead && <DeathWords style={place(plate.health, "deathWords")}>{HUD_LOOK.deathWords.text}</DeathWords>}
         </Art>

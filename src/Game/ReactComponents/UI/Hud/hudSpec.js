@@ -78,6 +78,7 @@ const LAYER_ORDER = [
   "keys",
   "passives",
   "plateFront", // the overlay: the metal, its holes and glass
+  "keyCaps", // metal caps over the key sockets of HUDs that have no keys (teammates, recruits: playtest 26)
   "passiveSmoke",
   "rewardGlow",
   "deathWords"
