@@ -12,7 +12,7 @@ import { PICKER_FIGURE } from "./AbilityPicker";
   Spots are shares of the screen, on the avatar select: the middles of the figures (measured off Jamie's screenshots).
 */
 // (the catwalk painted out, for these screens only: Jamie, playtest 28. The Lab fight keeps lab.png)
-const LAB = { src: "/levels/lab-select.png", darkness: 0.82, darknessPicker: 0.9 };
+const LAB = { src: "/levels/lab-select.png", darkness: 0.6, darknessPicker: 0.9 }; // (the avatar select brighter once its lights are on: Jamie, playtest 31; was 0.82)
 // (its leftover background, from the picture it was cut from, cleared: Jamie, playtest 28-29)
 const TANK = { src: "/levels/lab-tank-empty.png", width: 98, height: 217 };
 const BUBBLES = { src: "/spritesheet/disc_bubbles.png", frames: 7, frameWidth: 177, frameHeight: 528, seconds: 2.4 };

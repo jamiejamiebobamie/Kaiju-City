@@ -445,34 +445,72 @@ const FadeToBlack = styled.div`
 const SIDE_EXIT_MS = 900;
 
 /*
-  The avatar select's Lab, its lights coming on (Jamie, playtest 29): from a tenth of its brightness, as an office's
-  fluorescent tubes do: a couple of weak blinks, a stutter, catching, one last dip, then steady. A dark layer over the
-  scene, cleared in those steps.
+  The avatar select's Lab, its lights coming on (Jamie, playtests 29-31): after a pause in the dark, a row of ceiling
+  tubes flicker to life one after another, left to right, as the current runs down the circuit: each blinks, stutters,
+  catches, and throws a pool of light down the scene; the dark lifts a step as each one catches, and the avatars,
+  black silhouettes at first, come up with it.
 */
-const labLights = keyframes`
-  0%, 7% { opacity: 0.9; }
-  8% { opacity: 0.55; }
-  10%, 17% { opacity: 0.9; }
-  18% { opacity: 0.4; }
-  19.5% { opacity: 0.88; }
-  29% { opacity: 0.88; }
-  30% { opacity: 0.2; }
-  31% { opacity: 0.7; }
-  32.5% { opacity: 0.15; }
-  34% { opacity: 0.6; }
-  44% { opacity: 0.08; }
-  58% { opacity: 0.05; }
-  60% { opacity: 0.45; }
-  62% { opacity: 0.02; }
+const LAB_TUBES = { count: 4, stepMs: 420, flickerMs: 1100 };
+const LAB_LIGHTS_TOTAL_MS = LAB_TUBES.stepMs * (LAB_TUBES.count - 1) + LAB_TUBES.flickerMs;
+const tubeFlicker = keyframes`
+  0%, 9% { opacity: 0; }
+  10% { opacity: 0.8; }
+  14%, 27% { opacity: 0; }
+  28% { opacity: 1; }
+  31% { opacity: 0.1; }
+  34% { opacity: 0.9; }
+  36%, 49% { opacity: 0.15; }
+  50% { opacity: 1; }
+  63% { opacity: 1; }
+  64% { opacity: 0.4; }
+  66%, 100% { opacity: 1; }
+`;
+// the dark over the scene: down a step as each tube catches (each a little after its own flicker's start)
+const labDark = keyframes`
+  ${[...Array(LAB_TUBES.count + 1).keys()].map(k => {
+    const at = k == 0 ? 0 : ((LAB_TUBES.stepMs * (k - 1) + LAB_TUBES.flickerMs * 0.5) / LAB_LIGHTS_TOTAL_MS) * 100;
+    return `${at.toFixed(2)}% { opacity: ${(0.93 * (1 - k / LAB_TUBES.count)).toFixed(3)}; }`;
+  }).join("\n")}
   100% { opacity: 0; }
 `;
-const LabLightsOn = styled.div`
+const LabDark = styled.div`
   position: absolute;
   inset: 0;
   z-index: 40;
   pointer-events: none;
   background: black;
-  animation: ${labLights} 2200ms steps(1, end) ${LAB_LIGHTS_DELAY_MS}ms both; /* (a pause in the dark first: Jamie, playtest 30) */
+  animation: ${labDark} ${LAB_LIGHTS_TOTAL_MS}ms steps(1, end) ${LAB_LIGHTS_DELAY_MS}ms both;
+`;
+// a tube on the ceiling, and its pool of light down the scene
+const LabTube = styled.div`
+  position: absolute;
+  top: 0;
+  height: 100%;
+  z-index: 41;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  background:
+    linear-gradient(to bottom, rgba(225, 255, 255, 0.95) 0 0.35cqw, transparent 0.35cqw) center top / 70% 100% no-repeat,
+    radial-gradient(ellipse 60% 85% at 50% 0%, rgba(190, 240, 255, 0.28), rgba(150, 220, 255, 0.1) 45%, transparent 75%);
+  animation: ${tubeFlicker} ${LAB_TUBES.flickerMs}ms steps(1, end) both;
+`;
+const LabLightsOn = () => (
+  <>
+    <LabDark />
+    {[...Array(LAB_TUBES.count).keys()].map(k => (
+      <LabTube key={k} style={{ left: `${(k * 100) / LAB_TUBES.count}%`, width: `${100 / LAB_TUBES.count}%`, animationDelay: `${LAB_LIGHTS_DELAY_MS + k * LAB_TUBES.stepMs}ms` }} />
+    ))}
+  </>
+);
+// the avatars: black silhouettes in the dark, brought up with the lights
+const avatarsLit = keyframes`
+  0% { filter: brightness(0); }
+  40% { filter: brightness(0.15); }
+  70% { filter: brightness(0.5); }
+  100% { filter: brightness(1); }
+`;
+const AvatarsInTheDark = styled.div`
+  animation: ${avatarsLit} ${LAB_LIGHTS_TOTAL_MS}ms steps(4, end) ${LAB_LIGHTS_DELAY_MS}ms both;
 `;
 
 // between scenes. the clouds pass over these.
@@ -1644,7 +1682,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
           {/* the Lab behind them, darkened, lit round the avatars (Jamie) */}
           <MonitorLabBackdrop mode={isChoosingAvatar ? "choice" : "picker"} hovered={hoveredAvatar} focus={isChoosingAvatar ? handOverAvatar : selectedAvatar} />
           {isChoosingAvatar ? (
-            <div style={{ position: "absolute", inset: 0, transformOrigin: "0 0", transition: FOCUS_MOVE, transform: getFocusTransform(handOverAvatar) }}>
+            <AvatarsInTheDark style={{ position: "absolute", inset: 0, transformOrigin: "0 0", transition: FOCUS_MOVE, transform: getFocusTransform(handOverAvatar), ...(isBooted ? {} : { animation: "none" }) }}>
             <AvatarChoice isReady={isMonitorOn} onHover={setHoveredAvatar} onHandOver={setHandOverAvatar} onChoose={(player, teammate) => {
               // a first play skips the power picker: Discharge, Wildfire and Dispel to start (Jamie); every replay after it shows it
               const isFirstPlay = getIsFirstPlay();
@@ -1667,7 +1705,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
               setPickerFrom('avatar');
               setIsChoosingAvatar(false); // the picker comes up on the same monitor
             }} />
-            </div>
+            </AvatarsInTheDark>
           ) : (
             <AbilityPicker
               key="picker"
