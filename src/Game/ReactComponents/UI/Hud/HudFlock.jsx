@@ -62,7 +62,9 @@ export const FLOCK = {
   place: { gap: 0.012, top: 0.01, smokeRoom: 0.4 },
   // a crowd (compact HUDs): two to a row, each row after the first set over half a HUD, into the gap above (Jamie)
   // (Jamie, playtest 26: rows fine, but no orderly columns): each row set in by its own amount, each HUD nudged a little
-  crowd: { perRow: 2, gap: 6, rowGap: 6, rowShifts: [0, -0.32, -0.08, -0.42, -0.18], nudge: { x: 9, y: 8 } },
+  // (Jamie, playtest 29: much larger: one to a row, nearly full size, zig-zagging by uneven amounts down the side, rows
+  // overlapping a little in height so the group stays compact)
+  crowd: { perRow: 1, gap: 6, rowGap: -10, rowShifts: [0, -0.3, -0.08, -0.38, -0.16, -0.27], nudge: { x: 10, y: 6 } },
   damage: {
     from: 0.85, // the health share where it starts
     // smoke off the console: soft wisps, stretched and turning, swaying as they rise and spread, a trail behind it
