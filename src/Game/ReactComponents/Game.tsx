@@ -281,6 +281,8 @@ const EnterHint = styled.span`
 const HintBracket = styled.span`
   font-family: "Courier New", Courier, monospace;
   font-weight: bold;
+  font-size: 1.4em; /* (as big as the landing's: Jamie, playtest 25) */
+  line-height: 0;
 `;
 const EnterKeyHint = () => <EnterHint><HintBracket>[</HintBracket>ENTER<HintBracket>]</HintBracket></EnterHint>;
 

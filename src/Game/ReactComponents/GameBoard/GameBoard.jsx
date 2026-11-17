@@ -1190,9 +1190,12 @@ export const GameBoard = ({ isCurtained = false, controlMarker = "outline", spea
   const pairCameras = currentShot && currentShot.pair ? getPairCameras(currentShot) : undefined;
   const splitCameras = pairCameras && pairCameras.right ? pairCameras : undefined;
   // the zoom the balloons are drawn for: the shot's, the follow camera's in a scene that fills the monitor, or the whole scene's
+  // (in play, with no shot of its own: the camera actually in use. It was the whole scene's zoom, so with the close
+  // camera on, a balloon came out huge and off-center: Jamie, playtest 25)
   const shotZoom = currentShot && !currentShot.isWide ? getShotFraming(currentShot).zoom
     : getIsCoverScene() ? coverCamera.zoom
-    : getFitZoom(fullFrameSizes) * ((recruitScene && recruitScene.shot.zoomScale) || 1);
+    : recruitScene ? getFitZoom(fullFrameSizes) * (recruitScene.shot.zoomScale || 1)
+    : (isWideShot ? wideCamera : closeCamera).zoom;
   const overlayScale = SpeechBubbleScale / shotZoom;
 
   // a balloon is kept inside the scene: near an edge, it slides in (the tail still starts from the same spot on it)

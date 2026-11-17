@@ -517,13 +517,14 @@ const StatusRow = styled.div`
   width: 40px;
   display: flex;
   justify-content: center;
-  gap: 2px;
+  gap: 7px; /* (wider: their counts sat on the next icon: Jamie, playtest 25; was 2) */
   pointer-events: none;
   z-index: 2;
 `;
 
 const StatusIcon = styled.span`
   position: relative;
+  &:has(> span) { margin-right: 3px; } /* (room for its count) */
   font-size: 10px;
   line-height: 1;
   filter: drop-shadow(0 0 1px black) drop-shadow(0 0 2px black) drop-shadow(0 0 3px var(--glow));

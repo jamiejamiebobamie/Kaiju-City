@@ -62,7 +62,7 @@ describe('open items', () => {
     gm.ghostRing = undefined;
   });
 
-  it('4. the Rooftop without the player’s Dispel: the teammate brings it, stays with them, and says so at their first block', () => {
+  it('4. the Rooftop without the player’s Dispel: the teammate brings it, stays with them, and says so the first time she casts Haunt', () => {
     const gm = makeGame(LEVELS.rooftop);
     const teammate = gm.getPieces()[1];
     expect(teammate.isGuardian).toBe(true);
@@ -70,13 +70,16 @@ describe('open items', () => {
     // with the player's own Dispel, the teammate is as usual
     const withDispel = makeGame(LEVELS.rooftop, { elements: ['Fire', 'Bubble', 'Metal'] });
     expect(withDispel.getPieces()[1].isGuardian).toBeFalsy();
-    // the first block by the teammate's Dispel: their line, once
-    gm.getIsDispelledAt = () => true;
-    gm.getDispelCasterAt = () => teammate.pieceIndex;
-    expect(gm.getIsDispelledByTeam({ x: 0, y: 0 })).toBe(true);
+    // not before she has cast Haunt (playtest 25: it waited for her ghosts to meet their Dispel)
+    const haunt = gm.rivalPiece.abilities.find(ability => ability.gameBoardPieceAbilityData.element == 'death');
+    gm.updateGuardianLine();
+    expect(gm.speech).toBeFalsy();
+    // her first Haunt: their line, once
+    haunt.lastCastAt = 1;
+    gm.updateGuardianLine();
     expect(gm.speech && gm.speech.text).toBe("Let's stick together. I'll block her ghosts.");
     gm.speech = null;
-    gm.getIsDispelledByTeam({ x: 0, y: 0 });
+    gm.updateGuardianLine();
     expect(gm.speech).toBeNull();
   });
 

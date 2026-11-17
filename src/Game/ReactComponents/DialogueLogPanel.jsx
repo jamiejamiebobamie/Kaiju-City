@@ -347,6 +347,8 @@ const ContinueBar = styled.button`
 const Bracket = styled.span`
   font-family: "Courier New", Courier, monospace;
   font-weight: bold;
+  font-size: 1.4em; /* (as big as the landing's: Jamie, playtest 25) */
+  line-height: 0;
 `;
 const EnterKey = () => <><Bracket>[</Bracket>ENTER<Bracket>]</Bracket></>;
 

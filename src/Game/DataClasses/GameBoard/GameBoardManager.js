@@ -14,6 +14,9 @@ import { GameBoardTile } from 'Game/DataClasses/GameBoard/Tile/GameBoardTile'
 import { findPath } from 'Game/DataClasses/GameBoard/findPath'
 import { getCharXAndY, getTileCenter, getTileIndexAtLocation, getTileXAndY } from 'Game/DataClasses/GameBoard/hexGrid'
 
+// a chasing power goes straight at its target within this many tile widths (no soft turn: it circled them)
+const TRACKING_DIRECT_COLS = 3.2;
+
 // powers aim at a Kaiju walking in, ahead of the closest enemy on the tiles, once it is this many tiles from stepping on (Jamie)
 export const AIM_ENTERING_TILES = 2;
 
@@ -334,8 +337,12 @@ export class GameBoardManager {
                     const target = this.gameManagerProxy.getPiece(tile.targetIndex);
                     if (!target.getIsDead() && (target.getTeamIndex() != tile.teamIndex || tileStatus.getDmgAmt() < 0)) {
                         const [_, dirs] = this.getTilesTowardPiece(tileIndex, target);
-                        // a soft chase: it turns toward the target only so far each step, so it overshoots and comes about
-                        newDirs = tileStatus.getTurnSteps() !== undefined && dirs.length ? [turnToward(d, dirs[0], tileStatus.getTurnSteps())] : dirs;
+                        // a soft chase: it turns toward the target only so far each step (a curve); within a few tiles of
+                        // it, straight at it (Jamie, playtest 25: up close the soft turn left them circling the target)
+                        const { colStep, scale } = this.grid;
+                        const from = this.getCharXAndYFromTileIndex(tileIndex);
+                        const isClose = !!target.charLocation && getDistanceToFrom(target.charLocation, from) <= TRACKING_DIRECT_COLS * colStep * scale;
+                        newDirs = tileStatus.getTurnSteps() !== undefined && dirs.length && !isClose ? [turnToward(d, dirs[0], tileStatus.getTurnSteps())] : dirs;
                     }
                 } else if (isReversing) {
                     newDirs = tileStatus.reverseDir(d);

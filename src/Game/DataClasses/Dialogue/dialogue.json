@@ -470,7 +470,7 @@
       ]
     },
     "rooftop.guardian": {
-      "label": "Rooftop: the teammate's first Dispel of her ghosts (the player has no Dispel)",
+      "label": "Rooftop: the teammate, the first time Ghost Girl casts Haunt (the player has no Dispel)",
       "lines": [
         {
           "speaker": "teammate",

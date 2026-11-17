@@ -1756,6 +1756,9 @@ export class GameManager {
 
     // no portals: the powers in play are gone with the flash, and the team stands together at 'spot' (recruits a row below)
     placeTeam(team, recruits, spot) {
+        // the dead stay where they fell (Jamie, playtest 25: a ragdoll appearing beside the team looked silly)
+        team = team.filter(piece => !piece.getIsDead());
+        recruits = recruits.filter(piece => !piece.getIsDead());
         const { colStep, scale } = this.level.grid;
         const board = this.gameBoardManager;
         board.getTilesInFlatArray().forEach(tile => tile.clearTileStatus());
@@ -1884,18 +1887,24 @@ export class GameManager {
         this.ghostGuardian = teammate;
     }
 
-    // a ghost on a tile of the team's Dispel. the guardian's first: their line (once)
-    getIsDispelledByTeam = spot => {
-        if (!this.getIsDispelledAt(spot)) return false;
+    // a ghost on a tile of the team's Dispel
+    getIsDispelledByTeam = spot => this.getIsDispelledAt(spot);
+
+    /*
+        The guardian's line (once): the first time Ghost Girl casts Haunt (Jamie, playtest 25: it waited for her phase
+        ghosts to meet their Dispel).
+    */
+    updateGuardianLine() {
         const guardian = this.ghostGuardian;
-        if (guardian && !guardian.isDead && !this.hasGuardianSpoken && this.getDispelCasterAt(spot) == guardian.pieceIndex) {
-            this.hasGuardianSpoken = true;
-            const { text } = getDialogueLine('rooftop.guardian');
-            this.speech = this.fillSpeech({ ...this.getSpeechOver(guardian, this.getTeammateName(), text), isShout: true });
-            this.timeoutHandler.registerTimeout(() => { if (this.speech && this.speech.text == text) this.speech = null; }, getSpeechMs(text));
-        }
-        return true;
-    };
+        const rival = this.rivalPiece;
+        if (!guardian || guardian.isDead || this.hasGuardianSpoken || !rival) return;
+        const haunt = rival.abilities.find(ability => ability.gameBoardPieceAbilityData.element == 'death');
+        if (!haunt || haunt.lastCastAt === undefined) return;
+        this.hasGuardianSpoken = true;
+        const { text } = getDialogueLine('rooftop.guardian');
+        this.speech = this.fillSpeech({ ...this.getSpeechOver(guardian, this.getTeammateName(), text), isShout: true });
+        this.timeoutHandler.registerTimeout(() => { if (this.speech && this.speech.text == text) this.speech = null; }, getSpeechMs(text));
+    }
 
     getDispelCasterAt = spot => {
         const { grid } = this.level;
@@ -3475,6 +3484,7 @@ export class GameManager {
         if (this.isPaused || this.isEditingTiles) return;
         this.updateObjective();
         this.updateTakeOver();
+        this.updateGuardianLine();
         this.updateTrappedRival();
         this.updateApartRival();
         this.updateRoamingRival();
