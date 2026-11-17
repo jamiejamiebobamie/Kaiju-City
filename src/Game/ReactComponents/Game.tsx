@@ -25,7 +25,7 @@ import { ChoiceButton } from "./GameBoard/GameBoard";
 import { DEFAULT_AGGRESSION } from "Game/DataClasses/npcBrain/brain";
 import { getKaijuSpeedMode, KaijuSpeedMode, setKaijuSpeedMode } from "../DataClasses/KaijuSpeedTest";
 import { getAvatarColor, saveAvatarColor, saveTeamAvatars, unlockEverything, unlockRecruitSkill, unlockSkill, unlockTool } from "../DataClasses/Avatars";
-import { AbilityPicker, FLY_OFF, MINI_TIMING, PlayConsole, SideMonitor } from "./AbilityPicker";
+import { AbilityPicker, FLY_OFF, LAB_LIGHTS_DELAY_MS, MINI_TIMING, PlayConsole, SideMonitor } from "./AbilityPicker";
 import { holdTamagotchi } from "./Tamagotchi";
 import { FOCUS_MOVE, getFocusTransform, MonitorLabBackdrop } from "./MonitorLabBackdrop";
 import { getHasBooted, MonitorBoot } from "./MonitorBoot";
@@ -472,7 +472,7 @@ const LabLightsOn = styled.div`
   z-index: 40;
   pointer-events: none;
   background: black;
-  animation: ${labLights} 2200ms steps(1, end) both;
+  animation: ${labLights} 2200ms steps(1, end) ${LAB_LIGHTS_DELAY_MS}ms both; /* (a pause in the dark first: Jamie, playtest 30) */
 `;
 
 // between scenes. the clouds pass over these.

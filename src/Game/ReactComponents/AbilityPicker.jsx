@@ -1428,11 +1428,14 @@ const useBurnIn = (isPickerShowing, bioOf) => {
 
 // (the Agent at least this long when the avatar select first shows, whatever's hovered, so he's seen: Jamie, playtest 29)
 const AGENT_FIRST_MS = 4800; // (at least 3.5 s: Jamie; long enough now for his whole walk-in and line once the screen is on)
-const SCREEN_POWER_ON_MS = 650; // (the CRT's power-on, CRT.onMs: the picture's up after it)
+const SCREEN_POWER_ON_MS = 650;
+// the avatar select's Lab sits dark this long before its lights flicker on (Game.tsx): the Agent waits for them too
+export const LAB_LIGHTS_DELAY_MS = 2500; // (the CRT's power-on, CRT.onMs: the picture's up after it)
 const TAMA_FIRST_MS = 3000;
 export const SideMonitor = ({ isPickerShowing, isPoweredOff = false, isLeaving = false, bioOf: hoveredBio = undefined }) => {
   const [isAgentHeld, setIsAgentHeld] = useState(true);
   const screenOnAt = useRef(Date.now() + MINI_TIMING.onAtMs); // (when its screen switches on: the Agent starts then)
+  const lightsAt = useRef(Date.now() + LAB_LIGHTS_DELAY_MS); // (and not before the Lab's lights: Jamie, playtest 30)
   useEffect(() => {
     const timeout = setTimeout(() => setIsAgentHeld(false), MINI_TIMING.onAtMs + AGENT_FIRST_MS);
     return () => clearTimeout(timeout);
@@ -1451,7 +1454,7 @@ export const SideMonitor = ({ isPickerShowing, isPoweredOff = false, isLeaving =
     {/* the avatar select: the candidates' files (Jamie: not the tamagotchi, that's on the picker) */}
     {/* the Agent and the files crossfade too (Jamie, playtest 29) */}
     {isPickerShowing ? <SideSlot data-side-screen /> : (
-      <CrossFade id={bioOf || "agent"}><AvatarBio avatar={bioOf} agentDelayMs={screenOnAt.current + SCREEN_POWER_ON_MS - Date.now()} /></CrossFade> /* (no hold here: straight on to what's next) */
+      <CrossFade id={bioOf || "agent"}><AvatarBio avatar={bioOf} agentDelayMs={Math.max(screenOnAt.current + SCREEN_POWER_ON_MS, lightsAt.current + 300) - Date.now()} /></CrossFade> /* (no hold here: straight on to what's next) */
     )}
   </SideFrame>
   );
