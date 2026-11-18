@@ -1336,6 +1336,9 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     // the power picker, and back into the Lab with the new powers
     if (screen == "powers") {
       isPickingPowersInLab.current = true;
+      // (Jamie, playtest 34: a jump between the Lab and the picker) the picker's monitor starts where the Lab's was,
+      // then eases aside as its console comes, rather than appearing aside
+      if (isMonitorCentered) setIsConsoleIn(false);
       setIsLabPicker(true);
       setPickedAbilities([...settingsManager.getSortedPlayerChosenAbilityElementsString()]); // the powers they have now, picked already
       // the scene slides away to the right, as if the camera turned left to the tanks, as it slides left for the color vat
@@ -1658,6 +1661,9 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   // (the panel only when it is drawn: it has lines, or is still coming apart. A shouted line is a balloon, no panel)
   const isSideContent = isHudsShowing || (isLogShowing && dialogueLog.length > 0) || isLogClosing || labScreen == "colors";
   const [isMonitorCentered, setIsMonitorCentered] = useState(false);
+  // a game starting (from the picker, where the monitor stood aside): it starts aside too, and centers later if
+  // nothing comes beside it, rather than jumping to the middle (Jamie, playtest 34)
+  useEffect(() => { if (!isPlayingGame) setIsMonitorCentered(false); }, [isPlayingGame]);
   useEffect(() => {
     if (isSideContent) {
       setIsMonitorCentered(false);
