@@ -34,7 +34,7 @@ const LOOK = {
   figureHeight: 400, // the avatar, head to feet (Jamie's, 2026-11-15; was 270, then 540; the halo kept its size)
   figureDrop: -50, // the avatar moved down from the halo's middle (negative: up), in stage units; the dev panel's slider
   haloRadius: { fewest: { count: 6, radius: 300 }, most: { count: 10, radius: 320 } }, // by the open powers (Jamie)
-  torso: { x: 500, y: 525 }, // the upper torso: the halo's middle
+  torso: { x: 500, y: 475 }, // the upper torso: the halo's middle (all of it up, the number under the name clear of the bottom: Jamie, playtest 33; was 525)
   headDrop: 0.28, // the upper torso, down from the top of the head (of the figure's height)
   // the area below the avatar stays clear (Jamie): its legs reach down past the lowest pendants (feet at 874, the
   // lowest pendants at about 720), and no pendant, line or pad is ever under it. Keep the arc's gap at the bottom wide
