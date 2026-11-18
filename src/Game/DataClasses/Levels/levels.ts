@@ -857,7 +857,7 @@ const LEVEL_BUILDERS: Record<string, (file) => LevelConfig> = {
     ...buildLevel(file, 'Lab Window', '#4a8fb0', [{ src: '/levels/lab-catwalk-railing.png', x: 0, y: 124, width: 1408, height: 48, sortY: 200 }]),
     ...LAB_SCENE,
     layers: [
-      { src: '/levels/lab-window.png', zIndex: -5 }, // seen through the window. a placeholder until there is landscape art.
+      { src: '/levels/lab-window.png', zIndex: -5 }, // seen through the window: the Peninsula's map in perspective, from the Lab looking north, at night (scripts/labWindowView.py: Jamie, 2026-11-18)
       { src: '/levels/lab.png', zIndex: -4 }
     ]
   }),
