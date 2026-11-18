@@ -9,10 +9,10 @@ import styled, { keyframes } from "styled-components";
 */
 const ARCS = {
   gapMs: [250, 900], // between one arc starting and the next
-  runMs: [520, 820], // one arc's trip
+  runMs: [240, 400], // one arc's trip (twice as quick: Jamie, playtest 34; was 520 to 820)
   letters: [3, 8], // how many letters it winds round
-  reach: 0.45, // how far above and below the letters it swings, of their height
-  jag: 0.18, // the zigzag between, of the letters' height
+  reach: 0.14, // how far above and below the letters it swings, of their height (hugging them: Jamie; was 0.45)
+  jag: 0.1, // the zigzag between, of the letters' height (was 0.18)
   trail: 34, // its lit length, of 100 along its path
   strokes: { halo: 0.45, glow: 0.2, core: 0.08 }, // widths, of the letters' height
   core: "#ffffff",
