@@ -5,6 +5,7 @@ import { SpeedBlurFilter, slideAway } from "Components/SlideAway";
 import { Doodads } from "Components/AvatarSelection";
 import { ScaleToFit } from "Components/CrtPower";
 import { PICKER_FIGURE } from "./AbilityPicker";
+import { ElectricArcs } from "./ElectricArcs";
 import { SCENE_DROP, SCENE_DROP_MORE, setFigurePlace } from "./MonitorLabBackdrop";
 
 /*
@@ -497,7 +498,7 @@ export const AvatarChoice = ({ onChoose = (_player, _teammate) => {}, isReady = 
             <ChoiceAvatar key={id} id={id} sheet={sheet} keyName={key} figureOffset={figureOffset} chosen={nameOnly || chosen} isLeaving={isLeaving} onChoose={() => choose(id)} onHover={onHover} nameOnly={nameOnly} />
           ))}
         </Row>
-        <Prompt $isHidden={!!chosen}>Choose your character</Prompt>
+        <Prompt $isHidden={!!chosen}><ElectricArcs text="Choose your character" isOn={!chosen}>Choose your character</ElectricArcs></Prompt>
       </Screen>
     </ScaleToFit>
   );

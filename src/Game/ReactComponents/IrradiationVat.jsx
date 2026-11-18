@@ -6,6 +6,7 @@ import { PIECES_INFO } from "Utils/gameState";
 import { SpeechBalloon } from "Game/ReactComponents/GameBoard/SceneElements";
 import { getDialogueLine } from "Game/DataClasses/Dialogue/dialogue";
 import { DIRECTIVE_COLOR, directivePulse } from "./AvatarChoice";
+import { ElectricArcs } from "./ElectricArcs";
 
 // what the Lab Tech says as the color takes (Dialogue/dialogue.json)
 const VAT_PRAISE = getDialogueLine('labIntro.vatPraise');
@@ -190,7 +191,7 @@ const Heading = styled.div`
   left: 0;
   right: 0;
   transform: translateY(-50%);
-  font-size: 1.6cqw;
+  font-size: 2.3cqw; /* (bigger: Jamie, playtest 34; was 1.6) */
   letter-spacing: 0.15cqw;
   text-align: center;
   color: ${DIRECTIVE_COLOR};
@@ -348,7 +349,7 @@ export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose }) => 
       {BUBBLES.map(([left, size, seconds, delay]) => (
         <Bubble key={left} style={{ left: `${left}%`, width: `${size}cqw`, height: `${size}cqw`, animationDuration: `${seconds}s`, animationDelay: `${delay}s` }} />
       ))}
-      <Heading>Choose Color</Heading>
+      <Heading><ElectricArcs text="Pick Your Color">Pick Your Color</ElectricArcs></Heading>
       </Scene>
       {isPraising && <PraiseSpot><SpeechBalloon name={VAT_PRAISE.name} text={VAT_PRAISE.text} x={0} y={0} isFlipped scale={(document.querySelector("[data-play-screen]") || document.body).clientWidth / VAT_LOOK.praiseBaseWidth * VAT_LOOK.praiseScale} /></PraiseSpot>}
       {createPortal(<SideUnits>
