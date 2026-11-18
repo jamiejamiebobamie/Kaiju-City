@@ -674,14 +674,9 @@
         },
         {
           "speaker": "agent",
-          "text": "Pick it up at the Lab before you head to Rapid Transit.",
+          "text": "Pick it up at the Lab before you head to Rapid Transit. Go.",
           "id": "street.talk.teleportLab",
           "note": "draft"
-        },
-        {
-          "speaker": "agent",
-          "text": "Go.",
-          "id": "street.talk.8"
         }
       ]
     },
