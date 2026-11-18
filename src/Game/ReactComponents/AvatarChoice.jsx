@@ -459,7 +459,7 @@ const ChoiceAvatar = ({ id, sheet, keyName, figureOffset, chosen, isLeaving, onC
 // 'nameOnly': the chosen one, on the picker: everything hidden but its name and number, where the camera left them
 // 'isArcs': the electric arcs round "Choose your character" (not when back from the picker: Jamie, playtest 34)
 const AGENT_ASKED_WAIT_MS = 1500;
-export const AvatarChoice = ({ onChoose = (_player, _teammate) => {}, isReady = true, isArcs = true, onHover = (_id) => {}, onHandOver = (_id) => {}, nameOnly = undefined }) => {
+export const AvatarChoice = ({ onChoose = (_player, _teammate) => {}, onPick = (_player) => {}, isReady = true, isArcs = true, onHover = (_id) => {}, onHandOver = (_id) => {}, nameOnly = undefined }) => {
   // (the tanks can't be hovered or picked till the Agent has asked "...Who are you?": Jamie, playtest 34)
   const [isAsked, setIsAsked] = useState(false);
   // (a beat after it, 1.5 s: Jamie, playtest 34; at once if he asked before, back from the picker)
@@ -487,6 +487,7 @@ export const AvatarChoice = ({ onChoose = (_player, _teammate) => {}, isReady = 
     if (chosenRef.current || !isReadyRef.current) return;
     chosenRef.current = player;
     setChosen(player);
+    onPick(player); // (at once, on the click: the side monitor fades. Jamie, playtest 34)
     setSelectedAvatar(player);
     const teammate = player == "guy" ? "girl" : "guy";
     setTimeout(() => {

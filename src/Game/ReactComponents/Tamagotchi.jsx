@@ -123,8 +123,14 @@ let PET = newPet();
 
 // held: its clock stops while something's over it (the Controls card) or the tab is hidden (Jamie: it got unhappy
 // while he was away)
+// held still for any of its reasons (the controls card; its screen cut off, Jamie playtest 34): its clock stops
+const holds = new Set();
 let isHeld = false;
-export const holdTamagotchi = held => { isHeld = held; };
+export const holdTamagotchi = (held, reason = "controls") => {
+  if (held) holds.add(reason);
+  else holds.delete(reason);
+  isHeld = holds.size > 0;
+};
 // has it said hello yet (this visit's pet): the picker waits for its first "Pick three abilities" until it has
 export const getHasTamagotchiIntroduced = () => PET.hasIntroduced;
 
@@ -207,7 +213,7 @@ const step = pet => {
   if (isDueToSpeak && walkTo(0.5, TAMA.walkPerSecond * 1.6)) {
     // its first words, first time out or new from its egg: who it is (Jamie), before anything else
     const isHello = !next.hasIntroduced;
-    next.line = next.hasIntroduced ? getNextLine() : `Hi! I'm ${next.name}!`; // (Jamie, playtest 34; was "Hi, I am ..., your virtual Kaiju!")
+    next.line = next.hasIntroduced ? getNextLine() : `I'm ${MASCOT}!`; // (no generation number in it: Jamie, playtest 34; was "Hi, I am ..., your virtual Kaiju!")
     next.hasIntroduced = true;
     // (its hello up twice as long, so it's seen: Jamie, playtest 29)
     next.speakingUntil = now + getSpeakMs(next.line) * (isHello ? 2 : 1);

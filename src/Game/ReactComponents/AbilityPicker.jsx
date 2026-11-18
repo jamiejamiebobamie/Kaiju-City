@@ -5,7 +5,7 @@ import { GlobalSettingsContext } from 'Home';
 import { getSciFiClass } from "../DataClasses/sciFiClasses";
 import { getIsSkillOpen, OUT_OF_PLAY_POWERS } from "../DataClasses/Avatars";
 import { PIECES_INFO } from "Utils/gameState";
-import { getHasTamagotchiIntroduced, Tamagotchi } from "./Tamagotchi";
+import { getHasTamagotchiIntroduced, holdTamagotchi, Tamagotchi } from "./Tamagotchi";
 import { AvatarBio } from "./AvatarBio";
 import { ClassBattle } from "./ClassBattle";
 import { CrtScreen, ScaleToFit } from "Components/CrtPower";
@@ -1503,13 +1503,14 @@ const BurnIn = styled.div`
   mix-blend-mode: screen;
   animation: ${burnFade} ${BURN_IN.ms}ms ease-out both;
 `;
-const useBurnIn = (isPickerShowing, bioOf) => {
+// 'isQuiet': no power cut (back on the picker again after Back: Jamie, playtest 34, it was seen already)
+const useBurnIn = (isPickerShowing, bioOf, isQuiet = false) => {
   const lastBio = useRef(bioOf);
   const wasPicker = useRef(isPickerShowing);
   const [burned, setBurned] = useState(undefined);
   if (!isPickerShowing && bioOf) lastBio.current = bioOf;
   useEffect(() => {
-    if (isPickerShowing && !wasPicker.current) {
+    if (isPickerShowing && !wasPicker.current && !isQuiet) {
       setBurned({ avatar: lastBio.current });
       const timeout = setTimeout(() => setBurned(undefined), BURN_IN.ms);
       wasPicker.current = isPickerShowing;
@@ -1526,7 +1527,9 @@ const SCREEN_POWER_ON_MS = 650;
 // the avatar select's Lab sits dark this long before its lights flicker on (Game.tsx): the Agent waits for them too
 export const LAB_LIGHTS_DELAY_MS = 2500; // (the CRT's power-on, CRT.onMs: the picture's up after it)
 const TAMA_FIRST_MS = 3000;
-export const SideMonitor = ({ isPickerShowing, isPoweredOff = false, isLeaving = false, bioOf: hoveredBio = undefined }) => {
+// 'isQuiet': straight to the tamagotchi, no power cut (back after Back); 'isFadingOut': a character just clicked, the
+// screen's content fades before the scene moves on (Jamie, playtest 34)
+export const SideMonitor = ({ isPickerShowing, isPoweredOff = false, isLeaving = false, bioOf: hoveredBio = undefined, isQuiet = false, isFadingOut = false }) => {
   const [isAgentHeld, setIsAgentHeld] = useState(true);
   const screenOnAt = useRef(Date.now() + MINI_TIMING.onAtMs); // (when its screen switches on: the Agent starts then)
   const lightsAt = useRef(Date.now() + LAB_LIGHTS_DELAY_MS); // (and not before the Lab's lights: Jamie, playtest 30)
@@ -1535,7 +1538,12 @@ export const SideMonitor = ({ isPickerShowing, isPoweredOff = false, isLeaving =
     return () => clearTimeout(timeout);
   }, []);
   const bioOf = isAgentHeld ? undefined : hoveredBio;
-  const burned = useBurnIn(isPickerShowing, bioOf);
+  const burned = useBurnIn(isPickerShowing, bioOf, isQuiet);
+  // Stompy waits while his screen is cut off or not showing him: he carries on once he can be seen (Jamie, playtest 34)
+  useEffect(() => {
+    holdTamagotchi(!isPickerShowing || !!burned || isPoweredOff, "side screen");
+    return () => holdTamagotchi(false, "side screen");
+  }, [isPickerShowing, !!burned, isPoweredOff]);
   return (
   <SideFrame
     isPoweredOff={isPoweredOff || !!burned}
@@ -1548,7 +1556,9 @@ export const SideMonitor = ({ isPickerShowing, isPoweredOff = false, isLeaving =
     {/* the avatar select: the candidates' files (Jamie: not the tamagotchi, that's on the picker) */}
     {/* the Agent and the files crossfade too (Jamie, playtest 29) */}
     {isPickerShowing ? <SideSlot data-side-screen /> : (
-      <CrossFade id={bioOf || "agent"}><AvatarBio avatar={bioOf} agentDelayMs={Math.max(screenOnAt.current + SCREEN_POWER_ON_MS, lightsAt.current + 300) - Date.now()} /></CrossFade> /* (no hold here: straight on to what's next) */
+      <div style={{ position: "absolute", inset: 0, opacity: isFadingOut ? 0 : 1, transition: "opacity 450ms ease-out" }}>
+        <CrossFade id={bioOf || "agent"}><AvatarBio avatar={bioOf} agentDelayMs={Math.max(screenOnAt.current + SCREEN_POWER_ON_MS, lightsAt.current + 300) - Date.now()} /></CrossFade>
+      </div> /* (no hold here: straight on to what's next) */
     )}
   </SideFrame>
   );
