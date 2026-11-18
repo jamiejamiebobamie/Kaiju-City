@@ -242,7 +242,7 @@ export const Logo = () => (<LogoWrapper>
     <StyledSciFiText>City</StyledSciFiText>
     <StyledSpookyTextShadow>Kaiju</StyledSpookyTextShadow>{" "}
   </Title>
-  <LogoImage src={"./SVG_logo.svg"} />
+  <LogoImage src={"./SVG_logo.svg"} data-landing-logo />
   <KaijuWrapper >
     <SpriteSheet />
     <Breath />

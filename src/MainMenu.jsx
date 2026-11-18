@@ -13,6 +13,7 @@ import {
   StyledLink,
 } from "./Components/StyledComponents";
 import { Logo } from "./Components/Logo";
+import { LandingScene } from "./Components/LandingScene";
 import { GlobalSettingsContext } from "Home";
 import { IrradiationVat } from "./Game/ReactComponents/IrradiationVat";
 import { getAvatarColor, getIsToolOpen, saveAvatarColor } from "./Game/DataClasses/Avatars";
@@ -125,6 +126,11 @@ const zoomIntoCity = keyframes`
   70% { filter: blur(0); }
   to { transform: scale(${CITY_ZOOM.scale}); filter: blur(1.5px); }
 `;
+
+// the Peninsula behind the logo (LandingScene) zooms with the skyline, about the same spot: its vanishing point
+const getSceneZoom = (isLeaving, isZoomingBack) => isLeaving
+  ? css`animation: ${zoomIntoCity} ${CITY_ZOOM.ms}ms cubic-bezier(0.6, 0, 0.9, 0.35) forwards;`
+  : isZoomingBack ? css`animation: ${zoomOutOfCity} ${CITY_ZOOM.ms}ms cubic-bezier(0.1, 0.65, 0.4, 1) ${getZoomBackMs() - 450}ms both;` : undefined;
 
 const SceneSlide = styled.div`
   position: absolute;
@@ -291,6 +297,7 @@ export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = ()
   return <Wrapper>
     <ShiftLayer $isShiftingIn={isShiftingIn && isLandingShifting}>
     <SpeedBlurFilter />
+    <LandingScene spot={CITY_ZOOM.spot} zoom={getSceneZoom(isLeaving, isLogoZoomingOut)} isBack={isLogoZoomingOut} />
     <EmberSlide $isLeaving={isLeaving}><Embers /></EmberSlide>
     <SceneSlide $isLeaving={isLeaving} $isZoomingBack={isLogoZoomingOut}><Logo /></SceneSlide>
     <ZoomThrough isOn={isLeaving} startMs={ZOOM_START_MS} onDone={enterRoom || handleClickGame} />
