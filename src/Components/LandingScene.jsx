@@ -139,8 +139,9 @@ const Moon = ({ x, y, radius }) => {
   foot, alive: light blue points, faint always, with brighter swells sweeping along them and a twinkle of their own;
   the far ones smaller. Points from scripts/labWindowView.py ('surf', 'islandSurf': [x, y, distance]).
 */
-// (Jamie, round 8: always showing, lit: 'rest' raised; the top chunk's coasts outlined: 'coast')
-const SURF = { color: "170, 205, 255", rest: 0.45, most: 0.9, swell: { speed: 1.5, across: 0.045, down: 0.11 }, size: { near: 90, least: 0.5, most: 1.6 } };
+// (Jamie, round 8: the top chunk's coasts outlined, 'coast'; always showing was tried and taken back: too strong at
+// the top, Treasure Island janky)
+const SURF = { color: "170, 205, 255", rest: 0.12, most: 0.75, swell: { speed: 1.5, across: 0.045, down: 0.11 }, size: { near: 90, least: 0.5, most: 1.6 } };
 const Surf = ({ points, width, height }) => {
   const ref = useRef(null);
   useEffect(() => {

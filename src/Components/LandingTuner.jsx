@@ -13,8 +13,8 @@ import styled from "styled-components";
 // (Jamie's, 2026-11-18)
 export const LANDING_TUNE_DEFAULTS = {
   joiner: { both: -4.5, band: 0, glow: -1 },
-  moon: { x: 1024, y: 340, radius: 32 },
-  reflection: { x: 1033, y: 466, radius: 31 }
+  moon: { x: 992, y: 357, radius: 30 },
+  reflection: { x: 999, y: 464, radius: 29 }
 };
 const RANGES = {
   joiner: { both: [-20, 20, 0.5], band: [-20, 20, 0.5], glow: [-20, 20, 0.5] },
