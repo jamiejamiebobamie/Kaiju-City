@@ -94,6 +94,12 @@
           "text": "There have been reports of Kaiju body parts falling onto rooftops in the Cemetary district. Go investigate and try not to let another citizen touch them!",
           "note": "jamie",
           "id": "radio.mapRooftop.4"
+        },
+        {
+          "speaker": "agent",
+          "text": "Make sure you bring your Dispel ability. Something tells me you'll need it.",
+          "id": "radio.mapRooftop.5",
+          "note": "jamie"
         }
       ]
     },

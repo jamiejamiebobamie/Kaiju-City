@@ -55,13 +55,17 @@ const Loading = styled.div`
   color: #c9a6ff;
   text-shadow: 0 0 6px rgba(150, 60, 255, 0.8);
   pointer-events: none;
-  /* the word itself is centred; the dots hang off its right, outside the centring (Jamie) */
+`;
+// (Jamie, playtest 34: centred with all three dots, as if they were always there: their room is kept by an unseen
+// "...", and the dots come and go over it)
+const DotsSlot = styled.span`
+  position: relative;
+  & > span { visibility: hidden; }
   &::after {
     content: "";
     position: absolute;
-    left: 100%;
+    left: 0;
     top: 0;
-    text-align: left;
     animation: ${dots} 1.6s steps(1) infinite;
   }
 `;
@@ -104,6 +108,7 @@ export const SplashScreen = ({ progress = 0 }) => <>
       balanced with as much on the left) */}
   <Loading style={{ top: "calc(50% - 20px)", left: "50%", transform: "translateX(-50%)", alignSelf: "auto", paddingLeft: "3px" }}>
     {"Loading".split("").map((letter, k) => <Letter key={k} style={{ animationDelay: `${k * LETTER_WAVE.stepSeconds}s` }}>{letter}</Letter>)}
+    <DotsSlot><span>...</span></DotsSlot>
   </Loading>
   <Progress><div style={{ width: `${Math.round(progress * 100)}%` }} /></Progress>
 </>;

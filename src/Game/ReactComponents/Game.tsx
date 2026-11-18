@@ -1261,13 +1261,13 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     const isDestroyed = !!gameManager.current && gameManager.current.finalTurnState == "destroyed";
     if (isWon && (level.giantKaiju || (campaignIndex !== null && getIsLastSection(campaignIndex)))) return { title: isDestroyed ? "You turned into a Kaiju and destroyed the city!" : "You saved the city!", buttons: [], isFinale: true };
     if (campaignIndex === null) {
-      return { title, buttons: [{ text: "Play again", onClick: () => fadeOutThen(resetMatch) }, { text: "Leave", onClick: () => leaveByZoom() } /* (the way back out, as the bezel's Leave: Jamie) */] };
+      return { title, buttons: [{ text: "Play again", onClick: () => fadeOutThen(resetMatch) }, { text: "Quit", onClick: () => leaveByZoom() } /* (the way back out, as the bezel's Leave: Jamie) */] };
     }
     if (!isWon) {
-      return { title, buttons: [{ text: "Try again", onClick: () => fadeOutThen(() => retrySection(campaignIndex)) }, { text: "Leave", onClick: () => leaveByZoom() } /* (the way back out, as the bezel's Leave: Jamie) */] };
+      return { title, buttons: [{ text: "Try again", onClick: () => fadeOutThen(() => retrySection(campaignIndex)) }, { text: "Quit", onClick: () => leaveByZoom() } /* (the way back out, as the bezel's Leave: Jamie) */] };
     }
     if (getIsLastSection(campaignIndex)) {
-      return { title: "You saved the city!", buttons: [{ text: "Play again", onClick: () => { setCampaignIndex(0); fadeOutThen(resetMatch); } }, { text: "Leave", onClick: () => leaveByZoom() } /* (the way back out, as the bezel's Leave: Jamie) */] };
+      return { title: "You saved the city!", buttons: [{ text: "Play again", onClick: () => { setCampaignIndex(0); fadeOutThen(resetMatch); } }, { text: "Quit", onClick: () => leaveByZoom() } /* (the way back out, as the bezel's Leave: Jamie) */] };
     }
     // the first fight to the Street: in on the city, then the map swirls away (Jamie)
     if (campaignIndex === 0) return { title, buttons: [{ text: "Continue", onClick: () => swirlToSection(campaignIndex + 1) }] };
@@ -1488,7 +1488,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     <>
       <BezelButton title="Pause" onClick={handleClickPause} disabled={isPauseOff}>Pause</BezelButton>
       <BezelButton title="How to play" onClick={openControls}>Controls</BezelButton>
-      <BezelButton title="Goodbye!" onClick={() => leaveByZoom()}>Leave</BezelButton>
+      <BezelButton title="Goodbye!" onClick={() => leaveByZoom()}>Quit</BezelButton>
       {ticker}
     </>
   );
