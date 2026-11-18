@@ -777,10 +777,11 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     return () => { clearTimeout(on); clearTimeout(settled); };
   }, []);
   // the end's bookend: switched off, dead a beat, then the shift back to the landing
+  // (Jamie, playtest 34: after the credits, the monitor off, a beat, then the zoom back out through the window to the
+  // landing, as Quit does; it slid off sideways before)
   const endWithMonitorOff = () => {
     setIsMonitorOn(false);
-    setTimeout(() => setMonitorShift('out'), CRT.offMs + MONITOR_SHIFT.endDeadMs);
-    setTimeout(() => (handleShiftHome || handleClickHome)(), CRT.offMs + MONITOR_SHIFT.endDeadMs + MONITOR_SHIFT.ms);
+    setTimeout(() => leaveByZoom(), CRT.offMs + MONITOR_SHIFT.endDeadMs);
   };
   // dev (Jamie, 2026-11-14): the power picker right after the avatar select, even on a first play, to see it
   // a first play goes from the avatar choice straight into the game: the power picker isn't shown on the way (Jamie, playtest 18)
