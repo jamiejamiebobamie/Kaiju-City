@@ -14,7 +14,9 @@ BLUE = np.array([21, 38, 66])               # SVG_logo.svg's skyline gradient, i
 YELLOW = np.array([206, 143, 80])           # and its top
 VANISH = (292, 170)                         # the Peninsula's vanishing point, in the logo's px (labWindowView.py LANDING)
 EDGES = (32, 552)                           # the skyline's left and right, at its base (a little in: Jamie, round 6)
-TOP, FADE_TO, BOTTOM = 192, 200, 205        # the joiner's top (over the buildings' bottoms), black by, its end
+TOP, BOTTOM = 192, 205                      # the joiner's top (over the buildings' bottoms), its end
+BLUE_FOR = 0.7                              # (Jamie, round 6: the black too much) the blue held this share of the way down,
+                                            # then going to black only over the rest
 TAPER = 50                                  # (round 6) its ends thin by height, keeping their top over the buildings' bottoms
 UNDER = (6, 0.6)                            # (round 6) the yellow under it: how far it fades out, how strong it starts
 THREADS = {'every': 3.2, 'length': (5, 12), 'width': 1}
@@ -31,12 +33,13 @@ inside = np.clip(from_end / 2, 0, 1)
 ends = np.clip(from_end / TAPER, 0, 1)
 ends = ends * ends * (3 - 2 * ends)
 
-# the band: blue at the top, black by FADE_TO, eased in over the buildings' bottoms; its bottom ragged, rising toward
+# the band: blue, going to black only near its bottom (BLUE_FOR), eased in over the buildings' bottoms; its bottom ragged, rising toward
 # its ends (thinner there, its top kept, so it still covers the gaps under the end buildings)
-t = np.clip((ys - TOP) / (FADE_TO - TOP), 0, 1)
-color = BLUE[None, None, :] * (1 - t[..., None]) + np.array([4, 4, 8])[None, None, :] * t[..., None]
 ragged = BOTTOM + RAGGED * (np.sin(xs / 3.7) * 0.6 + np.sin(xs / 1.9 + 1.1) * 0.4)  # (no straight edge)
 bottom = TOP + 3 + (ragged - TOP - 3) * ends
+turn = TOP + BLUE_FOR * (bottom - TOP)
+t = np.clip((ys - turn) / np.maximum(bottom - turn, 0.5), 0, 1)
+color = BLUE[None, None, :] * (1 - t[..., None]) + np.array([4, 4, 8])[None, None, :] * t[..., None]
 alpha = np.clip((ys - TOP + 1) / 2, 0, 1) * np.clip((bottom + 1 - ys) / 2, 0, 1) * inside
 # under it, a thin band of the buildings' top yellow fading out downward: against the black, it shows the streets below
 under = UNDER[1] * np.clip(1 - (ys - bottom) / UNDER[0], 0, 1) * (ys > bottom - 0.5) * inside * np.sqrt(ends)
