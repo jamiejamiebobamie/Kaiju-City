@@ -190,6 +190,14 @@ sea_px = ~land
 clean[sea_px] = SEA
 specks = sea_px & (rng.random((MH, MW)) < 0.05)
 clean[specks] = SPECK
+if LANDING:
+    # the map's surf (its lavender-to-light-blue speckle along the coasts) dimmed to a trace: the landing animates it
+    # (Jamie, round 7: the still breaking waves broke the spell; LandingScene's Surf, from 'surf' in the traffic file)
+    coast_band = cv2.dilate((mp.sum(axis=2) < 60).astype(np.uint8), np.ones((9, 9), np.uint8)).astype(bool)
+    SURF = coast_band & (mp.sum(axis=2) > 90) & (mp[..., 2] >= 130) & (mp[..., 2] - mp[..., 0] >= 40)
+    SURF &= cv2.dilate(land.astype(np.uint8), np.ones((5, 5), np.uint8)).astype(bool)  # (the coasts only: the map's own
+    # moon reflection out at sea is these colours too)
+    clean[SURF] = clean[SURF] * 0.3 + np.array([10, 22, 44], np.float32) * 0.7
 # the green hills raised (Jamie, playtest 36): parkland rises with its distance in from its edges, highest near the base
 green = ((mp[..., 1] > mp[..., 0] + 6) & (mp[..., 1] > 40) & land).astype(np.uint8)
 green = cv2.morphologyEx(green, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
@@ -389,7 +397,8 @@ if LANDING:
     # the Bay Bridge: straight on to the right edge; on Treasure Island's near half, behind its far half (a pixel at
     # a time: drawn unless the island stands there past its middle)
     # (Jamie, round 5: the bridge cut at the island's left edge; out again over its right end; no cars over it)
-    TI_HIDE = (VPX + ti_rel - ti_w / 2, VPX + ti_rel + ti_w * 0.22)
+    TI_HIDE = (VPX + ti_rel - ti_w / 2, VPX + ti_rel + ti_w / 2 - 5.5)  # (round 7: the outbound from behind the island,
+    # coming out on its low right end where Jamie marked it)
     TI_HIDE_FROM = TI_HIDE[0]
     TI_BOX = (TI_HIDE[0] - 1, TI_HIDE[1], ti_base - ti_h - 6, ti_base + 3)
     # (round 6: the map's own stretch of it traced, from the city to the island's left edge, so it has no gaps; the
@@ -569,5 +578,21 @@ if traffic_path:
             glints.append([round(float(q[0]), 1), round(float(q[1]), 1), round(float(q[2]), 1)])
         if len(glints) >= 700:
             break
-    json.dump({'paths': paths, 'glints': glints, 'near': NEAR, 'horizon': HZ}, open(traffic_path, 'w'))
+    extra = {}
+    if LANDING:
+        # the surf's points (every other one), where they're seen; and Treasure Island's, along its foot
+        surf = []
+        for my, mx in np.argwhere(SURF)[::2]:
+            q = project(float(mx), float(my))
+            if q and 0 <= q[0] < W and HZ < q[1] < H and is_seen(*q):
+                surf.append([round(float(q[0]), 1), round(float(q[1]), 1), round(float(q[2]), 1)])
+        island = []
+        for x in np.arange(VPX + ti_rel - ti_w / 2 - 3, VPX + ti_rel + ti_w / 2 + 3, 1.0):
+            for dy in (0.6, 1.6, 2.6):
+                if dy > 2 and rng.random() < 0.5:
+                    continue
+                island.append([round(float(x + rng.uniform(-0.4, 0.4)), 1), round(float(ti_base + dy), 1), 1600])
+        extra = {'surf': surf, 'islandSurf': island}
+        print('surf', len(surf), 'island surf', len(island))
+    json.dump({'paths': paths, 'glints': glints, 'near': NEAR, 'horizon': HZ, **extra}, open(traffic_path, 'w'))
     print('traffic runs', len(paths), 'glints', len(glints))

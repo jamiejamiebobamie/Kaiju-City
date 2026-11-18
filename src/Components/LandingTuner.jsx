@@ -10,10 +10,11 @@ import styled from "styled-components";
       'glow' the yellow under it
     moon, reflection: the Peninsula picture's px (its horizon is row 403): middle x, y, and radius
 */
+// (Jamie's, 2026-11-18)
 export const LANDING_TUNE_DEFAULTS = {
-  joiner: { both: 0, band: 0, glow: 0 },
-  moon: { x: 1000, y: 348, radius: 35 },
-  reflection: { x: 1016, y: 458, radius: 26 }
+  joiner: { both: -4.5, band: 0, glow: -1 },
+  moon: { x: 1024, y: 340, radius: 32 },
+  reflection: { x: 1033, y: 466, radius: 31 }
 };
 const RANGES = {
   joiner: { both: [-20, 20, 0.5], band: [-20, 20, 0.5], glow: [-20, 20, 0.5] },

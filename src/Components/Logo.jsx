@@ -52,6 +52,53 @@ const LogoImage = styled.img`
   }
 `;
 
+/*
+  Spotlights (Jamie, round 7): a big night's searchlights, sweeping to and fro from the skyline's base, cream white,
+  fading as they rise, ending about the tallest buildings' tops; behind the title, in front of the skyline (the landing
+  only). Each: its base across the skyline (logo px), its sweep (degrees either side), its time, its delay.
+*/
+const SPOTLIGHT = { base: 197, length: 150, width: 34, color: "255, 246, 222", strength: 0.42 };
+// (Jamie: in twos, both pairs' bases behind the title, where the inner two first stood; quicker; each pair in step
+// but mirrored: as one swings left the other swings right)
+// (spread a little further apart: Jamie; still behind the title, which runs about x 176-426)
+const PAIRS = [
+  { x: 205, sweep: 24, seconds: 3.8, delay: -1.2, lean: 6 },
+  { x: 405, sweep: 24, seconds: 4.4, delay: -0.5, lean: 6 }
+];
+const BEAMS = PAIRS.flatMap(pair => [{ ...pair, isMirrored: false }, { ...pair, lean: -pair.lean, isMirrored: true }]);
+const beamSweep = keyframes`
+  from { rotate: calc(var(--lean) * 1deg - var(--sweep) * 1deg * var(--way)); }
+  to { rotate: calc(var(--lean) * 1deg + var(--sweep) * 1deg * var(--way)); }
+`;
+const SpotlightBox = styled.div`
+  pointer-events: none;
+  position: absolute;
+  z-index: 9;
+  align-self: center;
+  width: 600px;
+  height: 300px;
+  translate: 0 calc(var(--logo-lift, 0px) * -1);
+`;
+const Beam = styled.div`
+  position: absolute;
+  bottom: ${300 - SPOTLIGHT.base}px;
+  width: ${SPOTLIGHT.width}px;
+  height: ${SPOTLIGHT.length}px;
+  margin-left: ${-SPOTLIGHT.width / 2}px;
+  transform-origin: 50% 100%;
+  clip-path: polygon(47% 100%, 53% 100%, 100% 0, 0 0);
+  background: linear-gradient(to top, rgba(${SPOTLIGHT.color}, ${SPOTLIGHT.strength}), rgba(${SPOTLIGHT.color}, ${SPOTLIGHT.strength * 0.35}) 45%, rgba(${SPOTLIGHT.color}, 0));
+  filter: blur(1.5px);
+  animation: ${beamSweep} var(--seconds) ease-in-out var(--delay) infinite alternate;
+`;
+const Spotlights = () => (
+  <SpotlightBox data-spotlights aria-hidden="true">
+    {BEAMS.map(({ x, sweep, seconds, delay, lean, isMirrored }, k) => (
+      <Beam key={k} style={{ left: `${x}px`, "--sweep": sweep, "--lean": lean, "--way": isMirrored ? -1 : 1, "--seconds": `${seconds}s`, "--delay": `${delay}s` }} />
+    ))}
+  </SpotlightBox>
+);
+
 const KaijuWrapper = styled.div`
   pointer-events: none;
 
@@ -240,8 +287,9 @@ const Breath = () => BREATH_EMBERS.map(({ key, delay, cx, cy, fx, fy, lx, ly, bx
 ));
 
 // 'joiner': the landing's (Jamie, 2026-11-18): over the skyline's bottom, grounding it in the Peninsula behind
-// (scripts/landingJoiner.py); an image in the logo's own box, so it zooms with the skyline
-export const Logo = ({ joiner = false }) => (<LogoWrapper>
+// (scripts/landingJoiner.py); an image in the logo's own box, so it zooms with the skyline; 'spotlights': the
+// landing's searchlights (also in the logo's box: MainMenu zooms them with the skyline)
+export const Logo = ({ joiner = false, spotlights = false }) => (<LogoWrapper>
   <Title isDescription={false} style={{ translate: "0 calc(var(--logo-lift, 0px) * -1)" }}>
     <StyledSpookyText isDescription={true}>Kaiju</StyledSpookyText>{" "}
     <StyledSciFiText>City</StyledSciFiText>
@@ -251,6 +299,7 @@ export const Logo = ({ joiner = false }) => (<LogoWrapper>
   {joiner && <LogoImage src={"/zoom-scene/landing-joiner-glow.png"} alt="" style={{ translate: "0 calc(var(--logo-lift, 0px) * -1 + var(--joiner-both, 0px) + var(--joiner-glow, 0px))" }} />}
   {joiner && <LogoImage src={"/zoom-scene/landing-joiner.png"} alt="" style={{ translate: "0 calc(var(--logo-lift, 0px) * -1 + var(--joiner-both, 0px) + var(--joiner-band, 0px))" }} />}
   <LogoImage src={"./SVG_logo.svg"} data-landing-logo />
+  {spotlights && <Spotlights />}
   <KaijuWrapper >
     <SpriteSheet />
     <Breath />

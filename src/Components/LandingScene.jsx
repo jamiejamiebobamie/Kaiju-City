@@ -134,6 +134,40 @@ const Moon = ({ x, y, radius }) => {
   );
 };
 
+/*
+  The surf (Jamie, round 7): the map's breaking waves along the Peninsula's coasts, and the water round Treasure Island's
+  foot, alive: light blue points, faint always, with brighter swells sweeping along them and a twinkle of their own;
+  the far ones smaller. Points from scripts/labWindowView.py ('surf', 'islandSurf': [x, y, distance]).
+*/
+const SURF = { color: "170, 205, 255", rest: 0.12, most: 0.75, swell: { speed: 1.5, across: 0.045, down: 0.11 }, size: { near: 90, least: 0.5, most: 1.6 } };
+const Surf = ({ points, width, height }) => {
+  const ref = useRef(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas || !points) return;
+    const ctx = canvas.getContext("2d");
+    const spots = points.map(([x, y, distance]) => ({ x, y, size: Math.max(SURF.size.least, Math.min(SURF.size.most, SURF.size.near / distance)), phase: Math.random() * Math.PI * 2, speed: 1 + Math.random() * 2 }));
+    let frameId;
+    const run = now => {
+      const t = now / 1000;
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = `rgb(${SURF.color})`;
+      spots.forEach(({ x, y, size, phase, speed }) => {
+        // a swell rolling along (by place), and each point's own flicker
+        const swell = Math.max(0, Math.sin(t * SURF.swell.speed - x * SURF.swell.across - y * SURF.swell.down)) ** 3;
+        const twinkle = 0.5 + 0.5 * Math.sin(t * speed + phase);
+        ctx.globalAlpha = SURF.rest + (SURF.most - SURF.rest) * swell * twinkle;
+        ctx.fillRect(x - size, y - size * 0.4, size * 2, size * 0.8);
+      });
+      frameId = requestAnimationFrame(run);
+    };
+    frameId = requestAnimationFrame(run);
+    return () => cancelAnimationFrame(frameId);
+  }, [points, width, height]);
+  return <canvas ref={ref} width={width} height={height} aria-hidden="true" style={{ position: "absolute", left: 0, top: 0, width, height, zIndex: 1, pointerEvents: "none" }} />;
+};
+const SURF_POINTS = [...(landingTraffic.surf || []), ...(landingTraffic.islandSurf || [])];
+
 const fadeIn = keyframes`
   from { opacity: 0; }
   to { opacity: 1; }
@@ -206,6 +240,7 @@ export const LandingScene = ({ spot, zoom, isBack = false, logoScale = 1, lift =
   const scale = LANDING_VIEW.scale * (vanish ? vanish.k : 1);
   const content = (
     <View style={{ left: -LANDING_VIEW.vanish.x * scale, top: -LANDING_VIEW.vanish.y * scale + (vanish ? vanish.k : 1) * lift, transform: `scale(${scale})` }}>
+      <Surf points={SURF_POINTS} width={LANDING_VIEW.size.width} height={LANDING_VIEW.size.height} />
       <Moon {...tune.moon} />
       <MoonReflection {...tune.reflection} />
       <TrafficLights paths={landingTraffic.paths} glints={landingTraffic.glints} width={LANDING_VIEW.size.width} height={LANDING_VIEW.size.height} zIndex={1} near={NEAR_TRAFFIC} />

@@ -149,11 +149,11 @@ const SceneSlide = styled.div`
   align-items: center;
   /* the title and the Kaiju slide off left in parallax; the skyline zooms into the city (the embers fade) */
   & > div > :first-child { ${props => layerSlide(SLIDE.title, props.$isLeaving)} }
-  & img { ${props => props.$isLeaving && css`
+  & img, & [data-spotlights] { ${props => props.$isLeaving && css`
     transform-origin: ${CITY_ZOOM.spot.x * 100}% ${CITY_ZOOM.spot.y * 100}%;
     animation: ${zoomIntoCity} ${CITY_ZOOM.ms}ms cubic-bezier(0.6, 0, 0.9, 0.35) forwards;
   `} }
-  & img { ${props => props.$isZoomingBack && !props.$isLeaving && css`
+  & img, & [data-spotlights] { ${props => props.$isZoomingBack && !props.$isLeaving && css`
     transform-origin: ${CITY_ZOOM.spot.x * 100}% ${CITY_ZOOM.spot.y * 100}%;
     animation: ${zoomOutOfCity} ${CITY_ZOOM.ms}ms cubic-bezier(0.1, 0.65, 0.4, 1) ${getZoomBackMs() - 450}ms both;
   `} }
@@ -317,7 +317,7 @@ export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = ()
     <SpeedBlurFilter />
     <LandingScene spot={CITY_ZOOM.spot} zoom={getSceneZoom(isLeaving, isLogoZoomingOut)} isBack={isLogoZoomingOut} logoScale={logoScale} lift={LOGO_LIFT} tune={tune} />
     <EmberSlide $isLeaving={isLeaving}><Embers /></EmberSlide>
-    <SceneSlide $isLeaving={isLeaving} $isZoomingBack={isLogoZoomingOut} style={{ "--logo-scale": logoScale, "--logo-lift": `${LOGO_LIFT}px`, "--joiner-both": `${tune.joiner.both}px`, "--joiner-band": `${tune.joiner.band}px`, "--joiner-glow": `${tune.joiner.glow}px` }}><Logo joiner /></SceneSlide>
+    <SceneSlide $isLeaving={isLeaving} $isZoomingBack={isLogoZoomingOut} style={{ "--logo-scale": logoScale, "--logo-lift": `${LOGO_LIFT}px`, "--joiner-both": `${tune.joiner.both}px`, "--joiner-band": `${tune.joiner.band}px`, "--joiner-glow": `${tune.joiner.glow}px` }}><Logo joiner spotlights /></SceneSlide>
     <ZoomThrough isOn={isLeaving} startMs={ZOOM_START_MS} onDone={enterRoom || handleClickGame} />
     {isZoomingBack && <ZoomThrough isOn isReverse startMs={0} onDone={() => setIsZoomingBack(false)} />}
     <PressAnyKey $isLeaving={isLeaving} style={{ opacity: isZoomingBack ? 0 : undefined, transition: "opacity 600ms ease-out" }}>
