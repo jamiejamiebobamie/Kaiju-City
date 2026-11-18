@@ -153,7 +153,12 @@ const DeathWords = styled(Part)`
 
 // 4 or fewer: their own size; 5 or more: shrunk to fill the whole slot, gaps and all (Jamie, playtest 26: a blank was
 // left at the right). (The row's gap is 2% of it.)
-const getCapsuleShare = total => total <= HUD_LOOK.health.equalFrom ? 100 / (HUD_LOOK.health.equalFrom + 1) : (100 - 2 * (total - 1)) / total;
+// (Jamie, playtest 33: four fill the slot exactly, edge to edge; fewer keep that size, left-aligned, the lost ones gone
+// from the right; more shrink to fit. It was a fifth of the slot each, so four left a gap at the right)
+const getCapsuleShare = total => {
+  const fitted = Math.max(total, HUD_LOOK.health.equalFrom);
+  return (100 - 2 * (fitted - 1)) / fitted;
+};
 
 const Health = ({ box, health = 0, modifier = 0 }) => {
   const { maxCapsules, from, to, bonus, lost } = HUD_LOOK.health;
@@ -169,7 +174,7 @@ const Health = ({ box, health = 0, modifier = 0 }) => {
   return (
       <HealthRow style={place(box, "health")}>
         {shown > maxCapsules
-          ? <>{capsule(0, 100 / (HUD_LOOK.health.equalFrom + 1))}<Count>x{health + modifier}</Count></>
+          ? <>{capsule(0, getCapsuleShare(0))}<Count>x{health + modifier}</Count></>
           : Array.from({ length: Math.max(0, shown) }, (_, index) => capsule(index, share))}
       </HealthRow>
   );
