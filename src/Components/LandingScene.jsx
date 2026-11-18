@@ -18,16 +18,11 @@ export const LANDING_VIEW = { src: "/zoom-scene/0-peninsula.png", size: { width:
 const NEAR_TRAFFIC = { distance: 330, speed: 2.4, carEvery: 4, size: { near: 260, least: 0.5, most: 3 } };
 
 /*
-  The moon's reflection on the water (Jamie, round 4: lower right, where he looped it): the crescent upside down and
-  drawn out downward, cut into thin strips that each sway on the swell and break up, brightening and fading, so it
-  moves with the water. In the picture's px: its middle, the moon's size (scripts/labWindowView.py MOON_R), how far
-  it's drawn out, and the strips' height and gap.
+  The moon's reflection on the water (Jamie, rounds 4-5): under the moon, the crescent's own shape as it is in the sky
+  (no perspective, no lean), made of single pixels that wink on and off and slip side to side a little with the swell,
+  so the water breaks it up. In the picture's px: its middle, its size, how far a row slips, how much of it shows.
 */
-// (Jamie: no need to be true to perspective if that loses the crescent: not drawn out, close strips, a gentle sway;
-// the moon's pale yellow)
-// (Jamie, after a look: up under the moon, from his yellow line down along his green one, which leans right a little:
-// 'slant', px across per px down)
-const REFLECTION = { x: 1016, y: 458, radius: 26, stretch: 1, strip: 1, gap: 1, sway: 1.2, slant: 0.3, color: "250, 238, 168", most: 0.6 };
+const REFLECTION = { x: 1016, y: 458, radius: 26, slip: 1.4, shown: 0.35, color: "250, 238, 168", most: 0.45 };
 
 const MoonReflection = () => {
   const ref = useRef(null);
@@ -35,43 +30,40 @@ const MoonReflection = () => {
     const canvas = ref.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    const { radius: r, stretch, strip, gap, sway, slant, color, most } = REFLECTION;
-    const size = { width: Math.ceil(r * 2 + sway * 4 + 8 + Math.abs(slant) * r * 2 * stretch), height: Math.ceil(r * 2 * stretch + 8) };
-    canvas.width = size.width;
-    canvas.height = size.height;
-    const middle = { x: size.width / 2, y: size.height / 2 };
-    // each strip: its row in the crescent (lit right, its bite now below the middle: upside down), its own swell
-    const strips = [];
-    for (let y = -r * stretch; y <= r * stretch; y += strip + gap) {
-      const yy = y / stretch;
-      const disc = Math.sqrt(Math.max(0, r * r - yy * yy));
-      const bx = -0.45 * r, by = 0.15 * r, br = 0.95 * r; // (the moon's bite, flipped)
-      const bite = br * br - (yy - by) * (yy - by);
-      const from = bite > 0 ? Math.max(-disc, bx + Math.sqrt(bite)) : -disc;
-      if (from < disc) strips.push({ y, from, to: disc, phase: Math.random() * Math.PI * 2, speed: 0.6 + Math.random() * 0.8, breakAt: Math.random() });
+    const { radius: r, slip, shown, color, most } = REFLECTION;
+    const pad = Math.ceil(slip) + 2;
+    const size = Math.ceil(r * 2) + pad * 2;
+    canvas.width = size;
+    canvas.height = size;
+    // the crescent's pixels (lit right, the moon's bite flipped: a reflection), each with its own time on the water
+    const pixels = [];
+    for (let y = -r; y <= r; y++) {
+      for (let x = -r; x <= r; x++) {
+        const inDisc = x * x + y * y <= r * r;
+        const inBite = (x + 0.45 * r) ** 2 + (y - 0.15 * r) ** 2 <= (0.95 * r) ** 2;
+        if (inDisc && !inBite) pixels.push({ x, y, phase: Math.random() * Math.PI * 2, speed: 0.8 + Math.random() * 1.6 });
+      }
     }
+    const rowPhase = [...Array(Math.ceil(r * 2) + 1)].map(() => Math.random() * Math.PI * 2);
     let frameId;
     const run = now => {
       const t = now / 1000;
-      ctx.clearRect(0, 0, size.width, size.height);
-      strips.forEach(({ y, from, to, phase, speed, breakAt }) => {
-        const shift = sway * Math.sin(t * speed + phase + y * 0.35) + slant * y;
-        const fade = 1 - Math.abs(y) / (r * stretch);
-        const flicker = 0.55 + 0.45 * Math.sin(t * speed * 1.7 + phase * 2);
-        ctx.fillStyle = `rgba(${color}, ${most * fade * flicker})`;
-        // broken by the water: a gap moving along the strip
-        const split = from + (to - from) * ((breakAt + t * 0.12 * speed) % 1);
-        const gapWidth = (to - from) * 0.18;
-        ctx.fillRect(middle.x + from + shift, middle.y + y, Math.max(0, split - from), strip);
-        ctx.fillRect(middle.x + split + gapWidth + shift, middle.y + y, Math.max(0, to - split - gapWidth), strip);
+      ctx.clearRect(0, 0, size, size);
+      pixels.forEach(({ x, y, phase, speed }) => {
+        const wave = Math.sin(t * speed + phase);
+        if (wave < 1 - shown * 2) return; // (off for a while: the water breaking it up)
+        const row = Math.round(slip * Math.sin(t * 1.1 + rowPhase[y + Math.ceil(r)] + y * 0.4));
+        ctx.fillStyle = `rgba(${color}, ${most * (0.4 + 0.6 * (wave + 1) / 2)})`;
+        ctx.fillRect(pad + r + x + row, pad + r + y, 1, 1);
       });
       frameId = requestAnimationFrame(run);
     };
     frameId = requestAnimationFrame(run);
     return () => cancelAnimationFrame(frameId);
   }, []);
-  const { x, y, radius, stretch, sway, slant } = REFLECTION;
-  return <canvas ref={ref} aria-hidden="true" style={{ position: "absolute", left: x - radius - sway * 2 - 4 - Math.abs(slant) * radius * stretch, top: y - radius * stretch - 4, zIndex: 1, pointerEvents: "none", imageRendering: "pixelated" }} />;
+  const { x, y, radius, slip } = REFLECTION;
+  const pad = Math.ceil(slip) + 2;
+  return <canvas ref={ref} aria-hidden="true" style={{ position: "absolute", left: x - radius - pad, top: y - radius - pad, zIndex: 1, pointerEvents: "none", imageRendering: "pixelated" }} />;
 };
 
 const fadeIn = keyframes`
@@ -114,8 +106,9 @@ const Fade = styled.div`
 
 // 'spot': the zoom spot, as shares across and down the logo's image ([data-landing-logo]); 'zoom': the css that zooms
 // it (in on leaving, back out after Leave); 'isBack': the landing came back by the zoom out (no fade in then);
-// 'logoScale': the logo's size (the picture is drawn for it at 1, and scaled with it)
-export const LandingScene = ({ spot, zoom, isBack = false, logoScale = 1 }) => {
+// 'logoScale': the logo's size (the picture is drawn for it at 1, and scaled with it); 'lift': how far (logo px) the
+// logo's skyline is raised (MainMenu): the anchor goes with the skyline's zoom spot, the picture stays put
+export const LandingScene = ({ spot, zoom, isBack = false, logoScale = 1, lift = 0 }) => {
   const stageRef = useRef(null);
   const [vanish, setVanish] = useState(undefined);
   useLayoutEffect(() => {
@@ -131,7 +124,7 @@ export const LandingScene = ({ spot, zoom, isBack = false, logoScale = 1 }) => {
       const k = holder.width / wrapper.offsetWidth;
       setVanish({
         x: holder.left - own.left + k * (logo.offsetLeft + spot.x * logo.offsetWidth),
-        y: holder.top - own.top + k * (logo.offsetTop + spot.y * logo.offsetHeight),
+        y: holder.top - own.top + k * (logo.offsetTop + spot.y * logo.offsetHeight - lift),
         k
       });
     };
@@ -140,10 +133,10 @@ export const LandingScene = ({ spot, zoom, isBack = false, logoScale = 1 }) => {
     const onResize = () => requestAnimationFrame(place);
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
-  }, [logoScale]);
+  }, [logoScale, lift]);
   const scale = LANDING_VIEW.scale * (vanish ? vanish.k : 1);
   const content = (
-    <View style={{ left: -LANDING_VIEW.vanish.x * scale, top: -LANDING_VIEW.vanish.y * scale, transform: `scale(${scale})` }}>
+    <View style={{ left: -LANDING_VIEW.vanish.x * scale, top: -LANDING_VIEW.vanish.y * scale + (vanish ? vanish.k : 1) * lift, transform: `scale(${scale})` }}>
       <MoonReflection />
       <TrafficLights paths={landingTraffic.paths} glints={landingTraffic.glints} width={LANDING_VIEW.size.width} height={LANDING_VIEW.size.height} zIndex={1} near={NEAR_TRAFFIC} />
     </View>

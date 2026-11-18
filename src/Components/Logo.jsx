@@ -34,6 +34,7 @@ const LogoImage = styled.img`
   justify-content: space-between;
   width: 600px;
   height: 300px;
+  translate: 0 calc(var(--logo-lift, 0px) * -1); /* (the landing raises its skyline, not its Kaiju) */
 
   -webkit-animation-duration: 3s;
   animation-duration: 3s;
@@ -241,7 +242,7 @@ const Breath = () => BREATH_EMBERS.map(({ key, delay, cx, cy, fx, fy, lx, ly, bx
 // 'joiner': the landing's (Jamie, 2026-11-18): over the skyline's bottom, grounding it in the Peninsula behind
 // (scripts/landingJoiner.py); an image in the logo's own box, so it zooms with the skyline
 export const Logo = ({ joiner = false }) => (<LogoWrapper>
-  <Title isDescription={false}>
+  <Title isDescription={false} style={{ translate: "0 calc(var(--logo-lift, 0px) * -1)" }}>
     <StyledSpookyText isDescription={true}>Kaiju</StyledSpookyText>{" "}
     <StyledSciFiText>City</StyledSciFiText>
     <StyledSpookyTextShadow>Kaiju</StyledSpookyTextShadow>{" "}
