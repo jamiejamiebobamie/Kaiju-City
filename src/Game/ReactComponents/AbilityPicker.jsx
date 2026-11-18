@@ -1672,7 +1672,7 @@ export const AbilityPicker = ({
     if (playerClass) {
       return (
         <Part $align="left">
-          <PartHeader style={UNDERLINED}>Class:</PartHeader>{/* (a thin underline: Jamie, playtest 32) */}
+          <PartHeader style={{ ...UNDERLINED, fontSize: "1.1cqw", marginTop: "-0.5cqw" }}>Class:</PartHeader>{/* (bigger and a little higher: Jamie, playtest 34; was 0.85) */}{/* (a thin underline: Jamie, playtest 32) */}
           <FitTitleRow text={playerClass[0]}>{playerClass[0]}</FitTitleRow>
           <ClassText style={{ color: getClassTint(pickedPowers.map(({ color }) => color)) }}>{playerClass[1]}</ClassText>
         </Part>
