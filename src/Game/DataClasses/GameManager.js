@@ -3600,6 +3600,12 @@ export class GameManager {
             if ((this.giant && this.giant.getIsAtCity()) || this.gameBoardPiecesManager.getIsPlayerTeamDead()) return GameResult.PlayerLost;
             return null;
         }
+        // the Lab's escape: the Agents can hurt the player, and the player down is the end of it, though the others run on
+        // (Jamie, playtest 33: it hung, the player dead and the game still going). Another go from its start.
+        if (this.level.trap) {
+            const player = this.gameBoardPiecesManager.getPlayerPiece();
+            if (player && player.getIsDead()) return GameResult.PlayerLost;
+        }
         if (this.getIsAtGoal()) return GameResult.PlayerWon;
         if (this.score >= this.getKillsToWin()) return GameResult.PlayerWon;
         if (this.gameBoardPiecesManager.getIsPlayerTeamDead()) return GameResult.PlayerLost;
