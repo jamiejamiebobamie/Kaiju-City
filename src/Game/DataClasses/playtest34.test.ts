@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { LEVELS } from './Levels/levels';
 import { GameManager } from './GameManager';
 import { SettingsManager } from './SettingsManager';
+import { CAMPAIGN_SECTIONS, getRecommendedPowers } from './Campaign';
 
 // Jamie's playtest 34 (2026-11-17)
 describe('playtest 34', () => {
@@ -43,5 +44,14 @@ describe('playtest 34', () => {
     player.isUnhurtable = true; // (not caught while we watch)
     for (let k = 0; k < 2000 && chasers().length < first + 2; k++) gm.stepPieces();
     expect(chasers().length).toBeGreaterThanOrEqual(first + 1);
+  });
+
+  it('7/18. Recommended powers for the fight ahead: the first Peninsula, the Subway, the Rooftop, the Aquarium; none else', () => {
+    const at = id => CAMPAIGN_SECTIONS.findIndex(({ levelId }) => levelId == id);
+    expect(getRecommendedPowers(0)).toEqual(['Bubble', 'Lightning', 'Fire']);
+    expect(getRecommendedPowers(at('mapSubway'))).toEqual(['Lightning', 'Fire', 'Glass']);
+    expect(getRecommendedPowers(at('mapRooftop'))).toEqual(['Bubble', 'Lightning', 'Fire']);
+    expect(getRecommendedPowers(at('mapAquarium'))).toEqual(['Bubble', 'Lightning', 'Fire']);
+    expect(getRecommendedPowers(at('mapLab'))).toEqual([]);
   });
 });

@@ -38,12 +38,12 @@ import { FullscreenPage } from "Components/FullscreenPage.jsx";
 import { GameManager, GameResult } from '../DataClasses/GameManager';
 import { getActiveHotspots } from "./GameBoard/SceneElements";
 import { getIsDetourLevel } from "../DataClasses/Objectives";
-import { FIRST_PLAY_POWERS, getIsFirstPlay, markPlaythroughStarted } from "../DataClasses/Avatars";
+import { getIsFirstPlay, markPlaythroughStarted } from "../DataClasses/Avatars";
 import { addUnlock, clearRecruitChoices, getBattlegroundUnlockId, getRecruitChoices, getUnlocks, getWonBattlegrounds, resetUnlocks, saveRecruitChoice } from '../DataClasses/Unlocks';
 
 // the map walks show the battlegrounds already won on, from whatever was saved
 updateMapWalkSites(getWonBattlegrounds());
-import { CAMPAIGN_SECTIONS, getIsLastSection } from '../DataClasses/Campaign';
+import { CAMPAIGN_SECTIONS, getIsLastSection, getRecommendedPowers } from '../DataClasses/Campaign';
 import { GameLoop } from '../DataClasses/GameLoop';
 import { applyLevelFile, LAB_TALK_PHASE, LEVEL_FILES, LEVELS, PENINSULA, SPARRING, updateMapWalkSites } from '../DataClasses/Levels/levels';
 import { TileEditor } from './Levels/TileEditor';
@@ -783,7 +783,6 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     setTimeout(() => (handleShiftHome || handleClickHome)(), CRT.offMs + MONITOR_SHIFT.endDeadMs + MONITOR_SHIFT.ms);
   };
   // dev (Jamie, 2026-11-14): the power picker right after the avatar select, even on a first play, to see it
-  const [isDevPickerFirstPlay, setIsDevPickerFirstPlay] = useState(!!import.meta.env.DEV);
   // a first play goes from the avatar choice straight into the game: the power picker isn't shown on the way (Jamie, playtest 18)
   const [isSkippingPicker, setIsSkippingPicker] = useState(false);
   const isPickingPowersInLab = useRef(false);
@@ -1725,18 +1724,11 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
               markPlaythroughStarted();
               chooseTeam(player, teammate);
               startNewPlaythrough();
-              if (isFirstPlay && isDevPickerFirstPlay) {
-                // dev: the picker, with the first play's powers picked already
-                settingsManager.setSortedPlayerChosenAbilityElementsString(FIRST_PLAY_POWERS);
-                setPickedAbilities(FIRST_PLAY_POWERS);
-              }
-              if (isFirstPlay && !isDevPickerFirstPlay) {
-                settingsManager.setSortedPlayerChosenAbilityElementsString(FIRST_PLAY_POWERS);
-                setPickedAbilities(FIRST_PLAY_POWERS);
-                setIsSkippingPicker(true);
-                setIsChoosingAvatar(false);
-                handleClickPlay();
-                return;
+              // (Jamie, playtest 34: the first play shows the picker too, nothing picked; "Recommended" on the
+              // first fight's powers. It skipped it before, with Discharge, Wildfire and Dispel set)
+              if (isFirstPlay) {
+                settingsManager.setSortedPlayerChosenAbilityElementsString([]);
+                setPickedAbilities([]);
               }
               setPickerFrom('avatar');
               setIsChoosingAvatar(false); // the picker comes up on the same monitor
@@ -1753,6 +1745,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
               onBack={isLabPicker ? () => flyOffThen(returnToLab) : undefined}
               isTeammate={isTeammate}
               setIsTeammate={setIsTeammate}
+              recommended={getRecommendedPowers(isLabPicker ? campaignIndex : 0)}
             />
           )}
           {/* the chosen one's name and number on the picker: the avatar select's own, where the camera left them (Jamie) */}
@@ -1973,9 +1966,6 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
               )}
               <label>
                 <input type="checkbox" checked={isMonitorAlways} onChange={() => setIsMonitorAlways(!isMonitorAlways)} /> Monitor always
-              </label>
-              <label>
-                <input type="checkbox" checked={isDevPickerFirstPlay} onChange={() => setIsDevPickerFirstPlay(!isDevPickerFirstPlay)} /> Picker on first play
               </label>
               <label>
                 <input type="checkbox" checked={isClickThrough} onChange={() => { setIsClickThrough(!isClickThrough); setClickThrough(!isClickThrough); }} /> Click through

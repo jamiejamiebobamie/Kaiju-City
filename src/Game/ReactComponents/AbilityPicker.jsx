@@ -1117,6 +1117,16 @@ const PartHeader = styled.div`
   color: #ffd24a; /* yellow, as "Class:" (Jamie) */
 `;
 
+// (a thin underline in its own yellow: "Class:", Jamie playtest 32; "Recommended", playtest 34)
+const UNDERLINED = { textDecoration: "underline", textDecorationThickness: "0.08cqw", textUnderlineOffset: "0.3cqw" };
+// "Active:" on the left, "Recommended" at the top right
+const HeaderRow = styled.div`
+  align-self: stretch;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+`;
+
 const Part = styled.div`
   display: flex;
   flex-direction: column;
@@ -1525,7 +1535,8 @@ export const AbilityPicker = ({
   playLabel = undefined, // from the Lab, the button says where it goes
   onBack = undefined,
   isTeammate = undefined, // (no longer shown: there's always a teammate now)
-  setIsTeammate = undefined
+  setIsTeammate = undefined,
+  recommended = [] // the powers suggested for the fight ahead (Jamie, playtest 34): "Recommended" on their details
 }) => {
   const { settingsManager, selectedAvatar } = useContext(GlobalSettingsContext);
   const [hovered, setHovered] = useState(undefined); // the index of the hovered (or key-chosen) pendant
@@ -1615,7 +1626,10 @@ export const AbilityPicker = ({
       return (
         <>
           <Part $align="left">
-            <PartHeader>Active:</PartHeader>
+            <HeaderRow>
+              <PartHeader>Active:</PartHeader>
+              {recommended.includes(power.getElementUppercase()) && <PartHeader style={UNDERLINED}>Recommended</PartHeader>}
+            </HeaderRow>
             <FitTitleRow text={power.activeName}><Icon className={`fa ${power.activeIcon}`} style={{ color: power.color }} />{power.activeName}</FitTitleRow>
             <div style={{ color: getTint(power.color, -TINT.turnDegrees) }}>{power.activeDesc}</div>
             {power.activeEffect1 && <Effect $color={power.color}>{power.activeEffect1}</Effect>}
@@ -1633,7 +1647,7 @@ export const AbilityPicker = ({
     if (playerClass) {
       return (
         <Part $align="left">
-          <PartHeader style={{ textDecoration: "underline", textDecorationThickness: "0.08cqw", textUnderlineOffset: "0.3cqw" }}>Class:</PartHeader>{/* (a thin underline: Jamie, playtest 32) */}
+          <PartHeader style={UNDERLINED}>Class:</PartHeader>{/* (a thin underline: Jamie, playtest 32) */}
           <FitTitleRow text={playerClass[0]}>{playerClass[0]}</FitTitleRow>
           <ClassText style={{ color: getClassTint(pickedPowers.map(({ color }) => color)) }}>{playerClass[1]}</ClassText>
         </Part>

@@ -85,3 +85,26 @@ export const CAMPAIGN_SECTIONS: Array<CampaignSection> = [
 ];
 
 export const getIsLastSection = (index: number) => index == CAMPAIGN_SECTIONS.length - 1;
+
+/*
+  The powers suggested for the fight ahead (Jamie, playtest 34): shown as "Recommended" on the power picker, from the
+  first play's and from the Lab's. Only these four fights have them (the first Peninsula, by its place in the story);
+  the walks between are passed over to the next fight.
+*/
+const RECOMMENDED_POWERS: Record<string, Array<string>> = {
+  firstPeninsula: ['Bubble', 'Lightning', 'Fire'],
+  rapidTransit: ['Lightning', 'Fire', 'Glass'],
+  rooftop: ['Bubble', 'Lightning', 'Fire'],
+  aquarium: ['Bubble', 'Lightning', 'Fire']
+};
+const WALKS = ['street', 'labBeforeTrap', 'labTrap', 'sewer1', 'sewer2', 'labIntro'];
+export const getRecommendedPowers = (index: number | null | undefined): Array<string> => {
+  const firstPeninsula = CAMPAIGN_SECTIONS.findIndex(({ levelId }) => levelId == 'peninsula');
+  for (let k = Math.max(0, index ?? 0); k < CAMPAIGN_SECTIONS.length; k++) {
+    const { levelId } = CAMPAIGN_SECTIONS[k];
+    if (WALKS.includes(levelId) || levelId.startsWith('map')) continue;
+    if (k == firstPeninsula) return RECOMMENDED_POWERS.firstPeninsula;
+    return RECOMMENDED_POWERS[levelId] || [];
+  }
+  return [];
+};
