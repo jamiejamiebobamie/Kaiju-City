@@ -368,6 +368,76 @@ const WinDimmer = styled.div`
   transition: opacity 1s;
 `;
 
+/*
+  Recruited or Terminated (Jamie, playtest 33): the one it is said of lies over the wash, under a spotlight from
+  somewhere above (a soft cone down onto them, and a squashed pool of light round the body), so the word lands on
+  them. A copy of the body in a layer of its own, over the wash and its effects, under the word, moved by the world's
+  own camera every frame.
+*/
+const SPOT = { poolRows: [3.2, 1.1], coneTopRows: 1.2, coneRows: 9, color: "255, 246, 220" };
+const spotIn = keyframes`
+  0% { opacity: 0; }
+  30% { opacity: 1; }
+  38% { opacity: 0.55; }
+  46% { opacity: 1; }
+  100% { opacity: 1; }
+`;
+const SpotLayer = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 2147482430;
+  overflow: hidden;
+  pointer-events: none;
+`;
+const SpotWorld = styled.div`
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+`;
+const SpotLight = styled.div`
+  position: absolute;
+  pointer-events: none;
+  animation: ${spotIn} 700ms ease-out both;
+`;
+const SpotlitBody = ({ worldRef, world, children, at, rowPx }) => {
+  const ref = useRef(null);
+  useEffect(() => {
+    let frameId;
+    const follow = () => {
+      if (ref.current && worldRef.current) {
+        ref.current.style.transform = worldRef.current.style.transform;
+        ref.current.style.transition = worldRef.current.style.transition;
+      }
+      frameId = requestAnimationFrame(follow);
+    };
+    follow();
+    return () => cancelAnimationFrame(frameId);
+  }, []);
+  const [poolW, poolH] = SPOT.poolRows.map(rows => rows * rowPx);
+  const coneH = SPOT.coneRows * rowPx;
+  return (
+    <SpotLayer aria-hidden="true">
+      <SpotWorld ref={ref} style={{ width: `${world.width}px`, height: `${world.height}px` }}>
+        {/* the cone, narrow up high and as wide as the pool where it lands */}
+        <SpotLight style={{
+          left: at.x - poolW / 2, top: at.y - coneH, width: poolW, height: coneH,
+          clipPath: `polygon(${50 - (SPOT.coneTopRows * rowPx * 50) / poolW}% 0, ${50 + (SPOT.coneTopRows * rowPx * 50) / poolW}% 0, 100% 100%, 0 100%)`,
+          background: `linear-gradient(to bottom, rgba(${SPOT.color}, 0), rgba(${SPOT.color}, 0.16) 70%, rgba(${SPOT.color}, 0.26))`,
+          filter: "blur(2px)", mixBlendMode: "screen"
+        }} />
+        {/* the pool on the ground */}
+        <SpotLight style={{
+          left: at.x - poolW / 2, top: at.y - poolH / 2, width: poolW, height: poolH, borderRadius: "50%",
+          background: `radial-gradient(ellipse closest-side, rgba(${SPOT.color}, 0.85), rgba(${SPOT.color}, 0.5) 60%, rgba(${SPOT.color}, 0) 100%)`,
+          mixBlendMode: "screen"
+        }} />
+        {children}
+      </SpotWorld>
+    </SpotLayer>
+  );
+};
+
 // lying where they fell
 const RecruitBody = styled.img`
   position: absolute;
@@ -1259,6 +1329,24 @@ export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade 
     />
   ));
 
+  // the beaten one, lying there (and over the Recruited or Terminated wash, spotlit: SpotlitBody)
+  const renderRecruitBody = (isSpotlit = false) => (recruitScene.body.spriteSheetSrc ? (
+          // their own sprite, lying still on their side: the same body a ragdoll comes to rest as
+          <DeadPlayer
+            avatar={recruitScene.body.avatar}
+            pieceScale={pieceScale}
+            spriteSheetSrc={recruitScene.body.spriteSheetSrc}
+            color={recruitScene.body.color}
+            zIndex={getSortZIndex(level, recruitScene.body.y) - 20001}
+            body={getRestingBody(recruitScene.body, pieceScale, grid.rowStep * grid.scale)}
+            ghost={recruitScene.body.isGhostForm && !isSpotlit ? "toBody" : undefined} // her ghost blinks away, and she lies there as herself
+          />
+        ) : <RecruitBody src={`/levels/dead/${recruitScene.body.avatar}.png`} style={{
+          left: `${recruitScene.body.x}px`,
+          top: `${recruitScene.body.y}px`,
+          height: `${pieceScale * RECRUIT_BODY_SIZE}px`
+        }} />);
+
   // the world, drawn once, or twice for a split screen: the second copy has no words or buttons on it
   const renderWorld = isMain => (
     <World ref={isMain ? worldRef : rightWorldRef} data-game-world={isMain ? "" : undefined} style={{ width: `${world.width}px`, height: `${world.height}px`, opacity: isPaused ? 0 : 1, transition: "opacity 0.3s", ...(!isMain && splitCameras ? { transform: splitCameras.right.getTransform() } : {}) }}>
@@ -1271,22 +1359,7 @@ export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade 
         {foregroundLayers}
         <SceneElements level={level} activePhases={activePhases} isPaused={isPaused} onHotspot={onHotspot} isDialogueLog={getIsDialogueLog()} isSettled={!isMain || !!gameManager.isRetry} />
         {isSlowMotion && !recruitScene && <WinDimmer />}
-        {recruitScene && (recruitScene.body.spriteSheetSrc ? (
-          // their own sprite, lying still on their side: the same body a ragdoll comes to rest as
-          <DeadPlayer
-            avatar={recruitScene.body.avatar}
-            pieceScale={pieceScale}
-            spriteSheetSrc={recruitScene.body.spriteSheetSrc}
-            color={recruitScene.body.color}
-            zIndex={getSortZIndex(level, recruitScene.body.y) - 20001}
-            body={getRestingBody(recruitScene.body, pieceScale, grid.rowStep * grid.scale)}
-            ghost={recruitScene.body.isGhostForm ? "toBody" : undefined} // her ghost blinks away, and she lies there as herself
-          />
-        ) : <RecruitBody src={`/levels/dead/${recruitScene.body.avatar}.png`} style={{
-          left: `${recruitScene.body.x}px`,
-          top: `${recruitScene.body.y}px`,
-          height: `${pieceScale * RECRUIT_BODY_SIZE}px`
-        }} />)}
+        {recruitScene && renderRecruitBody()}
         {isMain && recruitScene && !getIsDialogueLog() && (
           <RecruitPrompt style={{ left: `${recruitScene.prompt.x}px`, top: `${recruitScene.prompt.y}px`, transform: `translate(-50%, -100%) scale(${overlayScale}) translateX(${RECRUIT_PROMPT_SHIFT}px)` }}>
             <ChoiceButton choice="recruit" recruitChoice={recruitChoice} onChooseRecruit={chooseRecruit} />
@@ -1338,6 +1411,11 @@ export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade 
       </SceneShake>
       {gameManager.ghostFlashCount > 0 && createPortal(<ScreamFlash key={gameManager.ghostFlashCount} style={{ background: (level && level.rival && level.rival.screamFlashColor) || SCREAM_FLASH.color }} />, document.querySelector("[data-play-screen]") || document.body)}
       {recruitScene && recruitChoice && <ChoiceConfirm choice={recruitChoice} from={choiceFrom.current} board={boardRef.current} />}
+      {recruitScene && recruitChoice && (
+        <SpotlitBody worldRef={worldRef} world={world} at={{ x: recruitScene.body.x, y: recruitScene.body.y - grid.rowStep * grid.scale * 0.3 }} rowPx={grid.rowStep * grid.scale}>
+          {renderRecruitBody(true)}
+        </SpotlitBody>
+      )}
       {!isPaused && !isCurtained && !isPreview && edgeCarets}
       {!isPaused && !isCurtained && <GiantMeters gameManager={gameManager} />}
       {!isPaused && !isCurtained && trainWarning}
