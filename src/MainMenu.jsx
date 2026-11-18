@@ -156,6 +156,8 @@ const SceneSlide = styled.div`
     transform-origin: ${CITY_ZOOM.spot.x * 100}% ${CITY_ZOOM.spot.y * 100}%;
     animation: ${zoomOutOfCity} ${CITY_ZOOM.ms}ms cubic-bezier(0.1, 0.65, 0.4, 1) ${getZoomBackMs() - 450}ms both;
   `} }
+  /* the skyline's buildings rimmed by the moon, as the far land masses are (Jamie, round 6: up and right, the moon's side) */
+  & img[data-landing-logo] { filter: drop-shadow(1px -1px 0 rgba(140, 160, 215, 0.5)); }
   /* the Kaiju keeps its walk and its own glow: it slides by 'translate' alone */
   & > div > :nth-child(n + 3):not(img) { ${props => props.$isLeaving && css`transition: translate ${SLIDE.ms}ms ease-in; translate: ${SLIDE.kaiju} 0;`} }
 `;

@@ -347,6 +347,15 @@ if LANDING:
     out = np.where(ti_shape[..., None], np.array([11, 15, 28]), out)
     out = np.where((ti_shape & (ys < ti_top[None, :] + 1))[..., None], np.array([30, 40, 62]), out)
     far_shapes |= ti_shape
+    # small far hills along the horizon (round 6, as the early versions had), only right of the North Bay's mountains
+    # (left of them is the Pacific): low, uneven, hazy
+    far_rise = 2.2 + 1.8 * np.sin(cols / 23.0) + 1.3 * np.sin(cols / 9.7 + 1.0) + 0.8 * np.sin(cols / 4.1 + 2.3)
+    far_rise *= np.clip((cols - NORTH_BAY[-1][0] + 10) / 30, 0, 1)
+    far_tops = HZ - np.maximum(far_rise, 0)
+    far_hills = (ys >= far_tops[None, :]) & (ys <= HZ + 1) & is_sky & (far_rise[None, :] > 0.8)
+    out = np.where(far_hills[..., None], np.array([17, 23, 42]), out)
+    out = np.where((far_hills & (ys < far_tops[None, :] + 1))[..., None], np.array([30, 38, 64]), out)
+    far_shapes |= far_hills
     for points, color, jag in ((NORTH_BAY, np.array([13, 18, 33]), 1.4),):
         tops = silhouette(points, jag)
         shape = (ys >= tops[None, :]) & (ys <= HZ + 1) & is_sky & (tops[None, :] < HZ - 0.5)
@@ -381,10 +390,18 @@ if LANDING:
     pen.line(golden, fill=bridge_color, width=1)
     # the Bay Bridge: straight on to the right edge; on Treasure Island's near half, behind its far half (a pixel at
     # a time: drawn unless the island stands there past its middle)
-    bay_from = bay_start - bay_way * (ti_w + 10)  # (from back over the map's own bridge, before the island)
     # (Jamie, round 5: the bridge cut at the island's left edge; out again over its right end; no cars over it)
     TI_HIDE = (VPX + ti_rel - ti_w / 2, VPX + ti_rel + ti_w * 0.22)
+    TI_HIDE_FROM = TI_HIDE[0]
     TI_BOX = (TI_HIDE[0] - 1, TI_HIDE[1], ti_base - ti_h - 6, ti_base + 3)
+    # (round 6: the map's own stretch of it traced, from the city to the island's left edge, so it has no gaps; the
+    # straight line on from the island's left edge)
+    bay_map = [project(310 + (499 - 310) * k / 120, 187 + (125 - 187) * k / 120) for k in range(121)]
+    bay_map = [(float(q[0]), float(q[1])) for q in bay_map if q is not None and q[0] < TI_HIDE_FROM]
+    if len(bay_map) > 1:
+        pen.line(bay_map, fill=bridge_color, width=1)
+        BRIDGE_LINES.append(bay_map)
+    bay_from = bay_start - bay_way * ((bay_start[0] - TI_HIDE[0]) / max(bay_way[0], 1e-3))
     bay_end = bay_start + bay_way * ((W - bay_start[0]) / max(bay_way[0], 1e-3))
     n = int(np.hypot(*(bay_end - bay_from)))
     bay_pts, run = [], []

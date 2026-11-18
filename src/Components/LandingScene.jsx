@@ -18,11 +18,12 @@ export const LANDING_VIEW = { src: "/zoom-scene/0-peninsula.png", size: { width:
 const NEAR_TRAFFIC = { distance: 330, speed: 2.4, carEvery: 4, size: { near: 260, least: 0.5, most: 3 } };
 
 /*
-  The moon's reflection on the water (Jamie, rounds 4-5): under the moon, the crescent's own shape as it is in the sky
-  (no perspective, no lean), made of single pixels that wink on and off and slip side to side a little with the swell,
-  so the water breaks it up. In the picture's px: its middle, its size, how far a row slips, how much of it shows.
+  The moon's reflection on the water (Jamie, rounds 4-6): under the moon, the crescent's own shape as it is in the sky
+  (no perspective, no lean), in short dashes along each row (between the strips and the single pixels tried), each
+  winking on and off, each row slipping side to side a little with the swell; the moon's dark side there too, faint,
+  as in the sky. In the picture's px: its middle, its size, how far a row slips, how much of it shows.
 */
-const REFLECTION = { x: 1016, y: 458, radius: 26, slip: 1.4, shown: 0.35, color: "250, 238, 168", most: 0.45 };
+const REFLECTION = { x: 1016, y: 458, radius: 26, slip: 1.4, shown: 0.45, dash: [2, 5], gapEvery: [1, 2], color: "250, 238, 168", most: 0.5, dark: { color: "120, 132, 196", most: 0.16 } };
 
 const MoonReflection = () => {
   const ref = useRef(null);
@@ -30,18 +31,24 @@ const MoonReflection = () => {
     const canvas = ref.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    const { radius: r, slip, shown, color, most } = REFLECTION;
+    const { radius: r, slip, shown, dash, gapEvery, color, most, dark } = REFLECTION;
     const pad = Math.ceil(slip) + 2;
     const size = Math.ceil(r * 2) + pad * 2;
     canvas.width = size;
     canvas.height = size;
-    // the crescent's pixels (lit right, the moon's bite flipped: a reflection), each with its own time on the water
-    const pixels = [];
+    const between = ([low, high]) => low + Math.floor(Math.random() * (high - low + 1));
+    // each row's runs: lit (the crescent: lit right, the moon's bite flipped, as a reflection) or dark (the bite),
+    // cut into dashes, each with its own time on the water
+    const dashes = [];
     for (let y = -r; y <= r; y++) {
-      for (let x = -r; x <= r; x++) {
-        const inDisc = x * x + y * y <= r * r;
-        const inBite = (x + 0.45 * r) ** 2 + (y - 0.15 * r) ** 2 <= (0.95 * r) ** 2;
-        if (inDisc && !inBite) pixels.push({ x, y, phase: Math.random() * Math.PI * 2, speed: 0.8 + Math.random() * 1.6 });
+      let x = -r;
+      while (x <= r) {
+        const length = between(dash);
+        const middle = x + length / 2;
+        const inDisc = middle * middle + y * y <= r * r;
+        const inBite = (middle + 0.45 * r) ** 2 + (y - 0.15 * r) ** 2 <= (0.95 * r) ** 2;
+        if (inDisc) dashes.push({ x, y, length, isLit: !inBite, phase: Math.random() * Math.PI * 2, speed: 0.7 + Math.random() * 1.4 });
+        x += length + between(gapEvery);
       }
     }
     const rowPhase = [...Array(Math.ceil(r * 2) + 1)].map(() => Math.random() * Math.PI * 2);
@@ -49,12 +56,13 @@ const MoonReflection = () => {
     const run = now => {
       const t = now / 1000;
       ctx.clearRect(0, 0, size, size);
-      pixels.forEach(({ x, y, phase, speed }) => {
+      dashes.forEach(({ x, y, length, isLit, phase, speed }) => {
         const wave = Math.sin(t * speed + phase);
         if (wave < 1 - shown * 2) return; // (off for a while: the water breaking it up)
         const row = Math.round(slip * Math.sin(t * 1.1 + rowPhase[y + Math.ceil(r)] + y * 0.4));
-        ctx.fillStyle = `rgba(${color}, ${most * (0.4 + 0.6 * (wave + 1) / 2)})`;
-        ctx.fillRect(pad + r + x + row, pad + r + y, 1, 1);
+        const strength = 0.4 + 0.6 * (wave + 1) / 2;
+        ctx.fillStyle = isLit ? `rgba(${color}, ${most * strength})` : `rgba(${dark.color}, ${dark.most * strength})`;
+        ctx.fillRect(pad + r + x + row, pad + r + y, length, 1);
       });
       frameId = requestAnimationFrame(run);
     };
