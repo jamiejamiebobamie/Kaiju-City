@@ -227,11 +227,11 @@ const PanelTitle = styled.div`
   color: #ffd24a;
 `;
 
-// (on top of the side units, which sit at z 3 in the frame)
+// (under the main monitor, which is z 5 in the frame, as beside the power picker: Jamie, playtest 34, they were over it)
 const SideUnits = styled.div`
   position: absolute;
   inset: 0;
-  z-index: 2147483640;
+  z-index: 4;
   pointer-events: none;
   & > * { pointer-events: auto; }
 `;
