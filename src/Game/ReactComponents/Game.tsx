@@ -1568,8 +1568,10 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     // the training points left: lost when hit, for good (F7)
     const pointsLeft = gameManager.current ? gameManager.current.getTrainingPoints() : trainingPoints;
     setTrainingPoints(pointsLeft);
-    // recruits who died in this fight are gone for good (the permadeath dev option)
-    const fallen = isPermadeath && gameManager.current ? gameManager.current.getFallenRecruits() : [];
+    // recruits who died in this fight are gone for good (the permadeath dev option). Only in a fight won (Jamie,
+    // playtest 33: a fight lost is fought again, and the retry's outcome is the one that counts; the wipe's dead were
+    // kept before, so all were gone by the final fight though all lived through the retry)
+    const fallen = isWon && isPermadeath && gameManager.current ? gameManager.current.getFallenRecruits() : [];
     if (fallen.length) setFallenRecruits(list => [...list, ...fallen.filter(avatar => !list.includes(avatar))]);
     if (level.isWalkingLevel && isWon && gameManager.current && gameManager.current.isTrainingChosen) {
       const trainingLevelId = gameManager.current.trainingLevelId || level.training.levelId;
