@@ -139,6 +139,9 @@ const getHangingBody = body => ({
 });
 
 // the ghost lifting off the body
+// (the living pieces start at 20001: GameBoardPieceComponent)
+const BODY_Z = 20000;
+
 const RisingGhost = props => {
   const [isHanging, setIsHanging] = useState(false);
   useEffect(() => {
@@ -173,7 +176,9 @@ export const DeadPlayer = ({
     <Wrapper
       data-ragdoll
       style={{
-        zIndex: (zIndex || 0) + 20001, // sorted with the living pieces
+        // a body lies under every living piece, Kaiju and all, over the Kaiju's ashes (19999) (Jamie, playtest 33); a
+        // ghost floats, sorted with the living
+        zIndex: ghost ? (zIndex || 0) + 20001 : BODY_Z,
         left: `${spot.x}px`,
         top: `${spot.y}px`,
         transform: `scale(${pieceScale})`,

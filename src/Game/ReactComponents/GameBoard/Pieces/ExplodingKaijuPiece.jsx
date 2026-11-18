@@ -10,7 +10,7 @@ const Monster = styled.div`
     margin-top: -25px;
     width: 40px;
     height: 40px;
-    z-index: 20000;
+    z-index: 19999; /* (under the bodies, 20000, which are under the living: Jamie, playtest 33) */
     /* (changing values go in 'style', not here: each new value made a new class, styled-components warned) */
     pointer-events: none;
 
