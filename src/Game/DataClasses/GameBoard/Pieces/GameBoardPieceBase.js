@@ -8,6 +8,7 @@ export const PORTAL_REST_MS = 5000;
 const CHARM_MS = 5000;
 const SLIPPERY_SLIDE_TILES = 1;
 const CHARM_ALONE_DMG = 1;
+const CHARM_SPURNED_DMG = 1; // a Charm on someone Spurned (who can't be charmed again): it hurts them (Jamie, playtest 33)
 
 export class GameBoardPieceBase {
     constructor({
@@ -336,8 +337,12 @@ export class GameBoardPieceBase {
         // a Charm is spent on the first enemy it touches
         this.gameManagerProxy.clearTileStatusUnderPiece(this.pieceIndex);
         if (this.isCharmed) return;
-        // Spurned: no one can charm them while it lasts (Jamie, playtest 26)
-        if (this.getIsSpurned()) return;
+        // Spurned: no one can charm them while it lasts (Jamie, playtest 26); the Charm hurts them instead, 1 (Jamie,
+        // playtest 33)
+        if (this.getIsSpurned()) {
+            this.decrementHealth(accTime, CHARM_SPURNED_DMG);
+            return;
+        }
 
         // with no one left on their old side to turn on, it hurts them instead
         if (this.isNpc && !this.gameManagerProxy.getHasAllyOnBoard(this.pieceIndex, this.teamIndex)) {

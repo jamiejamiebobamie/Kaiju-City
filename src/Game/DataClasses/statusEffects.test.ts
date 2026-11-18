@@ -55,6 +55,23 @@ describe('status effects', () => {
     expect(ids(gm, kaiju)).not.toContain('unhurtable');
   });
 
+  it('playtest 33: a Charm on someone Spurned hurts them 1 (they cannot be charmed again)', () => {
+    const gm = makeGame(['Fire', 'Metal', 'Bubble']);
+    gm.kaijuManager.addKaijuPiece(gm.accTime);
+    const [player] = gm.getPieces();
+    const kaiju = gm.getPieces().find(piece => piece.avatar == 'kaiju');
+    kaiju.isOnTiles = true;
+    kaiju.spurnedBy = player.pieceIndex;
+    const proxy = kaiju.gameManagerProxy;
+    proxy.getCharmingTeam = () => player.teamIndex;
+    proxy.getStatusCaster = () => player.pieceIndex;
+    proxy.clearTileStatusUnderPiece = () => {};
+    const before = kaiju.lives;
+    kaiju.updateCharm(gm.accTime + 10);
+    expect(kaiju.isCharmed).toBeFalsy();
+    expect(kaiju.lives).toBe(before - 1);
+  });
+
   it('Dispel wiping other passives counts a Clean Slate', () => {
     const gm = makeGame(['Fire', 'Metal', 'Bubble']);
     const player = gm.getPieces()[0];
