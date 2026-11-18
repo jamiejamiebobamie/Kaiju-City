@@ -114,6 +114,12 @@ describe('open items', () => {
     expect(player.isVisible).toBe(false);
     expect(gm.playerKaiju.color).toBe(player.color);
     expect(gm.getGameResult()).toBe(GameResult.PlayerWon);
+    // playtest 33: the win's camera stays on the Kaiju the player became, not on the teammate's body
+    teammate.charLocation = { x: player.charLocation.x + 400, y: player.charLocation.y };
+    gm.startOutcomeShot();
+    expect(gm.outcomeShot.point.x).toBe(gm.playerKaiju.charLocation.x);
+    gm.updateOutcomeShot();
+    expect(gm.outcomeShot.point.x).toBe(gm.playerKaiju.charLocation.x);
   });
 
   it('7. the Lab fight: the NPCs never walk up to the catwalk through the air (playtest 18: only by the portal)', () => {

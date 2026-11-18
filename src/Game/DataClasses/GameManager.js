@@ -3202,6 +3202,15 @@ export class GameManager {
 
     startOutcomeShot() {
         this.endTravelForScene();
+        // the final fight's end, the player turned: the camera stays on the Kaiju they became, as the turn left it (Jamie,
+        // playtest 33: it went to the last death, the teammate's body), never on a body here
+        if (this.finalTurnState == 'destroyed' && this.playerKaiju) {
+            const rowPx = this.getGhostRowPx();
+            const { x, y } = this.playerKaiju.charLocation;
+            this.outcomeDeath = undefined;
+            this.outcomeShot = { point: { x, y: y - CUTSCENE.shotHeadRows * rowPx * 0.5 }, zoomScale: PENINSULA.cameraZoom * 1.4, isPeninsulaSized: true, panMs: CUTSCENE.outcomePullMs };
+            return;
+        }
         const deaths = this.getDeathPieces().filter(({ isKnockdown }) => !isKnockdown);
         const lastDeath = deaths[deaths.length - 1];
         if (!lastDeath) return;
@@ -3212,7 +3221,7 @@ export class GameManager {
     // the same shot, moved: a new shot would start the camera's pull again.
     // it eases after the body, so the shot tracks it without shaking along with each bounce.
     updateOutcomeShot() {
-        if (!this.outcomeShot) return;
+        if (!this.outcomeShot || !this.outcomeDeath) return;
         const { point } = this.outcomeShot;
         const target = this.getDeathLocation(this.outcomeDeath);
         point.x += (target.x - point.x) * CUTSCENE.outcomeFollow;
