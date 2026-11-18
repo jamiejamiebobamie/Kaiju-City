@@ -26,4 +26,22 @@ describe('playtest 34', () => {
     }
     expect(rival.lives).toBeLessThan(start);
   });
+
+  it('22. the Lab escape: fallen Agents are replaced from the catwalk, and more keep coming', () => {
+    const settingsManager = new SettingsManager();
+    settingsManager.setSortedPlayerChosenAbilityElementsString(['Fire', 'Ice', 'Metal']);
+    settingsManager.setIsTeammate(true);
+    const gm: any = new GameManager({ level: LEVELS.labTrap, settingsManager });
+    gm.initGame();
+    for (let k = 0; k < 5000 && !gm.getPieces().some(piece => piece.isChaser); k++) gm.stepPieces();
+    for (let k = 0; k < 3000 && gm.cutscene; k++) gm.stepPieces();
+    const chasers = () => gm.getPieces().filter(piece => piece.isChaser && !piece.getIsDead());
+    const first = chasers().length;
+    chasers().forEach(piece => piece.setIsDead(true));
+    expect(chasers().length).toBe(0);
+    const [player] = gm.getPieces();
+    player.isUnhurtable = true; // (not caught while we watch)
+    for (let k = 0; k < 2000 && chasers().length < first + 2; k++) gm.stepPieces();
+    expect(chasers().length).toBeGreaterThanOrEqual(first + 1);
+  });
 });

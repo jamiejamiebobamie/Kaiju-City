@@ -212,6 +212,9 @@ export const getRecruitLines = (pronoun, pastChoices = []) => {
 const WALKER_BODY_FRACTION = 0.69;
 // what the piece component adds to every piece's z-index, so pieces sort with the scene's own layers
 const PIECE_Z_BASE = 20001;
+// the Lab escape's Agents (Jamie, playtest 34): a new one drops in every 'everyMs' while fewer are up than wanted; one
+// more is wanted every 'growMs', up to 'max'
+const CHASE_REINFORCE = { everyMs: 1500, growMs: 5000, max: 9 };
 
 // A*'s extra cost of a tile, in steps: someone standing on it, or someone headed for it
 const CROWD_COST = { standing: 3, headedFor: 1.5 };
@@ -3136,18 +3139,36 @@ export class GameManager {
         const clones = dropFrom ? this.level.sceneElements.filter(({ id }) => dropFrom.cloneIds.includes(id)) : [];
         const starts = clones.length ? clones.map(({ x }) => ({ x, y: dropFrom.y })) : xs.map(x => ({ x, y: startY }));
         if (clones.length) this.setPhase(dropFrom.phase, true);
-        starts.forEach(start => {
-            const piece = this.gameBoardPiecesManager.addPiece({
-                pieceClass: GameBoardPieceAgent,
-                pieceInfo: { ...PIECES_INFO.agent, abilities: this.settingsManager.getAbilitiesFromElements(abilities), maxLives: 4, moveSpeed },
-                teamIndex: 1
-            });
-            piece.color = PIECES_INFO.kaiju.color; // a sinister purple glow, like the Kaiju's (Jamie)
-            piece.startChase({ startLocation: start, landingTile: this.gameBoardManager.getClosestWalkableTileToLocation({ x: start.x, y: landingY }) });
-        });
+        starts.forEach(start => this.addChaser(start));
+        // (Jamie, playtest 34: more keep dropping from the catwalk, one for each that falls and more as time goes on: a
+        // force the team can't hold off, only run from)
+        this.chaseStarts = starts;
+        this.chaseStartedAt = this.accTime;
+        this.nextChaserAt = this.accTime + CHASE_REINFORCE.everyMs;
         this.gameBoardManager.moveSpeedScale *= CUTSCENE.chaseSlowSpeed;
         this.isChaseSlowed = true;
         this.chaseSlowEndsAt = this.accTime + CUTSCENE.chaseSlowMs;
+    }
+
+    addChaser(start) {
+        const { chasers: { landingY, moveSpeed, abilities } } = this.level.trap;
+        const piece = this.gameBoardPiecesManager.addPiece({
+            pieceClass: GameBoardPieceAgent,
+            pieceInfo: { ...PIECES_INFO.agent, abilities: this.settingsManager.getAbilitiesFromElements(abilities), maxLives: 4, moveSpeed },
+            teamIndex: 1
+        });
+        piece.color = PIECES_INFO.kaiju.color; // a sinister purple glow, like the Kaiju's (Jamie)
+        piece.startChase({ startLocation: start, landingTile: this.gameBoardManager.getClosestWalkableTileToLocation({ x: start.x, y: landingY }) });
+        return piece;
+    }
+
+    // the chase going on: fallen chasers are replaced, and every so often one more comes, up to a cap
+    updateChaseReinforcements() {
+        if (!this.chaseStarts || this.cutscene || this.getGameResult() !== null || this.accTime < this.nextChaserAt) return;
+        const living = this.getPieces().filter(piece => piece.isChaser && !piece.getIsDead()).length;
+        const wanted = Math.min(CHASE_REINFORCE.max, this.chaseStarts.length + Math.floor((this.accTime - this.chaseStartedAt) / CHASE_REINFORCE.growMs));
+        if (living < wanted) this.addChaser(this.chaseStarts[Math.floor(Math.random() * this.chaseStarts.length)]);
+        this.nextChaserAt = this.accTime + CHASE_REINFORCE.everyMs;
     }
 
     // words in the middle of the chase: the game doesn't stop for them. the teammate's are hurried, and tell the player what to do.
@@ -3570,6 +3591,7 @@ export class GameManager {
         if (this.level.kaijuEntry && !this.level.giantKaiju) this.kaijuManager.update(this.accTime, this.score); // the final battle's Kaiju come in waves
         if (this.level.rival) this.updateRival();
         if (this.level.agentDrops) this.updateAgentDrops();
+        if (this.level.trap) this.updateChaseReinforcements();
         if (this.level.greeting) this.updateGreeting();
         if (this.level.unlock) this.updateUnlock();
         if (this.level.exit) this.updateExit();
