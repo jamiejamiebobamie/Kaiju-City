@@ -15,6 +15,14 @@ const loadImage = (url: string) => new Promise<void>(resolve => {
   image.onerror = () => resolve(); // (a missing image mustn't hold the game up)
   image.src = url;
 });
+// a sound: fetched whole, into the browser's cache
+const loadSound = (url: string) => fetch(url).then(response => response.blob()).then(() => undefined, () => undefined);
+const loadFile = (url: string) => (/\.(mp3|wav|ogg|m4a)$/i.test(url) ? loadSound(url) : loadImage(url));
+
+// the fonts (index.css, Font Awesome): with the landing's load, so no word shows in a stand-in font first (Jamie,
+// 2026-11-18, as QuickCast's loader does)
+const FONTS = ["1em gameboy", "1em bangers", "1em green_fuz", "1em FontAwesome"];
+const loadFonts = () => Promise.all(FONTS.map(font => document.fonts.load(font).catch(() => undefined))).then(() => undefined);
 
 // 'onProgress': 0 to 1 as they come in
 export const loadAssets = (set: AssetSet, onProgress: (share: number) => void = () => {}): Promise<void> => {
@@ -27,10 +35,11 @@ export const loadAssets = (set: AssetSet, onProgress: (share: number) => void = 
     let done = 0;
     const listeners = new Set<(share: number) => void>();
     (pending as any)[set + 'Listeners'] = listeners;
-    pending[set] = Promise.all(urls.map(url => loadImage(url).then(() => {
+    const files = urls.map(url => loadFile(url).then(() => {
       done += 1;
       listeners.forEach(listener => listener(done / Math.max(urls.length, 1)));
-    }))).then(() => {
+    }));
+    pending[set] = Promise.all(set == 'landing' && typeof document != 'undefined' && document.fonts ? [...files, loadFonts()] : files).then(() => {
       loaded[set] = true;
     });
   }

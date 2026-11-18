@@ -4,13 +4,16 @@
   "type": "module",
   "private": true,
   "scripts": {
+    "predev": "node scripts/assetManifest.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/assetManifest.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "build:bridge": "rolldown -c training/bridge/rolldown.config.mjs"
+    "build:bridge": "rolldown -c training/bridge/rolldown.config.mjs",
+    "assets": "node scripts/assetManifest.mjs"
   },
   "dependencies": {
     "@emotion/is-prop-valid": "^1.4.0",
