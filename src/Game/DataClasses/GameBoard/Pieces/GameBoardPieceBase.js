@@ -769,6 +769,8 @@ export class GameBoardPieceBase {
     // not a Kaiju: it hurts by walking into people.
     getSpacedPath(moveToTiles) {
         if (this.avatar == 'kaiju') return moveToTiles;
+        // nor the Lab escape's Agents: they run right into the player, whose tile they take (Jamie, playtest 35)
+        if (this.isChaser) return moveToTiles;
         const path = [...moveToTiles];
         while (path.length && this.gameManagerProxy.getIsTileTakenForSpacing(this.pieceIndex, path[path.length - 1])) path.pop();
         return path;
