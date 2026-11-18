@@ -441,7 +441,7 @@ const beamRun = keyframes`
 `;
 const BeamLine = styled.g`
   transform-box: view-box;
-  animation: ${beamRun} 520ms cubic-bezier(0.5, 0, 0.9, 0.6) infinite;
+  animation: ${beamRun} 1400ms cubic-bezier(0.5, 0, 0.9, 0.6) infinite; /* (slower and quieter: Jamie, playtest 35; was 520 ms) */
 `;
 const HoloCone = ({ panelRef }) => {
   const layerRef = useRef(null);
@@ -486,19 +486,19 @@ const HoloCone = ({ panelRef }) => {
         <>
           <defs>
             <linearGradient id="holoFade" gradientUnits="userSpaceOnUse" x1={shape.apex.x} y1={shape.apex.y} x2={shape.tl.x} y2={shape.apex.y}>
-              <stop offset="0" stopColor={`rgba(${HOLO.color}, 0.55)`} />
-              <stop offset="1" stopColor={`rgba(${HOLO.color}, 0.08)`} />
+              <stop offset="0" stopColor={`rgba(${HOLO.color}, 0.22)`} /> {/* (dimmer: a detail, not to fight for attention. Jamie, playtest 35; was 0.55 and 0.08) */}
+              <stop offset="1" stopColor={`rgba(${HOLO.color}, 0.03)`} />
             </linearGradient>
           </defs>
           <HoloOpen style={{ transformOrigin: `${shape.apex.x}px ${shape.apex.y}px` }}>
             <polygon points={[shape.apex, shape.tl, shape.bl].map(pt).join(" ")} fill="url(#holoFade)" />
-            <polygon points={[shape.apex, shape.tl, shape.tr, shape.br, shape.bl].map(pt).join(" ")} fill={`rgba(${HOLO.color}, 0.04)`} />
-            <line x1={shape.apex.x} y1={shape.apex.y} x2={shape.tl.x} y2={shape.tl.y} stroke={`rgba(${HOLO.color}, 0.6)`} strokeWidth="1.2" style={{ filter: `drop-shadow(0 0 3px rgb(${HOLO.color}))` }} />
-            <line x1={shape.apex.x} y1={shape.apex.y} x2={shape.bl.x} y2={shape.bl.y} stroke={`rgba(${HOLO.color}, 0.6)`} strokeWidth="1.2" style={{ filter: `drop-shadow(0 0 3px rgb(${HOLO.color}))` }} />
+            <polygon points={[shape.apex, shape.tl, shape.tr, shape.br, shape.bl].map(pt).join(" ")} fill={`rgba(${HOLO.color}, 0.02)`} />
+            <line x1={shape.apex.x} y1={shape.apex.y} x2={shape.tl.x} y2={shape.tl.y} stroke={`rgba(${HOLO.color}, 0.3)`} strokeWidth="1" style={{ filter: `drop-shadow(0 0 2px rgba(${HOLO.color}, 0.5))` }} />
+            <line x1={shape.apex.x} y1={shape.apex.y} x2={shape.bl.x} y2={shape.bl.y} stroke={`rgba(${HOLO.color}, 0.3)`} strokeWidth="1" style={{ filter: `drop-shadow(0 0 2px rgba(${HOLO.color}, 0.5))` }} />
             {/* the beam: the cone's far edge, run out from the dome (soft and wide, then a hot white core) */}
             <BeamLine style={{ transformOrigin: `${shape.apex.x}px ${shape.apex.y}px` }}>
-              <line x1={shape.tl.x} y1={shape.tl.y} x2={shape.bl.x} y2={shape.bl.y} stroke={`rgba(${HOLO.color}, 0.35)`} strokeWidth="9" strokeLinecap="round" vectorEffect="non-scaling-stroke" style={{ filter: "blur(3px)" }} />
-              <line x1={shape.tl.x} y1={shape.tl.y} x2={shape.bl.x} y2={shape.bl.y} stroke="rgba(235, 255, 240, 0.95)" strokeWidth="1.6" strokeLinecap="round" vectorEffect="non-scaling-stroke" style={{ filter: `drop-shadow(0 0 3px white) drop-shadow(0 0 6px rgb(${HOLO.color}))` }} />
+              <line x1={shape.tl.x} y1={shape.tl.y} x2={shape.bl.x} y2={shape.bl.y} stroke={`rgba(${HOLO.color}, 0.25)`} strokeWidth="7" strokeLinecap="round" vectorEffect="non-scaling-stroke" style={{ filter: "blur(3px)" }} />
+              <line x1={shape.tl.x} y1={shape.tl.y} x2={shape.bl.x} y2={shape.bl.y} stroke="rgba(235, 255, 240, 0.7)" strokeWidth="1.2" strokeLinecap="round" vectorEffect="non-scaling-stroke" style={{ filter: `drop-shadow(0 0 3px white) drop-shadow(0 0 6px rgb(${HOLO.color}))` }} />
             </BeamLine>
           </HoloOpen>
         </>
