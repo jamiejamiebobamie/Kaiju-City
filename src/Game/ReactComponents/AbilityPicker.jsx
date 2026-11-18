@@ -5,7 +5,7 @@ import { GlobalSettingsContext } from 'Home';
 import { getSciFiClass } from "../DataClasses/sciFiClasses";
 import { getIsSkillOpen, OUT_OF_PLAY_POWERS } from "../DataClasses/Avatars";
 import { PIECES_INFO } from "Utils/gameState";
-import { getHasTamagotchiIntroduced, holdTamagotchi, Tamagotchi } from "./Tamagotchi";
+import { getHasTamagotchiIntroduced, holdTamagotchi, markTamagotchiIntroduced, Tamagotchi } from "./Tamagotchi";
 import { AvatarBio } from "./AvatarBio";
 import { ClassBattle } from "./ClassBattle";
 import { CrtScreen, ScaleToFit } from "Components/CrtPower";
@@ -1701,7 +1701,11 @@ export const AbilityPicker = ({
   const [pendantFlash, setPendantFlash] = useState(0);
   // the pendants wait, dimmed and dead, until Stompy has said his hello and "Pick three abilities" (Jamie, playtest 34);
   // once he's met them (a later visit), they're live at once
-  const [wasIntroduced] = useState(getHasTamagotchiIntroduced);
+  // (or with a power picked already, as they open: they've met him. Jamie, playtest 35)
+  const [wasIntroduced] = useState(() => {
+    if (pickedAbilities.length > 0) markTamagotchiIntroduced();
+    return getHasTamagotchiIntroduced();
+  });
   const isPendantsLive = wasIntroduced || pendantFlash > 0; // each "Pick three abilities": the unpicked pendants flash in turn // each power's casts in the class battle, by element: its icon blinks on each
   const isArenaShowing = !!playerClass;
   useLayoutEffect(() => {
@@ -1746,6 +1750,12 @@ export const AbilityPicker = ({
     return () => clearTimeout(timeout);
   }, []);
   const isTamaShowing = isTamaHeld || (hovered === undefined && !playerClass);
+  // Stompy waits, his clock and his happiness with it, while he can't be seen (a power's details or the class on the
+  // screen instead): Jamie, playtest 35, back from reading to find Stompy Gen 2
+  useEffect(() => {
+    holdTamagotchi(!isTamaShowing, "unseen");
+    return () => holdTamagotchi(false, "unseen");
+  }, [isTamaShowing]);
   const sideScreen = (
     <>
             {/* the tamagotchi stays on (its own state), faded in and out as the rest crossfades (Jamie, playtest 29) */}

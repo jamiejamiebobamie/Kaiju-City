@@ -133,6 +133,8 @@ export const holdTamagotchi = (held, reason = "controls") => {
 };
 // has it said hello yet (this visit's pet): the picker waits for its first "Pick three abilities" until it has
 export const getHasTamagotchiIntroduced = () => PET.hasIntroduced;
+// met already (a power picked as the picker opens: Jamie, playtest 35): no hello
+export const markTamagotchiIntroduced = () => { PET = { ...PET, hasIntroduced: true }; };
 
 // cared for: counts for the 30 s check, and a block of happiness back
 const care = pet => ({ ...pet, caredSinceCheck: true, lastCareAt: pet.clock, happiness: Math.min(TAMA.happinessMax, pet.happiness + 1) });
