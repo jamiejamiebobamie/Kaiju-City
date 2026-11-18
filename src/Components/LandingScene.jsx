@@ -25,7 +25,9 @@ const NEAR_TRAFFIC = { distance: 330, speed: 2.4, carEvery: 4, size: { near: 260
 */
 // (Jamie: no need to be true to perspective if that loses the crescent: not drawn out, close strips, a gentle sway;
 // the moon's pale yellow)
-const REFLECTION = { x: 1142, y: 535, radius: 35, stretch: 1, strip: 1, gap: 1, sway: 1.2, color: "250, 238, 168", most: 0.6 };
+// (Jamie, after a look: up under the moon, from his yellow line down along his green one, which leans right a little:
+// 'slant', px across per px down)
+const REFLECTION = { x: 1016, y: 458, radius: 26, stretch: 1, strip: 1, gap: 1, sway: 1.2, slant: 0.3, color: "250, 238, 168", most: 0.6 };
 
 const MoonReflection = () => {
   const ref = useRef(null);
@@ -33,8 +35,8 @@ const MoonReflection = () => {
     const canvas = ref.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    const { radius: r, stretch, strip, gap, sway, color, most } = REFLECTION;
-    const size = { width: Math.ceil(r * 2 + sway * 4 + 8), height: Math.ceil(r * 2 * stretch + 8) };
+    const { radius: r, stretch, strip, gap, sway, slant, color, most } = REFLECTION;
+    const size = { width: Math.ceil(r * 2 + sway * 4 + 8 + Math.abs(slant) * r * 2 * stretch), height: Math.ceil(r * 2 * stretch + 8) };
     canvas.width = size.width;
     canvas.height = size.height;
     const middle = { x: size.width / 2, y: size.height / 2 };
@@ -53,7 +55,7 @@ const MoonReflection = () => {
       const t = now / 1000;
       ctx.clearRect(0, 0, size.width, size.height);
       strips.forEach(({ y, from, to, phase, speed, breakAt }) => {
-        const shift = sway * Math.sin(t * speed + phase + y * 0.35);
+        const shift = sway * Math.sin(t * speed + phase + y * 0.35) + slant * y;
         const fade = 1 - Math.abs(y) / (r * stretch);
         const flicker = 0.55 + 0.45 * Math.sin(t * speed * 1.7 + phase * 2);
         ctx.fillStyle = `rgba(${color}, ${most * fade * flicker})`;
@@ -68,8 +70,8 @@ const MoonReflection = () => {
     frameId = requestAnimationFrame(run);
     return () => cancelAnimationFrame(frameId);
   }, []);
-  const { x, y, radius, stretch, sway } = REFLECTION;
-  return <canvas ref={ref} aria-hidden="true" style={{ position: "absolute", left: x - radius - sway * 2 - 4, top: y - radius * stretch - 4, zIndex: 1, pointerEvents: "none", imageRendering: "pixelated" }} />;
+  const { x, y, radius, stretch, sway, slant } = REFLECTION;
+  return <canvas ref={ref} aria-hidden="true" style={{ position: "absolute", left: x - radius - sway * 2 - 4 - Math.abs(slant) * radius * stretch, top: y - radius * stretch - 4, zIndex: 1, pointerEvents: "none", imageRendering: "pixelated" }} />;
 };
 
 const fadeIn = keyframes`
