@@ -68,6 +68,7 @@ const MONITOR_SHIFT = { ms: 950, deadBeatMs: 350, endDeadMs: 700 };
 
 // with nothing beside it (no HUDs, no side screen, no dialogue panel), the monitor stands in the middle of the frame;
 // when something comes in beside it, it eases aside (Jamie, UI epic)
+const CENTER_AFTER_MS = 1500;
 const getCenteredWindow = window => {
   const width = window.right - window.left;
   const left = (1 - width) / 2;
@@ -1647,9 +1648,25 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const isHudsShowing = !isEditingTiles && !isLogClosing && !isSideLeaving && (!level.isWalkingLevel || isRewarding) && (!isCutscene || isHudsKept) && !recruitScene && !(matchEnd && matchEnd.isFinale);
   hudsShowingRef.current = isHudsShowing;
   const isLogShowing = !isSideLeaving && labScreen != "colors" && ((isCutscene && !isBalloonScene) || !!recruitScene || isTalking);
-  // the monitor holds its place through the game (Jamie, playtest 27: it eased to the middle whenever nothing was
-  // beside it, and back as HUDs or the dialogue panel came: shifting after battles, at the Agent, at the Hazmat Worker)
-  const gameWindow = playWindow;
+  /*
+    The monitor in the middle when nothing is beside it (Jamie, playtest 33, a rule for every screen: e.g. after the
+    Peninsula fight, the HUDs gone, it centers; the dialogue panel coming, it eases aside again). Not for a hand-off:
+    one side thing going and another coming right after (the panel out, the HUDs in) keeps it aside, so it centers
+    only once nothing has been beside it for CENTER_AFTER_MS (long enough for the HUDs to fly off, too). Anything
+    coming, it goes aside at once. (Playtest 27 had it hold its place always: it shifted at every gap.)
+  */
+  // (the panel only when it is drawn: it has lines, or is still coming apart. A shouted line is a balloon, no panel)
+  const isSideContent = isHudsShowing || (isLogShowing && dialogueLog.length > 0) || isLogClosing || labScreen == "colors";
+  const [isMonitorCentered, setIsMonitorCentered] = useState(false);
+  useEffect(() => {
+    if (isSideContent) {
+      setIsMonitorCentered(false);
+      return;
+    }
+    const timeout = setTimeout(() => setIsMonitorCentered(true), CENTER_AFTER_MS);
+    return () => clearTimeout(timeout);
+  }, [isSideContent]);
+  const gameWindow = isMonitorCentered && !isAdjustingWindow ? getCenteredWindow(playWindow) : playWindow;
 
   // the screens before a game (the avatar select and the power picker) are on the Kaiju-Vision monitor (Jamie, 2026-11-14),
   // one and the same monitor through both (its bezel buttons, display and light as in a game: Jamie), with the
