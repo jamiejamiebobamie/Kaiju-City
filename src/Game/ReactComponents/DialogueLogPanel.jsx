@@ -49,11 +49,13 @@ const breakAway = keyframes`
   100% { opacity: 0; }
 `;
 
+// (Jamie, playtest 34: further right, so the projector's cone has room to spread; was 6)
+const PANEL_RIGHT_CQW = 3.5;
 const Panel = styled.div`
   position: absolute;
   top: 6cqw;
   bottom: 6cqw;
-  right: 6cqw;
+  right: ${PANEL_RIGHT_CQW}cqw;
   width: 27cqw;
   z-index: 2147483640;
   display: flex;
@@ -76,7 +78,7 @@ const Frame = styled.div`
   position: absolute;
   top: 6cqw;
   bottom: 6cqw;
-  right: 6cqw;
+  right: ${PANEL_RIGHT_CQW}cqw;
   width: 27cqw;
   z-index: 2147483641;
   pointer-events: none;
@@ -462,7 +464,7 @@ const HoloCone = ({ panelRef }) => {
         const c = casing.getBoundingClientRect();
         const d = dome && dome.getBoundingClientRect();
         const next = {
-          apex: d && d.width > 0 ? { x: d.left - l.left + d.width * 0.45, y: d.top - l.top + d.height / 2 } : { x: c.right - l.left - HOLO.inset, y: c.top - l.top + c.height * HOLO.apexDown },
+          apex: d && d.width > 0 ? { x: d.left - l.left + d.width / 2, y: d.top - l.top + d.height / 2 } : { x: c.right - l.left - HOLO.inset, y: c.top - l.top + c.height * HOLO.apexDown },
           tl: { x: p.left - l.left, y: p.top - l.top }, tr: { x: p.right - l.left, y: p.top - l.top },
           br: { x: p.right - l.left, y: p.bottom - l.top }, bl: { x: p.left - l.left, y: p.bottom - l.top }
         };
