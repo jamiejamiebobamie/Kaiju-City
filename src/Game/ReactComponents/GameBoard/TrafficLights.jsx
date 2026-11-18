@@ -17,7 +17,11 @@ const TRAFFIC = {
 };
 const between = ([low, high]) => low + Math.random() * (high - low);
 
-export const TrafficLights = ({ paths, width, height, zIndex }) => {
+// the water's glints (Jamie, playtest 36: the water moving a little): spots on the sea that brighten and fade, each in
+// its own time, the far ones smaller
+const GLINT = { seconds: [1.6, 4.2], color: "150, 185, 255", most: 0.55, size: { near: 90, least: 0.4, most: 1.6 } };
+
+export const TrafficLights = ({ paths, glints = [], width, height, zIndex }) => {
   const ref = useRef(null);
   useEffect(() => {
     const canvas = ref.current;
@@ -25,6 +29,7 @@ export const TrafficLights = ({ paths, width, height, zIndex }) => {
     const ctx = canvas.getContext("2d");
     const cars = paths.flatMap((path, p) => [...Array(Math.max(1, Math.floor(path.length / TRAFFIC.carEvery))).keys()]
       .map(() => ({ p, at: Math.random() * (path.length - 1), speed: between(TRAFFIC.pointsPerSecond) })));
+    const sparkles = glints.map(([x, y, distance]) => ({ x, y, distance, period: between(GLINT.seconds), phase: Math.random() }));
     let frameId;
     let last = performance.now();
     const run = () => {
@@ -33,6 +38,14 @@ export const TrafficLights = ({ paths, width, height, zIndex }) => {
       last = now;
       ctx.globalAlpha = 1;
       ctx.clearRect(0, 0, width, height);
+      sparkles.forEach(glint => {
+        const wave = Math.sin(((now / 1000) / glint.period + glint.phase) * Math.PI * 2);
+        if (wave <= 0.2) return;
+        const size = Math.max(GLINT.size.least, Math.min(GLINT.size.most, GLINT.size.near / glint.distance));
+        ctx.globalAlpha = GLINT.most * (wave - 0.2) / 0.8;
+        ctx.fillStyle = `rgb(${GLINT.color})`;
+        ctx.fillRect(glint.x - size * 1.5, glint.y - size * 0.4, size * 3, size * 0.8); // (a flat glint, wider than tall)
+      });
       cars.forEach(car => {
         const path = paths[car.p];
         car.at = (car.at + car.speed * seconds) % (path.length - 1);
@@ -61,6 +74,6 @@ export const TrafficLights = ({ paths, width, height, zIndex }) => {
     };
     frameId = requestAnimationFrame(run);
     return () => cancelAnimationFrame(frameId);
-  }, [paths, width, height]);
+  }, [paths, glints, width, height]);
   return <canvas ref={ref} width={width} height={height} aria-hidden="true" style={{ position: "absolute", left: 0, top: 0, width, height, zIndex, pointerEvents: "none" }} />;
 };

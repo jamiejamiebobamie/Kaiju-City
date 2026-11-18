@@ -194,7 +194,7 @@ export type LevelConfig = {
   layers: Array<LevelLayer>;
   waterTile?: { src: string; size: number; ofWidth: number }; // the sea round the picture, repeating (the Peninsula)
   foregroundLayers: Array<ForegroundLayer>;
-  windowTraffic?: { paths: Array<Array<Array<number>>>; zIndex: number }; // cars' lights on the view through the Lab's window (TrafficLights)
+  windowTraffic?: { paths: Array<Array<Array<number>>>; glints?: Array<Array<number>>; zIndex: number }; // cars' lights on the view through the Lab's window (TrafficLights)
   bodiesOverSortY?: number; // the fallen are drawn over whatever sorts at or above this (the Aquarium's tank); else under every living piece
   phases: Array<LevelPhase>;
   defaultPhases: Array<string>; // phases that are on when the level starts
@@ -862,7 +862,7 @@ const LEVEL_BUILDERS: Record<string, (file) => LevelConfig> = {
       { src: '/levels/labIntro-window.png', zIndex: -6 },
       { src: '/levels/labIntro-cut.png', zIndex: -4 }
     ],
-    windowTraffic: { paths: labIntroWindowTraffic.paths, zIndex: -5 } // its cars, between the view and the room
+    windowTraffic: { paths: labIntroWindowTraffic.paths, glints: labIntroWindowTraffic.glints, zIndex: -5 } // its cars, between the view and the room
   }),
   lab: file => ({
     // the catwalk's front railing, cut from the scene: whoever is up there is behind it (Jamie)
@@ -872,7 +872,7 @@ const LEVEL_BUILDERS: Record<string, (file) => LevelConfig> = {
       { src: '/levels/lab-window.png', zIndex: -6 }, // seen through the window: the Peninsula's map in perspective, from the Lab looking north, at night (scripts/labWindowView.py: Jamie, 2026-11-18)
       { src: '/levels/lab.png', zIndex: -4 }
     ],
-    windowTraffic: { paths: labWindowTraffic.paths, zIndex: -5 } // its cars, between the view and the room
+    windowTraffic: { paths: labWindowTraffic.paths, glints: labWindowTraffic.glints, zIndex: -5 } // its cars, between the view and the room
   }),
   sewer1: file => {
     const level = { ...buildLevel(file, 'Sewer 1', '#7a8a3a', [], true), ...SEWER1_SCENE, hasRecruitFollowers: true, isDepowered: true };

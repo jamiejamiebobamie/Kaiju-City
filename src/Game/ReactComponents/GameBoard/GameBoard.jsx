@@ -1359,7 +1359,7 @@ export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade 
           <div style={{ position: "absolute", left: -WATER_REACH_PX, top: -WATER_REACH_PX, width: world.width + 2 * WATER_REACH_PX, height: world.height + 2 * WATER_REACH_PX, zIndex: -6, pointerEvents: "none", backgroundImage: `url(${level.waterTile.src})` /* (smoothed as the map is, so zoomed out its specks blur as the map's do: Jamie, playtest 34) */, backgroundSize: `${level.waterTile.size * (world.width / level.waterTile.ofWidth)}px`, backgroundPosition: `${WATER_REACH_PX}px ${WATER_REACH_PX}px`, opacity: isPaused ? 0 : 1 }} />
         )}
         {levelLayers}
-        {level.windowTraffic && <TrafficLights paths={level.windowTraffic.paths} width={world.width} height={world.height} zIndex={level.windowTraffic.zIndex} />}
+        {level.windowTraffic && <TrafficLights paths={level.windowTraffic.paths} glints={level.windowTraffic.glints} width={world.width} height={world.height} zIndex={level.windowTraffic.zIndex} />}
         {foregroundLayers}
         <SceneElements level={level} activePhases={activePhases} isPaused={isPaused} onHotspot={onHotspot} isDialogueLog={getIsDialogueLog()} isSettled={!isMain || !!gameManager.isRetry} />
         {isSlowMotion && !recruitScene && <WinDimmer />}
