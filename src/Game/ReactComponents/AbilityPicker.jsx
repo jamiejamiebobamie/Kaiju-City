@@ -490,9 +490,16 @@ const getSwing = (device, time) => {
   const { x, y, turn } = getFlyOff(device, time);
   return { degrees: (x / device.x) * HINGE.awayDegrees, y: y * 0.3, turn: turn * 0.25 };
 };
+// (Jamie, playtest 36: they never went fully out of sight. The swing takes the first SWING_SHARE of the leaving, then
+// the unit, turned away, slides in under the big monitor's casing, gone, its arm drawn in after it: nothing left to
+// blink out as the next scene comes)
+const SWING_SHARE = 0.8;
+const getTuckCqw = device => device.box.left - ARM.fromCqw + 3;
 const getFlyOffKeyframes = device => keyframes`${[...Array(121).keys()].map(k => {
-  const { degrees, y, turn } = getSwing(device, k / 120);
-  return `${((k * 100) / 120).toFixed(3)}% { transform: perspective(${HINGE.perspectiveCqw}cqw) translateY(${y.toFixed(3)}cqw) rotateY(${degrees.toFixed(2)}deg) rotate(${turn.toFixed(2)}deg); }`;
+  const time = k / 120;
+  const { degrees, y, turn } = getSwing(device, Math.min(1, time / SWING_SHARE));
+  const tuck = time <= SWING_SHARE ? 0 : getTuckCqw(device) * Math.pow((time - SWING_SHARE) / (1 - SWING_SHARE), 1.6);
+  return `${(time * 100).toFixed(3)}% { transform: translateX(${(-tuck).toFixed(3)}cqw) perspective(${HINGE.perspectiveCqw}cqw) translateY(${y.toFixed(3)}cqw) rotateY(${degrees.toFixed(2)}deg) rotate(${turn.toFixed(2)}deg); }`;
 }).join("\n")}`;
 // a point on a device (the frame's units) where it is at that moment: turned about the device's left edge (its far
 // side drawn in toward the hinge as it turns; the perspective's shrink left out)
@@ -515,6 +522,8 @@ const ArmBar = styled.div`
   position: absolute;
   z-index: 2;
   pointer-events: none;
+  transform-origin: left center;
+  ${props => props.$isLeaving && css`animation: ${armIn} ${FLY_OFF.ms * (1 - SWING_SHARE)}ms ease-in ${FLY_OFF.ms * SWING_SHARE}ms both;`}
   border-radius: 0.3cqw;
   background: linear-gradient(to bottom, #6a6d73, #3a3c41 45%, #1c1d21);
   box-shadow: 0 0.3cqw 0.5cqw rgba(0, 0, 0, 0.7), inset 0 0.08cqw 0 rgba(255, 255, 255, 0.25);
@@ -532,8 +541,13 @@ const ArmBar = styled.div`
     box-shadow: 0 0.2cqw 0.4cqw rgba(0, 0, 0, 0.7);
   }
 `;
-const Arm = ({ box }) => (
-  <ArmBar style={{ left: `${ARM.fromCqw}cqw`, width: `${box.left - ARM.fromCqw}cqw`, top: `${box.top + box.height / 2 - ARM.thickness / 2}cqw`, height: `${ARM.thickness}cqw` }} />
+// (drawn in under the casing as its unit tucks away: Jamie, playtest 36)
+const armIn = keyframes`
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+`;
+const Arm = ({ box, isLeaving = false }) => (
+  <ArmBar $isLeaving={isLeaving} style={{ left: `${ARM.fromCqw}cqw`, width: `${box.left - ARM.fromCqw}cqw`, top: `${box.top + box.height / 2 - ARM.thickness / 2}cqw`, height: `${ARM.thickness}cqw` }} />
 );
 // (Jamie, playtest 32: they looked paper-thin as they turned: real depth now, a back and two sides in 3D; the front's
 // parts hide when turned away, so the back shows instead of a mirror of the front)
@@ -1370,7 +1384,7 @@ export const PlayConsole = ({ isReady, playLabel, onPlay, onBack, isLeaving = fa
   return (
     <>
       <Wires delayMs={MINI_TIMING.riseDelayMs + MINI_TIMING.flyMs - 250} wires={CONSOLE_WIRES} ripFor={isLeaving ? "console" : undefined} />
-      <Arm box={CONSOLE} />
+      <Arm box={CONSOLE} isLeaving={isLeaving} />
       <Console $isLeaving={isLeaving}>
         <Depth radius={1.4} />
         {isLeaving
@@ -1461,7 +1475,7 @@ export const SideFrame = ({ children, brow = null, isPoweredOff = false, isLeavi
   return (
     <>
       <Wires delayMs={MINI_TIMING.wiresAtMs} ripFor={isLeaving ? "mini" : undefined} />
-      <Arm box={MINI} />
+      <Arm box={MINI} isLeaving={isLeaving} />
       <MiniMonitor $isLeaving={isLeaving}>
         <Depth radius={2} />
         {isLeaving

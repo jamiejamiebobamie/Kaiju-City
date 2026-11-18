@@ -1702,7 +1702,9 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
       return;
     }
     setIsFlyingOff(true);
-    setTimeout(handleClickPlay, Math.max(0, FLY_OFF.ms - SCREEN_FADE.ms + 100));
+    // (the next scene only once they're all the way out of sight, tucked under the casing: it came at 1.05 s, and the
+    // picker went with them still in view. Jamie, playtest 36)
+    setTimeout(handleClickPlay, FLY_OFF.ms + 50);
   };
   // the side units fly off, then 'callback' (the picker's own buttons too)
   const flyOffThen = callback => {
