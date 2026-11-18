@@ -298,6 +298,14 @@ const Label = styled.span`
   ${props => props.$isLeaving && css`opacity: 1;`} /* (stays: it rides the camera's move to the picker now: Jamie) */
 `;
 
+// the directive's glow, pulsing every 1.5 s (Jamie, playtest 33): on "Choose your character", the hovered name, and
+// the color vat's "Choose color"
+export const DIRECTIVE_COLOR = CHOICE.textColor;
+export const directivePulse = keyframes`
+  0%, 100% { text-shadow: 0 0 4px ${CHOICE.textColor}; }
+  50% { text-shadow: 0 0 6px ${CHOICE.textColor}, 0 0 16px ${CHOICE.textColor}, 0 0 28px ${CHOICE.textColor}; }
+`;
+
 const Prompt = styled.div`
   margin-top: 40px; /* a little lower (Jamie) */
   position: relative;
@@ -307,6 +315,7 @@ const Prompt = styled.div`
   letter-spacing: 2px;
   color: ${CHOICE.textColor};
   text-shadow: 0 0 8px ${CHOICE.textColor};
+  animation: ${directivePulse} 1.5s ease-in-out infinite;
   visibility: ${props => props.$isHidden ? "hidden" : "visible"};
 `;
 
@@ -368,6 +377,7 @@ const AvatarName = styled.span`
     opacity: 1;
     color: #f2a6ff;
     text-shadow: 0 0 6px ${CHOICE.textColor}, 0 0 14px ${CHOICE.textColor}, 0 0 2px white;
+    animation: ${directivePulse} 1.5s ease-in-out infinite; /* (the directive's pulse, on the hovered one only: Jamie, playtest 33) */
   `}
 `;
 
