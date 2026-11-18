@@ -57,7 +57,8 @@ if LANDING:
     CHUNK_ROWS, CHUNK_WIDTH = (110, 300), 370
     WAIST_ROWS, WAIST_WIDTH = (340, 540), 130
     BASE_WIDTH = 717
-    CENTRE_ROWS = (560, 720)  # (to the waist and on down: easing off before "[Press any key]")
+    CENTRE_ROWS = (560, 720)
+    SYM_ROWS = (640, 720)  # (to the waist and on down: easing off before "[Press any key]")
     # (round 4: below "[Press any key]" (row PRESS_ROW here) the coasts carry straight on, widening as they do above
     # it, BASE_SPREAD times: the drawn perspective's own bent in near the bottom)
     PRESS_ROW, BASE_SPREAD = 550, 1.25
@@ -174,6 +175,20 @@ if LANDING:
     def shift_at(d):
         y = BASE_Y - (np.asarray(d) - d_base) * (BASE_Y - TIP_Y) / LENGTH
         return np.interp(y, np.arange(MH), centre_off, left=centre_off[0], right=0.0)
+    # (round 8, Jamie: the base's coasts leave the window alike: near the bottom the land reaches further left of the
+    # line up the middle than right, so there the right side is widened to mirror the left, easing in over SYM_ROWS)
+    mirror = np.ones(MH)
+    for y in range(MH):
+        xs_ = np.nonzero(land[y])[0]
+        if len(xs_):
+            axis_x = base_mid[0] + (tip_mid[0] - base_mid[0]) * (BASE_Y - y) / (BASE_Y - TIP_Y)
+            mirror[y] = np.clip((axis_x - xs_.min()) / max(xs_.max() - axis_x, 1), 1, 1.6)
+    mirror = cv2.GaussianBlur(mirror.reshape(-1, 1).astype(np.float32), (1, 0), 8).ravel()
+    ease_in = np.clip((np.arange(MH) - SYM_ROWS[0]) / (SYM_ROWS[1] - SYM_ROWS[0]), 0, 1)
+    mirror = 1 + (mirror - 1) * ease_in * ease_in * (3 - 2 * ease_in)
+    def mirror_at(d):
+        y = BASE_Y - (np.asarray(d) - d_base) * (BASE_Y - TIP_Y) / LENGTH
+        return np.interp(y, np.arange(MH), mirror, left=1.0, right=float(mirror[-1]))
     # the hills' heights: by the width, and past the tip falling off slowly (the far lands stand up behind the city)
     height_at = lambda d: np.where(d > d_tip, chunk_scale * (d_tip / np.maximum(d, 1)) ** 0.25, width_at(d))
     NEAR = float(np.exp(np.interp(np.log(H - HZ), np.log([row_at(d) for d in np.geomspace(d_base * 3, d_base / 4, 400)]),
@@ -260,7 +275,8 @@ ybuf = np.full(W, H, np.float32)              # each column: the highest row dra
 cover = np.zeros((len(steps), W), np.float32)  # that row, after each step (for hiding the cars and glints behind land)
 for s, d in enumerate(steps):
     if LANDING:
-        side = (xs - VPX) / width_at(d) + shift_at(d)
+        side = (xs - VPX) / width_at(d)
+        side = np.where(side > 0, side * mirror_at(d) ** -1, side) + shift_at(d)
         mx = (CAM['x'] + AHEAD[0] * d + RIGHT[0] * side).astype(np.float32)
         my = (CAM['y'] + AHEAD[1] * d + RIGHT[1] * side).astype(np.float32)
         # past the map's bottom edge (the camera stands south of it): the map mirrored, so no straight cut shows
@@ -308,7 +324,8 @@ def project(mx, my, h=0.0):
     if d <= NEAR * 0.95:
         return None
     if LANDING:
-        return (VPX + (dx * RIGHT[0] + dy * RIGHT[1] - shift_at(d)) * width_at(d), HZ + row_at(d) - h * height_at(d), d)
+        side = dx * RIGHT[0] + dy * RIGHT[1] - shift_at(d)
+        return (VPX + side * width_at(d) * (mirror_at(d) if side > 0 else 1), HZ + row_at(d) - h * height_at(d), d)
     return (VPX + (dx * RIGHT[0] + dy * RIGHT[1]) * F / d, HZ + (K - h * F) / d, d)
 
 # the sky, above it all: deep night, lighter at the horizon, with stars
@@ -401,20 +418,20 @@ if LANDING:
     # coming out on its low right end where Jamie marked it)
     TI_HIDE_FROM = TI_HIDE[0]
     TI_BOX = (TI_HIDE[0] - 1, TI_HIDE[1], ti_base - ti_h - 6, ti_base + 3)
-    # (round 6: the map's own stretch of it traced, from the city to the island's left edge, so it has no gaps; the
-    # straight line on from the island's left edge)
+    # (round 6: the map's own stretch of it traced, from the city, so it has no gaps; then straight on to the edge.
+    # Round 8: hidden exactly where the island stands, a pixel at a time, so it meets the island with no gap either side)
     bay_map = [project(310 + (499 - 310) * k / 120, 187 + (125 - 187) * k / 120) for k in range(121)]
-    bay_map = [(float(q[0]), float(q[1])) for q in bay_map if q is not None and q[0] < TI_HIDE_FROM]
-    if len(bay_map) > 1:
-        pen.line(bay_map, fill=bridge_color, width=1)
-        BRIDGE_LINES.append(bay_map)
-    bay_from = bay_start - bay_way * ((bay_start[0] - TI_HIDE[0]) / max(bay_way[0], 1e-3))
+    bay_line = [np.array(q[:2]) for q in bay_map if q is not None]
     bay_end = bay_start + bay_way * ((W - bay_start[0]) / max(bay_way[0], 1e-3))
-    n = int(np.hypot(*(bay_end - bay_from)))
+    bay_line.append(bay_end)
+    steps_ = []
+    for a_, b_ in zip(bay_line, bay_line[1:]):
+        n = max(1, int(np.hypot(*(b_ - a_)) * 2))
+        steps_ += [a_ + (b_ - a_) * k / n for k in range(n)]
     bay_pts, run = [], []
-    for k in range(n + 1):
-        x, y = bay_from + (bay_end - bay_from) * k / n
-        hidden = TI_HIDE[0] <= x <= TI_HIDE[1]  # (none over the island: cut at its left edge, out from its right end)
+    for x, y in steps_:
+        cx_, cy_ = int(round(x)), int(round(y))
+        hidden = 0 <= cy_ < H and 0 <= cx_ < W and ti_shape[cy_, cx_]
         if hidden:
             if len(run) > 1:
                 bay_pts.append(run)
@@ -549,12 +566,13 @@ if traffic_path:
             paths.append(pts + pts[::-1])
     if LANDING:
         # no cars over Treasure Island: the roads' paths cut there (each piece made a there-and-back of its own)
-        x0, x1, y0, y1 = TI_BOX
+        island_zone = cv2.dilate(ti_shape.astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool)
+        on_island = lambda x, y: 0 <= int(round(y)) < H and 0 <= int(round(x)) < W and island_zone[int(round(y)), int(round(x))]
         cut = []
         for path in paths:
             piece = []
             for point in path:
-                if x0 <= point[0] <= x1 and y0 <= point[1] <= y1:
+                if on_island(point[0], point[1]):
                     if len(piece) >= 2:
                         cut.append(piece + piece[::-1])
                     piece = []
@@ -592,7 +610,17 @@ if traffic_path:
                 if dy > 2 and rng.random() < 0.5:
                     continue
                 island.append([round(float(x + rng.uniform(-0.4, 0.4)), 1), round(float(ti_base + dy), 1), 1600])
-        extra = {'surf': surf, 'islandSurf': island}
+        # (round 8: the top chunk's coasts outlined, Jamie: its ends were lost in the sea)
+        coast = []
+        outline = cv2.findContours(land.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)[0]
+        for contour in outline:
+            for (mx, my) in contour[:, 0, :]:
+                if my < 360:
+                    q = project(float(mx), float(my))
+                    if q and 0 <= q[0] < W and HZ < q[1] < H and is_seen(*q):
+                        coast.append([round(float(q[0]), 1), round(float(q[1]), 1), round(float(q[2]), 1)])
+        extra = {'surf': surf, 'islandSurf': island, 'coast': coast}
+        print('coast', len(coast))
         print('surf', len(surf), 'island surf', len(island))
     json.dump({'paths': paths, 'glints': glints, 'near': NEAR, 'horizon': HZ, **extra}, open(traffic_path, 'w'))
     print('traffic runs', len(paths), 'glints', len(glints))

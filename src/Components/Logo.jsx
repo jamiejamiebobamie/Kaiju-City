@@ -57,7 +57,8 @@ const LogoImage = styled.img`
   fading as they rise, ending about the tallest buildings' tops; behind the title, in front of the skyline (the landing
   only). Each: its base across the skyline (logo px), its sweep (degrees either side), its time, its delay.
 */
-const SPOTLIGHT = { base: 197, length: 150, width: 34, color: "255, 246, 222", strength: 0.42 };
+// (length: to the tallest building's top, about logo y 82, and no higher, even upright: Jamie, round 8)
+const SPOTLIGHT = { base: 197, length: 112, width: 30, color: "255, 246, 222", strength: 0.42 };
 // (Jamie: in twos, both pairs' bases behind the title, where the inner two first stood; quicker; each pair in step
 // but mirrored: as one swings left the other swings right)
 // (spread a little further apart: Jamie; still behind the title, which runs about x 176-426)

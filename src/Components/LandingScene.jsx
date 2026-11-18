@@ -139,7 +139,8 @@ const Moon = ({ x, y, radius }) => {
   foot, alive: light blue points, faint always, with brighter swells sweeping along them and a twinkle of their own;
   the far ones smaller. Points from scripts/labWindowView.py ('surf', 'islandSurf': [x, y, distance]).
 */
-const SURF = { color: "170, 205, 255", rest: 0.12, most: 0.75, swell: { speed: 1.5, across: 0.045, down: 0.11 }, size: { near: 90, least: 0.5, most: 1.6 } };
+// (Jamie, round 8: always showing, lit: 'rest' raised; the top chunk's coasts outlined: 'coast')
+const SURF = { color: "170, 205, 255", rest: 0.45, most: 0.9, swell: { speed: 1.5, across: 0.045, down: 0.11 }, size: { near: 90, least: 0.5, most: 1.6 } };
 const Surf = ({ points, width, height }) => {
   const ref = useRef(null);
   useEffect(() => {
@@ -166,7 +167,7 @@ const Surf = ({ points, width, height }) => {
   }, [points, width, height]);
   return <canvas ref={ref} width={width} height={height} aria-hidden="true" style={{ position: "absolute", left: 0, top: 0, width, height, zIndex: 1, pointerEvents: "none" }} />;
 };
-const SURF_POINTS = [...(landingTraffic.surf || []), ...(landingTraffic.islandSurf || [])];
+const SURF_POINTS = [...(landingTraffic.surf || []), ...(landingTraffic.islandSurf || []), ...(landingTraffic.coast || [])];
 
 const fadeIn = keyframes`
   from { opacity: 0; }
