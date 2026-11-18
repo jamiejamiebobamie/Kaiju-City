@@ -851,7 +851,15 @@ const LEVEL_BUILDERS: Record<string, (file) => LevelConfig> = {
     bodiesOverSortY: TANK_SORT_Y // the fallen drawn over the first floor's middle tank (Jamie, playtest 34)
   }),
   // past the girl at the desk's column, the view goes all the way left, "Change powers" and all (Jamie)
-  labIntro: file => ({ ...buildLevel(file, 'Lab', '#4a8fb0', [], true), ...LAB_INTRO_SCENE, coverPanLeftX: 450, coverPanRightX: 950 }),
+  labIntro: file => ({
+    ...buildLevel(file, 'Lab', '#4a8fb0', [], true), ...LAB_INTRO_SCENE, coverPanLeftX: 450, coverPanRightX: 950,
+    // the Peninsula through its window too (Jamie, playtest 35): the panes cut from the picture (labIntro-cut.png,
+    // labIntro.png kept as it was), the view behind them (scripts/labWindowView.py)
+    layers: [
+      { src: '/levels/labIntro-window.png', zIndex: -5 },
+      { src: '/levels/labIntro-cut.png', zIndex: -4 }
+    ]
+  }),
   lab: file => ({
     // the catwalk's front railing, cut from the scene: whoever is up there is behind it (Jamie)
     ...buildLevel(file, 'Lab Window', '#4a8fb0', [{ src: '/levels/lab-catwalk-railing.png', x: 0, y: 124, width: 1408, height: 48, sortY: 200 }]),

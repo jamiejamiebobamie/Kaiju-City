@@ -1,15 +1,24 @@
-# Makes public/levels/lab-window.png (Jamie, 2026-11-18): python -I scripts/labWindowView.py public/Map.gif public/levels/lab-window.png
+# Makes the Lab's window views (Jamie, 2026-11-18):
+#   the Lab fight and trap: python -I scripts/labWindowView.py public/Map.gif public/levels/lab-window.png
+#   the walking Lab: python -I scripts/labWindowView.py public/Map.gif public/levels/labIntro-window.png HZ=205 NEAR=34 F=260
 # The Lab window's view: Map.gif laid flat and seen in perspective, from the Lab's spot looking north
 import sys, numpy as np
 from PIL import Image
 src_path, out_path = sys.argv[1], sys.argv[2]
 mp = np.asarray(Image.open(src_path).convert('RGB')).astype(np.float32)
 MH, MW = mp.shape[:2]
-W, H, S = 1408, 352, 2            # output, and supersampling
-HZ = 112                          # the horizon's row
-CAM = {'x': 210, 'y': 700}        # where the view is from, in map pixels (the Lab, a little east, to face up the peninsula)
-NEAR = 46                         # map pixels from the camera at the bottom row
-F = 520                           # how wide: screen px per map px at distance 1
+W, H, S = 1408, 768, 2            # output (the Lab's own size: it is drawn over the whole scene), and supersampling
+HZ = 190                          # the horizon's row (the window shows through from about row 182 to 340: lab.png)
+CAM = {'x': 250, 'y': 860}        # where the view is from, in map pixels: just south of the Peninsula's base, its whole span ahead (Jamie, 2026-11-18)
+NEAR = 15                         # map pixels from the camera at the bottom row
+F = 200                           # how wide: screen px per map px at distance 1
+# settings by hand: python -I scripts/labWindowView.py Map.gif out.png HZ=200 NEAR=34 F=300 (the walking Lab's window)
+for arg in sys.argv[3:]:
+    key, value = arg.split('=')
+    if key in ('X', 'Y'):
+        CAM[key.lower()] = int(value)
+    else:
+        globals()[key] = int(value)
 K = NEAR * (H - HZ)
 w, h, hz = W * S, H * S, HZ * S
 ys, xs = np.mgrid[0:h, 0:w].astype(np.float32)
