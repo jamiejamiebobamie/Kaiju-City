@@ -1124,6 +1124,17 @@ const PartHeader = styled.div`
   color: #ffd24a; /* yellow, as "Class:" (Jamie) */
 `;
 
+// a number with its sign ("+2", "-1"), bigger than the words round it, to be read at a glance (Jamie, playtest 34)
+const SignedNumber = styled.span`
+  font-size: 1.4em;
+  line-height: 1;
+  vertical-align: -0.08em;
+`;
+const SIGNED = /([+\-−]\d+(?:\.\d+)?%?)/;
+const withBigSigns = text => (typeof text == "string"
+  ? text.split(SIGNED).map((part, k) => (k % 2 ? <SignedNumber key={k}>{part}</SignedNumber> : part))
+  : text);
+
 // (a thin underline in its own yellow: "Class:", Jamie playtest 32; "Recommended", playtest 34)
 const UNDERLINED = { textDecoration: "underline", textDecorationThickness: "0.08cqw", textUnderlineOffset: "0.3cqw" };
 // "Recommended", in the side screen's top right corner, boxed in "Class:"'s yellow (Jamie, playtest 34: a border, not
@@ -1645,15 +1656,15 @@ export const AbilityPicker = ({
           <Part $align="left">
             <PartHeader>Active:</PartHeader>
             <FitTitleRow text={power.activeName}><Icon className={`fa ${power.activeIcon}`} style={{ color: power.color }} />{power.activeName}</FitTitleRow>
-            <div style={{ color: getTint(power.color, -TINT.turnDegrees) }}>{power.activeDesc}</div>
-            {power.activeEffect1 && <Effect $color={power.color}>{power.activeEffect1}</Effect>}
+            <div style={{ color: getTint(power.color, -TINT.turnDegrees) }}>{withBigSigns(power.activeDesc)}</div>
+            {power.activeEffect1 && <Effect $color={power.color}>{withBigSigns(power.activeEffect1)}</Effect>}
           </Part>
           <Part $align="left">
             <PartHeader>Passive:</PartHeader>
             {/* the icon first, as the active's (Jamie, playtest 26); Charm's passive (Spurned) shows the Spurned status icon */}
             <FitTitleRow text={power.passiveName}><Icon className={`fa ${power.element == "wink" ? "fa-frown-o" : power.passiveIcon}`} style={{ color: power.element == "wink" ? "#ff4040" : power.color }} />{power.passiveName}</FitTitleRow>
-            <div style={{ color: getTint(power.color, TINT.turnDegrees) }}>{power.passiveDesc}</div>
-            {power.passiveEffect1 && <Effect $color={power.color}>{power.passiveEffect1}</Effect>}
+            <div style={{ color: getTint(power.color, TINT.turnDegrees) }}>{withBigSigns(power.passiveDesc)}</div>
+            {power.passiveEffect1 && <Effect $color={power.color}>{withBigSigns(power.passiveEffect1)}</Effect>}
           </Part>
         </>
       );
