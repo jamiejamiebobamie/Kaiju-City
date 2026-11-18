@@ -655,7 +655,9 @@ const BUBBLES = Array.from({ length: CHOICE_FX.bubbles }, (_, k) => ({
 const ChoiceConfirm = ({ choice, from, board }) => {
   const boardBox = board.getBoundingClientRect();
   const fromX = from ? from.left + from.width / 2 - (boardBox.left + boardBox.width / 2) : 0;
-  const fromY = from ? from.top + from.height / 2 - (boardBox.top + boardBox.height / 2) : 0;
+  // (Recruited higher, clear of the spotlit body below it: Jamie, playtest 34. Terminated lurches round the screen)
+  const wordTop = choice == "recruit" ? 0.34 : 0.5;
+  const fromY = from ? from.top + from.height / 2 - (boardBox.top + boardBox.height * wordTop) : 0;
   // as big as it was made, unless the word with its ending would not fit across the screen
   const word = CHOICE_WORDS[choice] + RECRUIT_LOOK[choice].suffix;
   const wordPx = Math.min(RECRUIT_LOOK.wordPx, (boardBox.width * 0.9) / (word.length * RECRUIT_LOOK.letterWidth));
@@ -682,7 +684,7 @@ const ChoiceConfirm = ({ choice, from, board }) => {
           : BUBBLES.map(({ left, size, seconds, delay, sway }, k) => <Bubble key={k} style={{ left, "--size": size, "--seconds": seconds, "--delay": delay, "--sway": sway }} />)}
       </EffectLayer>
       <EffectLayer style={{ zIndex: 2147482450 }}>
-        <ChoiceWord style={{ fontSize: `${sizePx}px`, "--from-x": `${fromX}px`, "--from-y": `${fromY}px`, "--from-scale": fromScale }}>
+        <ChoiceWord style={{ top: `${wordTop * 100}%`, fontSize: `${sizePx}px`, "--from-x": `${fromX}px`, "--from-y": `${fromY}px`, "--from-scale": fromScale }}>
           {choice == "recruit" ? letters.map((letter, k) => {
             const hop = <HopLetter key={k} style={{ "--delay": `${RECRUIT_LOOK.flyMs / 1000 + k * CHOICE_FX.hopStagger}s` }}>{letter}</HopLetter>;
             return k < base ? hop : <ChoiceSuffix key={k}>{hop}</ChoiceSuffix>;
