@@ -109,8 +109,11 @@ const newPet = (generation = 1) => ({
   clock: 0,
   happiness: TAMA.happinessMax,
   x: 0.5, facing: "left", frame: 0, frameAt: 0,
-  mode: "walk", modeUntil: 3000, targetX: 0.35, turnsLeft: 0,
-  speakingUntil: 0, nextSpeakAt: 2500, lineCount: 0, line: "Pick three abilities", hasIntroduced: false,
+  mode: "idle", modeUntil: 0, targetX: 0.5, turnsLeft: 0,
+  // (Jamie, playtest 36: in the middle from the start, its hello at once, then "Pick three abilities", and only then
+  // off for a wander: 'isGreeting' until the second line is done)
+  speakingUntil: 0, nextSpeakAt: 200, lineCount: 0, line: "Pick three abilities", hasIntroduced: false,
+  isGreeting: true, greetingEndsAt: 0,
   nextPoopAt: between(TAMA.poopEveryMs),
   nextPoopCheckAt: TAMA.poopCheckMs, nextCareCheckAt: TAMA.careCheckMs, caredSinceCheck: false,
   poops: [], pellets: [], hearts: [],
@@ -134,7 +137,7 @@ export const holdTamagotchi = (held, reason = "controls") => {
 // has it said hello yet (this visit's pet): the picker waits for its first "Pick three abilities" until it has
 export const getHasTamagotchiIntroduced = () => PET.hasIntroduced;
 // met already (a power picked as the picker opens: Jamie, playtest 35): no hello
-export const markTamagotchiIntroduced = () => { PET = { ...PET, hasIntroduced: true }; };
+export const markTamagotchiIntroduced = () => { PET = { ...PET, hasIntroduced: true, isGreeting: false }; };
 
 // cared for: counts for the 30 s check, and a block of happiness back
 const care = pet => ({ ...pet, caredSinceCheck: true, lastCareAt: pet.clock, happiness: Math.min(TAMA.happinessMax, pet.happiness + 1) });
@@ -215,17 +218,22 @@ const step = pet => {
   if (isDueToSpeak && walkTo(0.5, TAMA.walkPerSecond * 1.6)) {
     // its first words, first time out or new from its egg: who it is (Jamie), before anything else
     const isHello = !next.hasIntroduced;
-    next.line = next.hasIntroduced ? getNextLine() : `I'm ${MASCOT}!`; // (no generation number in it: Jamie, playtest 34; was "Hi, I am ..., your virtual Kaiju!")
+    const isGreetingPick = !isHello && next.isGreeting; // (the line straight after the hello: always the pick)
+    next.line = isHello ? `I'm ${MASCOT}!` : isGreetingPick ? "Pick three abilities" : getNextLine(); // (no generation number in it: Jamie, playtest 34; was "Hi, I am ..., your virtual Kaiju!")
     next.hasIntroduced = true;
     // (its hello up twice as long, so it's seen: Jamie, playtest 29)
     next.speakingUntil = now + getSpeakMs(next.line) * (isHello ? 2 : 1);
     // (after the hello, "Pick three abilities" straight away: the picker's pendants wait for it. Jamie, playtest 34)
     next.nextSpeakAt = next.speakingUntil + (isHello ? 500 : between(TAMA.speakEveryMs));
+    if (isGreetingPick) next.greetingEndsAt = next.speakingUntil;
     next.frame = 0;
     isSpeaking = true;
   }
+  if (next.isGreeting && next.greetingEndsAt && now >= next.greetingEndsAt) next.isGreeting = false;
   if (isDueToSpeak) {
     // (on its way to the middle)
+  } else if (next.isGreeting && !isSpeaking && !food) {
+    walkTo(0.5, TAMA.walkPerSecond * 1.6); // (greeting: it stays in the middle)
   } else if (food && !isSpeaking) {
     if (walkTo(food.x, TAMA.hurryPerSecond)) {
       next.pellets = next.pellets.filter(pellet => pellet !== food);

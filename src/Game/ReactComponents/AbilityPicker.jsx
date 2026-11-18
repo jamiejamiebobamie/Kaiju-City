@@ -503,11 +503,14 @@ const getFlyOffKeyframes = device => keyframes`${[...Array(121).keys()].map(k =>
 }).join("\n")}`;
 // a point on a device (the frame's units) where it is at that moment: turned about the device's left edge (its far
 // side drawn in toward the hinge as it turns; the perspective's shrink left out)
+// (as its leaving's keyframes go: the swing, then the tuck under the casing, so the wires' ends on it go out of sight
+// with it: Jamie, playtest 36)
 const getMovedPoint = (point, device, time) => {
-  const { degrees, y } = getSwing(device, time);
+  const { degrees, y } = getSwing(device, Math.min(1, time / SWING_SHARE));
   const { box } = device;
   const across = Math.cos((Math.min(90, Math.abs(degrees)) * Math.PI) / 180);
-  return { x: box.left + (point.x - box.left) * across, y: point.y + y };
+  const tuck = time <= SWING_SHARE ? 0 : getTuckCqw(device) * Math.pow((time - SWING_SHARE) / (1 - SWING_SHARE), 1.6);
+  return { x: box.left + (point.x - box.left) * across - tuck, y: point.y + y };
 };
 // swinging in from behind the monitor: turned away past edge-on (its back hidden), round to face out, a little past, back
 const hingeIn = keyframes`
