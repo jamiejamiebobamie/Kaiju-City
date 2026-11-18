@@ -476,7 +476,9 @@ const getFlyOff = (device, time) => {
   motion keeps its beats (lunge, snapped back by the wires, straining, torn free), read as a swing: its 'x' becomes how
   far it has turned back (all the way, 'HINGE.awayDegrees', at its end). 'y' and 'turn' are kept small, a judder.
 */
-export const HINGE = { awayDegrees: 100, perspectiveCqw: 70, inMs: 1100 };
+// (the swing in eased in and out, not flicked: it spends a while turned, so its depth shows as on the way out: Jamie,
+// playtest 33; was cubic-bezier(0.25, 0.8, 0.3, 1) over 1100 ms)
+export const HINGE = { awayDegrees: 100, perspectiveCqw: 70, inMs: 1400, inEase: "cubic-bezier(0.45, 0.1, 0.35, 1)" };
 const getSwing = (device, time) => {
   const { x, y, turn } = getFlyOff(device, time);
   return { degrees: (x / device.x) * HINGE.awayDegrees, y: y * 0.3, turn: turn * 0.25 };
@@ -528,7 +530,7 @@ const Arm = ({ box }) => (
 );
 // (Jamie, playtest 32: they looked paper-thin as they turned: real depth now, a back and two sides in 3D; the front's
 // parts hide when turned away, so the back shows instead of a mirror of the front)
-const DEPTH_CQW = 1.6;
+const DEPTH_CQW = 2.2; // (thicker, to read on the swing in too: Jamie, playtest 33; was 1.6)
 const HINGED = css`
   transform-origin: 0 50%;
   transform-style: preserve-3d;
@@ -613,7 +615,7 @@ const MiniMonitor = styled.div`
   background: ${TV_LOOK.casing};
   box-shadow: inset 0 0.2cqw 0 ${TV_LOOK.casingLight}, 0 0.25cqw 0 ${TV_LOOK.casingLight}, 0 0 0 0.15cqw #080808, 0 1cqw 2.5cqw rgba(0, 0, 0, 0.8);
   ${HINGED}
-  animation: ${hingeIn} ${HINGE.inMs}ms cubic-bezier(0.25, 0.8, 0.3, 1) ${MINI_TIMING.flyDelayMs}ms both;
+  animation: ${hingeIn} ${HINGE.inMs}ms ${HINGE.inEase} ${MINI_TIMING.flyDelayMs}ms both;
   ${props => props.$isLeaving && css`animation: ${miniFlyOff} ${FLY_OFF.ms}ms linear forwards;`}
   /* the same plastic as the big one's (its screen lies over this) */
   &::before {
@@ -748,7 +750,7 @@ const Console = styled.div`
     0 1.4cqw 3cqw rgba(0, 0, 0, 0.85);
   ${CASING_SHEEN}
   ${HINGED}
-  animation: ${hingeIn} ${HINGE.inMs}ms cubic-bezier(0.25, 0.8, 0.3, 1) ${MINI_TIMING.riseDelayMs}ms both;
+  animation: ${hingeIn} ${HINGE.inMs}ms ${HINGE.inEase} ${MINI_TIMING.riseDelayMs}ms both;
   ${props => props.$isLeaving && css`animation: ${consoleFlyOff} ${FLY_OFF.ms}ms linear forwards;`}
 `;
 
@@ -1205,11 +1207,18 @@ const MetalButton = styled.button`
   ${RUBBER_BUTTON}
   /* (long labels, as the color vat's Irradiate and Back to Lab: smaller, so both fit the console. Jamie, playtest 26) */
   ${props => props.$isCompact && css`font-size: 0.8cqw; padding: 0.5cqw 0.7cqw;`}
+  /* (Jamie, playtest 33: the vat's Irradiate big, as Play! is; Back to Lab small beside it, on two lines) */
+  ${props => props.$isCompact && !props.$isMain && css`white-space: normal; line-height: 1.35; max-width: 6.4cqw; text-align: center; font-size: 0.75cqw;`}
   /* Play! (Jamie, playtest 28): bigger, up in the console's middle and a little left (not lined up with Back) */
   ${props => props.$isMain && css`
     font-size: 1.33cqw; /* (5/6 of the first try's: Jamie, playtest 28) */
     padding: 0.71cqw 1.25cqw;
     translate: -0.6cqw 0; /* ('translate': the press's transform still works) */
+  `}
+  ${props => props.$isMain && props.$isCompact && css`
+    font-size: 1.2cqw;
+    padding: 0.71cqw 1cqw;
+    translate: -0.3cqw 0;
   `}
   &:disabled {
     cursor: default;
@@ -1335,8 +1344,8 @@ export const PlayConsole = ({ isReady, playLabel, onPlay, onBack, isLeaving = fa
             <Screw key={k} $turn={turn} style={{ zIndex: 2, left: screwLeft == null ? undefined : `${screwLeft}cqw`, right: screwLeft == null ? "0.5cqw" : undefined, top: top == null ? undefined : `${top}cqw`, bottom: top == null ? "0.5cqw" : undefined }} />
           ))}
           {/* (no ready light: Jamie, playtest 28) */}
-          <EtchedRings faceRef={faceRef} buttonRefs={[playRef, backRef]} glowingIndex={isReady && !isCompact ? 0 : undefined} />
-          <MetalButton ref={playRef} style={{ position: "relative", zIndex: 1 }} disabled={!isReady} $isBacklit={isReady} $isCompact={isCompact} $isMain={!isCompact} onClick={onPlay}>{playLabel}</MetalButton>
+          <EtchedRings faceRef={faceRef} buttonRefs={[playRef, backRef]} glowingIndex={isReady ? 0 : undefined} />
+          <MetalButton ref={playRef} style={{ position: "relative", zIndex: 1 }} disabled={!isReady} $isBacklit={isReady} $isCompact={isCompact} $isMain onClick={onPlay}>{playLabel}</MetalButton>
           {onBack && <MetalButton ref={backRef} style={{ position: "relative", zIndex: 1 }} disabled={isBackDisabled} $isCompact={isCompact} onClick={onBack}>{backLabel}</MetalButton>}
         </ConsoleFace>
       </Console>

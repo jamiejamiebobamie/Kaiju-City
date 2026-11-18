@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { PlayConsole, SideFrame } from "./AbilityPicker";
+import { PlayConsole, SideFrame, FLY_OFF } from "./AbilityPicker";
 import styled, { keyframes } from "styled-components";
 import { PIECES_INFO } from "Utils/gameState";
 import { SpeechBalloon } from "Game/ReactComponents/GameBoard/SceneElements";
@@ -278,6 +278,14 @@ export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose }) => 
   const [isDunked, setIsDunked] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const [isPraising, setIsPraising] = useState(false);
+  // (Jamie, playtest 33: the side units swing away on leaving, as beside the power picker; the screen's fade (450 ms)
+  // starts as they go, so they're gone by the time it's black)
+  const [isLeaving, setIsLeaving] = useState(false);
+  const leave = () => {
+    if (isLeaving) return;
+    setIsLeaving(true);
+    setTimeout(onClose, Math.max(0, FLY_OFF.ms - 450));
+  };
 
   const moveSpot = ({ clientX, clientY, buttons }) => {
     if (!buttons) return;
@@ -333,7 +341,7 @@ export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose }) => 
       <Heading>Choose Color</Heading>
       {isPraising && <PraiseSpot><SpeechBalloon name={VAT_PRAISE.name} text={VAT_PRAISE.text} x={0} y={0} isFlipped scale={(document.querySelector("[data-play-screen]") || document.body).clientWidth / VAT_LOOK.praiseBaseWidth * VAT_LOOK.praiseScale} /></PraiseSpot>}
       {createPortal(<SideUnits>
-        <SideFrame>
+        <SideFrame isLeaving={isLeaving}>
         <Panel>
         <PanelTitle>Color:</PanelTitle>
         <Picker>
@@ -352,7 +360,7 @@ export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose }) => 
         </Panel>
         </SideFrame>
         {/* Irradiate and Back to Lab on the power picker's console (Jamie, playtest 25) */}
-        <PlayConsole isReady={!isBusy} playLabel="Irradiate" onPlay={irradiate} onBack={onClose} isBackDisabled={isBusy} backLabel="Back to Lab" />
+        <PlayConsole isReady={!isBusy && !isLeaving} playLabel="Irradiate" onPlay={irradiate} onBack={leave} isBackDisabled={isBusy || isLeaving} isLeaving={isLeaving} backLabel="Back to Lab" />
       </SideUnits>, document.querySelector("[data-game-frame]") || document.body)}
     </Page>,
     document.querySelector("[data-play-screen]") || document.body
