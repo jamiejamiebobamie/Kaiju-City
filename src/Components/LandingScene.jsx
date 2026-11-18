@@ -2,6 +2,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import styled, { keyframes } from "styled-components";
 import { TrafficLights } from "../Game/ReactComponents/GameBoard/TrafficLights";
 import landingTraffic from "./data/landingTraffic.json";
+import { LANDING_TUNE_DEFAULTS } from "./LandingTuner";
 
 /*
   The landing's scene (Jamie, 2026-11-18): the Lab windows' Peninsula, but seen straight up its middle (one-point
@@ -12,7 +13,7 @@ import landingTraffic from "./data/landingTraffic.json";
   The picture (scripts/labWindowView.py, LANDING=1) is drawn at half size and shown at twice it, pixelated; 'vanish':
   the zoom spot's point in it, in its own px.
 */
-export const LANDING_VIEW = { src: "/zoom-scene/0-peninsula.png", size: { width: 1700, height: 1000 }, vanish: { x: 850, y: 380 }, scale: 2, fadeInMs: 1400 };
+export const LANDING_VIEW = { src: "/zoom-scene/0-peninsula.png", size: { width: 1700, height: 1000 }, vanish: { x: 850, y: 380 }, horizon: 403, scale: 2, fadeInMs: 1400 };
 // the cars nearest the viewer (the bottom half of the Peninsula, distance under 330 in the picture's terms) more
 // dramatic (Jamie): up to 2.4 times as fast, bigger, one more car to every 4 of the road's points there
 const NEAR_TRAFFIC = { distance: 330, speed: 2.4, carEvery: 4, size: { near: 260, least: 0.5, most: 3 } };
@@ -23,15 +24,17 @@ const NEAR_TRAFFIC = { distance: 330, speed: 2.4, carEvery: 4, size: { near: 260
   winking on and off, each row slipping side to side a little with the swell; the moon's dark side there too, faint,
   as in the sky. In the picture's px: its middle, its size, how far a row slips, how much of it shows.
 */
-const REFLECTION = { x: 1016, y: 458, radius: 26, slip: 1.4, shown: 0.45, dash: [2, 5], gapEvery: [1, 2], color: "250, 238, 168", most: 0.5, dark: { color: "120, 132, 196", most: 0.16 } };
+// (its place and size: the tuner's, LandingTuner)
+const REFLECTION = { slip: 1.4, shown: 0.45, dash: [2, 5], gapEvery: [1, 2], color: "250, 238, 168", most: 0.5, dark: { color: "120, 132, 196", most: 0.16 } };
 
-const MoonReflection = () => {
+const MoonReflection = ({ x, y, radius }) => {
   const ref = useRef(null);
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    const { radius: r, slip, shown, dash, gapEvery, color, most, dark } = REFLECTION;
+    const r = Math.round(radius);
+    const { slip, shown, dash, gapEvery, color, most, dark } = REFLECTION;
     const pad = Math.ceil(slip) + 2;
     const size = Math.ceil(r * 2) + pad * 2;
     canvas.width = size;
@@ -68,10 +71,67 @@ const MoonReflection = () => {
     };
     frameId = requestAnimationFrame(run);
     return () => cancelAnimationFrame(frameId);
-  }, []);
-  const { x, y, radius, slip } = REFLECTION;
-  const pad = Math.ceil(slip) + 2;
-  return <canvas ref={ref} aria-hidden="true" style={{ position: "absolute", left: x - radius - pad, top: y - radius - pad, zIndex: 1, pointerEvents: "none", imageRendering: "pixelated" }} />;
+  }, [radius]);
+  const pad = Math.ceil(REFLECTION.slip) + 2;
+  const r = Math.round(radius);
+  return <canvas ref={ref} aria-hidden="true" style={{ position: "absolute", left: Math.round(x) - r - pad, top: Math.round(y) - r - pad, zIndex: 1, pointerEvents: "none", imageRendering: "pixelated" }} />;
+};
+
+/*
+  The moon (Jamie, 2026-11-18): the pale yellow crescent over the Peninsula, its dark side the sky's own colour lit by
+  its glow (the stars behind it hidden), the glow round it; its own layer, so the tuner can place and size it live
+  (it was drawn into the picture). Nothing of it below the horizon. In the picture's px: its middle and radius.
+  The sky's colour by row: as scripts/labWindowView.py paints it (night black at the top to blue at the horizon, the
+  horizon's glow), so the dark side matches it.
+*/
+const MOON = { lit: [250, 238, 168], glow: [38, 44, 70], glowReach: 1.6, bite: { x: -0.45, y: -0.15, size: 0.95 } };
+const getSkyAt = row => {
+  const t = Math.pow(Math.max(0, Math.min(1, row / LANDING_VIEW.horizon)), 2.2);
+  const shine = Math.exp(-Math.pow((row - LANDING_VIEW.horizon) / 6, 2));
+  return [11 * (1 - t) + 26 * t + 18 * shine, 12 * (1 - t) + 40 * t + 26 * shine, 14 * (1 - t) + 72 * t + 48 * shine];
+};
+const Moon = ({ x, y, radius }) => {
+  const discRef = useRef(null);
+  const glowRef = useRef(null);
+  const reach = Math.ceil(radius * (1 + MOON.glowReach)) + 1;
+  const box = { left: Math.round(x) - reach, top: Math.round(y) - reach, size: reach * 2 };
+  useEffect(() => {
+    const disc = discRef.current && discRef.current.getContext("2d");
+    const glow = glowRef.current && glowRef.current.getContext("2d");
+    if (!disc || !glow) return;
+    const discData = disc.createImageData(box.size, box.size);
+    const glowData = glow.createImageData(box.size, box.size);
+    for (let py = 0; py < box.size; py++) {
+      const row = box.top + py;
+      if (row >= LANDING_VIEW.horizon - 1) continue; // (behind the horizon)
+      const sky = getSkyAt(row);
+      for (let px = 0; px < box.size; px++) {
+        const dx = box.left + px - x;
+        const dy = row - y;
+        const distance = Math.hypot(dx, dy);
+        const k = (py * box.size + px) * 4;
+        if (distance <= radius) {
+          const inBite = Math.hypot(dx - MOON.bite.x * radius, dy - MOON.bite.y * radius) <= MOON.bite.size * radius;
+          const base = sky.map((value, c) => value + MOON.glow[c]);
+          const color = inBite ? base : base.map((value, c) => value * 0.15 + MOON.lit[c] * 0.85);
+          discData.data.set([...color.map(Math.round), 255], k);
+        } else {
+          const halo = Math.pow(Math.max(0, 1 - (distance - radius) / (radius * MOON.glowReach)), 2);
+          if (halo > 0) glowData.data.set([...MOON.glow.map(value => Math.round(value * halo)), 255], k);
+        }
+      }
+    }
+    disc.putImageData(discData, 0, 0);
+    glow.putImageData(glowData, 0, 0);
+  }, [x, y, radius]);
+  const style = { position: "absolute", left: box.left, top: box.top, width: box.size, height: box.size, pointerEvents: "none", imageRendering: "pixelated" };
+  return (
+    <>
+      {/* (the glow added onto the sky: black adds nothing) */}
+      <canvas ref={glowRef} width={box.size} height={box.size} aria-hidden="true" style={{ ...style, mixBlendMode: "plus-lighter" }} />
+      <canvas ref={discRef} width={box.size} height={box.size} aria-hidden="true" style={style} />
+    </>
+  );
 };
 
 const fadeIn = keyframes`
@@ -115,8 +175,9 @@ const Fade = styled.div`
 // 'spot': the zoom spot, as shares across and down the logo's image ([data-landing-logo]); 'zoom': the css that zooms
 // it (in on leaving, back out after Leave); 'isBack': the landing came back by the zoom out (no fade in then);
 // 'logoScale': the logo's size (the picture is drawn for it at 1, and scaled with it); 'lift': how far (logo px) the
-// logo's skyline is raised (MainMenu): the anchor goes with the skyline's zoom spot, the picture stays put
-export const LandingScene = ({ spot, zoom, isBack = false, logoScale = 1, lift = 0 }) => {
+// logo's skyline is raised (MainMenu): the anchor goes with the skyline's zoom spot, the picture stays put;
+// 'tune': the moon's and its reflection's places and sizes (LandingTuner)
+export const LandingScene = ({ spot, zoom, isBack = false, logoScale = 1, lift = 0, tune = LANDING_TUNE_DEFAULTS }) => {
   const stageRef = useRef(null);
   const [vanish, setVanish] = useState(undefined);
   useLayoutEffect(() => {
@@ -145,7 +206,8 @@ export const LandingScene = ({ spot, zoom, isBack = false, logoScale = 1, lift =
   const scale = LANDING_VIEW.scale * (vanish ? vanish.k : 1);
   const content = (
     <View style={{ left: -LANDING_VIEW.vanish.x * scale, top: -LANDING_VIEW.vanish.y * scale + (vanish ? vanish.k : 1) * lift, transform: `scale(${scale})` }}>
-      <MoonReflection />
+      <Moon {...tune.moon} />
+      <MoonReflection {...tune.reflection} />
       <TrafficLights paths={landingTraffic.paths} glints={landingTraffic.glints} width={LANDING_VIEW.size.width} height={LANDING_VIEW.size.height} zIndex={1} near={NEAR_TRAFFIC} />
     </View>
   );

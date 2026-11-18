@@ -2,12 +2,13 @@
 # Peninsula behind it: the skyline's own base blue at the top, fading down to black, ending in small threads that run
 # the Peninsula's way (along its perspective lines, out from its vanishing point), with a soft band of the skyline's
 # top yellow behind them. The same box as the logo's image (600 x 300, drawn twice the size), so it sits and zooms with it.
-#   python -I scripts/landingJoiner.py public/zoom-scene/landing-joiner.png
+# Two images (Jamie: each placed up or down on its own, ?tune on the landing): the band with its threads, and the yellow.
+#   python -I scripts/landingJoiner.py public/zoom-scene/landing-joiner.png public/zoom-scene/landing-joiner-glow.png
 import sys
 import numpy as np
 from PIL import Image, ImageDraw
 
-out_path = sys.argv[1]
+out_path, glow_path = sys.argv[1], sys.argv[2]
 SCALE = 2                                   # drawn at twice the logo's px
 W, H = 600 * SCALE, 300 * SCALE
 BLUE = np.array([21, 38, 66])               # SVG_logo.svg's skyline gradient, its base
@@ -43,11 +44,13 @@ color = BLUE[None, None, :] * (1 - t[..., None]) + np.array([4, 4, 8])[None, Non
 alpha = np.clip((ys - TOP + 1) / 2, 0, 1) * np.clip((bottom + 1 - ys) / 2, 0, 1) * inside
 # under it, a thin band of the buildings' top yellow fading out downward: against the black, it shows the streets below
 under = UNDER[1] * np.clip(1 - (ys - bottom) / UNDER[0], 0, 1) * (ys > bottom - 0.5) * inside * np.sqrt(ends)
-rgba = np.zeros((H, W, 4), np.float32)
-rgba[..., :3] = color * alpha[..., None] + YELLOW * under[..., None] * (1 - alpha[..., None])
-rgba[..., 3] = np.clip(alpha + under * (1 - alpha), 0, 1)
-rgba[..., :3] /= np.maximum(rgba[..., 3:4], 1e-4)
-img = Image.fromarray((np.clip(rgba, 0, [255, 255, 255, 1]) * [1, 1, 1, 255]).astype(np.uint8), 'RGBA')
+def to_image(color_, alpha_):
+    rgba = np.zeros((H, W, 4), np.float32)
+    rgba[..., :3] = color_
+    rgba[..., 3] = np.clip(alpha_, 0, 1) * 255
+    return Image.fromarray(np.clip(rgba, 0, 255).astype(np.uint8), 'RGBA')
+img = to_image(color, alpha)
+to_image(np.broadcast_to(YELLOW, (H, W, 3)), under).save(glow_path)
 
 # the threads: from the band's bottom, each down along its line from the vanishing point, a little jagged, thinning out
 pen = ImageDraw.Draw(img)

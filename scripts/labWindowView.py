@@ -310,8 +310,6 @@ SKY_TOP = np.array([11, 12, 14]) if LANDING else np.array([4, 6, 16])  # (the la
 sky = SKY_TOP * (1 - t ** (2.2 if LANDING else 1))[..., None] + np.array([26, 40, 72]) * (t ** (2.2 if LANDING else 1))[..., None]
 sky = np.broadcast_to(sky, (H, W, 3)).copy()
 stars = (rng.random((H, W)) < 0.0009) & (ys < HZ * 0.9)
-if LANDING:  # (none over the moon, its dark part too)
-    stars &= np.hypot(np.arange(W)[None, :] - MOON_X, ys - MOON_Y) > MOON_R * 1.15
 sky[stars] = [200, 210, 255]
 rows = np.arange(H)[:, None]
 is_sky = rows < ybuf[None, :]
@@ -452,9 +450,12 @@ in_sky = is_sky & ~far_shapes if LANDING else is_sky
 crescent = disc & ~bite & in_sky
 halo = np.clip(1 - (np.hypot(xx - cx, yy - cy) - moon_r) / (moon_r * 1.6), 0, 1) * in_sky
 arr = np.asarray(img).astype(np.float32)
-arr[..., :3] += (halo ** 2)[..., None] * np.array([38, 44, 70])
+# (the landing's moon is its own layer, placed and sized live: LandingScene's Moon, Jamie's ?tune panel)
+if not LANDING:
+    arr[..., :3] += (halo ** 2)[..., None] * np.array([38, 44, 70])
 # (the landing's pale yellow: Jamie; the dithered board-map disc tried, and taken back)
-arr[crescent, :3] = arr[crescent, :3] * 0.15 + (np.array([250, 238, 168]) if LANDING else np.array([236, 232, 205])) * 0.85
+if not LANDING:
+    arr[crescent, :3] = arr[crescent, :3] * 0.15 + np.array([236, 232, 205]) * 0.85
 img = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), 'RGBA')
 if False:  # (the joiner under the city is drawn over the skyline now: scripts/landingJoiner.py, Jamie, round 4)
     # ---- under the city (Jamie): a darkened patch of ground with small jagged roots, like a tree trunk's in the ground

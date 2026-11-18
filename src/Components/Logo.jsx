@@ -247,8 +247,9 @@ export const Logo = ({ joiner = false }) => (<LogoWrapper>
     <StyledSciFiText>City</StyledSciFiText>
     <StyledSpookyTextShadow>Kaiju</StyledSpookyTextShadow>{" "}
   </Title>
-  {/* (behind the skyline: Jamie, round 6) */}
-  {joiner && <LogoImage src={"/zoom-scene/landing-joiner.png"} alt="" />}
+  {/* (behind the skyline: Jamie, round 6; each part placed up or down by the landing's tuner: --joiner-* in logo px) */}
+  {joiner && <LogoImage src={"/zoom-scene/landing-joiner-glow.png"} alt="" style={{ translate: "0 calc(var(--logo-lift, 0px) * -1 + var(--joiner-both, 0px) + var(--joiner-glow, 0px))" }} />}
+  {joiner && <LogoImage src={"/zoom-scene/landing-joiner.png"} alt="" style={{ translate: "0 calc(var(--logo-lift, 0px) * -1 + var(--joiner-both, 0px) + var(--joiner-band, 0px))" }} />}
   <LogoImage src={"./SVG_logo.svg"} data-landing-logo />
   <KaijuWrapper >
     <SpriteSheet />

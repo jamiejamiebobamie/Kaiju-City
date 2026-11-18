@@ -14,6 +14,7 @@ import {
 } from "./Components/StyledComponents";
 import { Logo } from "./Components/Logo";
 import { LandingScene } from "./Components/LandingScene";
+import { getIsTunePanel, LandingTuner, loadLandingTune } from "./Components/LandingTuner";
 import { GlobalSettingsContext } from "Home";
 import { IrradiationVat } from "./Game/ReactComponents/IrradiationVat";
 import { getAvatarColor, getIsToolOpen, saveAvatarColor } from "./Game/DataClasses/Avatars";
@@ -231,6 +232,8 @@ export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = ()
   }, []);
   const [toolScreen, setToolScreen] = useState(undefined);
   const [logoScale, setLogoScale] = useState(getLogoScale);
+  // the joiner's, the moon's and its reflection's places (?tune: Jamie's panel)
+  const [tune, setTune] = useState(loadLandingTune);
   useEffect(() => {
     const onResize = () => setLogoScale(getLogoScale());
     window.addEventListener("resize", onResize);
@@ -312,9 +315,9 @@ export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = ()
   return <Wrapper>
     <ShiftLayer $isShiftingIn={isShiftingIn && isLandingShifting}>
     <SpeedBlurFilter />
-    <LandingScene spot={CITY_ZOOM.spot} zoom={getSceneZoom(isLeaving, isLogoZoomingOut)} isBack={isLogoZoomingOut} logoScale={logoScale} lift={LOGO_LIFT} />
+    <LandingScene spot={CITY_ZOOM.spot} zoom={getSceneZoom(isLeaving, isLogoZoomingOut)} isBack={isLogoZoomingOut} logoScale={logoScale} lift={LOGO_LIFT} tune={tune} />
     <EmberSlide $isLeaving={isLeaving}><Embers /></EmberSlide>
-    <SceneSlide $isLeaving={isLeaving} $isZoomingBack={isLogoZoomingOut} style={{ "--logo-scale": logoScale, "--logo-lift": `${LOGO_LIFT}px` }}><Logo joiner /></SceneSlide>
+    <SceneSlide $isLeaving={isLeaving} $isZoomingBack={isLogoZoomingOut} style={{ "--logo-scale": logoScale, "--logo-lift": `${LOGO_LIFT}px`, "--joiner-both": `${tune.joiner.both}px`, "--joiner-band": `${tune.joiner.band}px`, "--joiner-glow": `${tune.joiner.glow}px` }}><Logo joiner /></SceneSlide>
     <ZoomThrough isOn={isLeaving} startMs={ZOOM_START_MS} onDone={enterRoom || handleClickGame} />
     {isZoomingBack && <ZoomThrough isOn isReverse startMs={0} onDone={() => setIsZoomingBack(false)} />}
     <PressAnyKey $isLeaving={isLeaving} style={{ opacity: isZoomingBack ? 0 : undefined, transition: "opacity 600ms ease-out" }}>
@@ -323,6 +326,7 @@ export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = ()
     </ShiftLayer>
     {navButtons}
     {getIsPressPanel() && <PressKeyPanel settings={pressSettings} setSettings={setPressSettings} />}
+    {getIsTunePanel() && <LandingTuner tune={tune} setTune={setTune} />}
     {toolScreen == "colors" && <IrradiationVat avatar={selectedAvatar} startColor={getAvatarColor(selectedAvatar) || PIECES_INFO[selectedAvatar].color} onIrradiate={color => saveAvatarColor(selectedAvatar, color)} onClose={() => setToolScreen(undefined)} />}
   </Wrapper>
 }
