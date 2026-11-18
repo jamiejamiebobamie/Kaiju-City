@@ -100,6 +100,21 @@ const AGENT_CALL = { line: "Welcome, recruit.\nWho are you?" }; // (Jamie's word
 // a hover, he's simply there (a quick fade)
 const AGENT_TIMING = { walkMs: 1700, balloonAtMs: 1750, typeMs: 55, quickMs: 260 };
 let isAgentIntroDone = false;
+// told once his "...Who are you?" is all typed: the avatar select's tanks wait for it (Jamie, playtest 34)
+const introListeners = new Set();
+export const whenAgentIntroDone = listener => {
+  if (isAgentIntroDone) {
+    listener();
+    return () => {};
+  }
+  introListeners.add(listener);
+  return () => introListeners.delete(listener);
+};
+const finishAgentIntro = () => {
+  isAgentIntroDone = true;
+  introListeners.forEach(listener => listener());
+  introListeners.clear();
+};
 
 const spotUp = keyframes`
   0% { opacity: 0; }
@@ -332,7 +347,7 @@ const AgentCall = ({ startDelayMs = 0 }) => {
     const at = Math.max(0, startDelayMs);
     const timeouts = [setTimeout(() => setIsStarted(true), at), setTimeout(() => setIsBalloonUp(true), at + AGENT_TIMING.balloonAtMs)];
     [...AGENT_CALL.line].forEach((_, k) => timeouts.push(setTimeout(() => setTyped(k + 1), at + AGENT_TIMING.balloonAtMs + 250 + k * AGENT_TIMING.typeMs)));
-    timeouts.push(setTimeout(() => { isAgentIntroDone = true; }, at + AGENT_TIMING.balloonAtMs + 250 + AGENT_CALL.line.length * AGENT_TIMING.typeMs));
+    timeouts.push(setTimeout(finishAgentIntro, at + AGENT_TIMING.balloonAtMs + 250 + AGENT_CALL.line.length * AGENT_TIMING.typeMs));
     return () => timeouts.forEach(clearTimeout);
   }, []);
   if (!isStarted) return <Screen />;

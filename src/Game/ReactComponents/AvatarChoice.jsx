@@ -6,6 +6,7 @@ import { Doodads } from "Components/AvatarSelection";
 import { ScaleToFit } from "Components/CrtPower";
 import { PICKER_FIGURE } from "./AbilityPicker";
 import { ElectricArcs } from "./ElectricArcs";
+import { whenAgentIntroDone } from "./AvatarBio";
 import { SCENE_DROP, SCENE_DROP_MORE, setFigurePlace } from "./MonitorLabBackdrop";
 
 /*
@@ -458,8 +459,11 @@ const ChoiceAvatar = ({ id, sheet, keyName, figureOffset, chosen, isLeaving, onC
 // 'nameOnly': the chosen one, on the picker: everything hidden but its name and number, where the camera left them
 // 'isArcs': the electric arcs round "Choose your character" (not when back from the picker: Jamie, playtest 34)
 export const AvatarChoice = ({ onChoose = (_player, _teammate) => {}, isReady = true, isArcs = true, onHover = (_id) => {}, onHandOver = (_id) => {}, nameOnly = undefined }) => {
+  // (the tanks can't be hovered or picked till the Agent has asked "...Who are you?": Jamie, playtest 34)
+  const [isAsked, setIsAsked] = useState(false);
+  useEffect(() => whenAgentIntroDone(() => setIsAsked(true)), []);
   const isReadyRef = useRef(isReady);
-  isReadyRef.current = isReady;
+  isReadyRef.current = isReady && isAsked;
   const { setSelectedAvatar } = useContext(GlobalSettingsContext);
   const [chosen, setChosen] = useState(undefined);
   const [isLeaving, setIsLeaving] = useState(false);
@@ -494,7 +498,7 @@ export const AvatarChoice = ({ onChoose = (_player, _teammate) => {}, isReady = 
     <ScaleToFit width={DESIGN_SIZE} height={DESIGN_SIZE}>
       <Screen data-choice-screen style={nameOnly ? { visibility: "hidden", pointerEvents: "none", zIndex: 7 } : undefined}>
         <SpeedBlurFilter />
-        <Row>
+        <Row style={isAsked || nameOnly ? undefined : { pointerEvents: "none" }}>
           {AVATARS.map(({ id, sheet, key, figureOffset }) => (
             <ChoiceAvatar key={id} id={id} sheet={sheet} keyName={key} figureOffset={figureOffset} chosen={nameOnly || chosen} isLeaving={isLeaving} onChoose={() => choose(id)} onHover={onHover} nameOnly={nameOnly} />
           ))}
