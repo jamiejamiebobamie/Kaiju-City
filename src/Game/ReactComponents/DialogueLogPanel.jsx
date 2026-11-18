@@ -429,9 +429,25 @@ const HoloLayer = styled.svg`
   pointer-events: none;
   overflow: visible;
 `;
+// (Jamie, playtest 33: the light comes from the projector dome on the casing, lit while the hologram shows; a bright
+// line runs along the cone from the dome to the panel, again and again, the words beamed over)
+const beamRun = keyframes`
+  0% { transform: scale(0.04); opacity: 0; }
+  12% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { transform: scale(1); opacity: 0; }
+`;
+const BeamLine = styled.g`
+  transform-box: view-box;
+  animation: ${beamRun} 520ms cubic-bezier(0.5, 0, 0.9, 0.6) infinite;
+`;
 const HoloCone = ({ panelRef }) => {
   const layerRef = useRef(null);
   const [shape, setShape] = useState(null);
+  useEffect(() => {
+    document.documentElement.setAttribute("data-holo-on", "");
+    return () => document.documentElement.removeAttribute("data-holo-on");
+  }, []);
   useEffect(() => {
     let frameId;
     let last = "";
@@ -439,12 +455,14 @@ const HoloCone = ({ panelRef }) => {
       const layer = layerRef.current;
       const panel = panelRef.current;
       const casing = document.querySelector("[data-tv-casing]");
+      const dome = document.querySelector("[data-holo-dome]");
       if (layer && panel && casing) {
         const l = layer.getBoundingClientRect();
         const p = panel.getBoundingClientRect();
         const c = casing.getBoundingClientRect();
+        const d = dome && dome.getBoundingClientRect();
         const next = {
-          apex: { x: c.right - l.left - HOLO.inset, y: c.top - l.top + c.height * HOLO.apexDown },
+          apex: d && d.width > 0 ? { x: d.left - l.left + d.width * 0.45, y: d.top - l.top + d.height / 2 } : { x: c.right - l.left - HOLO.inset, y: c.top - l.top + c.height * HOLO.apexDown },
           tl: { x: p.left - l.left, y: p.top - l.top }, tr: { x: p.right - l.left, y: p.top - l.top },
           br: { x: p.right - l.left, y: p.bottom - l.top }, bl: { x: p.left - l.left, y: p.bottom - l.top }
         };
@@ -475,8 +493,12 @@ const HoloCone = ({ panelRef }) => {
             <polygon points={[shape.apex, shape.tl, shape.tr, shape.br, shape.bl].map(pt).join(" ")} fill={`rgba(${HOLO.color}, 0.04)`} />
             <line x1={shape.apex.x} y1={shape.apex.y} x2={shape.tl.x} y2={shape.tl.y} stroke={`rgba(${HOLO.color}, 0.6)`} strokeWidth="1.2" style={{ filter: `drop-shadow(0 0 3px rgb(${HOLO.color}))` }} />
             <line x1={shape.apex.x} y1={shape.apex.y} x2={shape.bl.x} y2={shape.bl.y} stroke={`rgba(${HOLO.color}, 0.6)`} strokeWidth="1.2" style={{ filter: `drop-shadow(0 0 3px rgb(${HOLO.color}))` }} />
+            {/* the beam: the cone's far edge, run out from the dome (soft and wide, then a hot white core) */}
+            <BeamLine style={{ transformOrigin: `${shape.apex.x}px ${shape.apex.y}px` }}>
+              <line x1={shape.tl.x} y1={shape.tl.y} x2={shape.bl.x} y2={shape.bl.y} stroke={`rgba(${HOLO.color}, 0.35)`} strokeWidth="9" strokeLinecap="round" vectorEffect="non-scaling-stroke" style={{ filter: "blur(3px)" }} />
+              <line x1={shape.tl.x} y1={shape.tl.y} x2={shape.bl.x} y2={shape.bl.y} stroke="rgba(235, 255, 240, 0.95)" strokeWidth="1.6" strokeLinecap="round" vectorEffect="non-scaling-stroke" style={{ filter: `drop-shadow(0 0 3px white) drop-shadow(0 0 6px rgb(${HOLO.color}))` }} />
+            </BeamLine>
           </HoloOpen>
-          <circle cx={shape.apex.x} cy={shape.apex.y} r="3.5" fill={`rgb(${HOLO.color})`} style={{ filter: `drop-shadow(0 0 6px rgb(${HOLO.color}))` }} />
         </>
       )}
     </HoloLayer>

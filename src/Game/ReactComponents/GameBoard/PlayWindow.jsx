@@ -64,6 +64,49 @@ export const TV_LOOK = {
   rollOpacity: 0.06
 };
 
+/*
+  The hologram projector (Jamie, playtest 33): a black half-sphere on the casing's right edge, low down, its other half
+  sunk in the casing. Off: black glass, a dull highlight. On (the dialogue panel's hologram showing: the panel sets
+  data-holo-on on the page): a green glow round its rim, and a scan line passing over it, bent by its curve.
+*/
+export const HOLO_DOME = { down: 0.78, radiusCqw: 1.25 };
+const domeScan = keyframes`
+  from { background-position: 0 -140%, 0 0; }
+  to { background-position: 0 240%, 0 0; }
+`;
+const ProjectorDome = styled.div`
+  position: absolute;
+  left: calc(100% + ${TV_LOOK.casingWidth}cqw - 0.1cqw);
+  top: calc(${HOLO_DOME.down * 100}% - ${HOLO_DOME.radiusCqw}cqw);
+  width: ${HOLO_DOME.radiusCqw}cqw;
+  height: ${HOLO_DOME.radiusCqw * 2}cqw;
+  z-index: 2147483001;
+  pointer-events: none;
+  border-radius: 0 ${HOLO_DOME.radiusCqw}cqw ${HOLO_DOME.radiusCqw}cqw 0;
+  background:
+    radial-gradient(circle at 30% 32%, rgba(255, 255, 255, 0.22), transparent 28%),
+    radial-gradient(circle at 0% 50%, #1a1c1d 0%, #050606 70%, #000 100%);
+  box-shadow: inset -0.12cqw 0 0.2cqw rgba(255, 255, 255, 0.08), 0.15cqw 0.2cqw 0.35cqw rgba(0, 0, 0, 0.7);
+  transition: box-shadow 300ms;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    opacity: 0;
+    transition: opacity 300ms;
+    /* the scan line, squeezed toward the rim as a fish-eye would show it, and the sphere's shading over it */
+    background:
+      linear-gradient(to bottom, transparent 44%, rgba(160, 255, 190, 0.95) 50%, transparent 56%) 0 0 / 100% 45% no-repeat,
+      radial-gradient(circle at 0% 50%, transparent 35%, rgba(0, 0, 0, 0.75) 100%);
+    animation: ${domeScan} 1.1s ease-in-out infinite;
+  }
+  :root[data-holo-on] & {
+    box-shadow: inset -0.15cqw 0 0.35cqw rgba(109, 255, 160, 0.9), 0 0 0.6cqw rgba(109, 255, 160, 0.55), 0.15cqw 0.2cqw 0.35cqw rgba(0, 0, 0, 0.7);
+  }
+  :root[data-holo-on] &::after { opacity: 1; }
+`;
+
 const TvCasing = styled.div`
   position: absolute;
   inset: -${TV_LOOK.casingWidth}cqw;
@@ -482,6 +525,7 @@ export const PlayWindow = ({ playWindow, setPlayWindow, isAdjusting, isOpen, isC
         <>
           <ScreenCorners />
           <TvCasing data-tv-casing />
+          <ProjectorDome data-holo-dome aria-hidden="true" />
           <CasingSheen />
           <BrandName>KAIJU-VISION</BrandName>
           <SirenLight isOn={isSiren} />
