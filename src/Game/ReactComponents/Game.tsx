@@ -1720,7 +1720,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
           {/* the Lab behind them, darkened, lit round the avatars (Jamie) */}
           <MonitorLabBackdrop mode={isChoosingAvatar ? "choice" : "picker"} hovered={hoveredAvatar} focus={isChoosingAvatar ? handOverAvatar : selectedAvatar} />
           {isChoosingAvatar ? (
-            <AvatarsInTheDark style={{ position: "absolute", inset: 0, transformOrigin: "0 0", transition: FOCUS_MOVE, transform: getFocusTransform(handOverAvatar), ...(isBooted ? {} : { animation: "none" }) }}>
+            <AvatarsInTheDark style={{ position: "absolute", inset: 0, transformOrigin: "0 0", transition: FOCUS_MOVE, transform: getFocusTransform(handOverAvatar), ...(isBooted && !isBackFromPicker ? {} : { animation: "none" }) }}>
             <AvatarChoice isReady={isMonitorOn} isArcs={!isBackFromPicker} onHover={setHoveredAvatar} onHandOver={setHandOverAvatar} onChoose={(player, teammate) => {
               // a first play skips the power picker: Discharge, Wildfire and Dispel to start (Jamie); every replay after it shows it
               const isFirstPlay = getIsFirstPlay();
@@ -1759,7 +1759,8 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
           )}
           {/* some bubbles over the avatars, in step with the backdrop (Jamie) */}
           <MonitorLabBackdrop layer="front" mode={isChoosingAvatar ? "choice" : "picker"} focus={isChoosingAvatar ? handOverAvatar : selectedAvatar} />
-          {isChoosingAvatar && isBooted && <LabLightsOn />}
+          {/* (not again when back from the picker: the lights are on already, Jamie, playtest 34) */}
+          {isChoosingAvatar && isBooted && !isBackFromPicker && <LabLightsOn />}
           {screenFade == 'out' && <ScreenBlack />}
         </PlayWindow>
         {isMonitorOn && isBooted && (
