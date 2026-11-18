@@ -458,10 +458,24 @@ const ChoiceAvatar = ({ id, sheet, keyName, figureOffset, chosen, isLeaving, onC
 // 'onHandOver': the chosen one, as it starts its slide to the picker (the backdrop goes with it)
 // 'nameOnly': the chosen one, on the picker: everything hidden but its name and number, where the camera left them
 // 'isArcs': the electric arcs round "Choose your character" (not when back from the picker: Jamie, playtest 34)
+const AGENT_ASKED_WAIT_MS = 1500;
 export const AvatarChoice = ({ onChoose = (_player, _teammate) => {}, isReady = true, isArcs = true, onHover = (_id) => {}, onHandOver = (_id) => {}, nameOnly = undefined }) => {
   // (the tanks can't be hovered or picked till the Agent has asked "...Who are you?": Jamie, playtest 34)
   const [isAsked, setIsAsked] = useState(false);
-  useEffect(() => whenAgentIntroDone(() => setIsAsked(true)), []);
+  // (a beat after it, 1.5 s: Jamie, playtest 34; at once if he asked before, back from the picker)
+  useEffect(() => {
+    let timeout;
+    let isFirst = true;
+    const stop = whenAgentIntroDone(() => {
+      if (isFirst) setIsAsked(true); // already asked: no wait
+      else timeout = setTimeout(() => setIsAsked(true), AGENT_ASKED_WAIT_MS);
+    });
+    isFirst = false;
+    return () => {
+      stop();
+      clearTimeout(timeout);
+    };
+  }, []);
   const isReadyRef = useRef(isReady);
   isReadyRef.current = isReady && isAsked;
   const { setSelectedAvatar } = useContext(GlobalSettingsContext);
