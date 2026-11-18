@@ -18,6 +18,8 @@ const LogoWrapper = styled.div`
   height: 350px;
 
   margin-top: -370px;
+  /* the landing sets it (Jamie, 2026-11-18: the logo, its skyline and Kaiju larger, sized to the window) */
+  transform: scale(var(--logo-scale, 1));
 `;
 
 const LogoImage = styled.img`

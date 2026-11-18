@@ -21,14 +21,24 @@ const between = ([low, high]) => low + Math.random() * (high - low);
 // its own time, the far ones smaller
 const GLINT = { seconds: [1.6, 4.2], color: "150, 185, 255", most: 0.55, size: { near: 90, least: 0.4, most: 1.6 } };
 
-export const TrafficLights = ({ paths, glints = [], width, height, zIndex }) => {
+// 'near' (the landing, Jamie: the cars nearest the viewer more dramatic): within 'distance' cars go up to 'speed' times
+// as fast and are drawn bigger ('size': TRAFFIC.size's, overridden), and there are more of them ('carEvery' there)
+export const TrafficLights = ({ paths, glints = [], width, height, zIndex, near = undefined }) => {
   const ref = useRef(null);
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas || !paths) return;
     const ctx = canvas.getContext("2d");
-    const cars = paths.flatMap((path, p) => [...Array(Math.max(1, Math.floor(path.length / TRAFFIC.carEvery))).keys()]
-      .map(() => ({ p, at: Math.random() * (path.length - 1), speed: between(TRAFFIC.pointsPerSecond) })));
+    const sizing = { ...TRAFFIC.size, ...(near && near.size) };
+    const closeness = distance => near ? Math.max(0, Math.min(1, 1 - distance / near.distance)) : 0;
+    const cars = paths.flatMap((path, p) => {
+      const nearPoints = near ? path.map((point, k) => [point, k]).filter(([point]) => point[2] < near.distance).map(([, k]) => k) : [];
+      const extra = near ? Math.floor(nearPoints.length / near.carEvery) : 0;
+      return [
+        ...[...Array(Math.max(1, Math.floor(path.length / TRAFFIC.carEvery))).keys()].map(() => Math.random() * (path.length - 1)),
+        ...[...Array(extra).keys()].map(() => Math.min(path.length - 1.01, nearPoints[Math.floor(Math.random() * nearPoints.length)]))
+      ].map(at => ({ p, at, speed: between(TRAFFIC.pointsPerSecond) }));
+    });
     const sparkles = glints.map(([x, y, distance]) => ({ x, y, distance, period: between(GLINT.seconds), phase: Math.random() }));
     let frameId;
     let last = performance.now();
@@ -48,7 +58,9 @@ export const TrafficLights = ({ paths, glints = [], width, height, zIndex }) => 
       });
       cars.forEach(car => {
         const path = paths[car.p];
-        car.at = (car.at + car.speed * seconds) % (path.length - 1);
+        const here = path[Math.floor(car.at)];
+        const boost = near ? 1 + (near.speed - 1) * closeness(here[2]) : 1;
+        car.at = (car.at + car.speed * boost * seconds) % (path.length - 1);
         const k = Math.floor(car.at);
         const share = car.at - k;
         const [x1, y1, d1] = path[k];
@@ -56,11 +68,11 @@ export const TrafficLights = ({ paths, glints = [], width, height, zIndex }) => 
         const x = x1 + (x2 - x1) * share;
         const y = y1 + (y2 - y1) * share;
         const distance = d1 + (d2 - d1) * share;
-        const size = Math.max(TRAFFIC.size.least, Math.min(TRAFFIC.size.most, TRAFFIC.size.near / distance));
+        const size = Math.max(sizing.least, Math.min(sizing.most, sizing.near / distance));
         const isComing = y2 > y1; // down the picture: toward the window
         const color = isComing ? TRAFFIC.head : TRAFFIC.tail;
         // the far ones fainter, so the tip's crowd of them glows rather than glitters
-        ctx.globalAlpha = Math.max(TRAFFIC.farAlpha, Math.min(1, TRAFFIC.size.near / distance));
+        ctx.globalAlpha = Math.max(TRAFFIC.farAlpha, Math.min(1, sizing.near / distance));
         ctx.fillStyle = `rgba(${color}, 0.25)`;
         ctx.beginPath();
         ctx.arc(x, y, size * 2.2, 0, Math.PI * 2);
@@ -74,6 +86,6 @@ export const TrafficLights = ({ paths, glints = [], width, height, zIndex }) => 
     };
     frameId = requestAnimationFrame(run);
     return () => cancelAnimationFrame(frameId);
-  }, [paths, glints, width, height]);
+  }, [paths, glints, width, height, near]);
   return <canvas ref={ref} width={width} height={height} aria-hidden="true" style={{ position: "absolute", left: 0, top: 0, width, height, zIndex, pointerEvents: "none" }} />;
 };

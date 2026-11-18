@@ -127,6 +127,11 @@ const zoomIntoCity = keyframes`
   to { transform: scale(${CITY_ZOOM.scale}); filter: blur(1.5px); }
 `;
 
+// the logo's size on the landing (Jamie, 2026-11-18, by his mock-up): 1.2 times at his window (1908 x 915), and with
+// the window from there (the Peninsula behind it, LandingScene, is drawn to match it)
+const LOGO_SIZE = { scale: 1.2, window: { width: 1908, height: 915 } };
+const getLogoScale = () => LOGO_SIZE.scale * Math.min(window.innerWidth / LOGO_SIZE.window.width, window.innerHeight / LOGO_SIZE.window.height);
+
 // the Peninsula behind the logo (LandingScene) zooms with the skyline, about the same spot: its vanishing point
 const getSceneZoom = (isLeaving, isZoomingBack) => isLeaving
   ? css`animation: ${zoomIntoCity} ${CITY_ZOOM.ms}ms cubic-bezier(0.6, 0, 0.9, 0.35) forwards;`
@@ -221,6 +226,12 @@ export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = ()
     return () => clearTimeout(settled);
   }, []);
   const [toolScreen, setToolScreen] = useState(undefined);
+  const [logoScale, setLogoScale] = useState(getLogoScale);
+  useEffect(() => {
+    const onResize = () => setLogoScale(getLogoScale());
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
   // "[Press any key]"'s effect, picked with ?press= (Jamie's mock-ups); 'mix' has a panel to switch and tune them
   const [pressEffect] = useState(getPressEffect);
   const [pressSettings, setPressSettings] = usePressSettings(pressEffect);
@@ -297,9 +308,9 @@ export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = ()
   return <Wrapper>
     <ShiftLayer $isShiftingIn={isShiftingIn && isLandingShifting}>
     <SpeedBlurFilter />
-    <LandingScene spot={CITY_ZOOM.spot} zoom={getSceneZoom(isLeaving, isLogoZoomingOut)} isBack={isLogoZoomingOut} />
+    <LandingScene spot={CITY_ZOOM.spot} zoom={getSceneZoom(isLeaving, isLogoZoomingOut)} isBack={isLogoZoomingOut} logoScale={logoScale} />
     <EmberSlide $isLeaving={isLeaving}><Embers /></EmberSlide>
-    <SceneSlide $isLeaving={isLeaving} $isZoomingBack={isLogoZoomingOut}><Logo /></SceneSlide>
+    <SceneSlide $isLeaving={isLeaving} $isZoomingBack={isLogoZoomingOut} style={{ "--logo-scale": logoScale }}><Logo /></SceneSlide>
     <ZoomThrough isOn={isLeaving} startMs={ZOOM_START_MS} onDone={enterRoom || handleClickGame} />
     {isZoomingBack && <ZoomThrough isOn isReverse startMs={0} onDone={() => setIsZoomingBack(false)} />}
     <PressAnyKey $isLeaving={isLeaving} style={{ opacity: isZoomingBack ? 0 : undefined, transition: "opacity 600ms ease-out" }}>

@@ -13,6 +13,9 @@ import landingTraffic from "./data/landingTraffic.json";
   the zoom spot's point in it, in its own px.
 */
 export const LANDING_VIEW = { src: "/zoom-scene/0-peninsula.png", size: { width: 1700, height: 1000 }, vanish: { x: 850, y: 380 }, scale: 2, fadeInMs: 1400 };
+// the cars nearest the viewer (the bottom half of the Peninsula, distance under 330 in the picture's terms) more
+// dramatic (Jamie): up to 2.4 times as fast, bigger, one more car to every 4 of the road's points there
+const NEAR_TRAFFIC = { distance: 330, speed: 2.4, carEvery: 4, size: { near: 260, least: 0.5, most: 3 } };
 
 const fadeIn = keyframes`
   from { opacity: 0; }
@@ -36,13 +39,11 @@ const Anchor = styled.div`
   ${props => props.$zoom}
 `;
 
+// (placed and sized by its style: scaled with the logo)
 const View = styled.div`
   position: absolute;
-  left: ${-LANDING_VIEW.vanish.x * LANDING_VIEW.scale}px;
-  top: ${-LANDING_VIEW.vanish.y * LANDING_VIEW.scale}px;
   width: ${LANDING_VIEW.size.width}px;
   height: ${LANDING_VIEW.size.height}px;
-  transform: scale(${LANDING_VIEW.scale});
   transform-origin: 0 0;
   background: url(${LANDING_VIEW.src}) 0 0 / 100% 100%;
   image-rendering: pixelated;
@@ -55,31 +56,38 @@ const Fade = styled.div`
 `;
 
 // 'spot': the zoom spot, as shares across and down the logo's image ([data-landing-logo]); 'zoom': the css that zooms
-// it (in on leaving, back out after Leave); 'isBack': the landing came back by the zoom out (no fade in then)
-export const LandingScene = ({ spot, zoom, isBack = false }) => {
+// it (in on leaving, back out after Leave); 'isBack': the landing came back by the zoom out (no fade in then);
+// 'logoScale': the logo's size (the picture is drawn for it at 1, and scaled with it)
+export const LandingScene = ({ spot, zoom, isBack = false, logoScale = 1 }) => {
   const stageRef = useRef(null);
   const [vanish, setVanish] = useState(undefined);
   useLayoutEffect(() => {
-    // placed from the logo's box (its wrapper's, and its offsets in it: they leave out the zoom's transforms) and the
-    // stage's own (so a shift of the whole landing moves both alike)
+    // placed from the logo's box (its wrapper's, scaled, and its offsets in it: they leave out the zoom's transforms)
+    // and the stage's own (so a shift of the whole landing moves both alike)
     const place = () => {
       const logo = document.querySelector("[data-landing-logo]");
       const stage = stageRef.current;
-      if (!logo || !logo.offsetParent || !stage) return;
-      const holder = logo.offsetParent.getBoundingClientRect();
+      const wrapper = logo && logo.offsetParent;
+      if (!wrapper || !stage) return;
+      const holder = wrapper.getBoundingClientRect();
       const own = stage.getBoundingClientRect();
+      const k = holder.width / wrapper.offsetWidth;
       setVanish({
-        x: holder.left - own.left + logo.offsetLeft + spot.x * logo.offsetWidth,
-        y: holder.top - own.top + logo.offsetTop + spot.y * logo.offsetHeight
+        x: holder.left - own.left + k * (logo.offsetLeft + spot.x * logo.offsetWidth),
+        y: holder.top - own.top + k * (logo.offsetTop + spot.y * logo.offsetHeight),
+        k
       });
     };
     place();
-    window.addEventListener("resize", place);
-    return () => window.removeEventListener("resize", place);
-  }, []);
+    // (a frame later on a resize: the logo's size follows it from MainMenu's state)
+    const onResize = () => requestAnimationFrame(place);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [logoScale]);
+  const scale = LANDING_VIEW.scale * (vanish ? vanish.k : 1);
   const content = (
-    <View>
-      <TrafficLights paths={landingTraffic.paths} glints={landingTraffic.glints} width={LANDING_VIEW.size.width} height={LANDING_VIEW.size.height} zIndex={1} />
+    <View style={{ left: -LANDING_VIEW.vanish.x * scale, top: -LANDING_VIEW.vanish.y * scale, transform: `scale(${scale})` }}>
+      <TrafficLights paths={landingTraffic.paths} glints={landingTraffic.glints} width={LANDING_VIEW.size.width} height={LANDING_VIEW.size.height} zIndex={1} near={NEAR_TRAFFIC} />
     </View>
   );
   return (
