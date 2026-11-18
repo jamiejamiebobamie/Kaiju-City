@@ -192,6 +192,7 @@ export type LevelConfig = {
   layers: Array<LevelLayer>;
   waterTile?: { src: string; size: number; ofWidth: number }; // the sea round the picture, repeating (the Peninsula)
   foregroundLayers: Array<ForegroundLayer>;
+  bodiesOverSortY?: number; // the fallen are drawn over whatever sorts at or above this (the Aquarium's tank); else under every living piece
   phases: Array<LevelPhase>;
   defaultPhases: Array<string>; // phases that are on when the level starts
   sceneElements: Array<SceneElement>;
@@ -846,7 +847,8 @@ const LEVEL_BUILDERS: Record<string, (file) => LevelConfig> = {
       { src: '/levels/aquarium-railing.png', x: 0, y: 219, width: 1408, height: 161, sortY: 267 },
       { src: '/levels/aquarium-tank.png', x: 549, y: 575, width: 305, height: 145, sortY: TANK_SORT_Y }
     ]),
-    ...AQUARIUM_SCENE
+    ...AQUARIUM_SCENE,
+    bodiesOverSortY: TANK_SORT_Y // the fallen drawn over the first floor's middle tank (Jamie, playtest 34)
   }),
   // past the girl at the desk's column, the view goes all the way left, "Change powers" and all (Jamie)
   labIntro: file => ({ ...buildLevel(file, 'Lab', '#4a8fb0', [], true), ...LAB_INTRO_SCENE, coverPanLeftX: 450, coverPanRightX: 950 }),

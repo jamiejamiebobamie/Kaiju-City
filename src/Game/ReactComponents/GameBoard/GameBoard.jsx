@@ -1312,7 +1312,7 @@ export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade 
     const { key, avatar, charLocation, color, zIndex, body } = death;
     return avatar == 'kaiju' ?
       <ExplodingKaiju key={key} charLocation={charLocation} color={color} zIndex={zIndex} />
-      : <DeadPlayer key={key} avatar={avatar} pieceScale={pieceScale} charLocation={charLocation} body={body} spriteSheetSrc={death.spriteSheetSrc} color={color} zIndex={zIndex} ghost={death.isGhostForm ? "ghost" : undefined} />;
+      : <DeadPlayer key={key} avatar={avatar} pieceScale={pieceScale} charLocation={charLocation} body={body} spriteSheetSrc={death.spriteSheetSrc} color={color} zIndex={zIndex} ghost={death.isGhostForm ? "ghost" : undefined} bodyZ={level.bodiesOverSortY !== undefined ? getSortZIndex(level, level.bodiesOverSortY) + 1 : undefined} />;
   });
 
   const foregroundLayers = level.foregroundLayers.map(({ src, x, y, width, height, sortY }) => (

@@ -160,10 +160,11 @@ export const DeadPlayer = ({
   pieceScale,
   spriteSheetSrc,
   body,
-  ghost = undefined
+  ghost = undefined,
+  bodyZ = BODY_Z // (a level's own: the Aquarium's, over its tank)
 }) => {
   if (ghost == "toBody") {
-    const props = { charLocation, color, zIndex, avatar, pieceScale, spriteSheetSrc, body };
+    const props = { charLocation, color, zIndex, avatar, pieceScale, spriteSheetSrc, body, bodyZ };
     return (
       <>
         <DeadPlayer {...props} />
@@ -178,7 +179,7 @@ export const DeadPlayer = ({
       style={{
         // a body lies under every living piece, Kaiju and all, over the Kaiju's ashes (19999) (Jamie, playtest 33); a
         // ghost floats, sorted with the living
-        zIndex: ghost ? (zIndex || 0) + 20001 : BODY_Z,
+        zIndex: ghost ? (zIndex || 0) + 20001 : bodyZ,
         left: `${spot.x}px`,
         top: `${spot.y}px`,
         transform: `scale(${pieceScale})`,
