@@ -161,7 +161,7 @@ export const CUTSCENE = {
   outcomeFollow: 0.15, // each tick, the end-of-fight shot moves this share of the way to the body
   chaseSlowSpeed: 0.35,
   chaseSlowMs: 2800,
-  mapWideMs: 2400,
+  mapWideMs: 1200, // (half as long: Jamie, playtest 33; was 2400. The Peninsula's full shot and the Street's first wide shot)
   revealGlowMs: 1200, // a door lights up before anyone says a word about it
   clonesLookMs: 2200,
   exitLookMs: 1600, // the camera holds on a way out that has just opened
