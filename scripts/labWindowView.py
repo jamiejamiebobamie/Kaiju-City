@@ -604,12 +604,16 @@ if traffic_path:
             q = project(float(mx), float(my))
             if q and 0 <= q[0] < W and HZ < q[1] < H and is_seen(*q):
                 surf.append([round(float(q[0]), 1), round(float(q[1]), 1), round(float(q[2]), 1)])
+        # (Jamie: the island's waves only in front of it, below its foot, where it meets the water; none on it)
+        foot_row = int(np.floor(ti_base))
+        foot = np.nonzero(ti_shape[foot_row])[0] if 0 <= foot_row < H else np.array([])
         island = []
-        for x in np.arange(VPX + ti_rel - ti_w / 2 - 3, VPX + ti_rel + ti_w / 2 + 3, 1.0):
-            for dy in (0.6, 1.6, 2.6):
-                if dy > 2 and rng.random() < 0.5:
-                    continue
-                island.append([round(float(x + rng.uniform(-0.4, 0.4)), 1), round(float(ti_base + dy), 1), 1600])
+        if len(foot):
+            for x in np.arange(foot.min() - 1, foot.max() + 2, 1.0):
+                for dy in (1.4, 2.4, 3.3):
+                    if dy > 3 and rng.random() < 0.5:
+                        continue
+                    island.append([round(float(x + rng.uniform(-0.4, 0.4)), 1), round(float(foot_row + dy), 1), 1600])
         # (round 8: the top chunk's coasts outlined, Jamie: its ends were lost in the sea)
         coast = []
         outline = cv2.findContours(land.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)[0]
@@ -619,6 +623,10 @@ if traffic_path:
                     q = project(float(mx), float(my))
                     if q and 0 <= q[0] < W and HZ < q[1] < H and is_seen(*q):
                         coast.append([round(float(q[0]), 1), round(float(q[1]), 1), round(float(q[2]), 1)])
+        # none drawn over Treasure Island: the coasts behind it are hidden by it
+        def off_island(points):
+            return [p for p in points if not (0 <= int(round(p[1])) < H and 0 <= int(round(p[0])) < W and ti_shape[int(round(p[1])), int(round(p[0]))])]
+        surf, island, coast = off_island(surf), off_island(island), off_island(coast)
         extra = {'surf': surf, 'islandSurf': island, 'coast': coast}
         print('coast', len(coast))
         print('surf', len(surf), 'island surf', len(island))
