@@ -31,6 +31,12 @@ const run = keyframes`
 const Wrap = styled.span`
   position: relative;
   display: inline-block;
+  isolation: isolate;
+`;
+// the words over the arcs (Jamie, playtest 34: the arcs behind the text)
+const Words = styled.span`
+  position: relative;
+  z-index: 1;
 `;
 const Layer = styled.svg`
   position: absolute;
@@ -38,6 +44,7 @@ const Layer = styled.svg`
   pointer-events: none;
   left: 0;
   top: 0;
+  z-index: 0;
 `;
 const ArcPath = styled.path`
   fill: none;
@@ -47,7 +54,8 @@ const ArcPath = styled.path`
   animation: ${run} var(--ms) cubic-bezier(0.4, 0, 0.7, 1) both;
 `;
 
-// a path round 'count' letters from 'first': above one, below the next, jagged between (the box's px)
+// a path round 'count' letters from 'first': over one, under the next, each stretch a curve bending round its
+// letter, with a harsh corner where one curve meets the next (Jamie, playtest 34: curved, not a zigzag)
 const makeArc = (width, height, letterCount) => {
   const letterWidth = width / Math.max(1, letterCount);
   const count = Math.round(between(ARCS.letters));
@@ -59,17 +67,20 @@ const makeArc = (width, height, letterCount) => {
     const x = k * letterWidth + (Math.random() - 0.5) * letterWidth * 0.3;
     const isOver = (k - first) % 2 == 0 ? isOverFirst : !isOverFirst;
     const y = isOver ? -height * ARCS.reach * (0.4 + Math.random() * 0.6) : height * (1 + ARCS.reach * (0.4 + Math.random() * 0.6));
-    if (points.length) {
-      // the zigzag on the way there, through the gap between the letters
-      const [px, py] = points[points.length - 1];
-      for (let step = 1; step <= 2; step++) {
-        const share = step / 3;
-        points.push([px + (x - px) * share + (Math.random() - 0.5) * letterWidth * 0.2, py + (y - py) * share + (Math.random() - 0.5) * height * ARCS.jag * 2]);
-      }
-    }
     points.push([x, y]);
   }
-  return points.map(([x, y], k) => `${k ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`).join(" ");
+  const fmt = n => n.toFixed(1);
+  let d = `M${fmt(points[0][0])} ${fmt(points[0][1])}`;
+  for (let k = 1; k < points.length; k++) {
+    const [ax, ay] = points[k - 1];
+    const [bx, by] = points[k];
+    // leaving flat along its edge of the letters, swinging round, arriving flat on the other edge: an S round the
+    // letter between; its handles pulled out unevenly, so each bend is its own
+    const pull = letterWidth * (0.55 + Math.random() * 0.5);
+    const wobble = () => (Math.random() - 0.5) * height * ARCS.jag * 2;
+    d += ` C${fmt(ax + pull)} ${fmt(ay + wobble())} ${fmt(bx - pull * (0.6 + Math.random() * 0.6))} ${fmt(by + wobble())} ${fmt(bx)} ${fmt(by)}`;
+  }
+  return d;
 };
 
 export const ElectricArcs = ({ text, children, isOn = true }) => {
@@ -94,7 +105,7 @@ export const ElectricArcs = ({ text, children, isOn = true }) => {
   }, [isOn, text]);
   return (
     <Wrap ref={ref}>
-      {children}
+      <Words>{children}</Words>
       <Layer width="1" height="1" aria-hidden="true">
         {arcs.map(({ key, d, ms, size }) => (
           <g key={key} style={{ "--ms": `${ms}ms` }}>

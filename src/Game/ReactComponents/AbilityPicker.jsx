@@ -5,7 +5,7 @@ import { GlobalSettingsContext } from 'Home';
 import { getSciFiClass } from "../DataClasses/sciFiClasses";
 import { getIsSkillOpen, OUT_OF_PLAY_POWERS } from "../DataClasses/Avatars";
 import { PIECES_INFO } from "Utils/gameState";
-import { Tamagotchi } from "./Tamagotchi";
+import { getHasTamagotchiIntroduced, Tamagotchi } from "./Tamagotchi";
 import { AvatarBio } from "./AvatarBio";
 import { ClassBattle } from "./ClassBattle";
 import { CrtScreen, ScaleToFit } from "Components/CrtPower";
@@ -281,6 +281,13 @@ const PendantFlash = styled.span`
 const Pendant = styled.button`
   position: absolute;
   pointer-events: auto;
+  transition: opacity 500ms, filter 500ms;
+  /* (not yet: dimmed, grey, no pointer. Jamie, playtest 34) */
+  ${props => props.$isOff && css`
+    opacity: 0.35;
+    filter: grayscale(0.85) brightness(0.8);
+    cursor: default !important;
+  `}
   width: ${unit(LOOK.pendantSize)};
   height: ${unit(LOOK.pendantSize)};
   padding: 0;
@@ -1119,12 +1126,21 @@ const PartHeader = styled.div`
 
 // (a thin underline in its own yellow: "Class:", Jamie playtest 32; "Recommended", playtest 34)
 const UNDERLINED = { textDecoration: "underline", textDecorationThickness: "0.08cqw", textUnderlineOffset: "0.3cqw" };
-// "Active:" on the left, "Recommended" at the top right
-const HeaderRow = styled.div`
-  align-self: stretch;
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
+// "Recommended", in the side screen's top right corner, boxed in "Class:"'s yellow (Jamie, playtest 34: a border, not
+// an underline, and up in the corner)
+const RecommendedTag = styled.div`
+  position: absolute;
+  top: 0.7cqw;
+  right: 0.8cqw;
+  padding: 0.25cqw 0.7cqw 0.2cqw;
+  font-family: gameboy;
+  font-size: 0.7cqw;
+  letter-spacing: 0.08cqw;
+  color: #ffd24a;
+  border: 0.1cqw solid #ffd24a;
+  border-radius: 999px; /* (a capsule: Jamie) */
+  box-shadow: 0 0 0.4cqw rgba(255, 210, 74, 0.35);
+  z-index: 2;
 `;
 
 const Part = styled.div`
@@ -1625,11 +1641,9 @@ export const AbilityPicker = ({
     if (power) {
       return (
         <>
+          {recommended.includes(power.getElementUppercase()) && <RecommendedTag>Recommended</RecommendedTag>}
           <Part $align="left">
-            <HeaderRow>
-              <PartHeader>Active:</PartHeader>
-              {recommended.includes(power.getElementUppercase()) && <PartHeader style={UNDERLINED}>Recommended</PartHeader>}
-            </HeaderRow>
+            <PartHeader>Active:</PartHeader>
             <FitTitleRow text={power.activeName}><Icon className={`fa ${power.activeIcon}`} style={{ color: power.color }} />{power.activeName}</FitTitleRow>
             <div style={{ color: getTint(power.color, -TINT.turnDegrees) }}>{power.activeDesc}</div>
             {power.activeEffect1 && <Effect $color={power.color}>{power.activeEffect1}</Effect>}
@@ -1663,7 +1677,11 @@ export const AbilityPicker = ({
   const arenaRef = useRef(null);
   const [arenaWindow, setArenaWindow] = useState(null);
   const [blinks, setBlinks] = useState({});
-  const [pendantFlash, setPendantFlash] = useState(0); // each "Pick three abilities": the unpicked pendants flash in turn // each power's casts in the class battle, by element: its icon blinks on each
+  const [pendantFlash, setPendantFlash] = useState(0);
+  // the pendants wait, dimmed and dead, until Stompy has said his hello and "Pick three abilities" (Jamie, playtest 34);
+  // once he's met them (a later visit), they're live at once
+  const [wasIntroduced] = useState(getHasTamagotchiIntroduced);
+  const isPendantsLive = wasIntroduced || pendantFlash > 0; // each "Pick three abilities": the unpicked pendants flash in turn // each power's casts in the class battle, by element: its icon blinks on each
   const isArenaShowing = !!playerClass;
   useLayoutEffect(() => {
     if (!isArenaShowing) {
@@ -1819,9 +1837,11 @@ export const AbilityPicker = ({
               style={{ left: pctX(at.x), top: pctY(at.y) }}
               $color={power.color}
               $isPicked={getIsPicked(power)}
-              $isHovered={hovered === k}
-              onClick={() => togglePower(power)}
-              onMouseEnter={() => setHovered(k)}
+              $isHovered={isPendantsLive && hovered === k}
+              $isOff={!isPendantsLive}
+              disabled={!isPendantsLive}
+              onClick={() => isPendantsLive && togglePower(power)}
+              onMouseEnter={() => isPendantsLive && setHovered(k)}
               onMouseLeave={() => setHovered(undefined)}
             >
               {pendantFlash > 0 && !getIsPicked(power) && flashOrder[k] !== undefined && (

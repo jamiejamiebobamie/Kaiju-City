@@ -125,6 +125,8 @@ let PET = newPet();
 // while he was away)
 let isHeld = false;
 export const holdTamagotchi = held => { isHeld = held; };
+// has it said hello yet (this visit's pet): the picker waits for its first "Pick three abilities" until it has
+export const getHasTamagotchiIntroduced = () => PET.hasIntroduced;
 
 // cared for: counts for the 30 s check, and a block of happiness back
 const care = pet => ({ ...pet, caredSinceCheck: true, lastCareAt: pet.clock, happiness: Math.min(TAMA.happinessMax, pet.happiness + 1) });
@@ -205,11 +207,12 @@ const step = pet => {
   if (isDueToSpeak && walkTo(0.5, TAMA.walkPerSecond * 1.6)) {
     // its first words, first time out or new from its egg: who it is (Jamie), before anything else
     const isHello = !next.hasIntroduced;
-    next.line = next.hasIntroduced ? getNextLine() : `Hi, I am ${next.name}, your virtual Kaiju!`;
+    next.line = next.hasIntroduced ? getNextLine() : `Hi! I'm ${next.name}!`; // (Jamie, playtest 34; was "Hi, I am ..., your virtual Kaiju!")
     next.hasIntroduced = true;
     // (its hello up twice as long, so it's seen: Jamie, playtest 29)
     next.speakingUntil = now + getSpeakMs(next.line) * (isHello ? 2 : 1);
-    next.nextSpeakAt = next.speakingUntil + between(TAMA.speakEveryMs);
+    // (after the hello, "Pick three abilities" straight away: the picker's pendants wait for it. Jamie, playtest 34)
+    next.nextSpeakAt = next.speakingUntil + (isHello ? 500 : between(TAMA.speakEveryMs));
     next.frame = 0;
     isSpeaking = true;
   }
