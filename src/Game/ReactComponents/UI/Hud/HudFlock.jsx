@@ -261,7 +261,9 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused, deadKeys = [],
         } else {
           left = frameBox.width * 0.869 - FLOCK.columnWidth * columnScale;
         }
-        const headroom = SMOKE_HEADROOM * FLOCK.place.smokeRoom;
+        // crowded (more than the player's and the teammate's), the room kept above for the player's passive smoke goes:
+        // the column moves up (Jamie, playtest 34: they've seen the smoke by then, and the screen needs the space)
+        const headroom = live.length > 2 ? 0 : SMOKE_HEADROOM * FLOCK.place.smokeRoom;
         if (!held) columnScale = Math.max(0.2, Math.min(columnScale, (frameBox.height - 2 * top) / Math.max(y + headroom, 1)));
         const columnTop = held ? held.top : top + headroom * columnScale;
         column.style.transform = `translate(${left}px, ${columnTop}px) scale(${columnScale})`;
