@@ -1738,10 +1738,13 @@ export class GameManager {
         const extreme = { zoomScale: PENINSULA.cameraZoom * CUTSCENE.outcomeZoomScale, isPeninsulaSized: true };
         const headOf = piece => ({ x: piece.charLocation.x, y: piece.charLocation.y - CUTSCENE.shotHeadRows * rowPx * 0.5 });
         // the two of them, left to right. 'pair': in one shot if they fit at this zoom, side by side if not (GameBoard)
-        const team = teammate ? [player, teammate].sort((a, b) => a.charLocation.x - b.charLocation.x) : [player];
-        const teamShot = team.length > 1 ? { pair: team.map(headOf), ...extreme, panMs: GHOST_SCREAM.toTeamMs } : { point: headOf(player), ...extreme, panMs: GHOST_SCREAM.toTeamMs };
+        // (only the living: no split screen with one of them dead. Jamie, playtest 34)
+        const living = [player, teammate].filter(piece => piece && !piece.getIsDead());
+        const team = living.length ? living.sort((a, b) => a.charLocation.x - b.charLocation.x) : [player];
+        const [lead] = team;
+        const teamShot = team.length > 1 ? { pair: team.map(headOf), ...extreme, panMs: GHOST_SCREAM.toTeamMs } : { point: headOf(lead), ...extreme, panMs: GHOST_SCREAM.toTeamMs };
         const together = { shot: { ...teamShot, isCut: true }, ms: GHOST_SCREAM.togetherMs };
-        const merged = { shot: { point: headOf(player), ...extreme, isCut: true }, ms: GHOST_SCREAM.mergedMs };
+        const merged = { shot: { point: headOf(lead), ...extreme, isCut: true }, ms: GHOST_SCREAM.mergedMs };
         return [
             { shot: teamShot, ms: GHOST_SCREAM.toTeamMs + GHOST_SCREAM.onTeamMs },
             { shot: teamShot, ms: GHOST_SCREAM.flashInMs, onStart: () => { this.ghostFlashCount += 1; } },
