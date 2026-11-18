@@ -6,10 +6,11 @@ import landingTraffic from "./data/landingTraffic.json";
 /*
   The landing's scene (Jamie, 2026-11-18): the Lab windows' Peninsula, but seen straight up its middle (one-point
   perspective), the logo's own skyline standing on its tip, the moon over it, cars on its roads and glints on the water.
-  Its vanishing point sits on the logo's zoom spot (MainMenu's CITY_ZOOM.spot), so when the skyline zooms into the
-  city the Peninsula zooms with it, its lines running out from the middle of the push.
+  It is placed by the logo's zoom spot (MainMenu's CITY_ZOOM.spot) and zooms about it with the skyline. Its own
+  vanishing point (Jamie's mock-up): under the skyline's middle, on the horizon just above the skyline's ground, so the
+  Peninsula runs straight up the screen's middle, the sea either side free (for the Kaiju sprites, a ship or buoy).
   The picture (scripts/labWindowView.py, LANDING=1) is drawn at half size and shown at twice it, pixelated; 'vanish':
-  its vanishing point, in its own px.
+  the zoom spot's point in it, in its own px.
 */
 export const LANDING_VIEW = { src: "/zoom-scene/0-peninsula.png", size: { width: 1700, height: 1000 }, vanish: { x: 850, y: 380 }, scale: 2, fadeInMs: 1400 };
 
