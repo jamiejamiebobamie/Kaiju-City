@@ -47,24 +47,35 @@ if LANDING:
     #   the base BASE_WIDTH (his window's width)
     W, H, SPOT_X, SPOT_ROW, HORIZON_DOWN = 1700, 1000, 850, 380, 23
     VPX, HZ = SPOT_X - 61.5, SPOT_ROW + HORIZON_DOWN
-    TIP_Y, TIP_DROP = 110, 34.5 - HORIZON_DOWN
-    MID_Y, MID_DROP = 441, 32
+    # (round 4: the top chunk up and wider, so the skyline stands on it all along: its widest row, CHUNK_Y, at the
+    # skyline's ground, the narrower top edge above it, toward the horizon; centred under the skyline, CENTRE_ROWS
+    # warped sideways so each row's land is centred, easing off to none by the waist)
+    TIP_Y, TIP_DROP = 110, 5
+    CHUNK_Y, CHUNK_DROP = 217, 34.5 - HORIZON_DOWN
+    MID_Y, MID_DROP = 441, 30
     BASE_Y, BASE_DROP, DEPTH_RATIO = 780, 293 - HORIZON_DOWN, 5.0
-    CHUNK_ROWS, CHUNK_WIDTH = (110, 300), 300
+    CHUNK_ROWS, CHUNK_WIDTH = (110, 300), 370
     WAIST_ROWS, WAIST_WIDTH = (340, 540), 130
     BASE_WIDTH = 717
+    CENTRE_ROWS = (560, 720)  # (to the waist and on down: easing off before "[Press any key]")
+    # (round 4: below "[Press any key]" (row PRESS_ROW here) the coasts carry straight on, widening as they do above
+    # it, BASE_SPREAD times: the drawn perspective's own bent in near the bottom)
+    PRESS_ROW, BASE_SPREAD = 550, 1.25
     # the mountains on the left in front: peaks along Jamie's strokes (map px, from his screenshot), sharp, not bulbous
-    RIDGES = [[(166, 762), (172, 742), (199, 726), (221, 713), (240, 690), (260, 664), (264, 638)],
-              [(239, 680), (240, 650), (250, 644)],
-              [(254, 758), (268, 743), (285, 728), (292, 710)]]
+    # (round 4: re-read from his screenshot with the zoom spot where it really was: they'd landed ~50 map px right)
+    RIDGES = [[(107, 766), (105, 747), (125, 731), (141, 718), (150, 696), (157, 671), (148, 646)],
+              [(144, 686), (129, 657), (136, 651)],
+              [(197, 762), (204, 747), (215, 733), (213, 715)]]
     # painted behind the horizon, as Jamie drew them (px here: across from the skyline's middle, up from the horizon):
     # the North Bay's mountains on the left, behind the skyline's left edge; Treasure Island on the right
-    NORTH_BAY = [(-240, -5), (-220, -24), (-203, -27), (-187, -45), (-162, -57), (-145, -58), (-128, -53),
+    NORTH_BAY = [(-340, 0), (-310, -2), (-285, -4), (-262, -8), (-245, -14), (-220, -24), (-203, -27), (-187, -45), (-162, -57), (-145, -58), (-128, -53),
                  (-120, -45), (-108, -47), (-87, -38), (-78, -17), (-75, 0)]
-    TREASURE_ISLAND = [(255, 0), (265, -12), (272, -18), (280, -30), (313, -32), (347, -28), (359, -13), (367, 0)]
+    # Treasure Island (round 4): small and low, trees along its top, placed where the Bay Bridge's line crosses it
+    # (TI_AT: px here along the line from the map's edge; back over the map's own bridge, where Jamie drew it: the
+    # bridge already reaches near his window's right edge there), the bridge on its near part, behind its far part
+    TI_AT, TI_SIZE = -25, (64, 7)
     # the bridges past the map, on Jamie's green lines (from where the map's own end, at its edge)
-    GOLDEN_GATE = [(-138, -16)]
-    BAY_BRIDGE = [(201, -1), (272, -10), (313, -16), (355, -12), (401, -17), (467, -20)]
+    GOLDEN_GATE = [(-150, -4)]  # (flatter: Jamie, round 4)
     CITY = 0
     MOON_X, MOON_Y, MOON_R = 1000, HZ - 55, 35  # (as big as round 2 looked, the logo now 1.2 times; clear of the horizon)
 for arg in sys.argv[3:]:
@@ -131,10 +142,33 @@ if LANDING:
             far = log_v[-1] - far_power * (x - log_d[-1]) if far_power is not None else log_v[-1] + (log_v[-1] - log_v[-2]) / (log_d[-1] - log_d[-2]) * (x - log_d[-1])
             return np.exp(np.where(x < log_d[0], near, np.where(x > log_d[-1], far, v)))
         return at
-    row_at = fitted([(d_base, BASE_DROP), (d_of_row(MID_Y), MID_DROP), (d_of_row(TIP_Y), TIP_DROP)], None)
+    row_at = fitted([(d_base, BASE_DROP), (d_of_row(MID_Y), MID_DROP), (d_of_row(CHUNK_Y), CHUNK_DROP), (d_of_row(TIP_Y), TIP_DROP)], None)
     chunk_scale = CHUNK_WIDTH / chunk_w
-    width_at = fitted([(d_base, BASE_WIDTH / base_w), (d_of_row(waist_y), WAIST_WIDTH / waist_w),
-                       (d_of_row(chunk_y), chunk_scale), (d_of_row(TIP_Y), chunk_scale)], 1.0)
+    curved_width = fitted([(d_base, BASE_WIDTH / base_w), (d_of_row(waist_y), WAIST_WIDTH / waist_w),
+                           (d_of_row(chunk_y), chunk_scale), (d_of_row(TIP_Y), chunk_scale)], 1.0)
+    # below "[Press any key]": the width carried on straight with the row (straight coasts), from its own slope there
+    probe = np.geomspace(d_base / 4, d_base * 6, 4000)
+    d_press = float(probe[np.argmin(np.abs(row_at(probe) - (PRESS_ROW - HZ)))])
+    r_press, w_press = float(row_at(d_press)), float(curved_width(d_press))
+    slope = (curved_width(d_press * 0.98) - curved_width(d_press * 1.02)) / (row_at(d_press * 0.98) - row_at(d_press * 1.02))
+    def width_at(d):
+        r = row_at(d)
+        return np.where(r > r_press, w_press + slope * BASE_SPREAD * (r - r_press), curved_width(d))
+    # centred (Jamie): each map row's land, from the north city down to the waist, warped sideways to sit on the line
+    # up the middle; easing off between CENTRE_ROWS
+    cols_ = np.arange(MW)
+    centre_off = np.zeros(MH)
+    for y in range(MH):
+        xs_ = cols_[body[y]]
+        if len(xs_):
+            axis_x = base_mid[0] + (tip_mid[0] - base_mid[0]) * (BASE_Y - y) / (BASE_Y - TIP_Y)
+            centre_off[y] = (xs_.min() + xs_.max()) / 2 - axis_x
+    centre_off = cv2.GaussianBlur(centre_off.reshape(-1, 1).astype(np.float32), (1, 0), 12).ravel()
+    ease = np.clip((CENTRE_ROWS[1] - np.arange(MH)) / (CENTRE_ROWS[1] - CENTRE_ROWS[0]), 0, 1)
+    centre_off *= ease * ease * (3 - 2 * ease)
+    def shift_at(d):
+        y = BASE_Y - (np.asarray(d) - d_base) * (BASE_Y - TIP_Y) / LENGTH
+        return np.interp(y, np.arange(MH), centre_off, left=centre_off[0], right=0.0)
     # the hills' heights: by the width, and past the tip falling off slowly (the far lands stand up behind the city)
     height_at = lambda d: np.where(d > d_tip, chunk_scale * (d_tip / np.maximum(d, 1)) ** 0.25, width_at(d))
     NEAR = float(np.exp(np.interp(np.log(H - HZ), np.log([row_at(d) for d in np.geomspace(d_base * 3, d_base / 4, 400)]),
@@ -164,20 +198,20 @@ if LANDING:
     peak_rng = np.random.default_rng(11)
     yy_, xx_ = np.mgrid[0:MH, 0:MW].astype(np.float32)
     spots = []
-    for ridge in RIDGES:  # a peak every ~9 map px along each ridge, a little off it now and then
+    for ridge in RIDGES:  # a peak every ~12 map px along each ridge, a little off it now and then
         for (x1, y1), (x2, y2) in zip(ridge, ridge[1:]):
-            n = max(1, int(np.hypot(x2 - x1, y2 - y1) / 9))
+            n = max(1, int(np.hypot(x2 - x1, y2 - y1) / 12))
             spots += [(x1 + (x2 - x1) * k / n + peak_rng.uniform(-3, 3), y1 + (y2 - y1) * k / n + peak_rng.uniform(-3, 3)) for k in range(n)]
         spots.append(ridge[-1])
     peaks = np.zeros((MH, MW), np.float32)
     for px, py in spots:
-        tall, reach = peak_rng.uniform(14, 24), peak_rng.uniform(14, 22)  # (narrower stood up as spikes)
-        cone = np.clip(1 - np.hypot(xx_ - px, yy_ - py) / reach, 0, 1) ** 1.2
+        tall, reach = peak_rng.uniform(22, 38), peak_rng.uniform(13, 19)  # (higher, round 4; narrower were spikes)
+        cone = np.clip(1 - np.hypot(xx_ - px, yy_ - py) / reach, 0, 1) ** 1.8  # (hollow sides: deep valleys between)
         peaks = np.maximum(peaks, tall * cone)
     ridges = 0.8 + 0.2 * np.abs(np.sin(xx_ / 4.3 + np.sin(yy_ / 7.1) * 2) * np.cos(yy_ / 5.7 - xx_ / 9.0))
     parkland = cv2.GaussianBlur(cv2.dilate(green, np.ones((5, 5), np.uint8)).astype(np.float32), (0, 0), 3)
     peaks *= parkland  # (on the parkland only: on the city they came out as dark blobs)
-    height = np.maximum(height * 0.6, peaks * ridges) * np.clip(cv2.distanceTransform(land.astype(np.uint8), cv2.DIST_L2, 5) / 4, 0, 1)
+    height = peaks * ridges  # (the ridges only: Jamie, round 4, no rolling bumps) * np.clip(cv2.distanceTransform(land.astype(np.uint8), cv2.DIST_L2, 5) / 4, 0, 1)
     # shaded, lit from the south-east and above, so the hills read as hills
     gy, gx = np.gradient(height)
     light = np.array([0.55, 0.45, 0.7])  # (from the front right: lit from behind, only their dark sides showed)
@@ -214,7 +248,7 @@ ybuf = np.full(W, H, np.float32)              # each column: the highest row dra
 cover = np.zeros((len(steps), W), np.float32)  # that row, after each step (for hiding the cars and glints behind land)
 for s, d in enumerate(steps):
     if LANDING:
-        side = (xs - VPX) / width_at(d)
+        side = (xs - VPX) / width_at(d) + shift_at(d)
         mx = (CAM['x'] + AHEAD[0] * d + RIGHT[0] * side).astype(np.float32)
         my = (CAM['y'] + AHEAD[1] * d + RIGHT[1] * side).astype(np.float32)
         # past the map's bottom edge (the camera stands south of it): the map mirrored, so no straight cut shows
@@ -256,6 +290,15 @@ for s, d in enumerate(steps):
     ybuf = np.minimum(ybuf, top)
     cover[s] = ybuf
 
+def project(mx, my, h=0.0):
+    dx, dy = mx - CAM['x'], my - CAM['y']
+    d = dx * AHEAD[0] + dy * AHEAD[1]
+    if d <= NEAR * 0.95:
+        return None
+    if LANDING:
+        return (VPX + (dx * RIGHT[0] + dy * RIGHT[1] - shift_at(d)) * width_at(d), HZ + row_at(d) - h * height_at(d), d)
+    return (VPX + (dx * RIGHT[0] + dy * RIGHT[1]) * F / d, HZ + (K - h * F) / d, d)
+
 # the sky, above it all: deep night, lighter at the horizon, with stars
 ys = np.arange(H, dtype=np.float32)[:, None]
 t = np.clip(ys / HZ, 0, 1)
@@ -263,6 +306,8 @@ SKY_TOP = np.array([11, 12, 14]) if LANDING else np.array([4, 6, 16])  # (the la
 sky = SKY_TOP * (1 - t ** (2.2 if LANDING else 1))[..., None] + np.array([26, 40, 72]) * (t ** (2.2 if LANDING else 1))[..., None]
 sky = np.broadcast_to(sky, (H, W, 3)).copy()
 stars = (rng.random((H, W)) < 0.0009) & (ys < HZ * 0.9)
+if LANDING:  # (none over the moon, its dark part too)
+    stars &= np.hypot(np.arange(W)[None, :] - MOON_X, ys - MOON_Y) > MOON_R * 1.15
 sky[stars] = [200, 210, 255]
 rows = np.arange(H)[:, None]
 is_sky = rows < ybuf[None, :]
@@ -279,7 +324,26 @@ if LANDING:
         top = np.where(top < -2, top + jag * (np.sin(cols / 3.1) + 0.6 * np.sin(cols / 1.7 + 1.3)), top)
         return HZ + np.minimum(top, 0)
     far_shapes = np.zeros((H, W), bool)  # (the moon goes behind them)
-    for points, color, jag in ((NORTH_BAY, np.array([13, 18, 33]), 1.4), (TREASURE_ISLAND, np.array([11, 15, 28]), 0.5)):
+    # the Bay Bridge's line: straight on from the map's own bridge, as it leaves the Peninsula
+    bay_start, bay_back = np.array(project(499, 125)[:2]), np.array(project(470, 135)[:2])
+    bay_way = (bay_start - bay_back) / np.linalg.norm(bay_start - bay_back)
+    ti_mid = bay_start + bay_way * TI_AT
+    ti_rel = ti_mid[0] - VPX
+    ti_w, ti_h = TI_SIZE
+    ti_rng = np.random.default_rng(8)
+    # (it stands on the water at the bridge's distance, below the horizon: its foot ti_h * 0.45 under the bridge)
+    ti_base = ti_mid[1] + ti_h * 0.45
+    island = [(-ti_w / 2, 0), (-ti_w / 2 + 6, -ti_h * 0.6), (-ti_w / 2 + 14, -ti_h * 0.85)]
+    for x in np.arange(-ti_w / 2 + 16, ti_w / 2 - 10, 2.0):  # tree tops along it, bumpy
+        island.append((x, -ti_h - ti_rng.uniform(0.5, 3.2)))
+    island += [(ti_w / 2 - 6, -ti_h * 0.55), (ti_w / 2, 0)]
+    ix_, iy_ = zip(*island)
+    ti_top = ti_base + np.interp(cols - ti_rel, ix_, iy_, left=1, right=1)
+    ti_shape = (ys >= ti_top[None, :]) & (ys <= ti_base) & (ti_top[None, :] < ti_base - 0.5)
+    out = np.where(ti_shape[..., None], np.array([11, 15, 28]), out)
+    out = np.where((ti_shape & (ys < ti_top[None, :] + 1))[..., None], np.array([30, 40, 62]), out)
+    far_shapes |= ti_shape
+    for points, color, jag in ((NORTH_BAY, np.array([13, 18, 33]), 1.4),):
         tops = silhouette(points, jag)
         shape = (ys >= tops[None, :]) & (ys <= HZ + 1) & is_sky & (tops[None, :] < HZ - 0.5)
         far_shapes |= shape
@@ -291,15 +355,6 @@ if LANDING:
     shade = 1 - 0.7 * np.clip((below - 0.45) / 0.55, 0, 1) ** 1.3
     out = np.where(is_sky[..., None], out, out * shade[..., None] + np.array([11, 12, 14]) * (1 - shade[..., None]))
 img = Image.fromarray(np.clip(out, 0, 255).astype(np.uint8)).convert('RGBA')
-
-def project(mx, my, h=0.0):
-    dx, dy = mx - CAM['x'], my - CAM['y']
-    d = dx * AHEAD[0] + dy * AHEAD[1]
-    if d <= NEAR * 0.95:
-        return None
-    if LANDING:
-        return (VPX + (dx * RIGHT[0] + dy * RIGHT[1]) * width_at(d), HZ + row_at(d) - h * height_at(d), d)
-    return (VPX + (dx * RIGHT[0] + dy * RIGHT[1]) * F / d, HZ + (K - h * F) / d, d)
 
 def is_seen(x, y, d):
     # a point is seen unless land nearer than it rises over it in its column
@@ -315,13 +370,32 @@ if LANDING:
     from PIL import ImageDraw
     pen = ImageDraw.Draw(img)
     BRIDGE_LINES = []
-    for start, points, way in (((88, 0), GOLDEN_GATE, -1), ((499, 125), BAY_BRIDGE, 1)):
-        q = project(*start)
-        # (on from the map's own end: Jamie's line's points short of it left out, or it doubled back)
-        line_ = [(q[0], q[1])] + [(VPX + x, HZ + y) for x, y in points if (VPX + x - q[0]) * way > 4]
-        BRIDGE_LINES.append(line_)
-        pen.line(line_, fill=tuple(int(c) for c in ROAD * 0.8), width=1)
-    (gx1, gy1), (gx2, gy2) = BRIDGE_LINES[0][0], BRIDGE_LINES[0][-1]
+    bridge_color = tuple(int(c) for c in ROAD * 0.8) + (255,)
+    q = project(88, 0)
+    golden = [(q[0], q[1])] + [(VPX + x, HZ + y) for x, y in GOLDEN_GATE]
+    BRIDGE_LINES.append(golden)
+    pen.line(golden, fill=bridge_color, width=1)
+    # the Bay Bridge: straight on to the right edge; on Treasure Island's near half, behind its far half (a pixel at
+    # a time: drawn unless the island stands there past its middle)
+    bay_from = bay_start - bay_way * (ti_w + 10)  # (from back over the map's own bridge, before the island)
+    bay_end = bay_start + bay_way * ((W - bay_start[0]) / max(bay_way[0], 1e-3))
+    n = int(np.hypot(*(bay_end - bay_from)))
+    bay_pts, run = [], []
+    for k in range(n + 1):
+        x, y = bay_from + (bay_end - bay_from) * k / n
+        hidden = 0 <= int(y) < H and 0 <= int(x) < W and far_shapes[int(y), int(x)] and x > ti_mid[0]
+        if hidden:
+            if len(run) > 1:
+                bay_pts.append(run)
+            run = []
+        else:
+            run.append((float(x), float(y)))
+    if len(run) > 1:
+        bay_pts.append(run)
+    for run in bay_pts:
+        pen.line(run, fill=bridge_color, width=1)
+        BRIDGE_LINES.append(run)
+    (gx1, gy1), (gx2, gy2) = golden[0], golden[-1]
     for share, tall in ((0.45, 5), (0.75, 4)):
         tx, ty = gx1 + (gx2 - gx1) * share, gy1 + (gy2 - gy1) * share
         pen.line([(tx, ty), (tx, ty - tall)], fill=(150, 58, 44), width=1)
@@ -355,7 +429,24 @@ crescent = disc & ~bite & in_sky
 halo = np.clip(1 - (np.hypot(xx - cx, yy - cy) - moon_r) / (moon_r * 1.6), 0, 1) * in_sky
 arr = np.asarray(img).astype(np.float32)
 arr[..., :3] += (halo ** 2)[..., None] * np.array([38, 44, 70])
-arr[crescent, :3] = arr[crescent, :3] * 0.15 + np.array([236, 232, 205]) * 0.85
+if LANDING:
+    # the landing's moon, after the board map's (Jamie): the whole disc seen, its dark side a dusky purple-blue, the lit
+    # crescent pale yellow, all of it dithered pixel noise, the line between them broken up rather than clean
+    moon_rng = np.random.default_rng(13)
+    noise = moon_rng.random((H, W))
+    whole = disc & in_sky
+    edge = (np.hypot(xx - (cx - moon_r * 0.45), yy - (cy - moon_r * 0.15)) - moon_r * 0.95) / (moon_r * 0.22)
+    lit = whole & (edge + (noise - 0.5) * 1.4 > 0)
+    dark = whole & ~lit
+    DARK, LIT = np.array([62, 60, 118]), np.array([250, 238, 168])
+    speck = 0.78 + 0.4 * moon_rng.random((H, W))
+    arr[dark, :3] = arr[dark, :3] * 0.25 + (DARK * speck[..., None])[dark] * 0.75
+    arr[lit, :3] = (LIT * np.clip(speck + 0.1, 0, 1.15)[..., None])[lit]
+    # (a few of the dark side's pixels catching light, as the board's does)
+    glints_ = dark & (noise < 0.05)
+    arr[glints_, :3] = arr[glints_, :3] * 0.5 + np.array([150, 140, 160]) * 0.5
+else:
+    arr[crescent, :3] = arr[crescent, :3] * 0.15 + np.array([236, 232, 205]) * 0.85
 img = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), 'RGBA')
 if LANDING:
     # ---- under the city (Jamie): a darkened patch of ground with small jagged roots, like a tree trunk's in the ground
