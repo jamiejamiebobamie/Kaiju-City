@@ -456,7 +456,8 @@ const ChoiceAvatar = ({ id, sheet, keyName, figureOffset, chosen, isLeaving, onC
 // 'onHover': which one is under the mouse (the backdrop lights it up more)
 // 'onHandOver': the chosen one, as it starts its slide to the picker (the backdrop goes with it)
 // 'nameOnly': the chosen one, on the picker: everything hidden but its name and number, where the camera left them
-export const AvatarChoice = ({ onChoose = (_player, _teammate) => {}, isReady = true, onHover = (_id) => {}, onHandOver = (_id) => {}, nameOnly = undefined }) => {
+// 'isArcs': the electric arcs round "Choose your character" (not when back from the picker: Jamie, playtest 34)
+export const AvatarChoice = ({ onChoose = (_player, _teammate) => {}, isReady = true, isArcs = true, onHover = (_id) => {}, onHandOver = (_id) => {}, nameOnly = undefined }) => {
   const isReadyRef = useRef(isReady);
   isReadyRef.current = isReady;
   const { setSelectedAvatar } = useContext(GlobalSettingsContext);
@@ -498,7 +499,7 @@ export const AvatarChoice = ({ onChoose = (_player, _teammate) => {}, isReady = 
             <ChoiceAvatar key={id} id={id} sheet={sheet} keyName={key} figureOffset={figureOffset} chosen={nameOnly || chosen} isLeaving={isLeaving} onChoose={() => choose(id)} onHover={onHover} nameOnly={nameOnly} />
           ))}
         </Row>
-        <Prompt $isHidden={!!chosen}><ElectricArcs text="Choose your character" isOn={!chosen}>Choose your character</ElectricArcs></Prompt>
+        <Prompt $isHidden={!!chosen}><ElectricArcs text="Choose your character" isOn={!chosen && isArcs}>Choose your character</ElectricArcs></Prompt>
       </Screen>
     </ScaleToFit>
   );

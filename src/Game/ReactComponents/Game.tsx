@@ -1679,11 +1679,13 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   // Play!/Back console beside it from the avatar select on
   const isPreGame = !isPlayingGame && (isChoosingAvatar || !isSkippingPicker);
   const preGameWindow = isConsoleIn ? playWindow : getCenteredWindow(playWindow);
+  const [isBackFromPicker, setIsBackFromPicker] = useState(false);
   const goBackFromPicker = isLabPicker ? returnToLab : pickerFrom == 'avatar' ? () => {
     // (the avatar select comes up still zoomed in on the chosen one, where the picker's avatar and name were, then the
     // camera pulls back out with everything on it: Jamie)
     setHandOverAvatar(selectedAvatar);
     setHoveredAvatar(undefined);
+    setIsBackFromPicker(true); // (no arcs round its directive again: Jamie, playtest 34)
     setIsChoosingAvatar(true);
     requestAnimationFrame(() => requestAnimationFrame(() => setHandOverAvatar(undefined)));
   } : () => leaveByZoom();
@@ -1705,12 +1707,6 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     setIsFlyingOff(true);
     setTimeout(callback, Math.max(0, FLY_OFF.ms - SCREEN_FADE.ms + 100));
   };
-  // Back from the avatar select (Jamie): the side screen switches off first, as it came on
-  const backFromAvatarSelect = () => {
-    if (isSideOff) return;
-    setIsSideOff(true);
-    leaveByZoom();
-  };
   const preGameMonitor = (
     <GameArea style={pullStyle}>
       <RoomBackdrop />
@@ -1725,7 +1721,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
           <MonitorLabBackdrop mode={isChoosingAvatar ? "choice" : "picker"} hovered={hoveredAvatar} focus={isChoosingAvatar ? handOverAvatar : selectedAvatar} />
           {isChoosingAvatar ? (
             <AvatarsInTheDark style={{ position: "absolute", inset: 0, transformOrigin: "0 0", transition: FOCUS_MOVE, transform: getFocusTransform(handOverAvatar), ...(isBooted ? {} : { animation: "none" }) }}>
-            <AvatarChoice isReady={isMonitorOn} onHover={setHoveredAvatar} onHandOver={setHandOverAvatar} onChoose={(player, teammate) => {
+            <AvatarChoice isReady={isMonitorOn} isArcs={!isBackFromPicker} onHover={setHoveredAvatar} onHandOver={setHandOverAvatar} onChoose={(player, teammate) => {
               // a first play skips the power picker: Discharge, Wildfire and Dispel to start (Jamie); every replay after it shows it
               const isFirstPlay = getIsFirstPlay();
               markPlaythroughStarted();
@@ -1774,7 +1770,8 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
               isReady={!isChoosingAvatar && pickedAbilities.length == 3}
               playLabel={isLabPicker ? "Back to Lab" : "Play"} /* (no "!": Jamie, playtest 28) */
               onPlay={playFromConsole}
-              onBack={isChoosingAvatar ? backFromAvatarSelect : isLabPicker ? undefined : goBackFromPicker}
+              onBack={isChoosingAvatar ? () => {} : isLabPicker ? undefined : goBackFromPicker}
+              isBackDisabled={isChoosingAvatar} /* (shown but dead on the avatar select: Quit is the way out. Jamie, playtest 34) */
               isLeaving={isFlyingOff}
             />
           </>
