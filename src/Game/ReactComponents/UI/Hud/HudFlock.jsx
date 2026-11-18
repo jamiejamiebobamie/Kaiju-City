@@ -3,6 +3,7 @@ import styled from "styled-components";
 import { getSmokeBox, Hud } from "./Hud";
 import { HUD_LOOK, HUD_VARIANTS, PLATES } from "./hudSpec";
 import { triggerHudExplosion } from "./HudExplosions";
+import { gameUiStore } from "Game/DataClasses/gameUiStore";
 
 /*
   The HUDs fly (Jamie, 2026-11-16): each is a little drone with a place in the column (its slot). One small physics
@@ -248,15 +249,21 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused, deadKeys = [],
         const top = FLOCK.place.top * frameBox.width;
         let columnScale = scaleRef.current;
         let left;
-        if (casingBox && casingBox.width > 0) {
+        // (Jamie, playtest 33: flying away, they grew: the column's scale is fitted to the HUDs still there, and with
+        // none left it went back up to full. While any leave, the column keeps its place and its scale)
+        const held = list.some(entry => entry.isLeaving) && placeRef.current ? placeRef.current : undefined;
+        if (held) {
+          columnScale = held.columnScale;
+          left = held.left;
+        } else if (casingBox && casingBox.width > 0) {
           columnScale = Math.min(columnScale, (frameBox.right - casingBox.right - 2 * gap) / (FLOCK.columnWidth + reachLeft));
           left = casingBox.right - frameBox.left + gap + reachLeft * columnScale;
         } else {
           left = frameBox.width * 0.869 - FLOCK.columnWidth * columnScale;
         }
         const headroom = SMOKE_HEADROOM * FLOCK.place.smokeRoom;
-        columnScale = Math.max(0.2, Math.min(columnScale, (frameBox.height - 2 * top) / Math.max(y + headroom, 1)));
-        const columnTop = top + headroom * columnScale;
+        if (!held) columnScale = Math.max(0.2, Math.min(columnScale, (frameBox.height - 2 * top) / Math.max(y + headroom, 1)));
+        const columnTop = held ? held.top : top + headroom * columnScale;
         column.style.transform = `translate(${left}px, ${columnTop}px) scale(${columnScale})`;
         placeRef.current = { frameBox, left, top: columnTop, columnScale };
         cqw = frameBox.width / 100 / columnScale;
@@ -282,11 +289,15 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused, deadKeys = [],
         });
       });
 
+      // the fight over (the win's or the loss's notice): no more casting, so no more energy and no knocks; they settle
+      // (Jamie, playtest 33: they jostled on, on the frozen state of the last casts)
+      const isFightOver = gameUiStore.winner !== null && gameUiStore.winner !== undefined;
       const gone = [];
       list.forEach(entry => {
         const body = bodies.current.get(entry.key);
         const slot = slots.get(entry.key);
         if (!body || now < body.born) return;
+        if (isFightOver) body.energy = 0;
         const pd = pdRef.current.get(entry.key) || entry.pd;
         // energy from casting
         const casts = getCastSum(pd);
@@ -353,6 +364,7 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused, deadKeys = [],
           }
           if (now < body.sputterUntil) ay += FLOCK.struggle.drop * struggle;
           // knocks: more often, and harder, with energy
+          if (isFightOver) body.nextKick = Math.max(body.nextKick, now + FLOCK.jostle.everyMs[0]);
           if (now > body.nextKick) {
             const kick = FLOCK.jostle.kick * (1 + FLOCK.energy.kick * body.energy);
             body.vx += (Math.random() - 0.5) * kick;
@@ -378,8 +390,14 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused, deadKeys = [],
           const b = bodies.current.get(settled[j].key);
           const sa = slots.get(settled[i].key);
           const sb = slots.get(settled[j].key);
-          const overlapX = Math.min(FLOCK.bump.maxOverlap, Math.min(a.x + sa.width, b.x + sb.width) - Math.max(a.x, b.x) + FLOCK.bump.margin);
-          const overlapY = Math.min(FLOCK.bump.maxOverlap, Math.min(a.y + sa.height, b.y + sb.height) - Math.max(a.y, b.y) + FLOCK.bump.margin);
+          // (Jamie, playtest 33: the crowd's slots are staggered into each other's gaps, so neighbours touched at rest and
+          // shoved each other on and on, the Hazmat Worker's most. Only an overlap past their slots' own counts)
+          const getOverlap = (p, q, w1, w2) => Math.min(p + w1, q + w2) - Math.max(p, q) + FLOCK.bump.margin;
+          const slotOverlapX = getOverlap(sa.x, sb.x, sa.width, sb.width);
+          const slotOverlapY = getOverlap(sa.y, sb.y, sa.height, sb.height);
+          const isSlotsTouching = slotOverlapX > 0 && slotOverlapY > 0;
+          const overlapX = Math.min(FLOCK.bump.maxOverlap, getOverlap(a.x, b.x, sa.width, sb.width) - (isSlotsTouching ? slotOverlapX : 0));
+          const overlapY = Math.min(FLOCK.bump.maxOverlap, getOverlap(a.y, b.y, sa.height, sb.height) - (isSlotsTouching ? slotOverlapY : 0));
           if (overlapX > 0 && overlapY > 0) {
             if (overlapY < overlapX) {
               const sign = a.y < b.y ? -1 : 1;
