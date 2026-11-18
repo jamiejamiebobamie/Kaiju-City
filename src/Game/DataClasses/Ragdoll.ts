@@ -31,13 +31,21 @@ export const RAGDOLL = {
 
 // each part hangs from its joint on the torso. 'reach' is how far it can turn from hanging straight, either way.
 // 'lengthRows' sets how slowly it swings: longer swings slower.
+// (Jamie, playtest 34: they always ended at a quarter turn, which looked silly: less reach now, and the arms and legs
+// in two, the forearm and the shin hanging from the elbow and the knee. 'parent': the part a lower one hangs from)
 export const LIMBS = [
-  { id: 'head', reach: 50, lengthRows: 0.25 },
-  { id: 'armLeft', reach: 90, lengthRows: 0.5 }, // no more than a quarter turn, so a body never looks broken
-  { id: 'armRight', reach: 90, lengthRows: 0.5 },
-  { id: 'legLeft', reach: 90, lengthRows: 0.6 },
-  { id: 'legRight', reach: 90, lengthRows: 0.6 }
+  { id: 'head', reach: 40, lengthRows: 0.25 },
+  { id: 'armLeft', reach: 55, lengthRows: 0.28 },
+  { id: 'armRight', reach: 55, lengthRows: 0.28 },
+  { id: 'legLeft', reach: 40, lengthRows: 0.32 },
+  { id: 'legRight', reach: 40, lengthRows: 0.32 },
+  { id: 'forearmLeft', reach: 70, lengthRows: 0.24, parent: 1 },
+  { id: 'forearmRight', reach: 70, lengthRows: 0.24, parent: 2 },
+  { id: 'shinLeft', reach: 70, lengthRows: 0.3, parent: 3 },
+  { id: 'shinRight', reach: 70, lengthRows: 0.3, parent: 4 }
 ] as const;
+// on the ground, a part eases back toward hanging straight, so it doesn't lie at the end of its reach
+const RELAX_PER_DEGREE = 3; // degrees per second of swing, per degree out of line
 
 export type Vec = { x: number; y: number };
 
@@ -121,12 +129,13 @@ export const getTorsoSpot = ({ x, y, height, angle }: Ragdoll, pieceScale: numbe
   One part swinging from its joint, like a pendulum. 'pull' is what it feels on screen: gravity, less the torso's own jolt.
   A part's angle is turned like css: positive is clockwise. Hanging straight, it points down the screen (up, for the head).
 */
-const swingLimb = (limb: Limb, { reach, lengthRows }: typeof LIMBS[number], isHead: boolean, torsoAngle: number, torsoSpin: number, pull: Vec, damping: number, seconds: number, rowPx: number): Limb => {
+const swingLimb = (limb: Limb, { reach, lengthRows }: typeof LIMBS[number], isHead: boolean, torsoAngle: number, torsoSpin: number, pull: Vec, damping: number, seconds: number, rowPx: number, isRelaxing = false): Limb => {
   const screenAngle = toRadians(torsoAngle + limb.angle + (isHead ? 180 : 0));
   // which way along its swing a pull turns it: the part points along (-sin, cos)
   const along = -pull.x * Math.cos(screenAngle) - pull.y * Math.sin(screenAngle);
   const length = lengthRows * rowPx * (2 / 3); // a rod swings like a pendulum two thirds its length
   let swing = limb.swing + (along / length) * (180 / Math.PI) * seconds;
+  if (isRelaxing) swing -= limb.angle * RELAX_PER_DEGREE * seconds;
   swing *= Math.exp(-damping * seconds);
   // the torso turning carries the joint round with it: on screen, the part lags behind
   let angle = limb.angle + (swing - torsoSpin) * seconds;
@@ -182,6 +191,14 @@ export const stepRagdoll = (body: Ragdoll, seconds: number, rowPx: number, bound
   const gravity = isOnGround ? 0 : RAGDOLL.gravityRows * rowPx;
   const pull = { x: -jolt.x, y: gravity - jolt.y };
   const damping = isOnGround ? RAGDOLL.groundDamping : RAGDOLL.airDamping;
-  const limbs = body.limbs.map((limb, k) => swingLimb(limb, LIMBS[k], LIMBS[k].id == 'head', angle, spin, pull, damping, seconds, rowPx));
+  // (in order: an upper part before the lower one hanging from it, which turns with it)
+  const limbs: Array<Limb> = [];
+  LIMBS.forEach((spec, k) => {
+    const limb = body.limbs[k] || { angle: 0, swing: spin };
+    const parent = 'parent' in spec ? limbs[spec.parent] : undefined;
+    const baseAngle = parent ? angle + parent.angle : angle;
+    const baseSpin = parent ? parent.swing : spin;
+    limbs.push(swingLimb(limb, spec, spec.id == 'head', baseAngle, baseSpin, pull, damping, seconds, rowPx, isOnGround));
+  });
   return { x, y, height, vx, vy, vHeight, angle, spin, limbs, isResting };
 };

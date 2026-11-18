@@ -33,11 +33,17 @@ const FIGURE_BOXES = {
 const PARTS = {
   torso: { box: [0.21, 0.19, 0.81, 0.61], joint: [0.51, 0.40] },
   head: { box: [0.27, 0, 0.75, 0.21], joint: [0.51, 0.21] },
-  armLeft: { box: [0, 0.21, 0.3, 0.67], joint: [0.24, 0.24] },
-  armRight: { box: [0.7, 0.21, 1, 0.67], joint: [0.78, 0.24] },
-  legLeft: { box: [0.21, 0.58, 0.52, 1], joint: [0.37, 0.59] },
-  legRight: { box: [0.49, 0.58, 0.81, 1], joint: [0.65, 0.59] }
+  // (in two since playtest 34: the upper arm and the forearm, from the elbow; the thigh and the shin, from the knee)
+  armLeft: { box: [0, 0.21, 0.3, 0.45], joint: [0.24, 0.24] },
+  forearmLeft: { box: [0, 0.43, 0.3, 0.67], joint: [0.14, 0.44] },
+  armRight: { box: [0.7, 0.21, 1, 0.45], joint: [0.78, 0.24] },
+  forearmRight: { box: [0.7, 0.43, 1, 0.67], joint: [0.86, 0.44] },
+  legLeft: { box: [0.21, 0.58, 0.52, 0.81], joint: [0.37, 0.59] },
+  shinLeft: { box: [0.21, 0.79, 0.52, 1], joint: [0.36, 0.8] },
+  legRight: { box: [0.49, 0.58, 0.81, 0.81], joint: [0.65, 0.59] },
+  shinRight: { box: [0.49, 0.79, 0.81, 1], joint: [0.66, 0.8] }
 };
+const LOWER_OF = { armLeft: "forearmLeft", armRight: "forearmRight", legLeft: "shinLeft", legRight: "shinRight" };
 
 const Wrapper = styled.i`
   display: block;
@@ -94,12 +100,22 @@ const RagdollParts = ({ avatar, spriteSheetSrc, body, color }) => {
     );
   };
   // the arms and legs behind the torso, the head in front
-  const limbs = LIMBS.map((limb, k) => ({ ...limb, angle: body.limbs[k].angle }));
+  const limbs = LIMBS.map((limb, k) => ({ ...limb, angle: body.limbs[k] ? body.limbs[k].angle : 0 }));
   const getLimb = id => limbs.find(limb => limb.id == id);
   return (
     <div style={{ transform: `rotate(${body.angle}deg)`, transition: ease, filter: `drop-shadow(0 0 ${FRAME.glowPx}px ${color})` }}>
       <div style={{ position: "absolute", transformOrigin: "0 0", transform: `scale(${FRAME.scale}) translate(${-torso.x}px, ${-torso.y}px)` }}>
-        {["armLeft", "armRight", "legLeft", "legRight"].map(id => drawPart(id, getLimb(id).angle))}
+        {["armLeft", "armRight", "legLeft", "legRight"].map(id => {
+          // the upper part turns at its joint, and the lower one with it, turning again at the elbow or knee
+          const joint = toFrame(avatar, PARTS[id].joint);
+          const lower = LOWER_OF[id];
+          return (
+            <div key={id} style={{ position: "absolute", left: 0, top: 0, width: FRAME.width, height: FRAME.height, transformOrigin: `${joint.x}px ${joint.y}px`, transform: `rotate(${getLimb(id).angle}deg)`, transition: ease }}>
+              {drawPart(id)}
+              {drawPart(lower, (getLimb(lower) || { angle: 0 }).angle)}
+            </div>
+          );
+        })}
         {drawPart("torso")}
         {drawPart("head", getLimb("head").angle)}
       </div>
@@ -134,7 +150,8 @@ const GhostBody = styled.div`
 const HANGING_LIMB_DEGREES = 35;
 const getHangingBody = body => ({
   ...body,
-  limbs: body.limbs.map(limb => ({ ...limb, angle: -Math.sign(body.angle) * Math.min(Math.abs(body.angle), HANGING_LIMB_DEGREES) })),
+  // (the forearms and shins straight on from the upper parts: they turn with them)
+  limbs: body.limbs.map((limb, k) => ({ ...limb, angle: LIMBS[k] && "parent" in LIMBS[k] ? 0 : -Math.sign(body.angle) * Math.min(Math.abs(body.angle), HANGING_LIMB_DEGREES) })),
   easeMs: GHOST_RISE.droopMs
 });
 
