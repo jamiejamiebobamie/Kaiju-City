@@ -448,7 +448,7 @@ if LANDING:
 else:
     arr[crescent, :3] = arr[crescent, :3] * 0.15 + np.array([236, 232, 205]) * 0.85
 img = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), 'RGBA')
-if LANDING:
+if False:  # (the joiner under the city is drawn over the skyline now: scripts/landingJoiner.py, Jamie, round 4)
     # ---- under the city (Jamie): a darkened patch of ground with small jagged roots, like a tree trunk's in the ground
     # seen from far off, grounding the logo's skyline in the Peninsula (behind the skyline, on the land; a small detail)
     root_rng = np.random.default_rng(5)

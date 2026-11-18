@@ -155,7 +155,7 @@ const SceneSlide = styled.div`
     animation: ${zoomOutOfCity} ${CITY_ZOOM.ms}ms cubic-bezier(0.1, 0.65, 0.4, 1) ${getZoomBackMs() - 450}ms both;
   `} }
   /* the Kaiju keeps its walk and its own glow: it slides by 'translate' alone */
-  & > div > :nth-child(n + 3) { ${props => props.$isLeaving && css`transition: translate ${SLIDE.ms}ms ease-in; translate: ${SLIDE.kaiju} 0;`} }
+  & > div > :nth-child(n + 3):not(img) { ${props => props.$isLeaving && css`transition: translate ${SLIDE.ms}ms ease-in; translate: ${SLIDE.kaiju} 0;`} }
 `;
 
 const EmberSlide = styled.div`
@@ -310,7 +310,7 @@ export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = ()
     <SpeedBlurFilter />
     <LandingScene spot={CITY_ZOOM.spot} zoom={getSceneZoom(isLeaving, isLogoZoomingOut)} isBack={isLogoZoomingOut} logoScale={logoScale} />
     <EmberSlide $isLeaving={isLeaving}><Embers /></EmberSlide>
-    <SceneSlide $isLeaving={isLeaving} $isZoomingBack={isLogoZoomingOut} style={{ "--logo-scale": logoScale }}><Logo /></SceneSlide>
+    <SceneSlide $isLeaving={isLeaving} $isZoomingBack={isLogoZoomingOut} style={{ "--logo-scale": logoScale }}><Logo joiner /></SceneSlide>
     <ZoomThrough isOn={isLeaving} startMs={ZOOM_START_MS} onDone={enterRoom || handleClickGame} />
     {isZoomingBack && <ZoomThrough isOn isReverse startMs={0} onDone={() => setIsZoomingBack(false)} />}
     <PressAnyKey $isLeaving={isLeaving} style={{ opacity: isZoomingBack ? 0 : undefined, transition: "opacity 600ms ease-out" }}>

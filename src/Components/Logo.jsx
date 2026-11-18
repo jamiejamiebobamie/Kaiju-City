@@ -238,13 +238,16 @@ const Breath = () => BREATH_EMBERS.map(({ key, delay, cx, cy, fx, fy, lx, ly, bx
   }} />
 ));
 
-export const Logo = () => (<LogoWrapper>
+// 'joiner': the landing's (Jamie, 2026-11-18): over the skyline's bottom, grounding it in the Peninsula behind
+// (scripts/landingJoiner.py); an image in the logo's own box, so it zooms with the skyline
+export const Logo = ({ joiner = false }) => (<LogoWrapper>
   <Title isDescription={false}>
     <StyledSpookyText isDescription={true}>Kaiju</StyledSpookyText>{" "}
     <StyledSciFiText>City</StyledSciFiText>
     <StyledSpookyTextShadow>Kaiju</StyledSpookyTextShadow>{" "}
   </Title>
   <LogoImage src={"./SVG_logo.svg"} data-landing-logo />
+  {joiner && <LogoImage src={"/zoom-scene/landing-joiner.png"} alt="" />}
   <KaijuWrapper >
     <SpriteSheet />
     <Breath />
