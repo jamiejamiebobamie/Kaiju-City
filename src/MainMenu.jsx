@@ -135,6 +135,17 @@ const LOGO_SIZE = { scale: 1.2, window: { width: 1908, height: 915 } };
 // the logo's title, skyline and joiner raised a little over the Peninsula (Jamie, round 5; logo px), not its Kaiju
 const LOGO_LIFT = 12;
 // the scene's cycle: the first event so long after the landing shows, then this quiet between events
+// the base joiner's box and its trapezoid (its top and bottom widths, both about its middle), as css variables
+const getBaseJoinerShape = ({ middle, topWidth, bottomWidth }) => {
+  const widest = Math.max(topWidth, bottomWidth);
+  const inset = width => `${((widest - width) / 2).toFixed(1)}px`;
+  const out = width => `${((widest + width) / 2).toFixed(1)}px`;
+  return {
+    "--base-joiner-left": `${middle - widest / 2}px`,
+    "--base-joiner-width": `${widest}px`,
+    "--base-joiner-shape": `polygon(${inset(topWidth)} 0, ${out(topWidth)} 0, ${out(bottomWidth)} 100%, ${inset(bottomWidth)} 100%)`
+  };
+};
 const LANDING_CYCLE = { firstMs: 3500, quietMs: 14000, embersMs: 2200 };
 const getLogoScale = () => LOGO_SIZE.scale * Math.min(window.innerWidth / LOGO_SIZE.window.width, window.innerHeight / LOGO_SIZE.window.height);
 
@@ -363,7 +374,7 @@ export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = ()
     <SpeedBlurFilter />
     <LandingScene spot={CITY_ZOOM.spot} zoom={getSceneZoom(isLeaving, isLogoZoomingOut)} isBack={isLogoZoomingOut} logoScale={logoScale} lift={LOGO_LIFT - tune.cityscape.y} tune={tune} event={event} />
     <EmberSlide $isLeaving={isLeaving} style={isLeaving ? undefined : { opacity: event === undefined ? 0 : 1, transition: `opacity ${LANDING_CYCLE.embersMs}ms ease-in-out` }}><Embers /></EmberSlide>
-    <SceneSlide $isLeaving={isLeaving} $isZoomingBack={isLogoZoomingOut} style={{ "--logo-scale": logoScale, "--logo-lift": `${LOGO_LIFT}px`, "--joiner-both": `${tune.joiner.both}px`, "--joiner-band": `${tune.joiner.band}px`, "--joiner-glow": `${tune.joiner.glow}px`, "--skyline-y": `${tune.cityscape.y}px` }}><Logo spotlights circuit baseJoiner /></SceneSlide>{/* (the joiner off, to see it without: Jamie, 2026-11-19; <Logo joiner spotlights /> brings it back) */}
+    <SceneSlide $isLeaving={isLeaving} $isZoomingBack={isLogoZoomingOut} style={{ "--logo-scale": logoScale, "--logo-lift": `${LOGO_LIFT}px`, "--joiner-both": `${tune.joiner.both}px`, "--joiner-band": `${tune.joiner.band}px`, "--joiner-glow": `${tune.joiner.glow}px`, "--skyline-y": `${tune.cityscape.y}px`, "--base-joiner-top": `${tune.baseJoiner.top}px`, "--base-joiner-height": `${tune.baseJoiner.height}px`, ...getBaseJoinerShape(tune.baseJoiner), "--base-joiner-solid": `${tune.baseJoiner.solid * 100}%`, "--base-joiner-opacity": tune.baseJoiner.opacity }}><Logo spotlights circuit baseJoiner /></SceneSlide>{/* (the joiner off, to see it without: Jamie, 2026-11-19; <Logo joiner spotlights /> brings it back) */}
     <ZoomThrough isOn={isLeaving} startMs={ZOOM_START_MS} onDone={enterRoom || handleClickGame} />
     {isZoomingBack && <ZoomThrough isOn isReverse startMs={0} onDone={() => setIsZoomingBack(false)} />}
     <PressAnyKey $isLeaving={isLeaving} style={{ top: `calc(100dvh * ${tune.pressKey.top})`, opacity: isZoomingBack ? 0 : undefined, transition: "opacity 600ms ease-out" }}>

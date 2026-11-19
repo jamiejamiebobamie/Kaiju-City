@@ -156,9 +156,10 @@ const Spotlights = () => (
 /*
   The base joiner (Jamie, 2026-11-19): the skyline's own base blue carried on down a little below its buildings, solid
   until the walking Kaiju's feet are surely covered (its sprite's feet reach about 3 px below the skyline's base, a
-  little more mid-step), then fading out over a few px; behind the buildings, in front of the Kaiju. In the logo's px.
+  little more mid-step), then fading out over a few px; over the buildings' feet (Jamie: on top of the skyline), in
+  front of the Kaiju. Its place and look from the landing's tuner (--base-joiner-*, logo px; LandingTuner).
 */
-const BASE_JOINER = { color: "21, 38, 66", left: 26, right: 559, top: 191, solidTo: 206, fadeTo: 214, edge: 10 };
+const BASE_JOINER = { color: "21, 38, 66", edge: 10 };
 const BaseJoinerBox = styled.div`
   pointer-events: none;
   position: absolute;
@@ -170,11 +171,13 @@ const BaseJoinerBox = styled.div`
   &::before {
     content: "";
     position: absolute;
-    left: ${BASE_JOINER.left}px;
-    width: ${BASE_JOINER.right - BASE_JOINER.left}px;
-    top: ${BASE_JOINER.top}px;
-    height: ${BASE_JOINER.fadeTo - BASE_JOINER.top}px;
-    background: linear-gradient(to bottom, rgba(${BASE_JOINER.color}, 1) 0, rgba(${BASE_JOINER.color}, 1) ${BASE_JOINER.solidTo - BASE_JOINER.top}px, rgba(${BASE_JOINER.color}, 0) 100%);
+    left: var(--base-joiner-left, 26px);
+    width: var(--base-joiner-width, 533px);
+    clip-path: var(--base-joiner-shape, none); /* (its top and bottom each their own width: Jamie) */
+    top: var(--base-joiner-top, 191px);
+    height: var(--base-joiner-height, 23px);
+    opacity: var(--base-joiner-opacity, 1);
+    background: linear-gradient(to bottom, rgba(${BASE_JOINER.color}, 1) 0, rgba(${BASE_JOINER.color}, 1) var(--base-joiner-solid, 65%), rgba(${BASE_JOINER.color}, 0) 100%);
     -webkit-mask-image: linear-gradient(to right, transparent, black ${BASE_JOINER.edge}px, black calc(100% - ${BASE_JOINER.edge}px), transparent);
     mask-image: linear-gradient(to right, transparent, black ${BASE_JOINER.edge}px, black calc(100% - ${BASE_JOINER.edge}px), transparent);
   }
@@ -582,8 +585,8 @@ export const Logo = ({ joiner = false, spotlights = false, circuit = false, base
   {/* (behind the skyline: Jamie, round 6; each part placed up or down by the landing's tuner: --joiner-* in logo px) */}
   {joiner && <LogoImage src={"/zoom-scene/landing-joiner-glow.png"} alt="" style={{ translate: "0 calc(var(--logo-lift, 0px) * -1 + var(--skyline-y, 0px) + var(--joiner-both, 0px) + var(--joiner-glow, 0px))" }} />}
   {joiner && <LogoImage src={"/zoom-scene/landing-joiner.png"} alt="" style={{ translate: "0 calc(var(--logo-lift, 0px) * -1 + var(--skyline-y, 0px) + var(--joiner-both, 0px) + var(--joiner-band, 0px))" }} />}
-  {baseJoiner && <BaseJoinerBox data-base-joiner aria-hidden="true" />}
   <LogoImage src={"./SVG_logo.svg"} data-landing-logo />
+  {baseJoiner && <BaseJoinerBox data-base-joiner aria-hidden="true" />}
   {spotlights && <Spotlights />}
   <KaijuWrapper >
     <SpriteSheet />

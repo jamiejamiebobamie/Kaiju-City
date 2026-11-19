@@ -12,6 +12,8 @@ import styled from "styled-components";
     cityscape: logo px down (negative: up): the skyline (with its spotlights and joiner) over the Peninsula, which
       stays put; the title and the Kaiju don't move
     pressKey: "[Press any key]"'s height, as a share of the window's (0 the top, 1 the bottom)
+    baseJoiner: the skyline's base blue carried down over its feet: its top and height, its middle across, its top's and
+      its bottom's widths (logo px), where its fade begins (a share of its height, solid above it) and its opacity
 */
 // (Jamie's, 2026-11-18)
 export const LANDING_TUNE_DEFAULTS = {
@@ -19,14 +21,16 @@ export const LANDING_TUNE_DEFAULTS = {
   moon: { x: 992, y: 357, radius: 30 },
   reflection: { x: 1021, y: 464, radius: 33 },
   cityscape: { y: 4 },
-  pressKey: { top: 0.655 }
+  pressKey: { top: 0.655 },
+  baseJoiner: { top: 191, height: 23, middle: 292.5, topWidth: 533, bottomWidth: 533, solid: 0.65, opacity: 1 }
 };
 const RANGES = {
   joiner: { both: [-20, 20, 0.5], band: [-20, 20, 0.5], glow: [-20, 20, 0.5] },
   moon: { x: [600, 1700, 1], y: [120, 400, 1], radius: [8, 90, 1] },
   reflection: { x: [600, 1700, 1], y: [405, 760, 1], radius: [6, 70, 1] },
   cityscape: { y: [-30, 30, 0.5] },
-  pressKey: { top: [0.5, 0.97, 0.005] }
+  pressKey: { top: [0.5, 0.97, 0.005] },
+  baseJoiner: { top: [150, 240, 0.5], height: [2, 60, 0.5], middle: [200, 400, 0.5], topWidth: [100, 700, 1], bottomWidth: [100, 700, 1], solid: [0, 1, 0.01], opacity: [0, 1, 0.01] }
 };
 const STORE_KEY = "kaiju-landing-tune";
 
