@@ -13,7 +13,8 @@ const TRAFFIC = {
   size: { near: 150, least: 0.5, most: 2.2 }, // px: 'near' / distance, kept between these
   head: "255, 246, 214",
   tail: "255, 70, 50",
-  farAlpha: 0.3
+  farAlpha: 0.3,
+  apart: 2.5 // px: no two cars drawn closer than this (no clumps where a road's outline folds back)
 };
 const between = ([low, high]) => low + Math.random() * (high - low);
 
@@ -61,6 +62,18 @@ export const TrafficLights = ({ paths, glints = [], width, height, zIndex, near 
         ctx.fillStyle = `rgb(${GLINT.color})`;
         ctx.fillRect(glint.x - size * 1.5, glint.y - size * 0.4, size * 3, size * 0.8); // (a flat glint, wider than tall)
       });
+      // (Jamie, 2026-11-19: cars bunched at a junction, where a road's traced outline folds back on itself in a small
+      // space: a car is not drawn on top of one already drawn this frame, within 'apart' px of the picture)
+      const drawn = new Map();
+      const cell = TRAFFIC.apart;
+      const isCrowded = (x, y) => {
+        const cx = Math.floor(x / cell), cy = Math.floor(y / cell);
+        for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+          const others = drawn.get(`${cx + i},${cy + j}`);
+          if (others && others.some(([ox, oy]) => Math.hypot(ox - x, oy - y) < cell)) return true;
+        }
+        return false;
+      };
       cars.forEach(car => {
         const path = paths[car.p];
         car.at = (car.at + car.speed * seconds) % (path.length - 1);
@@ -72,6 +85,9 @@ export const TrafficLights = ({ paths, glints = [], width, height, zIndex, near 
         const y = y1 + (y2 - y1) * share;
         const distance = d1 + (d2 - d1) * share;
         const size = Math.max(sizing.least, Math.min(sizing.most, sizing.near / distance));
+        if (isCrowded(x, y)) return;
+        const key = `${Math.floor(x / cell)},${Math.floor(y / cell)}`;
+        drawn.set(key, [...(drawn.get(key) || []), [x, y]]);
         const isComing = y2 > y1; // down the picture: toward the window
         const color = isComing ? TRAFFIC.head : TRAFFIC.tail;
         // the far ones fainter, so the tip's crowd of them glows rather than glitters
