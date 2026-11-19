@@ -173,7 +173,8 @@ const Surf = ({ points, width, height }) => {
   then flaring a little brighter; single pixels of the picture, as they were drawn into it. Points from
   scripts/labWindowView.py ('stars': [x, y, brightness]).
 */
-const STAR = { color: "200, 210, 255", seconds: [2.5, 7], low: 0.35, flare: 0.08 };
+// (more visible, Jamie: deeper dimming, quicker, more of them flaring, a brighter white)
+const STAR = { color: "225, 232, 255", seconds: [1.6, 4.5], low: 0.06, flare: 0.25, flareFrom: 0.82 };
 const Stars = ({ points, width, height }) => {
   const ref = useRef(null);
   useEffect(() => {
@@ -190,8 +191,8 @@ const Stars = ({ points, width, height }) => {
         const wave = 0.5 + 0.5 * Math.sin((t / period + phase) * Math.PI * 2);
         ctx.globalAlpha = brightness * (STAR.low + (1 - STAR.low) * wave);
         ctx.fillRect(x, y, 1, 1);
-        if (flares && wave > 0.92) { // (a little cross of light at its brightest)
-          ctx.globalAlpha = brightness * (wave - 0.92) * 6;
+        if (flares && wave > STAR.flareFrom) { // (a little cross of light at its brightest)
+          ctx.globalAlpha = Math.min(1, brightness * (wave - STAR.flareFrom) / (1 - STAR.flareFrom));
           ctx.fillRect(x - 1, y, 1, 1); ctx.fillRect(x + 1, y, 1, 1); ctx.fillRect(x, y - 1, 1, 1); ctx.fillRect(x, y + 1, 1, 1);
         }
       });
