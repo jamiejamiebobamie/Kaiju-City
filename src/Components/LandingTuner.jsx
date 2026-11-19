@@ -18,7 +18,8 @@ import styled from "styled-components";
     kaijuLeft, kaijuRight: the Kaiju in the water (the Peninsula picture's px): x its legs' middle, y the waterline at
       it, its height out of the water, waterRow where on its body the water starts (its frame's row: feet at 380);
       its fire: fireX, fireY moved off its mouth (px, as it faces right: mirrored on the right one), fireScale,
-      fireAngle (degrees from upright); kaiju.preview 1: both held still breathing fire, to set them
+      fireAngle (degrees from upright); kaiju.show (a toggle, on by default with ?tune): both held still, mid-breath
+      of fire, to set them
     buoy: its foot on the water (the picture's px) and its size; "Flash now" sets an event off without waiting
 */
 // (Jamie's, 2026-11-18)
@@ -31,7 +32,7 @@ export const LANDING_TUNE_DEFAULTS = {
   baseJoiner: { top: 194.5, height: 10.5, middle: 292.5, topWidth: 506, bottomWidth: 678, solid: 0.58, opacity: 0.81 },
   kaijuLeft: { x: 510, y: 512, height: 143, waterRow: 306, fireX: 0, fireY: -6, fireScale: 1, fireAngle: 52 },
   kaijuRight: { x: 1103, y: 525, height: 92, waterRow: 306, fireX: 0, fireY: -6, fireScale: 1, fireAngle: 52 },
-  kaiju: { preview: 0 },
+  kaiju: { show: 0 }, // (on with ?tune: loadLandingTune)
   buoy: { x: 478, y: 452, size: 1 }
 };
 const RANGES = {
@@ -43,7 +44,7 @@ const RANGES = {
   baseJoiner: { top: [150, 240, 0.5], height: [2, 60, 0.5], middle: [200, 400, 0.5], topWidth: [100, 700, 1], bottomWidth: [100, 700, 1], solid: [0, 1, 0.01], opacity: [0, 1, 0.01] },
   kaijuLeft: { x: [300, 1500, 1], y: [404, 760, 1], height: [20, 220, 1], waterRow: [150, 380, 1], fireX: [-60, 60, 0.5], fireY: [-60, 60, 0.5], fireScale: [0.2, 3, 0.05], fireAngle: [-30, 120, 1] },
   kaijuRight: { x: [300, 1500, 1], y: [404, 760, 1], height: [20, 220, 1], waterRow: [150, 380, 1], fireX: [-60, 60, 0.5], fireY: [-60, 60, 0.5], fireScale: [0.2, 3, 0.05], fireAngle: [-30, 120, 1] },
-  kaiju: { preview: [0, 1, 1] },
+  kaiju: { show: [0, 1, 1] }, // (a 0 to 1 by 1: a checkbox)
   buoy: { x: [300, 1500, 1], y: [404, 760, 1], size: [0.5, 3, 0.05] }
 };
 const STORE_KEY = "kaiju-landing-tune";
@@ -58,6 +59,7 @@ const copyDefaults = () => JSON.parse(JSON.stringify(LANDING_TUNE_DEFAULTS));
 export const loadLandingTune = () => {
   const tune = copyDefaults();
   if (!getIsTunePanel()) return tune;
+  tune.kaiju.show = 1; // (the Kaiju shown held, to set them, unless turned off)
   try {
     const saved = JSON.parse(window.localStorage.getItem(STORE_KEY) || "{}");
     Object.keys(tune).forEach(group => Object.keys(tune[group]).forEach(key => {
@@ -125,7 +127,7 @@ export const LandingTuner = ({ tune, setTune, onFlash = undefined }) => {
           {Object.entries(keys).map(([key, [low, high, step]]) => (
             <label key={key}>
               {key}
-              <input type="range" min={low} max={high} step={step} value={tune[group][key]} onChange={event => set(group, key, Number(event.target.value))} />
+              {low == 0 && high == 1 && step == 1 ? <input type="checkbox" checked={tune[group][key] > 0} onChange={event => set(group, key, event.target.checked ? 1 : 0)} /> : <input type="range" min={low} max={high} step={step} value={tune[group][key]} onChange={event => set(group, key, Number(event.target.value))} />}
               <output>{tune[group][key]}</output>
             </label>
           ))}

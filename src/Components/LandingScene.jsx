@@ -452,8 +452,6 @@ export const LandingScene = ({ spot, zoom, isBack = false, logoScale = 1, lift =
       <Surf points={SURF_POINTS} width={LANDING_VIEW.size.width} height={LANDING_VIEW.size.height} />
       <Surf points={landingTraffic.coast} width={LANDING_VIEW.size.width} height={LANDING_VIEW.size.height} pixel rest={COAST.rest} />
       <Buoy {...tune.buoy} onFacing={onBuoyFacing} />
-      {(event !== undefined || tune.kaiju.preview > 0) && <SeaKaiju key={`left ${event}`} {...tune.kaijuLeft} isShown={!isEventFading || tune.kaiju.preview > 0} isPreview={tune.kaiju.preview > 0} revealDelayMs={0} />}
-      {(event !== undefined || tune.kaiju.preview > 0) && <SeaKaiju key={`right ${event}`} {...tune.kaijuRight} isShown={!isEventFading || tune.kaiju.preview > 0} isPreview={tune.kaiju.preview > 0} isMirrored delayMs={700} revealDelayMs={450} />}
       <Moon {...tune.moon} />
 
       <MoonReflection {...tune.reflection} />
@@ -461,11 +459,15 @@ export const LandingScene = ({ spot, zoom, isBack = false, logoScale = 1, lift =
     </View>
   );
   // the helicopter flies in front of the logo (Jamie, 2026-11-19): its own stage over it, placed and zoomed as the
-  // scene's (below the zoom's pictures and [Press any key])
-  const front = event !== undefined && (
+  // scene's (below the zoom's pictures and [Press any key]); the Kaiju in the water on it too, over everything but
+  // [Press any key] (Jamie: over the moon and its reflection). With ?tune they're shown held breathing fire, a toggle
+  const isKaijuHeld = tune.kaiju.show > 0;
+  const front = (event !== undefined || isKaijuHeld) && (
     <View style={{ left: -LANDING_VIEW.vanish.x * scale, top: -LANDING_VIEW.vanish.y * scale + (vanish ? vanish.k : 1) * lift, transform: `scale(${scale})`, background: "none" }}>
-      <Copter key={event} path={landingTraffic.copter} horizon={LANDING_VIEW.horizon} />
-      <Copter key={`${event} wingman`} path={landingTraffic.copter} horizon={LANDING_VIEW.horizon} {...COPTER.wingman} />
+      {event !== undefined && <Copter key={event} path={landingTraffic.copter} horizon={LANDING_VIEW.horizon} />}
+      {event !== undefined && <Copter key={`${event} wingman`} path={landingTraffic.copter} horizon={LANDING_VIEW.horizon} {...COPTER.wingman} />}
+      <SeaKaiju key={`left ${event}`} {...tune.kaijuLeft} isShown={!isEventFading || isKaijuHeld} isPreview={isKaijuHeld} revealDelayMs={0} />
+      <SeaKaiju key={`right ${event}`} {...tune.kaijuRight} isShown={!isEventFading || isKaijuHeld} isPreview={isKaijuHeld} isMirrored delayMs={700} revealDelayMs={450} />
     </View>
   );
   return (
