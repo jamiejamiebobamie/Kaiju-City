@@ -8,7 +8,8 @@ import styled from "styled-components";
   to paste back to Claude, who makes them the defaults. A click or a key on the panel does not start the game.
     joiner: logo px down (negative: up): 'both' moves the two together, 'band' the blue-to-black band and its threads,
       'glow' the yellow under it
-    moon, reflection: the Peninsula picture's px (its horizon is row 403): middle x, y, and radius
+    moon, reflection: the Peninsula picture's px (its horizon is row 403): middle x, y, and radius; the moon's dark
+      side's light (earthshine: 0 the sky's colour) and the glow round it (shares)
     cityscape: logo px down (negative: up): the skyline (with its spotlights and joiner) over the Peninsula, which
       stays put; the title and the Kaiju don't move
     pressKey: "[Press any key]"'s height, as a share of the window's (0 the top, 1 the bottom)
@@ -18,7 +19,7 @@ import styled from "styled-components";
 // (Jamie's, 2026-11-18)
 export const LANDING_TUNE_DEFAULTS = {
   joiner: { both: -4.5, band: 0, glow: -1 },
-  moon: { x: 992, y: 357, radius: 30 },
+  moon: { x: 992, y: 357, radius: 30, darkSide: 0.3, glow: 0.55 },
   reflection: { x: 1021, y: 464, radius: 33 },
   cityscape: { y: 4 },
   pressKey: { top: 0.655 },
@@ -26,7 +27,7 @@ export const LANDING_TUNE_DEFAULTS = {
 };
 const RANGES = {
   joiner: { both: [-20, 20, 0.5], band: [-20, 20, 0.5], glow: [-20, 20, 0.5] },
-  moon: { x: [600, 1700, 1], y: [120, 400, 1], radius: [8, 90, 1] },
+  moon: { x: [600, 1700, 1], y: [120, 400, 1], radius: [8, 90, 1], darkSide: [0, 1.2, 0.01], glow: [0, 1.5, 0.01] },
   reflection: { x: [600, 1700, 1], y: [405, 760, 1], radius: [6, 70, 1] },
   cityscape: { y: [-30, 30, 0.5] },
   pressKey: { top: [0.5, 0.97, 0.005] },

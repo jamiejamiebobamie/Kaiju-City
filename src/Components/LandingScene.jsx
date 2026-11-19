@@ -93,7 +93,8 @@ const getSkyAt = row => {
   const shine = Math.exp(-Math.pow((row - LANDING_VIEW.horizon) / 6, 2));
   return [11 * (1 - t) + 26 * t + 18 * shine, 12 * (1 - t) + 40 * t + 26 * shine, 14 * (1 - t) + 72 * t + 48 * shine];
 };
-const Moon = ({ x, y, radius }) => {
+// 'darkSide': its dark side's light (earthshine), as a share of the glow on it; 'glow': the glow round it, as a share
+const Moon = ({ x, y, radius, darkSide = 0.3, glow = 0.55 }) => {
   const discRef = useRef(null);
   const glowRef = useRef(null);
   const reach = Math.ceil(radius * (1 + MOON.glowReach)) + 1;
@@ -116,18 +117,18 @@ const Moon = ({ x, y, radius }) => {
         if (distance <= radius) {
           const inBite = Math.hypot(dx - MOON.bite.x * radius, dy - MOON.bite.y * radius) <= MOON.bite.size * radius;
           const base = sky.map((value, c) => value + MOON.glow[c]);
-          const dark = sky.map((value, c) => value + MOON.glow[c] * MOON.earthshine);
+          const dark = sky.map((value, c) => value + MOON.glow[c] * darkSide);
           const color = inBite ? dark : base.map((value, c) => Math.max(value, (value * 0.15 + MOON.lit[c] * 0.85) * MOON.brightness));
           discData.data.set([...color.map(Math.round), 255], k);
         } else {
           const halo = Math.pow(Math.max(0, 1 - (distance - radius) / (radius * MOON.glowReach)), 2);
-          if (halo > 0) glowData.data.set([...MOON.glow.map(value => Math.round(value * halo * MOON.brightness)), 255], k);
+          if (halo > 0) glowData.data.set([...MOON.glow.map(value => Math.round(value * halo * MOON.brightness * glow)), 255], k);
         }
       }
     }
     disc.putImageData(discData, 0, 0);
     glow.putImageData(glowData, 0, 0);
-  }, [x, y, radius]);
+  }, [x, y, radius, darkSide, glow]);
   const style = { position: "absolute", left: box.left, top: box.top, width: box.size, height: box.size, pointerEvents: "none", imageRendering: "pixelated" };
   return (
     <>

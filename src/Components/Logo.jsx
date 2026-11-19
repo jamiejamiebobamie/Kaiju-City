@@ -66,20 +66,43 @@ const SPOTLIGHT = { base: 197, length: 112, core: { width: 12, strength: 0.8 }, 
 // (Jamie: in twos, both pairs' bases behind the title, where the inner two first stood; quicker; each pair in step
 // but mirrored: as one swings left the other swings right)
 // (spread a little further apart: Jamie; still behind the title, which runs about x 176-426)
-const PAIRS = [
-  { x: 205, sweep: 26, seconds: 3.8, delay: -1.2, lean: 6 },
-  { x: 405, sweep: 26, seconds: 4.4, delay: -0.5, lean: 6 }
-];
 // (Jamie, 2026-11-19: the pairs broken up, each one's second beam moved inward, 'inward' px, so the two inner beams
-// stand further apart than each from its old partner; still swinging mirrored with it)
-const INWARD = 50;
-const BEAMS = PAIRS.flatMap((pair, k) => [{ ...pair, isMirrored: false }, { ...pair, x: pair.x + (k == 0 ? INWARD : -INWARD), lean: -pair.lean, isMirrored: true }]);
-// (uneven: easing in and out at different points, so it lingers at one side and whips across)
+// stand further apart than each from its old partner; still swinging mirrored with it. Then: the two groups mirror
+// images of each other, in time; quicker; no stopping at the ends of a swing)
+const SWEEP = { left: 205, inward: 50, right: 405, sweep: 28, seconds: 2.8, lean: 6 };
+const BEAMS = [
+  { x: SWEEP.left, way: 1, lean: SWEEP.lean },
+  { x: SWEEP.left + SWEEP.inward, way: -1, lean: -SWEEP.lean },
+  { x: SWEEP.right - SWEEP.inward, way: 1, lean: SWEEP.lean }, // (the right group: the left's mirror image)
+  { x: SWEEP.right, way: -1, lean: -SWEEP.lean }
+];
+// steady across, turning round quickly at each end (a rounded triangle wave): never a stop
 const beamSweep = keyframes`
-  0% { rotate: calc(var(--lean) * 1deg - var(--sweep) * 1deg * var(--way)); animation-timing-function: cubic-bezier(0.6, 0, 0.4, 1); }
-  35% { rotate: calc(var(--lean) * 1deg - var(--sweep) * 0.75deg * var(--way)); animation-timing-function: cubic-bezier(0.7, 0, 0.2, 1); }
-  70% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.9deg * var(--way)); animation-timing-function: ease-out; }
-  100% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 1deg * var(--way)); }
+  0.00% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.0000deg * var(--way)); }
+  4.17% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.1951deg * var(--way)); }
+  8.33% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.3890deg * var(--way)); }
+  12.50% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.5798deg * var(--way)); }
+  16.67% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.7627deg * var(--way)); }
+  20.83% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.9224deg * var(--way)); }
+  25.00% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 1.0000deg * var(--way)); }
+  29.17% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.9224deg * var(--way)); }
+  33.33% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.7627deg * var(--way)); }
+  37.50% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.5798deg * var(--way)); }
+  41.67% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.3890deg * var(--way)); }
+  45.83% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.1951deg * var(--way)); }
+  50.00% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.0000deg * var(--way)); }
+  54.17% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -0.1951deg * var(--way)); }
+  58.33% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -0.3890deg * var(--way)); }
+  62.50% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -0.5798deg * var(--way)); }
+  66.67% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -0.7627deg * var(--way)); }
+  70.83% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -0.9224deg * var(--way)); }
+  75.00% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -1.0000deg * var(--way)); }
+  79.17% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -0.9224deg * var(--way)); }
+  83.33% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -0.7627deg * var(--way)); }
+  87.50% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -0.5798deg * var(--way)); }
+  91.67% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -0.3890deg * var(--way)); }
+  95.83% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -0.1951deg * var(--way)); }
+  100.00% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -0.0000deg * var(--way)); }
 `;
 // (a searchlight's flicker: small, uneven)
 const beamFlicker = keyframes`
@@ -108,31 +131,30 @@ const Beam = styled.div`
   height: ${SPOTLIGHT.length}px;
   margin-left: ${-SPOTLIGHT.halo.width / 2}px;
   transform-origin: 50% 100%;
-  animation: ${beamSweep} var(--seconds) var(--delay) infinite alternate, ${beamFlicker} var(--flicker) linear infinite;
-  &::before, &::after {
-    content: "";
-    position: absolute;
-    bottom: 0;
-    left: 50%;
+  animation: ${beamSweep} var(--seconds) linear infinite, ${beamFlicker} var(--flicker) linear infinite;
+`;
+// each layer: its blur on a wrapper round its clipped shape (blurred and then clipped, its edges had stayed sharp: the
+// core and the halo blend now: Jamie)
+const BeamLayer = styled.div`
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  height: 100%;
+  width: var(--width);
+  margin-left: calc(var(--width) / -2);
+  filter: blur(var(--blur));
+  & > div {
+    width: 100%;
     height: 100%;
-  }
-  /* the halo: wide, soft */
-  &::before {
-    width: ${SPOTLIGHT.halo.width}px;
-    margin-left: ${-SPOTLIGHT.halo.width / 2}px;
-    clip-path: polygon(44% 100%, 56% 100%, 100% 0, 0 0);
-    background: linear-gradient(to top, rgba(${SPOTLIGHT.color}, ${SPOTLIGHT.halo.strength}), rgba(${SPOTLIGHT.color}, ${SPOTLIGHT.halo.strength * 0.4}) 50%, rgba(${SPOTLIGHT.color}, 0));
-    filter: blur(4px);
-  }
-  /* the core: narrow, bright */
-  &::after {
-    width: ${SPOTLIGHT.core.width}px;
-    margin-left: ${-SPOTLIGHT.core.width / 2}px;
-    clip-path: polygon(40% 100%, 60% 100%, 100% 0, 0 0);
-    background: linear-gradient(to top, rgba(${SPOTLIGHT.color}, ${SPOTLIGHT.core.strength}), rgba(${SPOTLIGHT.color}, ${SPOTLIGHT.core.strength * 0.45}) 40%, rgba(${SPOTLIGHT.color}, 0));
-    filter: blur(0.8px);
+    clip-path: polygon(calc(50% - var(--foot)) 100%, calc(50% + var(--foot)) 100%, 100% 0, 0 0);
+    background: linear-gradient(to top, rgba(${SPOTLIGHT.color}, var(--strength)), rgba(${SPOTLIGHT.color}, calc(var(--strength) * 0.45)) 45%, rgba(${SPOTLIGHT.color}, 0));
   }
 `;
+const BEAM_LAYERS = [
+  { width: SPOTLIGHT.halo.width, foot: "6%", blur: "5px", strength: SPOTLIGHT.halo.strength * 1.3 },
+  { width: SPOTLIGHT.halo.width * 0.6, foot: "8%", blur: "3px", strength: (SPOTLIGHT.halo.strength + SPOTLIGHT.core.strength) / 2 * 0.8 },
+  { width: SPOTLIGHT.core.width, foot: "12%", blur: "1.6px", strength: SPOTLIGHT.core.strength * 0.9 }
+];
 // the glare where a pair leaves the ground
 const Glare = styled.div`
   position: absolute;
@@ -146,8 +168,12 @@ const Glare = styled.div`
 `;
 const Spotlights = () => (
   <SpotlightBox data-spotlights aria-hidden="true">
-    {BEAMS.map(({ x, sweep, seconds, delay, lean, isMirrored }, k) => (
-      <Beam key={k} style={{ left: `${x}px`, "--sweep": sweep, "--lean": lean, "--way": isMirrored ? -1 : 1, "--seconds": `${seconds}s`, "--delay": `${delay}s`, "--flicker": `${0.7 + k * 0.17}s` }} />
+    {BEAMS.map(({ x, way, lean }, k) => (
+      <Beam key={k} style={{ left: `${x}px`, "--sweep": SWEEP.sweep, "--lean": lean, "--way": way, "--seconds": `${SWEEP.seconds}s`, "--flicker": `${0.7 + k * 0.17}s` }}>
+        {BEAM_LAYERS.map(({ width, foot, blur, strength }, j) => (
+          <BeamLayer key={j} style={{ "--width": `${width}px`, "--foot": foot, "--blur": blur, "--strength": strength }}><div /></BeamLayer>
+        ))}
+      </Beam>
     ))}
     {BEAMS.map(({ x }, k) => <Glare key={k} style={{ left: `${x}px` }} />)}
   </SpotlightBox>
