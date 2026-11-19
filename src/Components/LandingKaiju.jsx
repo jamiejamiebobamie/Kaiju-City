@@ -21,6 +21,7 @@ export const SEA_KAIJU = {
   idle: [0, 1, 0, 7, 6, 7],
   roar: [2, 3, 4, 5, 5, 5, 5, 4, 3, 2],
   fireOn: [4, 5],
+  holdFrame: 5, // (the widest roar: held, breathing fire, from when it's reached)
   fire: { angle: 52, length: 1.05, seconds: 1.6 } // (degrees from upright toward its face; its length: of its height)
 };
 
@@ -78,7 +79,8 @@ export const SeaKaiju = ({ x, y, height, waterRow, isMirrored = false, isShown =
   useEffect(() => {
     let timer;
     const start = setTimeout(() => {
-      timer = setInterval(() => setStep(k => (k + 1) % sequence.current.length), SEA_KAIJU.frameMs);
+      // (Jamie: as normal until it breathes fire, then held breathing it until it fades)
+      timer = setInterval(() => setStep(k => (sequence.current[k] == SEA_KAIJU.holdFrame ? k : (k + 1) % sequence.current.length)), SEA_KAIJU.frameMs);
     }, delayMs);
     return () => { clearTimeout(start); clearInterval(timer); };
   }, []);
@@ -92,11 +94,9 @@ export const SeaKaiju = ({ x, y, height, waterRow, isMirrored = false, isShown =
     setFireStep(0);
     const timer = setInterval(() => {
       k += 1;
-      // (grow to the biggest, flicker between the two biggest while it lasts, then die away)
+      // (grow to the biggest, then flicker between the two biggest for as long as it breathes: held to the end)
       const count = kaijuSea.fire.count;
-      const roaring = k < 3 ? k : k < 9 ? (k % 2 ? count - 3 : count - 4) : Math.min(count - 1, k - 9 + count - 3);
-      setFireStep(roaring);
-      if (k > 12) clearInterval(timer);
+      setFireStep(k < 3 ? k : k % 2 ? count - 3 : count - 4);
     }, (SEA_KAIJU.fire.seconds * 1000) / 13);
     return () => clearInterval(timer);
   }, [isBreathing]);
