@@ -226,11 +226,15 @@ const COAST = { rest: 0.3 };
 const COPTER = {
   ms: 17000, enterMs: 2600, lightOnMs: 800, leaveMs: 1400,
   from: { x: 1340, y: 230, size: 2.6 }, // (off the window's top right, near and big)
+  // the second (Jamie): in from the top left a beat later, then flying at the first's 7 o'clock: a little behind it
+  // (nearer us, 'lag' of the way) and to its left ('side' px at size 1)
+  wingman: { from: { x: 360, y: 240, size: 2.6 }, delayMs: 900, lag: 0.05, side: -16 },
   altitude: 62, // px above its ground spot, at size 1
   body: 1.35, // its drawing's scale (it was too small to make out)
   light: { color: "255, 246, 222", rx: 10, ry: 3.2, sway: 4 }
 };
-const Copter = ({ path, horizon }) => {
+// 'from': where it comes in from; 'delayMs': how long after the event starts; 'lag', 'side': its place off the way
+const Copter = ({ path, horizon, from = COPTER.from, delayMs = 0, lag = 0, side = 0 }) => {
   const ref = useRef(null);
   const { width, height } = LANDING_VIEW.size;
   useEffect(() => {
@@ -250,21 +254,24 @@ const Copter = ({ path, horizon }) => {
     let frameId;
     const block = (x, y, w, h) => ctx.fillRect(Math.round(x), Math.round(y), Math.max(1, Math.round(w)), Math.max(1, Math.round(h)));
     const run = now => {
-      const ms = now - start;
+      const ms = now - start - delayMs;
       ctx.clearRect(0, 0, width, height);
       if (ms > COPTER.ms) return;
-      const first = ground(0);
+      if (ms < 0) { frameId = requestAnimationFrame(run); return; }
+      const off = (spot0, size0) => ({ x: spot0.x + side * size0, y: spot0.y });
+      const first = off(ground(0), sizeAt(ground(0).y));
       let spot, size, air;
       if (ms < COPTER.enterMs) {
         // swooping in: from off the top right to over the near end
         const t = ease(ms / COPTER.enterMs);
-        size = COPTER.from.size + (sizeAt(first.y) - COPTER.from.size) * t;
+        size = from.size + (sizeAt(first.y) - from.size) * t;
         spot = first;
-        air = { x: COPTER.from.x + (first.x - COPTER.from.x) * t, y: COPTER.from.y + (first.y - COPTER.altitude * sizeAt(first.y) - COPTER.from.y) * t };
+        air = { x: from.x + (first.x - from.x) * t, y: from.y + (first.y - COPTER.altitude * sizeAt(first.y) - from.y) * t };
       } else {
         const t = ease((ms - COPTER.enterMs) / (COPTER.ms - COPTER.enterMs));
-        spot = ground(t);
-        size = sizeAt(spot.y);
+        const way = ground(Math.max(0, t - lag * t));
+        size = sizeAt(way.y);
+        spot = off(way, size);
         air = { x: spot.x + Math.sin(ms / 900) * 2 * size, y: spot.y - COPTER.altitude * size };
       }
       const fade = Math.min(1, (COPTER.ms - ms) / COPTER.leaveMs);
@@ -326,10 +333,10 @@ const Copter = ({ path, horizon }) => {
     };
     frameId = requestAnimationFrame(run);
     return () => cancelAnimationFrame(frameId);
-  }, [path, horizon]);
+  }, [path, horizon, from, delayMs, lag, side]);
   return <canvas ref={ref} width={width} height={height} aria-hidden="true" style={{ position: "absolute", left: 0, top: 0, width, height, zIndex: 2, pointerEvents: "none", imageRendering: "pixelated" }} />;
 };
-export const COPTER_MS = COPTER.ms;
+export const COPTER_MS = COPTER.ms + COPTER.wingman.delayMs; // (the event: until the second is gone too)
 
 const fadeIn = keyframes`
   from { opacity: 0; }
@@ -418,6 +425,7 @@ export const LandingScene = ({ spot, zoom, isBack = false, logoScale = 1, lift =
   const front = event !== undefined && (
     <View style={{ left: -LANDING_VIEW.vanish.x * scale, top: -LANDING_VIEW.vanish.y * scale + (vanish ? vanish.k : 1) * lift, transform: `scale(${scale})`, background: "none" }}>
       <Copter key={event} path={landingTraffic.copter} horizon={LANDING_VIEW.horizon} />
+      <Copter key={`${event} wingman`} path={landingTraffic.copter} horizon={LANDING_VIEW.horizon} {...COPTER.wingman} />
     </View>
   );
   return (

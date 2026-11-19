@@ -234,20 +234,35 @@ const useZoom = settings => useMemo(() => ({
   then; a sheen runs across the letters, and as it does a spark runs out along each bar, the bars purple, fading away
   from the words.
 */
-const NEON = { fill: "#f4c27a", hot: "#fff1d6", stroke: "#5a1a72", glow: "176, 76, 255", warm: "244, 194, 122", bar: "176, 76, 255", breatheSeconds: 2.8, flickerSeconds: 7, sweepSeconds: 3.4, stepMs: 60 };
+const NEON = { fill: "#f4c27a", hot: "#fff1d6", stroke: "#2e0a3e", glow: "176, 76, 255", warm: "244, 194, 122", bar: "176, 76, 255", breatheSeconds: 2.8, flickerSeconds: 7, sweepSeconds: 3.4, stepMs: 60 };
 const neonBreathe = keyframes`
   0%, 100% { opacity: 0.72; text-shadow: 0 0 6px rgba(${NEON.glow}, 0.55), 0 0 14px rgba(${NEON.glow}, 0.25); }
   50% { opacity: 1; text-shadow: 0 0 8px rgba(${NEON.glow}, 0.9), 0 0 20px rgba(${NEON.glow}, 0.45), 0 0 3px rgba(${NEON.warm}, 0.6); }
 `;
+const NEON_SHADOW = "drop-shadow(0 0 2px rgba(0, 0, 0, 0.9))"; // (kept through the flicker: it's what sets the words off)
 const neonFlicker = keyframes`
-  0%, 70%, 74%, 78%, 100% { filter: none; }
-  71% { filter: brightness(0.35); }
-  73% { filter: brightness(1.15); }
-  76% { filter: brightness(0.55); }
+  0%, 70%, 74%, 78%, 100% { filter: ${NEON_SHADOW}; }
+  71% { filter: brightness(0.35) ${NEON_SHADOW}; }
+  73% { filter: brightness(1.15) ${NEON_SHADOW}; }
+  76% { filter: brightness(0.55) ${NEON_SHADOW}; }
 `;
 const neonSheen = keyframes`
   0%, 14%, 100% { color: ${NEON.fill}; }
   6% { color: ${NEON.hot}; text-shadow: 0 0 10px rgba(${NEON.warm}, 0.9); }
+`;
+// (Jamie, 2026-11-19: it clashed with the pale highway under it: a soft dark plate behind the words, and a darker,
+// thicker outline, so they stand out from every colour of the Peninsula)
+const NeonPlate = styled.div`
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: -14px -30px;
+    border-radius: 999px;
+    background: radial-gradient(ellipse at center, rgba(6, 4, 14, 0.72) 0%, rgba(6, 4, 14, 0.55) 45%, rgba(6, 4, 14, 0) 72%);
+    filter: blur(3px);
+    pointer-events: none;
+  }
 `;
 const NeonText = styled.div`
   position: relative;
@@ -256,8 +271,9 @@ const NeonText = styled.div`
   letter-spacing: 3px;
   white-space: nowrap;
   color: ${NEON.fill};
-  -webkit-text-stroke: 2px ${NEON.stroke};
+  -webkit-text-stroke: 3px ${NEON.stroke};
   paint-order: stroke fill;
+  filter: ${NEON_SHADOW};
   animation: ${neonBreathe} ${NEON.breatheSeconds}s ease-in-out infinite, ${neonFlicker} ${NEON.flickerSeconds}s steps(1) infinite;
   ${props => props.$isStill && css`animation: none;`}
 `;
@@ -297,6 +313,7 @@ export const NeonRow = ({ isLeaving }) => {
     <>
       {/* (the left bar's spark leaves as the sheen starts, the right's as it ends: out from the words) */}
       <NeonBar $side="left" $isStill={isLeaving} style={{ "--from": "100%", "--to": "0%", "--delay": "0ms" }} />
+      <NeonPlate>
       <NeonText $isStill={isLeaving}>
         <NeonLetter $isStill={isLeaving}><Bracket>[</Bracket></NeonLetter>
         {text.split("").map((letter, k) => (
@@ -304,6 +321,7 @@ export const NeonRow = ({ isLeaving }) => {
         ))}
         <NeonLetter $isStill={isLeaving} style={{ animationDelay: `${lastMs}ms` }}><Bracket>]</Bracket></NeonLetter>
       </NeonText>
+      </NeonPlate>
       <NeonBar $side="right" $isStill={isLeaving} style={{ "--from": "0%", "--to": "100%", "--delay": `${lastMs}ms` }} />
     </>
   );
