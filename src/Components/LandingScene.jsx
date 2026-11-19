@@ -143,25 +143,29 @@ const Moon = ({ x, y, radius }) => {
 // (Jamie, round 8: the top chunk's coasts outlined, 'coast'; always showing was tried and taken back: too strong at
 // the top, Treasure Island janky)
 const SURF = { color: "170, 205, 255", rest: 0.12, most: 0.75, swell: { speed: 1.5, across: 0.045, down: 0.11 }, size: { near: 90, least: 0.5, most: 1.6 } };
-// 'pixel': each point one pixel of the picture (the top chunk's thin coast outline), at 'rest' when no swell is on it
+// 'pixel': the coast's thin outline: drawn at three times the picture's resolution (a third of its pixel each, about a
+// screen pixel: Jamie, 2026-11-19, one of the picture's was too thick), each point's own strength (its 4th value), at
+// 'rest' when no swell is on it
+const FINE = 3;
 const Surf = ({ points, width, height, pixel = false, rest = SURF.rest }) => {
   const ref = useRef(null);
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas || !points) return;
     const ctx = canvas.getContext("2d");
-    const spots = points.map(([x, y, distance]) => ({ x, y, size: Math.max(SURF.size.least, Math.min(SURF.size.most, SURF.size.near / distance)), phase: Math.random() * Math.PI * 2, speed: 1 + Math.random() * 2 }));
+    const spots = points.map(([x, y, distance, weight = 1]) => ({ x, y, weight, size: Math.max(SURF.size.least, Math.min(SURF.size.most, SURF.size.near / distance)), phase: Math.random() * Math.PI * 2, speed: 1 + Math.random() * 2 }));
+    const fine = pixel ? FINE : 1;
     let frameId;
     const run = now => {
       const t = now / 1000;
-      ctx.clearRect(0, 0, width, height);
+      ctx.clearRect(0, 0, width * fine, height * fine);
       ctx.fillStyle = `rgb(${SURF.color})`;
-      spots.forEach(({ x, y, size, phase, speed }) => {
+      spots.forEach(({ x, y, weight, size, phase, speed }) => {
         // a swell rolling along (by place), and each point's own flicker
         const swell = Math.max(0, Math.sin(t * SURF.swell.speed - x * SURF.swell.across - y * SURF.swell.down)) ** 3;
         const twinkle = 0.5 + 0.5 * Math.sin(t * speed + phase);
-        ctx.globalAlpha = rest + (SURF.most - rest) * swell * twinkle;
-        if (pixel) ctx.fillRect(x, y, 1, 1);
+        ctx.globalAlpha = (rest + (SURF.most - rest) * swell * twinkle) * weight;
+        if (pixel) ctx.fillRect(Math.round(x * fine), Math.round(y * fine), 1, 1);
         else ctx.fillRect(x - size, y - size * 0.4, size * 2, size * 0.8);
       });
       frameId = requestAnimationFrame(run);
@@ -169,7 +173,8 @@ const Surf = ({ points, width, height, pixel = false, rest = SURF.rest }) => {
     frameId = requestAnimationFrame(run);
     return () => cancelAnimationFrame(frameId);
   }, [points, width, height, pixel, rest]);
-  return <canvas ref={ref} width={width} height={height} aria-hidden="true" style={{ position: "absolute", left: 0, top: 0, width, height, zIndex: 1, pointerEvents: "none", imageRendering: pixel ? "pixelated" : undefined }} />;
+  const fine = pixel ? FINE : 1;
+  return <canvas ref={ref} width={width * fine} height={height * fine} aria-hidden="true" style={{ position: "absolute", left: 0, top: 0, width, height, zIndex: 1, pointerEvents: "none", imageRendering: pixel ? "pixelated" : undefined }} />;
 };
 /*
   The stars (Jamie, 2026-11-19): gently twinkling, each brightening and dimming slowly in its own time, a few now and

@@ -59,6 +59,7 @@ if LANDING:
     BASE_WIDTH = 717
     CENTRE_ROWS = (560, 720)
     COAST_ABOVE = 360  # (map rows above it: the top chunk, its coast a thin outline rather than the map's surf)
+    COAST_FADE, COAST_LOW = (300, 480), 0.35  # (the outline full to the first row, easing to this share by the second)
     SYM_ROWS = (640, 720)  # (to the waist and on down: easing off before "[Press any key]")
     # (round 4: below "[Press any key]" (row PRESS_ROW here) the coasts carry straight on, widening as they do above
     # it, BASE_SPREAD times: the drawn perspective's own bent in near the bottom)
@@ -658,16 +659,18 @@ if traffic_path:
         # coast margin taken off), one point to a pixel of the picture)
         shore = cv2.erode(land.astype(np.uint8), np.ones((5, 5), np.uint8))
         outline = cv2.findContours(shore, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)[0]
+        # (Jamie, 2026-11-19: the whole coast, so the outline never starts out of nowhere: full at the top chunk, easing
+        # to a fainter line by COAST_FADE's end; kept to a third of a pixel of the picture, so it draws thin)
         taken = set()
         for contour in outline:
             for (mx, my) in contour[:, 0, :]:
-                if my < COAST_ABOVE:
-                    q = project(float(mx), float(my))
-                    if q and 0 <= q[0] < W and HZ < q[1] < H and is_seen(*q):
-                        spot = (int(round(q[0])), int(round(q[1])))
-                        if spot not in taken:
-                            taken.add(spot)
-                            coast.append([spot[0], spot[1], round(float(q[2]), 1)])
+                q = project(float(mx), float(my))
+                if q and 0 <= q[0] < W and HZ < q[1] < H and is_seen(*q):
+                    spot = (round(q[0] * 3), round(q[1] * 3))
+                    if spot not in taken:
+                        taken.add(spot)
+                        weight = 1 - (1 - COAST_LOW) * np.clip((my - COAST_FADE[0]) / (COAST_FADE[1] - COAST_FADE[0]), 0, 1)
+                        coast.append([round(spot[0] / 3, 2), round(spot[1] / 3, 2), round(float(q[2]), 1), round(float(weight), 2)])
         # none drawn over Treasure Island: the coasts behind it are hidden by it
         def off_island(points):
             return [p for p in points if not (0 <= int(round(p[1])) < H and 0 <= int(round(p[0])) < W and ti_shape[int(round(p[1])), int(round(p[0]))])]
