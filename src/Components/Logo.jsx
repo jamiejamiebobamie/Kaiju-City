@@ -62,7 +62,7 @@ const LogoImage = styled.img`
 // (Jamie, 2026-11-19: they felt dull: now each a bright narrow core in a wide soft halo, a glare where it leaves the
 // ground, a searchlight's flicker, an uneven sweep (lingering, then quick), added onto the skyline where they cross it.
 // Their length: never above the tallest building's top, even upright)
-const SPOTLIGHT = { base: 197, length: 149, /* (a third longer again: Jamie) */ core: { width: 12, strength: 0.8 }, halo: { width: 44, strength: 0.22 }, glare: 9, color: "255, 246, 222" };
+const SPOTLIGHT = { base: 197, length: 149, /* (a third longer again: Jamie) */ core: { width: 18, strength: 0.8 }, halo: { width: 64, strength: 0.22 }, /* (thicker: Jamie) */ glare: 9, color: "255, 246, 222" };
 // (Jamie: in twos, both pairs' bases behind the title, where the inner two first stood; quicker; each pair in step
 // but mirrored: as one swings left the other swings right)
 // (spread a little further apart: Jamie; still behind the title, which runs about x 176-426)
@@ -408,7 +408,7 @@ const Breath = () => BREATH_EMBERS.map(({ key, delay, cx, cy, fx, fy, lx, ly, bx
 // (Jamie: the word's own outline colour, CSS purple, glowing in it, then brighter (same hue); the opening halved three
 // times; then, 2026-11-19: no longer moving round, a neon tube instead: its gaps kept still, it blinks like one now and
 // then (every 'blinkSeconds'), and the first time the landing shows it flickers on, sparks cascading off it)
-const BORDER = { gap: 1.2, width: 1.9, color: "#d83cd8", opening: 0.02, glow: 2.2, onSeconds: 2.4, blinkSeconds: 4 };
+const BORDER = { gap: 1.2, width: 1.2, color: "#d83cd8", /* (thinner: Jamie) */ opening: 0.02, glow: 2.2, onSeconds: 2.4, blinkSeconds: 4 };
 const neonOn = keyframes`
   0% { opacity: 0; }
   10% { opacity: 0.9; }

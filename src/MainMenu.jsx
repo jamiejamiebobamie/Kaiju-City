@@ -14,6 +14,7 @@ import {
 } from "./Components/StyledComponents";
 import { Logo } from "./Components/Logo";
 import { COPTER_MS, LandingScene } from "./Components/LandingScene";
+import { FLASH, SceneFlash } from "./Components/LandingFlash";
 import { getIsTunePanel, LandingTuner, loadLandingTune } from "./Components/LandingTuner";
 import { GlobalSettingsContext } from "Home";
 import { IrradiationVat } from "./Game/ReactComponents/IrradiationVat";
@@ -146,39 +147,9 @@ const getBaseJoinerShape = ({ middle, topWidth, bottomWidth }) => {
     "--base-joiner-shape": `polygon(${inset(topWidth)} 0, ${out(topWidth)} 0, ${out(bottomWidth)} 100%, ${inset(bottomWidth)} 100%)`
   };
 };
-const LANDING_CYCLE = { everyFacing: 3, flashPeakMs: 280, fadeMs: 1500, embersMs: 2200 };
+// (the event starts under the flash's full white: Jamie: the Kaiju there as it clears)
+const LANDING_CYCLE = { everyFacing: 3, flashPeakMs: FLASH.whiteMs + 40, fadeMs: 1500, embersMs: 2200 };
 
-/*
-  The flash (Jamie, 2026-11-19): the buoy's lamp in the viewer's eyes: the scene (not the logo, not [Press any key])
-  goes white, a sun spot and a lens flare in the middle of the screen, and clears.
-*/
-const sceneFlash = keyframes`
-  0% { opacity: 0; }
-  12% { opacity: 1; }
-  30% { opacity: 1; }
-  100% { opacity: 0; }
-`;
-const SceneFlash = styled.div`
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0;
-  background:
-    radial-gradient(ellipse 55% 1.4% at 50% 46%, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0) 100%),
-    radial-gradient(circle at 50% 46%, #ffffff 0 5%, rgba(255, 250, 232, 0.97) 11%, rgba(255, 255, 255, 0.86) 34%, rgba(240, 244, 255, 0.72) 100%);
-  animation: ${sceneFlash} 1300ms ease-out forwards;
-  &::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background:
-      radial-gradient(circle at 50% 46%, transparent 17%, rgba(190, 215, 255, 0.55) 18.5%, transparent 21%),
-      radial-gradient(circle at 61% 57%, rgba(255, 190, 240, 0.45) 0 2.5%, transparent 3.2%),
-      radial-gradient(circle at 68% 64%, rgba(180, 220, 255, 0.4) 0 4.5%, transparent 5.2%),
-      radial-gradient(circle at 39% 35%, rgba(255, 230, 180, 0.4) 0 3%, transparent 3.6%);
-  }
-`;
 const getLogoScale = () => LOGO_SIZE.scale * Math.min(window.innerWidth / LOGO_SIZE.window.width, window.innerHeight / LOGO_SIZE.window.height);
 
 // the Peninsula behind the logo (LandingScene) zooms with the skyline, about the same spot: its vanishing point
