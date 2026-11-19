@@ -612,8 +612,9 @@ export const Logo = ({ joiner = false, spotlights = false, circuit = false, base
   {joiner && <LogoImage src={"/zoom-scene/landing-joiner-glow.png"} alt="" style={{ translate: "0 calc(var(--logo-lift, 0px) * -1 + var(--skyline-y, 0px) + var(--joiner-both, 0px) + var(--joiner-glow, 0px))" }} />}
   {joiner && <LogoImage src={"/zoom-scene/landing-joiner.png"} alt="" style={{ translate: "0 calc(var(--logo-lift, 0px) * -1 + var(--skyline-y, 0px) + var(--joiner-both, 0px) + var(--joiner-band, 0px))" }} />}
   <LogoImage src={"./SVG_logo.svg"} data-landing-logo />
-  {baseJoiner && <BaseJoinerBox data-base-joiner aria-hidden="true" />}
+  {/* (the spotlights behind the base joiner: their bright starts hidden by it: Jamie) */}
   {spotlights && <Spotlights />}
+  {baseJoiner && <BaseJoinerBox data-base-joiner aria-hidden="true" />}
   <KaijuWrapper >
     <SpriteSheet />
     <Breath />

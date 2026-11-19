@@ -19,11 +19,11 @@ import styled from "styled-components";
 // (Jamie's, 2026-11-18)
 export const LANDING_TUNE_DEFAULTS = {
   joiner: { both: -4.5, band: 0, glow: -1 },
-  moon: { x: 992, y: 357, radius: 30, darkSide: 0.3, glow: 0.55 },
+  moon: { x: 992, y: 357, radius: 30, darkSide: 0.03, glow: 0.55 },
   reflection: { x: 1021, y: 464, radius: 33 },
   cityscape: { y: 4 },
   pressKey: { top: 0.655 },
-  baseJoiner: { top: 191, height: 23, middle: 292.5, topWidth: 533, bottomWidth: 533, solid: 0.65, opacity: 1 }
+  baseJoiner: { top: 194.5, height: 10.5, middle: 292.5, topWidth: 506, bottomWidth: 678, solid: 0.58, opacity: 0.81 }
 };
 const RANGES = {
   joiner: { both: [-20, 20, 0.5], band: [-20, 20, 0.5], glow: [-20, 20, 0.5] },
