@@ -62,46 +62,46 @@ const LogoImage = styled.img`
 // (Jamie, 2026-11-19: they felt dull: now each a bright narrow core in a wide soft halo, a glare where it leaves the
 // ground, a searchlight's flicker, an uneven sweep (lingering, then quick), added onto the skyline where they cross it.
 // Their length: never above the tallest building's top, even upright)
-const SPOTLIGHT = { base: 197, length: 112, core: { width: 12, strength: 0.8 }, halo: { width: 44, strength: 0.22 }, glare: 9, color: "255, 246, 222" };
+const SPOTLIGHT = { base: 197, length: 149, /* (a third longer again: Jamie) */ core: { width: 12, strength: 0.8 }, halo: { width: 44, strength: 0.22 }, glare: 9, color: "255, 246, 222" };
 // (Jamie: in twos, both pairs' bases behind the title, where the inner two first stood; quicker; each pair in step
 // but mirrored: as one swings left the other swings right)
 // (spread a little further apart: Jamie; still behind the title, which runs about x 176-426)
 // (Jamie, 2026-11-19: the pairs broken up, each one's second beam moved inward, 'inward' px, so the two inner beams
 // stand further apart than each from its old partner; still swinging mirrored with it. Then: the two groups mirror
 // images of each other, in time; quicker; no stopping at the ends of a swing)
-const SWEEP = { left: 205, inward: 50, right: 405, sweep: 28, seconds: 2.8, lean: 6 };
+const SWEEP = { left: 205, inward: 50, right: 405, sweep: 40, seconds: 5.6, lean: 6 }; // (wider and half as quick: Jamie)
 const BEAMS = [
   { x: SWEEP.left, way: 1, lean: SWEEP.lean },
   { x: SWEEP.left + SWEEP.inward, way: -1, lean: -SWEEP.lean },
   { x: SWEEP.right - SWEEP.inward, way: 1, lean: SWEEP.lean }, // (the right group: the left's mirror image)
   { x: SWEEP.right, way: -1, lean: -SWEEP.lean }
 ];
-// steady across, turning round quickly at each end (a rounded triangle wave): never a stop
+// eased in and out at each end of the swing (a sine: Jamie, after the steady sweep), smooth through the turn
 const beamSweep = keyframes`
   0.00% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.0000deg * var(--way)); }
-  4.17% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.1951deg * var(--way)); }
-  8.33% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.3890deg * var(--way)); }
-  12.50% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.5798deg * var(--way)); }
-  16.67% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.7627deg * var(--way)); }
-  20.83% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.9224deg * var(--way)); }
+  4.17% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.2588deg * var(--way)); }
+  8.33% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.5000deg * var(--way)); }
+  12.50% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.7071deg * var(--way)); }
+  16.67% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.8660deg * var(--way)); }
+  20.83% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.9659deg * var(--way)); }
   25.00% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 1.0000deg * var(--way)); }
-  29.17% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.9224deg * var(--way)); }
-  33.33% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.7627deg * var(--way)); }
-  37.50% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.5798deg * var(--way)); }
-  41.67% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.3890deg * var(--way)); }
-  45.83% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.1951deg * var(--way)); }
+  29.17% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.9659deg * var(--way)); }
+  33.33% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.8660deg * var(--way)); }
+  37.50% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.7071deg * var(--way)); }
+  41.67% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.5000deg * var(--way)); }
+  45.83% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.2588deg * var(--way)); }
   50.00% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.0000deg * var(--way)); }
-  54.17% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -0.1951deg * var(--way)); }
-  58.33% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -0.3890deg * var(--way)); }
-  62.50% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -0.5798deg * var(--way)); }
-  66.67% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -0.7627deg * var(--way)); }
-  70.83% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -0.9224deg * var(--way)); }
+  54.17% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -0.2588deg * var(--way)); }
+  58.33% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -0.5000deg * var(--way)); }
+  62.50% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -0.7071deg * var(--way)); }
+  66.67% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -0.8660deg * var(--way)); }
+  70.83% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -0.9659deg * var(--way)); }
   75.00% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -1.0000deg * var(--way)); }
-  79.17% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -0.9224deg * var(--way)); }
-  83.33% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -0.7627deg * var(--way)); }
-  87.50% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -0.5798deg * var(--way)); }
-  91.67% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -0.3890deg * var(--way)); }
-  95.83% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -0.1951deg * var(--way)); }
+  79.17% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -0.9659deg * var(--way)); }
+  83.33% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -0.8660deg * var(--way)); }
+  87.50% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -0.7071deg * var(--way)); }
+  91.67% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -0.5000deg * var(--way)); }
+  95.83% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -0.2588deg * var(--way)); }
   100.00% { rotate: calc(var(--lean) * 1deg + var(--sweep) * -0.0000deg * var(--way)); }
 `;
 // (a searchlight's flicker: small, uneven)
