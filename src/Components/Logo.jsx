@@ -70,7 +70,10 @@ const PAIRS = [
   { x: 205, sweep: 26, seconds: 3.8, delay: -1.2, lean: 6 },
   { x: 405, sweep: 26, seconds: 4.4, delay: -0.5, lean: 6 }
 ];
-const BEAMS = PAIRS.flatMap(pair => [{ ...pair, isMirrored: false }, { ...pair, lean: -pair.lean, isMirrored: true }]);
+// (Jamie, 2026-11-19: the pairs broken up, each one's second beam moved inward, 'inward' px, so the two inner beams
+// stand further apart than each from its old partner; still swinging mirrored with it)
+const INWARD = 50;
+const BEAMS = PAIRS.flatMap((pair, k) => [{ ...pair, isMirrored: false }, { ...pair, x: pair.x + (k == 0 ? INWARD : -INWARD), lean: -pair.lean, isMirrored: true }]);
 // (uneven: easing in and out at different points, so it lingers at one side and whips across)
 const beamSweep = keyframes`
   0% { rotate: calc(var(--lean) * 1deg - var(--sweep) * 1deg * var(--way)); animation-timing-function: cubic-bezier(0.6, 0, 0.4, 1); }
@@ -146,9 +149,36 @@ const Spotlights = () => (
     {BEAMS.map(({ x, sweep, seconds, delay, lean, isMirrored }, k) => (
       <Beam key={k} style={{ left: `${x}px`, "--sweep": sweep, "--lean": lean, "--way": isMirrored ? -1 : 1, "--seconds": `${seconds}s`, "--delay": `${delay}s`, "--flicker": `${0.7 + k * 0.17}s` }} />
     ))}
-    {PAIRS.map(({ x }) => <Glare key={x} style={{ left: `${x}px` }} />)}
+    {BEAMS.map(({ x }, k) => <Glare key={k} style={{ left: `${x}px` }} />)}
   </SpotlightBox>
 );
+
+/*
+  The base joiner (Jamie, 2026-11-19): the skyline's own base blue carried on down a little below its buildings, solid
+  until the walking Kaiju's feet are surely covered (its sprite's feet reach about 3 px below the skyline's base, a
+  little more mid-step), then fading out over a few px; behind the buildings, in front of the Kaiju. In the logo's px.
+*/
+const BASE_JOINER = { color: "21, 38, 66", left: 26, right: 559, top: 191, solidTo: 206, fadeTo: 214, edge: 10 };
+const BaseJoinerBox = styled.div`
+  pointer-events: none;
+  position: absolute;
+  z-index: 9;
+  align-self: center;
+  width: 600px;
+  height: 300px;
+  translate: 0 calc(var(--logo-lift, 0px) * -1 + var(--skyline-y, 0px));
+  &::before {
+    content: "";
+    position: absolute;
+    left: ${BASE_JOINER.left}px;
+    width: ${BASE_JOINER.right - BASE_JOINER.left}px;
+    top: ${BASE_JOINER.top}px;
+    height: ${BASE_JOINER.fadeTo - BASE_JOINER.top}px;
+    background: linear-gradient(to bottom, rgba(${BASE_JOINER.color}, 1) 0, rgba(${BASE_JOINER.color}, 1) ${BASE_JOINER.solidTo - BASE_JOINER.top}px, rgba(${BASE_JOINER.color}, 0) 100%);
+    -webkit-mask-image: linear-gradient(to right, transparent, black ${BASE_JOINER.edge}px, black calc(100% - ${BASE_JOINER.edge}px), transparent);
+    mask-image: linear-gradient(to right, transparent, black ${BASE_JOINER.edge}px, black calc(100% - ${BASE_JOINER.edge}px), transparent);
+  }
+`;
 
 const KaijuWrapper = styled.div`
   pointer-events: none;
@@ -539,7 +569,8 @@ const SPARK_PAD = 120;
 // (scripts/landingJoiner.py); an image in the logo's own box, so it zooms with the skyline; 'spotlights': the
 // landing's searchlights (also in the logo's box: MainMenu zooms them with the skyline); 'circuit': the landing's live
 // border on "Kaiju"
-export const Logo = ({ joiner = false, spotlights = false, circuit = false }) => {
+// 'baseJoiner': the landing's (Jamie, 2026-11-19): the skyline's base blue carried down over the walking Kaiju's feet
+export const Logo = ({ joiner = false, spotlights = false, circuit = false, baseJoiner = false }) => {
   const wordRef = useRef(null);
   return (<LogoWrapper>
   <Title isDescription={false} style={{ translate: "0 calc(var(--logo-lift, 0px) * -1)" }}>
@@ -551,6 +582,7 @@ export const Logo = ({ joiner = false, spotlights = false, circuit = false }) =>
   {/* (behind the skyline: Jamie, round 6; each part placed up or down by the landing's tuner: --joiner-* in logo px) */}
   {joiner && <LogoImage src={"/zoom-scene/landing-joiner-glow.png"} alt="" style={{ translate: "0 calc(var(--logo-lift, 0px) * -1 + var(--skyline-y, 0px) + var(--joiner-both, 0px) + var(--joiner-glow, 0px))" }} />}
   {joiner && <LogoImage src={"/zoom-scene/landing-joiner.png"} alt="" style={{ translate: "0 calc(var(--logo-lift, 0px) * -1 + var(--skyline-y, 0px) + var(--joiner-both, 0px) + var(--joiner-band, 0px))" }} />}
+  {baseJoiner && <BaseJoinerBox data-base-joiner aria-hidden="true" />}
   <LogoImage src={"./SVG_logo.svg"} data-landing-logo />
   {spotlights && <Spotlights />}
   <KaijuWrapper >
