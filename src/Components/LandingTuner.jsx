@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import styled from "styled-components";
 
 /*
@@ -29,7 +29,7 @@ export const LANDING_TUNE_DEFAULTS = {
   cityscape: { y: 4 },
   pressKey: { top: 0.655 },
   baseJoiner: { top: 194.5, height: 10.5, middle: 292.5, topWidth: 506, bottomWidth: 678, solid: 0.58, opacity: 0.81 },
-  kaijuLeft: { x: 532, y: 525, height: 92, waterRow: 306, fireX: 0, fireY: -6, fireScale: 1, fireAngle: 52 },
+  kaijuLeft: { x: 510, y: 512, height: 143, waterRow: 306, fireX: 0, fireY: -6, fireScale: 1, fireAngle: 52 },
   kaijuRight: { x: 1103, y: 525, height: 92, waterRow: 306, fireX: 0, fireY: -6, fireScale: 1, fireAngle: 52 },
   kaiju: { preview: 0 },
   buoy: { x: 478, y: 452, size: 1 }
@@ -74,7 +74,7 @@ const saveLandingTune = tune => {
 
 const Panel = styled.div`
   position: fixed;
-  right: 10px;
+  ${props => (props.$isLeft ? "left" : "right")}: 10px; /* (moved to either side, to see what's under it: Jamie) */
   bottom: 10px;
   z-index: 50;
   width: 260px;
@@ -95,6 +95,10 @@ const Panel = styled.div`
 `;
 
 const stop = event => event.stopPropagation();
+const SIDE_KEY = "kaiju-landing-tune-side";
+const getIsLeftSaved = () => {
+  try { return window.localStorage.getItem(SIDE_KEY) == "left"; } catch (error) { return false; }
+};
 
 export const LandingTuner = ({ tune, setTune, onFlash = undefined }) => {
   const set = (group, key, value) => setTune(all => {
@@ -102,13 +106,19 @@ export const LandingTuner = ({ tune, setTune, onFlash = undefined }) => {
     saveLandingTune(next);
     return next;
   });
+  const [isLeft, setIsLeft] = useState(getIsLeftSaved);
+  const moveSide = () => {
+    const next = !isLeft;
+    setIsLeft(next);
+    try { window.localStorage.setItem(SIDE_KEY, next ? "left" : "right"); } catch (error) { /* (not kept) */ }
+  };
   const reset = () => {
     const next = copyDefaults();
     saveLandingTune(next);
     setTune(next);
   };
   return (
-    <Panel onClick={stop} onPointerDown={stop} onKeyDown={stop} onKeyUp={stop} aria-label="Landing tuner">
+    <Panel $isLeft={isLeft} onClick={stop} onPointerDown={stop} onKeyDown={stop} onKeyUp={stop} aria-label="Landing tuner">
       {Object.entries(RANGES).map(([group, keys]) => (
         <fieldset key={group}>
           <legend>{group}</legend>
@@ -122,6 +132,7 @@ export const LandingTuner = ({ tune, setTune, onFlash = undefined }) => {
         </fieldset>
       ))}
       <button onClick={() => navigator.clipboard && navigator.clipboard.writeText(JSON.stringify(tune))}>Copy values</button>
+      <button onClick={moveSide}>{isLeft ? "Move right →" : "← Move left"}</button>
       <button onClick={reset}>Reset</button>
       {onFlash && <button onClick={onFlash}>Flash now</button>}
     </Panel>
