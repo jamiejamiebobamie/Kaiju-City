@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import styled, { css, keyframes } from "styled-components";
 import { loadAssets } from "Utils/assetLoader";
+import { getIsGameBeaten } from "../DataClasses/Unlocks";
 
 /*
   The main monitor's boot (Jamie, playtest 29), the first time it comes on in a visit: the game's logo (off the
@@ -185,8 +186,46 @@ const PlayButton = styled.div`
   `}
 `;
 
+// after PLAY, the game's mode (Jamie, 2026-11-18): Single Player, or Multiplayer, closed until the game's been beaten
+// once (Unlocks: GAME_BEATEN_UNLOCK). Multiplayer itself isn't built yet: opened, it says so
+const ModeRow = styled.div`
+  position: absolute;
+  left: 50%;
+  top: 80.7%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  gap: 2cqw;
+  align-items: flex-start;
+`;
+const ModeButton = styled.button`
+  padding: 1cqw 2cqw;
+  font-size: 1.5cqw;
+  letter-spacing: 0.2cqw;
+  font-family: gameboy;
+  color: #c8ffb8;
+  background: #05030a;
+  border: 0.2cqw solid #3aff3a;
+  border-radius: 0.4cqw;
+  text-shadow: 0 0 0.5cqw #3aff3a;
+  box-shadow: 0 0 1cqw rgba(58, 255, 58, 0.4);
+  cursor: pointer;
+  outline: none;
+  &:hover:not(:disabled) { background: #0f2a10; }
+  &:disabled { color: #3e5a3a; border-color: #2a4a28; text-shadow: none; box-shadow: none; cursor: not-allowed; }
+`;
+const ModeNote = styled.div`
+  margin-top: 0.6cqw;
+  font-family: gameboy;
+  font-size: 0.8cqw;
+  letter-spacing: 0.1cqw;
+  color: #6f8f68;
+  text-align: center;
+`;
+
 export const MonitorBoot = ({ onDone }) => {
-  const [phase, setPhase] = useState("loading"); // loading, start, moving, pressed
+  const [phase, setPhase] = useState("loading"); // loading, start, moving, pressed, mode
+  const [isMultiplayerNoted, setIsMultiplayerNoted] = useState(false);
+  const isMultiplayerOpen = getIsGameBeaten();
   const [progress, setProgress] = useState(0);
   useEffect(() => {
     let isCancelled = false;
@@ -199,7 +238,7 @@ export const MonitorBoot = ({ onDone }) => {
   }, []);
   // (Jamie, playtest 31: no pretend cursor: the player clicks Play themselves, with the normal arrow)
   useEffect(() => {
-    const steps = { pressed: ["done", BOOT.clickHoldMs + BOOT.afterClickMs] }[phase];
+    const steps = { pressed: ["mode", BOOT.clickHoldMs] }[phase];
     if (!steps) return;
     const timeout = setTimeout(() => {
       if (steps[0] == "done") {
@@ -218,6 +257,14 @@ export const MonitorBoot = ({ onDone }) => {
           <Bar><div style={{ width: `${Math.round(progress * 100)}%` }} /></Bar>
           <Label>Loading {Math.round(progress * 100)}%</Label>
         </>
+      ) : phase == "mode" ? (
+        <ModeRow>
+          <ModeButton onClick={() => { hasBooted = true; setTimeout(onDone, BOOT.afterClickMs); }}>Single Player</ModeButton>
+          <div>
+            <ModeButton disabled={!isMultiplayerOpen} onClick={() => setIsMultiplayerNoted(true)}>Multiplayer</ModeButton>
+            <ModeNote>{!isMultiplayerOpen ? "Beat the game to unlock" : isMultiplayerNoted ? "Coming soon" : ""}</ModeNote>
+          </div>
+        </ModeRow>
       ) : (
         <>
           <PlayButton as="button" $isPressed={phase == "pressed"} onClick={() => phase == "start" && setPhase("pressed")}>PLAY</PlayButton>

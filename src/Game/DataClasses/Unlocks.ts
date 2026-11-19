@@ -27,6 +27,10 @@ export const getWonBattlegrounds = (): Array<string> => getUnlocks()
   .filter(id => id.startsWith('battleground-'))
   .map(id => id.slice('battleground-'.length));
 
+// the whole game beaten once (the last fight won): opens Multiplayer on the start screen (Jamie, 2026-11-18)
+export const GAME_BEATEN_UNLOCK = 'game-beaten';
+export const getIsGameBeaten = () => getUnlocks().includes(GAME_BEATEN_UNLOCK);
+
 export const addUnlock = (id: string) => save(UNLOCKS_KEY, [...new Set([...getUnlocks(), id])]);
 
 // dev testing: everything unlocked is closed again

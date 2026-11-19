@@ -1,4 +1,4 @@
-import { addUnlock, getBattlegroundUnlockId, getUnlocks, saveRecruitChoice } from './Unlocks';
+import { addUnlock, GAME_BEATEN_UNLOCK, getBattlegroundUnlockId, getUnlocks, saveRecruitChoice } from './Unlocks';
 import { storage } from 'Utils/storage';
 
 /*
@@ -64,6 +64,7 @@ export const unlockEverything = (battlegroundIds: Array<string>) => {
   SKILL_UNLOCKS.forEach(({ element }) => addUnlock(getSkillId(element)));
   Object.values(TOOL_UNLOCKS).forEach(id => addUnlock(id));
   battlegroundIds.forEach(levelId => addUnlock(getBattlegroundUnlockId(levelId)));
+  addUnlock(GAME_BEATEN_UNLOCK); // (Multiplayer open too)
   SKILL_UNLOCKS.filter(({ recruit }) => recruit != 'agent').forEach(({ recruit }) => saveRecruitChoice(recruit, 'recruit'));
 };
 

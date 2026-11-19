@@ -39,7 +39,7 @@ import { GameManager, GameResult } from '../DataClasses/GameManager';
 import { getActiveHotspots } from "./GameBoard/SceneElements";
 import { getIsDetourLevel } from "../DataClasses/Objectives";
 import { getIsFirstPlay, markPlaythroughStarted } from "../DataClasses/Avatars";
-import { addUnlock, clearRecruitChoices, getBattlegroundUnlockId, getRecruitChoices, getUnlocks, getWonBattlegrounds, resetUnlocks, saveRecruitChoice } from '../DataClasses/Unlocks';
+import { addUnlock, GAME_BEATEN_UNLOCK, clearRecruitChoices, getBattlegroundUnlockId, getRecruitChoices, getUnlocks, getWonBattlegrounds, resetUnlocks, saveRecruitChoice } from '../DataClasses/Unlocks';
 
 // the map walks show the battlegrounds already won on, from whatever was saved
 updateMapWalkSites(getWonBattlegrounds());
@@ -1259,7 +1259,9 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     // the end of the game: the title, then the credits, then the landing screen
     // the last fight's ends: the city saved, or (the player turned, with no teammate left to) destroyed (Jamie)
     const isDestroyed = !!gameManager.current && gameManager.current.finalTurnState == "destroyed";
-    if (isWon && (level.giantKaiju || (campaignIndex !== null && getIsLastSection(campaignIndex)))) return { title: isDestroyed ? "You turned into a Kaiju and destroyed the city!" : "You saved the city!", buttons: [], isFinale: true };
+    const isFinale = isWon && (level.giantKaiju || (campaignIndex !== null && getIsLastSection(campaignIndex)));
+    if (isFinale) addUnlock(GAME_BEATEN_UNLOCK); // (the game beaten: Multiplayer opens on the start screen)
+    if (isFinale) return { title: isDestroyed ? "You turned into a Kaiju and destroyed the city!" : "You saved the city!", buttons: [], isFinale: true };
     if (campaignIndex === null) {
       return { title, buttons: [{ text: "Play again", onClick: () => fadeOutThen(resetMatch) }, { text: "Quit", onClick: () => leaveByZoom() } /* (the way back out, as the bezel's Leave: Jamie) */] };
     }
