@@ -85,7 +85,9 @@ const MoonReflection = ({ x, y, radius }) => {
   horizon's glow), so the dark side matches it.
 */
 // (brightness: 0.75 of what it was, Jamie 2026-11-19: it outshone the title and the skyline)
-const MOON = { lit: [250, 238, 168], glow: [38, 44, 70], glowReach: 1.6, bite: { x: -0.45, y: -0.15, size: 0.95 }, brightness: 0.75 };
+// (earthshine: the dark side the sky's colour, a little brighter, as a crescent's is seen: Jamie, 2026-11-19: it was too
+// bright, the sky with the whole glow on it)
+const MOON = { lit: [250, 238, 168], glow: [38, 44, 70], glowReach: 1.6, bite: { x: -0.45, y: -0.15, size: 0.95 }, brightness: 0.75, earthshine: 0.83 }; // (the sky just round it, glow and all, a touch brighter: 0.22 read as a dark hole in the glow)
 const getSkyAt = row => {
   const t = Math.pow(Math.max(0, Math.min(1, row / LANDING_VIEW.horizon)), 2.2);
   const shine = Math.exp(-Math.pow((row - LANDING_VIEW.horizon) / 6, 2));
@@ -114,7 +116,8 @@ const Moon = ({ x, y, radius }) => {
         if (distance <= radius) {
           const inBite = Math.hypot(dx - MOON.bite.x * radius, dy - MOON.bite.y * radius) <= MOON.bite.size * radius;
           const base = sky.map((value, c) => value + MOON.glow[c]);
-          const color = inBite ? base : base.map((value, c) => Math.max(value, (value * 0.15 + MOON.lit[c] * 0.85) * MOON.brightness));
+          const dark = sky.map((value, c) => value + MOON.glow[c] * MOON.earthshine);
+          const color = inBite ? dark : base.map((value, c) => Math.max(value, (value * 0.15 + MOON.lit[c] * 0.85) * MOON.brightness));
           discData.data.set([...color.map(Math.round), 255], k);
         } else {
           const halo = Math.pow(Math.max(0, 1 - (distance - radius) / (radius * MOON.glowReach)), 2);
@@ -230,6 +233,7 @@ const COPTER = {
   // (nearer us, 'lag' of the way) and to its left ('side' px at size 1)
   wingman: { from: { x: 360, y: 240, size: 2.6 }, delayMs: 900, lag: 0.05, side: -16 },
   altitude: 62, // px above its ground spot, at size 1
+  groundFrom: 760, // its light's spot as it comes in: this row of the picture (below a window's bottom), on to the near end
   body: 1.35, // its drawing's scale (it was too small to make out)
   light: { color: "255, 246, 222", rx: 10, ry: 3.2, sway: 4 }
 };
@@ -265,8 +269,10 @@ const Copter = ({ path, horizon, from = COPTER.from, delayMs = 0, lag = 0, side 
         // swooping in: from off the top right to over the near end
         const t = ease(ms / COPTER.enterMs);
         size = from.size + (sizeAt(first.y) - from.size) * t;
-        spot = first;
         air = { x: from.x + (first.x - from.x) * t, y: from.y + (first.y - COPTER.altitude * sizeAt(first.y) - from.y) * t };
+        // its light on the ground below it all the way: near and high as it comes in, that's far down, past the
+        // window's bottom, closing in on the near end as it arrives (Jamie: the beam had hung in mid-air)
+        spot = { x: air.x + (first.x - air.x) * t * 0.5, y: COPTER.groundFrom + (first.y - COPTER.groundFrom) * t };
       } else {
         const t = ease((ms - COPTER.enterMs) / (COPTER.ms - COPTER.enterMs));
         const way = ground(Math.max(0, t - lag * t));
@@ -276,7 +282,7 @@ const Copter = ({ path, horizon, from = COPTER.from, delayMs = 0, lag = 0, side 
       }
       const fade = Math.min(1, (COPTER.ms - ms) / COPTER.leaveMs);
       // the searchlight: a cone from its belly to a circle on the ground, sweeping a little
-      const lightOn = ms < COPTER.enterMs ? 0 : Math.min(1, (ms - COPTER.enterMs) / COPTER.lightOnMs);
+      const lightOn = Math.min(1, ms / COPTER.lightOnMs); // (on as it first shows: Jamie)
       if (lightOn > 0) {
         const sway = Math.sin(ms / 1300) * COPTER.light.sway * size;
         const gx = spot.x + sway, gy = spot.y;

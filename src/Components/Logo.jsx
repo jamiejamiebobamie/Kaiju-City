@@ -346,8 +346,8 @@ const Breath = () => BREATH_EMBERS.map(({ key, delay, cx, cy, fx, fy, lx, ly, bx
   In the word's own px (before the title's and the logo's scaling): the gap, the border's width, the opening (a share
   of each letter's outline), each letter's lap.
 */
-// (Jamie: the word's own outline colour, CSS purple, glowing in it; the opening half what it was)
-const BORDER = { gap: 2.4, width: 1.9, color: "#800080", opening: 0.08, seconds: [3.4, 4.6], glow: 2.2 };
+// (Jamie: the word's own outline colour, CSS purple, glowing in it, then brighter (same hue); the opening halved twice)
+const BORDER = { gap: 2.4, width: 1.9, color: "#b41db4", opening: 0.04, seconds: [3.4, 4.6], glow: 2.2 };
 const borderFlicker = keyframes`
   0%, 100% { opacity: 1; }
   41% { opacity: 1; }
