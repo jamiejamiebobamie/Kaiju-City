@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
 import styled, { keyframes } from "styled-components";
 import {
   Title,
@@ -336,14 +336,99 @@ const Breath = () => BREATH_EMBERS.map(({ key, delay, cx, cy, fx, fy, lx, ly, bx
   }} />
 ));
 
+/*
+  The title's live border (Jamie, 2026-11-19): over "Kaiju", its own letters' outlines, as current runs round a
+  circuit: a soft purple glow on them, bright violet-white dashes running along the strokes, deeper purple ones running
+  the other way, all of it crackling (a quick jitter). An SVG copy of the word laid exactly over it: measured from the
+  word's own text box once its font is in, so it keeps the word's curves, shape and scale; it goes where the title goes.
+*/
+const CIRCUIT = {
+  glow: { color: "#c45cff", width: 3.2, opacity: 0.55, blur: 1.6 },
+  runners: [
+    { color: "#f8dcff", width: 1.3, dash: "16 70", seconds: 2.4, reverse: false, opacity: 0.95 },
+    { color: "#b04cff", width: 1.8, dash: "6 30", seconds: 3.3, reverse: true, opacity: 0.85 }
+  ],
+  crackle: { scale: 1.6, seconds: 0.5 }
+};
+const circuitRun = keyframes`
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -172; }
+`;
+const circuitPulse = keyframes`
+  0%, 100% { opacity: var(--low); }
+  50% { opacity: var(--high); }
+`;
+const CircuitBox = styled.svg`
+  position: absolute;
+  overflow: visible;
+  pointer-events: none;
+  & .glow { animation: ${circuitPulse} 2.2s ease-in-out infinite; }
+  & .runner { animation: ${circuitRun} var(--seconds) linear infinite; }
+  & .runner.reverse { animation-direction: reverse; }
+`;
+const KaijuCircuit = ({ wordRef }) => {
+  const [box, setBox] = useState(undefined);
+  const [baseline, setBaseline] = useState(0);
+  const textRef = useRef(null);
+  useLayoutEffect(() => {
+    const word = wordRef.current;
+    if (!word) return;
+    const measure = () => {
+      const holder = word.offsetParent;
+      if (!holder) return;
+      const range = document.createRange();
+      range.selectNodeContents(word);
+      const text = range.getBoundingClientRect();
+      const around = holder.getBoundingClientRect();
+      const k = around.width / holder.offsetWidth; // (the title's own scale, and the logo's)
+      const style = window.getComputedStyle(word);
+      setBox({ left: (text.left - around.left) / k, top: (text.top - around.top) / k, width: text.width / k, height: text.height / k, font: style.fontFamily, size: style.fontSize, spacing: style.letterSpacing });
+    };
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(measure);
+    else measure();
+  }, []);
+  // (the copy's baseline found from its own box: SVG and HTML place a font's text differently)
+  useLayoutEffect(() => {
+    if (!box || !textRef.current) return;
+    const own = textRef.current.getBBox();
+    setBaseline(-own.y);
+  }, [box]);
+  if (!box) return null;
+  const textProps = { x: 0, y: baseline, fontFamily: box.font, fontSize: box.size, letterSpacing: box.spacing, fill: "none" };
+  return (
+    <CircuitBox aria-hidden="true" width={box.width} height={box.height} style={{ left: box.left, top: box.top }}>
+      <defs>
+        <filter id="kaiju-crackle" x="-10%" y="-10%" width="120%" height="120%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="1" seed="1" result="noise">
+            <animate attributeName="seed" values="1;5;9;13;17;21" dur={`${CIRCUIT.crackle.seconds}s`} calcMode="discrete" repeatCount="indefinite" />
+          </feTurbulence>
+          <feDisplacementMap in="SourceGraphic" in2="noise" scale={CIRCUIT.crackle.scale} />
+          <feGaussianBlur stdDeviation="0.25" result="sharp" />
+          <feGaussianBlur in="sharp" stdDeviation="1.4" result="soft" />
+          <feMerge><feMergeNode in="soft" /><feMergeNode in="sharp" /></feMerge>
+        </filter>
+        <filter id="kaiju-glow"><feGaussianBlur stdDeviation={CIRCUIT.glow.blur} /></filter>
+      </defs>
+      <text ref={textRef} {...textProps} className="glow" stroke={CIRCUIT.glow.color} strokeWidth={CIRCUIT.glow.width} filter="url(#kaiju-glow)" style={{ "--low": CIRCUIT.glow.opacity * 0.6, "--high": CIRCUIT.glow.opacity }}>Kaiju</text>
+      {CIRCUIT.runners.map(({ color, width, dash, seconds, reverse, opacity }, k) => (
+        <text key={k} {...textProps} className={`runner${reverse ? " reverse" : ""}`} stroke={color} strokeWidth={width} strokeDasharray={dash} strokeLinecap="round" opacity={opacity} filter="url(#kaiju-crackle)" style={{ "--seconds": `${seconds}s` }}>Kaiju</text>
+      ))}
+    </CircuitBox>
+  );
+};
+
 // 'joiner': the landing's (Jamie, 2026-11-18): over the skyline's bottom, grounding it in the Peninsula behind
 // (scripts/landingJoiner.py); an image in the logo's own box, so it zooms with the skyline; 'spotlights': the
-// landing's searchlights (also in the logo's box: MainMenu zooms them with the skyline)
-export const Logo = ({ joiner = false, spotlights = false }) => (<LogoWrapper>
+// landing's searchlights (also in the logo's box: MainMenu zooms them with the skyline); 'circuit': the landing's live
+// border on "Kaiju"
+export const Logo = ({ joiner = false, spotlights = false, circuit = false }) => {
+  const wordRef = useRef(null);
+  return (<LogoWrapper>
   <Title isDescription={false} style={{ translate: "0 calc(var(--logo-lift, 0px) * -1)" }}>
-    <StyledSpookyText isDescription={true}>Kaiju</StyledSpookyText>{" "}
+    <StyledSpookyText ref={wordRef} isDescription={true}>Kaiju</StyledSpookyText>{" "}
     <StyledSciFiText>City</StyledSciFiText>
     <StyledSpookyTextShadow>Kaiju</StyledSpookyTextShadow>{" "}
+    {circuit && <KaijuCircuit wordRef={wordRef} />}
   </Title>
   {/* (behind the skyline: Jamie, round 6; each part placed up or down by the landing's tuner: --joiner-* in logo px) */}
   {joiner && <LogoImage src={"/zoom-scene/landing-joiner-glow.png"} alt="" style={{ translate: "0 calc(var(--logo-lift, 0px) * -1 + var(--joiner-both, 0px) + var(--joiner-glow, 0px))" }} />}
@@ -358,3 +443,4 @@ export const Logo = ({ joiner = false, spotlights = false }) => (<LogoWrapper>
     <SpriteSheet isSmoke={true}/>
   </KaijuWrapper>
 </LogoWrapper>);
+};
