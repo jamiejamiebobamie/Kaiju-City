@@ -31,13 +31,18 @@ export const TrafficLights = ({ paths, glints = [], width, height, zIndex, near 
     const ctx = canvas.getContext("2d");
     const sizing = { ...TRAFFIC.size, ...(near && near.size) };
     const closeness = distance => near ? Math.max(0, Math.min(1, 1 - distance / near.distance)) : 0;
+    // each road's cars evenly spaced round it (a little off even), all at the road's one speed, so they never catch each
+    // other up and bunch (Jamie, 2026-11-19: they bunched at the base: each car had its own speed, and the near boost
+    // changed along the road, piling them up where it eased off); a road coming near the viewer has more cars and its
+    // whole length goes quicker, by its nearest point
     const cars = paths.flatMap((path, p) => {
-      const nearPoints = near ? path.map((point, k) => [point, k]).filter(([point]) => point[2] < near.distance).map(([, k]) => k) : [];
-      const extra = near ? Math.floor(nearPoints.length / near.carEvery) : 0;
-      return [
-        ...[...Array(Math.max(1, Math.floor(path.length / TRAFFIC.carEvery))).keys()].map(() => Math.random() * (path.length - 1)),
-        ...[...Array(extra).keys()].map(() => Math.min(path.length - 1.01, nearPoints[Math.floor(Math.random() * nearPoints.length)]))
-      ].map(at => ({ p, at, speed: between(TRAFFIC.pointsPerSecond) }));
+      const nearest = Math.min(...path.map(point => point[2]));
+      const nearCount = near ? path.filter(point => point[2] < near.distance).length : 0;
+      const count = Math.max(1, Math.floor(path.length / TRAFFIC.carEvery) + (near ? Math.floor(nearCount / near.carEvery) : 0));
+      const speed = between(TRAFFIC.pointsPerSecond) * (near ? 1 + (near.speed - 1) * closeness(nearest) : 1);
+      const spacing = (path.length - 1) / count;
+      const start = Math.random() * spacing;
+      return [...Array(count).keys()].map(k => ({ p, at: (start + k * spacing + (Math.random() - 0.5) * spacing * 0.4) % (path.length - 1), speed }));
     });
     const sparkles = glints.map(([x, y, distance]) => ({ x, y, distance, period: between(GLINT.seconds), phase: Math.random() }));
     let frameId;
@@ -58,9 +63,7 @@ export const TrafficLights = ({ paths, glints = [], width, height, zIndex, near 
       });
       cars.forEach(car => {
         const path = paths[car.p];
-        const here = path[Math.floor(car.at)];
-        const boost = near ? 1 + (near.speed - 1) * closeness(here[2]) : 1;
-        car.at = (car.at + car.speed * boost * seconds) % (path.length - 1);
+        car.at = (car.at + car.speed * seconds) % (path.length - 1);
         const k = Math.floor(car.at);
         const share = car.at - k;
         const [x1, y1, d1] = path[k];
