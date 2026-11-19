@@ -335,7 +335,8 @@ SKY_TOP = np.array([11, 12, 14]) if LANDING else np.array([4, 6, 16])  # (the la
 sky = SKY_TOP * (1 - t ** (2.2 if LANDING else 1))[..., None] + np.array([26, 40, 72]) * (t ** (2.2 if LANDING else 1))[..., None]
 sky = np.broadcast_to(sky, (H, W, 3)).copy()
 stars = (rng.random((H, W)) < 0.0009) & (ys < HZ * 0.9)
-sky[stars] = [200, 210, 255]
+if not LANDING:  # (the landing's twinkle: drawn live by LandingScene's Stars, from 'stars' in the traffic file)
+    sky[stars] = [200, 210, 255]
 rows = np.arange(H)[:, None]
 is_sky = rows < ybuf[None, :]
 out = np.where(is_sky[..., None], sky, out)
@@ -386,6 +387,8 @@ if LANDING:
         out = np.where(shape[..., None], color, out)
         rim = shape & (ys < tops[None, :] + 1)
         out = np.where(rim[..., None], color + np.array([20, 24, 40]), out)
+    # the stars that show: in the open sky, not behind the far lands (Jamie, 2026-11-19: gently twinkling)
+    STAR_LIST = [[int(x), int(y), round(float(rng.uniform(0.45, 1.0)), 2)] for y, x in np.argwhere(stars & is_sky & ~far_shapes)]
     # the ground darkens toward the bottom of the screen, into the page's black: the eye goes up the Peninsula
     below = np.clip((ys - HZ) / (H - HZ), 0, 1)
     shade = 1 - 0.7 * np.clip((below - 0.45) / 0.55, 0, 1) ** 1.3
@@ -627,7 +630,7 @@ if traffic_path:
         def off_island(points):
             return [p for p in points if not (0 <= int(round(p[1])) < H and 0 <= int(round(p[0])) < W and ti_shape[int(round(p[1])), int(round(p[0]))])]
         surf, island, coast = off_island(surf), off_island(island), off_island(coast)
-        extra = {'surf': surf, 'islandSurf': island, 'coast': coast}
+        extra = {'surf': surf, 'islandSurf': island, 'coast': coast, 'stars': STAR_LIST}
         print('coast', len(coast))
         print('surf', len(surf), 'island surf', len(island))
     json.dump({'paths': paths, 'glints': glints, 'near': NEAR, 'horizon': HZ, **extra}, open(traffic_path, 'w'))

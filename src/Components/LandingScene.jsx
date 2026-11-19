@@ -168,6 +168,41 @@ const Surf = ({ points, width, height }) => {
   }, [points, width, height]);
   return <canvas ref={ref} width={width} height={height} aria-hidden="true" style={{ position: "absolute", left: 0, top: 0, width, height, zIndex: 1, pointerEvents: "none" }} />;
 };
+/*
+  The stars (Jamie, 2026-11-19): gently twinkling, each brightening and dimming slowly in its own time, a few now and
+  then flaring a little brighter; single pixels of the picture, as they were drawn into it. Points from
+  scripts/labWindowView.py ('stars': [x, y, brightness]).
+*/
+const STAR = { color: "200, 210, 255", seconds: [2.5, 7], low: 0.35, flare: 0.08 };
+const Stars = ({ points, width, height }) => {
+  const ref = useRef(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas || !points) return;
+    const ctx = canvas.getContext("2d");
+    const stars = points.map(([x, y, brightness]) => ({ x, y, brightness, period: STAR.seconds[0] + Math.random() * (STAR.seconds[1] - STAR.seconds[0]), phase: Math.random(), flares: Math.random() < STAR.flare }));
+    let frameId;
+    const run = now => {
+      const t = now / 1000;
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = `rgb(${STAR.color})`;
+      stars.forEach(({ x, y, brightness, period, phase, flares }) => {
+        const wave = 0.5 + 0.5 * Math.sin((t / period + phase) * Math.PI * 2);
+        ctx.globalAlpha = brightness * (STAR.low + (1 - STAR.low) * wave);
+        ctx.fillRect(x, y, 1, 1);
+        if (flares && wave > 0.92) { // (a little cross of light at its brightest)
+          ctx.globalAlpha = brightness * (wave - 0.92) * 6;
+          ctx.fillRect(x - 1, y, 1, 1); ctx.fillRect(x + 1, y, 1, 1); ctx.fillRect(x, y - 1, 1, 1); ctx.fillRect(x, y + 1, 1, 1);
+        }
+      });
+      frameId = requestAnimationFrame(run);
+    };
+    frameId = requestAnimationFrame(run);
+    return () => cancelAnimationFrame(frameId);
+  }, [points, width, height]);
+  return <canvas ref={ref} width={width} height={height} aria-hidden="true" style={{ position: "absolute", left: 0, top: 0, width, height, pointerEvents: "none", imageRendering: "pixelated" }} />;
+};
+
 const SURF_POINTS = [...(landingTraffic.surf || []), ...(landingTraffic.islandSurf || []), ...(landingTraffic.coast || [])];
 
 const fadeIn = keyframes`
@@ -242,6 +277,7 @@ export const LandingScene = ({ spot, zoom, isBack = false, logoScale = 1, lift =
   const scale = LANDING_VIEW.scale * (vanish ? vanish.k : 1);
   const content = (
     <View style={{ left: -LANDING_VIEW.vanish.x * scale, top: -LANDING_VIEW.vanish.y * scale + (vanish ? vanish.k : 1) * lift, transform: `scale(${scale})` }}>
+      <Stars points={landingTraffic.stars} width={LANDING_VIEW.size.width} height={LANDING_VIEW.size.height} />
       <Surf points={SURF_POINTS} width={LANDING_VIEW.size.width} height={LANDING_VIEW.size.height} />
       <Moon {...tune.moon} />
       <MoonReflection {...tune.reflection} />
