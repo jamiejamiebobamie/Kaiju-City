@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import styled, { keyframes } from "styled-components";
 import {
   Title,
@@ -346,25 +346,104 @@ const Breath = () => BREATH_EMBERS.map(({ key, delay, cx, cy, fx, fy, lx, ly, bx
   In the word's own px (before the title's and the logo's scaling): the gap, the border's width, the opening (a share
   of each letter's outline), each letter's lap.
 */
-// (Jamie: the word's own outline colour, CSS purple, glowing in it, then brighter (same hue); the opening halved twice)
-const BORDER = { gap: 2.4, width: 1.9, color: "#b41db4", opening: 0.04, seconds: [3.4, 4.6], glow: 2.2 };
-const borderFlicker = keyframes`
-  0%, 100% { opacity: 1; }
-  41% { opacity: 1; }
-  42% { opacity: 0.6; }
-  44% { opacity: 1; }
-  77% { opacity: 0.85; }
+// (Jamie: the word's own outline colour, CSS purple, glowing in it, then brighter (same hue); the opening halved three
+// times; then, 2026-11-19: no longer moving round, a neon tube instead: its gaps kept still, it blinks like one now and
+// then (every 'blinkSeconds'), and the first time the landing shows it flickers on, sparks cascading off it)
+const BORDER = { gap: 1.2, width: 1.9, color: "#b41db4", opening: 0.02, glow: 2.2, onSeconds: 2.4, blinkSeconds: 4 };
+const neonOn = keyframes`
+  0% { opacity: 0; }
+  10% { opacity: 0.9; }
+  12% { opacity: 0; }
+  25% { opacity: 1; }
+  27% { opacity: 0.1; }
+  40% { opacity: 0.9; }
+  42% { opacity: 0.2; }
+  52% { opacity: 1; }
+  54% { opacity: 0.4; }
+  60%, 100% { opacity: 1; }
 `;
+const neonBlink = keyframes`
+  0%, 90%, 100% { opacity: 1; }
+  91% { opacity: 0.25; }
+  92.5% { opacity: 1; }
+  94% { opacity: 0.45; }
+  95.5% { opacity: 1; }
+`;
+// the moments in the turn-on when it catches (shares of it), each throwing sparks
+const SPARK_BURSTS = [0.1, 0.25, 0.4, 0.52, 0.6];
+let isNeonLit = false; // (it flickers on with sparks only the first time the landing shows in a visit)
 const BorderBox = styled.svg`
   position: absolute;
   overflow: visible;
   pointer-events: none;
-  & .neon { animation: ${borderFlicker} 5.3s linear infinite; }
+  & .neon { animation: ${neonBlink} ${BORDER.blinkSeconds}s linear infinite; }
+  & .neon.starting { animation: ${neonOn} ${BORDER.onSeconds}s steps(1, end) forwards, ${neonBlink} ${BORDER.blinkSeconds}s linear ${BORDER.onSeconds}s infinite; }
 `;
+const SparkCanvas = styled.canvas`
+  position: absolute;
+  pointer-events: none;
+`;
+/*
+  The turn-on's sparks (too high a voltage): at each moment it catches, bursts thrown from a few spots on the
+  letters' borders, bright white to yellow to purple, arcing out and falling, fading as they go.
+*/
+const NeonSparks = ({ spots, width, height, pad }) => {
+  const ref = useRef(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas || !spots.length) return;
+    const ctx = canvas.getContext("2d");
+    const sparks = [];
+    const start = performance.now();
+    const fired = new Set();
+    const colors = ["255, 255, 255", "255, 236, 160", "236, 150, 255", "200, 90, 255"];
+    let last = start;
+    let frameId;
+    const run = now => {
+      const seconds = (now - start) / 1000;
+      const step = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      SPARK_BURSTS.forEach((share, b) => {
+        if (fired.has(b) || seconds < share * BORDER.onSeconds) return;
+        fired.add(b);
+        for (let s = 0; s < 3; s++) {
+          const [x, y] = spots[Math.floor(Math.random() * spots.length)];
+          for (let n = 0; n < 14; n++) {
+            const angle = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.4;
+            const speed = 40 + Math.random() * 110;
+            sparks.push({ x: x + pad, y: y + pad, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.6 + Math.random() * 0.8, age: 0, color: colors[Math.floor(Math.random() * colors.length)] });
+          }
+        }
+      });
+      ctx.clearRect(0, 0, width + pad * 2, height + pad * 2);
+      sparks.forEach(spark => {
+        spark.age += step;
+        spark.vy += 260 * step; // (falling)
+        spark.x += spark.vx * step;
+        spark.y += spark.vy * step;
+        const left = 1 - spark.age / spark.life;
+        if (left <= 0) return;
+        ctx.strokeStyle = `rgba(${spark.color}, ${left})`;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(spark.x, spark.y);
+        ctx.lineTo(spark.x - spark.vx * 0.025, spark.y - spark.vy * 0.025); // (a short streak behind it)
+        ctx.stroke();
+      });
+      if (seconds < BORDER.onSeconds + 1.6) frameId = requestAnimationFrame(run);
+      else ctx.clearRect(0, 0, width + pad * 2, height + pad * 2);
+    };
+    frameId = requestAnimationFrame(run);
+    return () => cancelAnimationFrame(frameId);
+  }, [spots, width, height, pad]);
+  return <SparkCanvas ref={ref} width={width + pad * 2} height={height + pad * 2} style={{ left: -pad, top: -pad }} />;
+};
 const KaijuCircuit = ({ wordRef }) => {
   const [box, setBox] = useState(undefined);
   const [layout, setLayout] = useState(undefined);
   const [lengths, setLengths] = useState(undefined);
+  const [isStarting] = useState(() => { const first = !isNeonLit; isNeonLit = true; return first; });
+  const [sparkSpots, setSparkSpots] = useState([]);
   const textRef = useRef(null);
   const pathRefs = useRef([]);
   useLayoutEffect(() => {
@@ -396,6 +475,18 @@ const KaijuCircuit = ({ wordRef }) => {
   useLayoutEffect(() => {
     if (!layout) return;
     setLengths(pathRefs.current.map(path => (path ? path.getTotalLength() : 0)));
+    // the sparks' spots: points round the letters' borders, in the word's px
+    if (isStarting) {
+      const scale0 = box.size / kaijuGlyphs.upm;
+      setSparkSpots(pathRefs.current.flatMap((path, k) => {
+        if (!path) return [];
+        const total = path.getTotalLength();
+        return [...Array(8).keys()].map(j => {
+          const point = path.getPointAtLength((total * (j + Math.random())) / 8);
+          return [layout.starts[k] + point.x * scale0, layout.baseline - point.y * scale0];
+        });
+      }));
+    }
   }, [layout]);
   if (!box) return null;
   const scale = box.size / kaijuGlyphs.upm;
@@ -419,25 +510,30 @@ const KaijuCircuit = ({ wordRef }) => {
         ))}
       </defs>
       {layout && (
-        <g className="neon" filter="url(#kaiju-neon)">
+        <g className={`neon${isStarting ? " starting" : ""}`} filter="url(#kaiju-neon)">
           {kaijuGlyphs.letters.map(({ path }, k) => {
             const length = lengths ? lengths[k] : 0;
             const opening = length * BORDER.opening;
-            const seconds = BORDER.seconds[0] + ((BORDER.seconds[1] - BORDER.seconds[0]) * k) / (kaijuGlyphs.letters.length - 1);
             return (
               <g key={k} transform={`translate(${layout.starts[k]} ${layout.baseline}) scale(${scale} ${-scale})`}>
                 <path ref={el => { pathRefs.current[k] = el; }} d={path} fill="none" stroke={BORDER.color} strokeWidth={units((BORDER.gap + BORDER.width) * 2)} strokeLinejoin="round" mask={`url(#kaiju-ring-${k})`}
-                  strokeDasharray={length ? `${length - opening} ${opening}` : undefined}>
-                  {length > 0 && <animate attributeName="stroke-dashoffset" from={length * (k / 5)} to={length * (k / 5) - length} dur={`${seconds}s`} repeatCount="indefinite" />}
-                </path>
+                  strokeDasharray={length ? `${length - opening} ${opening}` : undefined} strokeDashoffset={length * (k / 5)} />
               </g>
             );
           })}
         </g>
       )}
+      {isStarting && sparkSpots.length > 0 && (
+        <foreignObject x={-SPARK_PAD} y={-SPARK_PAD} width={box.width + SPARK_PAD * 2} height={box.height + SPARK_PAD * 2} style={{ overflow: "visible" }}>
+          <div style={{ position: "relative", left: SPARK_PAD, top: SPARK_PAD }}>
+            <NeonSparks spots={sparkSpots} width={box.width} height={box.height} pad={SPARK_PAD} />
+          </div>
+        </foreignObject>
+      )}
     </BorderBox>
   );
 };
+const SPARK_PAD = 120;
 
 // 'joiner': the landing's (Jamie, 2026-11-18): over the skyline's bottom, grounding it in the Peninsula behind
 // (scripts/landingJoiner.py); an image in the logo's own box, so it zooms with the skyline; 'spotlights': the

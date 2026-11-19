@@ -143,6 +143,14 @@ const getSceneZoom = (isLeaving, isZoomingBack) => isLeaving
   ? css`animation: ${zoomIntoCity} ${CITY_ZOOM.ms}ms cubic-bezier(0.6, 0, 0.9, 0.35) forwards;`
   : isZoomingBack ? css`animation: ${zoomOutOfCity} ${CITY_ZOOM.ms}ms cubic-bezier(0.1, 0.65, 0.4, 1) ${getZoomBackMs() - 450}ms both;` : undefined;
 
+// the sheen's sweep, then its rest before the next (Jamie: 2.5 s between)
+const CITY_SHEEN = { sweepMs: 1100, restMs: 2500 };
+const citySheen = keyframes`
+  0% { background-position: 100% 100%; }
+  ${(CITY_SHEEN.sweepMs / (CITY_SHEEN.sweepMs + CITY_SHEEN.restMs)) * 100}% { background-position: 0% 0%; }
+  100% { background-position: 0% 0%; }
+`;
+
 const SceneSlide = styled.div`
   position: absolute;
   inset: 0;
@@ -171,6 +179,21 @@ const SceneSlide = styled.div`
   & > div > :first-child > p:first-child { -webkit-text-stroke: 0 transparent; filter: none; }
   /* (its letters spaced wider, so the offset border shows between them: Jamie; its black copy behind spaced alike) */
   & > div > :first-child > p:first-child, & > div > :first-child > p:nth-child(3) { letter-spacing: 8px; }
+  /* (and "City" moved right by half what that widened "Kaiju", centred under it again: Jamie) */
+  & > div > :first-child > p:nth-child(2) { margin-left: 16px; position: relative; }
+  /* a metallic sheen across "City", from its top left to its bottom right, every so often (Jamie, 2026-11-19) */
+  & > div > :first-child > p:nth-child(2)::after {
+    content: "City";
+    position: absolute;
+    inset: 0;
+    color: transparent;
+    -webkit-text-stroke: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0) 0 40%, rgba(235, 225, 255, 0.35) 45%, rgba(255, 255, 255, 0.9) 50%, rgba(235, 225, 255, 0.35) 55%, rgba(255, 255, 255, 0) 60% 100%);
+    background-size: 260% 260%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    animation: ${citySheen} ${CITY_SHEEN.sweepMs + CITY_SHEEN.restMs}ms ease-in-out infinite;
+  }
   /* the Kaiju keeps its walk and its own glow: it slides by 'translate' alone */
   & > div > :nth-child(n + 3):not(img) { ${props => props.$isLeaving && css`transition: translate ${SLIDE.ms}ms ease-in; translate: ${SLIDE.kaiju} 0;`} }
 `;

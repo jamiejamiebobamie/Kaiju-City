@@ -228,17 +228,19 @@ const COAST = { rest: 0.3 };
 */
 const COPTER = {
   ms: 17000, enterMs: 2600, lightOnMs: 800, leaveMs: 1400,
-  from: { x: 1340, y: 230, size: 2.6 }, // (off the window's top right, near and big)
+  from: { x: 1340, y: 0, size: 2.6 }, // (off the window's right, near and big; its height: the route's start, 'enterBelow' lower)
+  enterBelow: 18,
   // the second (Jamie): in from the top left a beat later, then flying at the first's 7 o'clock: a little behind it
   // (nearer us, 'lag' of the way) and to its left ('side' px at size 1)
-  wingman: { from: { x: 360, y: 240, size: 2.6 }, delayMs: 900, side: -16 }, // (behind it by its later start)
+  wingman: { from: { x: 360, y: 0, size: 2.6 }, delayMs: 900, side: -16 }, // (behind it by its later start; in from the left)
   altitude: 62, // px above its ground spot, at size 1
   groundFrom: 760, // its light's spot as it comes in: this row of the picture (below a window's bottom), on to the near end
   body: 1.35, // its drawing's scale (it was too small to make out)
   light: { color: "255, 246, 222", rx: 10, ry: 3.2 },
   entry: 0.16, // the share of the way the swoop in takes
   every: 6, // a waypoint to so many of the Peninsula's points
-  search: { from: 3, to: 15 } // the light's swing either side, px at size 1, from the start of the way to its end
+  search: { from: 9, to: 26 } // the light's swing either side, px at size 1, from the start of the way to its end (bigger:
+  // Jamie wanted to see it searching)
 };
 // 'from': where it comes in from; 'delayMs': how long after the event starts; 'side': its place off the way
 const Copter = ({ path, horizon, from = COPTER.from, delayMs = 0, side = 0 }) => {
@@ -259,13 +261,16 @@ const Copter = ({ path, horizon, from = COPTER.from, delayMs = 0, side = 0 }) =>
     // one flowing route (Jamie: it had been "before they meet up" and "after"): off the window's edge, then along the
     // Peninsula's middle, as waypoints (its place in the air, its size, its light's spot on the ground) through which
     // a smooth curve runs; the swoop in counts as ENTRY of the way, the Peninsula the rest
-    const waypoints = [{ ax: from.x, ay: from.y, size: from.size, gx: from.x, gy: COPTER.groundFrom }];
+    const waypoints = [];
     for (let i = 0; i < path.length; i += COPTER.every) {
       const [x, y] = path[i];
       const size0 = sizeAt(y);
       const gx = x + side * size0;
       waypoints.push({ ax: gx, ay: y - COPTER.altitude * size0, size: size0, gx, gy: y });
     }
+    // (in from the side at the route's own height, a touch lower, so it only ever rises as it goes away: in from high
+    // up, it dropped to the near end and climbed again, a dip: Jamie)
+    waypoints.unshift({ ax: from.x, ay: waypoints[0].ay + COPTER.enterBelow, size: from.size, gx: from.x, gy: COPTER.groundFrom });
     const keys = ["ax", "ay", "size", "gx", "gy"];
     const spans = waypoints.length - 1;
     // the share of the way where each waypoint falls: the swoop in its own share, the Peninsula's even
@@ -276,7 +281,11 @@ const Copter = ({ path, horizon, from = COPTER.from, delayMs = 0, side = 0 }) =>
       while (k < spans - 1 && at[k + 1] < u) k++;
       const t = Math.max(0, Math.min(1, (u - at[k]) / Math.max(1e-6, at[k + 1] - at[k])));
       const w = j => waypoints[Math.max(0, Math.min(spans, j))];
-      return Object.fromEntries(keys.map(key => [key, catmull(w(k - 1)[key], w(k)[key], w(k + 1)[key], w(k + 2)[key], t)]));
+      // (each value kept between its segment's two waypoints: the curve had overshot, dipping where they joined)
+      return Object.fromEntries(keys.map(key => {
+        const a = w(k)[key], b = w(k + 1)[key];
+        return [key, Math.max(Math.min(a, b), Math.min(Math.max(a, b), catmull(w(k - 1)[key], a, b, w(k + 2)[key], t)))];
+      }));
     };
     // time to the way: steady through the middle, easing only at the very start and end
     const pace = t => 0.6 * t + 0.4 * t * t * (3 - 2 * t);
@@ -295,9 +304,10 @@ const Copter = ({ path, horizon, from = COPTER.from, delayMs = 0, side = 0 }) =>
       const air = { x: here.ax + Math.sin(ms / 900) * 2 * size, y: here.ay };
       // searching: the light swings side to side (and a little to and fro), wider as the search goes on (Jamie)
       const reach = (COPTER.search.from + (COPTER.search.to - COPTER.search.from) * way) * size;
+      // (a sweeping loop over the ground, the beam pivoting under it: round and across, with a quicker twitch)
       const spot = {
-        x: here.gx + reach * (0.65 * Math.sin(ms / 1150 + phase) + 0.35 * Math.sin(ms / 470 + phase * 2)),
-        y: here.gy + reach * 0.25 * Math.sin(ms / 1700 + phase)
+        x: here.gx + reach * (0.72 * Math.sin(ms / 1050 + phase) + 0.28 * Math.sin(ms / 410 + phase * 2)),
+        y: here.gy + reach * 0.42 * Math.cos(ms / 1050 + phase)
       };
       const fade = Math.min(1, (COPTER.ms - ms) / COPTER.leaveMs);
       // the searchlight: a cone from its belly to a circle on the ground, sweeping a little
