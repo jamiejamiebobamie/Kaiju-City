@@ -58,18 +58,34 @@ const LogoImage = styled.img`
   only). Each: its base across the skyline (logo px), its sweep (degrees either side), its time, its delay.
 */
 // (length: to the tallest building's top, about logo y 82, and no higher, even upright: Jamie, round 8)
-const SPOTLIGHT = { base: 197, length: 112, width: 30, color: "255, 246, 222", strength: 0.42 };
+// (Jamie, 2026-11-19: they felt dull: now each a bright narrow core in a wide soft halo, a glare where it leaves the
+// ground, a searchlight's flicker, an uneven sweep (lingering, then quick), added onto the skyline where they cross it.
+// Their length: never above the tallest building's top, even upright)
+const SPOTLIGHT = { base: 197, length: 112, core: { width: 12, strength: 0.8 }, halo: { width: 44, strength: 0.22 }, glare: 9, color: "255, 246, 222" };
 // (Jamie: in twos, both pairs' bases behind the title, where the inner two first stood; quicker; each pair in step
 // but mirrored: as one swings left the other swings right)
 // (spread a little further apart: Jamie; still behind the title, which runs about x 176-426)
 const PAIRS = [
-  { x: 205, sweep: 24, seconds: 3.8, delay: -1.2, lean: 6 },
-  { x: 405, sweep: 24, seconds: 4.4, delay: -0.5, lean: 6 }
+  { x: 205, sweep: 26, seconds: 3.8, delay: -1.2, lean: 6 },
+  { x: 405, sweep: 26, seconds: 4.4, delay: -0.5, lean: 6 }
 ];
 const BEAMS = PAIRS.flatMap(pair => [{ ...pair, isMirrored: false }, { ...pair, lean: -pair.lean, isMirrored: true }]);
+// (uneven: easing in and out at different points, so it lingers at one side and whips across)
 const beamSweep = keyframes`
-  from { rotate: calc(var(--lean) * 1deg - var(--sweep) * 1deg * var(--way)); }
-  to { rotate: calc(var(--lean) * 1deg + var(--sweep) * 1deg * var(--way)); }
+  0% { rotate: calc(var(--lean) * 1deg - var(--sweep) * 1deg * var(--way)); animation-timing-function: cubic-bezier(0.6, 0, 0.4, 1); }
+  35% { rotate: calc(var(--lean) * 1deg - var(--sweep) * 0.75deg * var(--way)); animation-timing-function: cubic-bezier(0.7, 0, 0.2, 1); }
+  70% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 0.9deg * var(--way)); animation-timing-function: ease-out; }
+  100% { rotate: calc(var(--lean) * 1deg + var(--sweep) * 1deg * var(--way)); }
+`;
+// (a searchlight's flicker: small, uneven)
+const beamFlicker = keyframes`
+  0%, 100% { opacity: 1; }
+  13% { opacity: 0.86; }
+  17% { opacity: 1; }
+  48% { opacity: 0.93; }
+  52% { opacity: 0.8; }
+  56% { opacity: 1; }
+  81% { opacity: 0.9; }
 `;
 const SpotlightBox = styled.div`
   pointer-events: none;
@@ -79,24 +95,57 @@ const SpotlightBox = styled.div`
   width: 600px;
   height: 300px;
   translate: 0 calc(var(--logo-lift, 0px) * -1);
+  mix-blend-mode: plus-lighter; /* (lighting up the skyline where they cross it) */
 `;
 const Beam = styled.div`
   position: absolute;
   bottom: ${300 - SPOTLIGHT.base}px;
-  width: ${SPOTLIGHT.width}px;
+  width: ${SPOTLIGHT.halo.width}px;
   height: ${SPOTLIGHT.length}px;
-  margin-left: ${-SPOTLIGHT.width / 2}px;
+  margin-left: ${-SPOTLIGHT.halo.width / 2}px;
   transform-origin: 50% 100%;
-  clip-path: polygon(47% 100%, 53% 100%, 100% 0, 0 0);
-  background: linear-gradient(to top, rgba(${SPOTLIGHT.color}, ${SPOTLIGHT.strength}), rgba(${SPOTLIGHT.color}, ${SPOTLIGHT.strength * 0.35}) 45%, rgba(${SPOTLIGHT.color}, 0));
-  filter: blur(1.5px);
-  animation: ${beamSweep} var(--seconds) ease-in-out var(--delay) infinite alternate;
+  animation: ${beamSweep} var(--seconds) var(--delay) infinite alternate, ${beamFlicker} var(--flicker) linear infinite;
+  &::before, &::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    height: 100%;
+  }
+  /* the halo: wide, soft */
+  &::before {
+    width: ${SPOTLIGHT.halo.width}px;
+    margin-left: ${-SPOTLIGHT.halo.width / 2}px;
+    clip-path: polygon(44% 100%, 56% 100%, 100% 0, 0 0);
+    background: linear-gradient(to top, rgba(${SPOTLIGHT.color}, ${SPOTLIGHT.halo.strength}), rgba(${SPOTLIGHT.color}, ${SPOTLIGHT.halo.strength * 0.4}) 50%, rgba(${SPOTLIGHT.color}, 0));
+    filter: blur(4px);
+  }
+  /* the core: narrow, bright */
+  &::after {
+    width: ${SPOTLIGHT.core.width}px;
+    margin-left: ${-SPOTLIGHT.core.width / 2}px;
+    clip-path: polygon(40% 100%, 60% 100%, 100% 0, 0 0);
+    background: linear-gradient(to top, rgba(${SPOTLIGHT.color}, ${SPOTLIGHT.core.strength}), rgba(${SPOTLIGHT.color}, ${SPOTLIGHT.core.strength * 0.45}) 40%, rgba(${SPOTLIGHT.color}, 0));
+    filter: blur(0.8px);
+  }
+`;
+// the glare where a pair leaves the ground
+const Glare = styled.div`
+  position: absolute;
+  bottom: ${300 - SPOTLIGHT.base - SPOTLIGHT.glare / 2}px;
+  width: ${SPOTLIGHT.glare}px;
+  height: ${SPOTLIGHT.glare}px;
+  margin-left: ${-SPOTLIGHT.glare / 2}px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.95) 0 20%, rgba(${SPOTLIGHT.color}, 0.55) 40%, rgba(${SPOTLIGHT.color}, 0) 70%);
+  animation: ${beamFlicker} 0.9s linear infinite;
 `;
 const Spotlights = () => (
   <SpotlightBox data-spotlights aria-hidden="true">
     {BEAMS.map(({ x, sweep, seconds, delay, lean, isMirrored }, k) => (
-      <Beam key={k} style={{ left: `${x}px`, "--sweep": sweep, "--lean": lean, "--way": isMirrored ? -1 : 1, "--seconds": `${seconds}s`, "--delay": `${delay}s` }} />
+      <Beam key={k} style={{ left: `${x}px`, "--sweep": sweep, "--lean": lean, "--way": isMirrored ? -1 : 1, "--seconds": `${seconds}s`, "--delay": `${delay}s`, "--flicker": `${0.7 + k * 0.17}s` }} />
     ))}
+    {PAIRS.map(({ x }) => <Glare key={x} style={{ left: `${x}px` }} />)}
   </SpotlightBox>
 );
 
