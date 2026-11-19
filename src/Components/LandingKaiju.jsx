@@ -22,6 +22,7 @@ export const SEA_KAIJU = {
   roar: [2, 3, 4, 5, 5, 5, 5, 4, 3, 2],
   fireOn: [4, 5],
   holdFrame: 5, // (the widest roar: held, breathing fire, from when it's reached)
+  heaveTicks: 2, // (frames: how long each of the two roars shows as it heaves between them)
   fire: { angle: 52, length: 1.05, seconds: 1.6 } // (degrees from upright toward its face; its length: of its height)
 };
 
@@ -74,17 +75,23 @@ const Wake = ({ spans, scale, width }) => {
 // 'isPreview': held still breathing its fire, for the tuner (Jamie: to set it against its fire)
 export const SeaKaiju = ({ x, y, height, waterRow, isMirrored = false, isShown = true, delayMs = 0, fireX = 0, fireY = 0, fireScale: fireSize = 1, fireAngle = SEA_KAIJU.fire.angle, isPreview = false }) => {
   const [step, setStep] = useState(0);
+  const [tick, setTick] = useState(0); // (counting on while it holds, for its body's breathing between two poses)
   const [fireStep, setFireStep] = useState(-1);
   const sequence = useRef([...SEA_KAIJU.idle, ...SEA_KAIJU.idle, ...SEA_KAIJU.roar]);
   useEffect(() => {
     let timer;
     const start = setTimeout(() => {
       // (Jamie: as normal until it breathes fire, then held breathing it until it fades)
-      timer = setInterval(() => setStep(k => (sequence.current[k] == SEA_KAIJU.holdFrame ? k : (k + 1) % sequence.current.length)), SEA_KAIJU.frameMs);
+      timer = setInterval(() => {
+        setStep(k => (sequence.current[k] == SEA_KAIJU.holdFrame ? k : (k + 1) % sequence.current.length));
+        setTick(k => k + 1);
+      }, SEA_KAIJU.frameMs);
     }, delayMs);
     return () => { clearTimeout(start); clearInterval(timer); };
   }, []);
-  const frame = isPreview ? SEA_KAIJU.fireOn[SEA_KAIJU.fireOn.length - 1] : sequence.current[step];
+  // (holding its fire, its body heaves between the two widest roars: Jamie, so it isn't still as it spews)
+  const isHolding = sequence.current[step] == SEA_KAIJU.holdFrame;
+  const frame = isPreview ? SEA_KAIJU.holdFrame : isHolding ? SEA_KAIJU.fireOn[Math.floor(tick / SEA_KAIJU.heaveTicks) % SEA_KAIJU.fireOn.length] : sequence.current[step];
   const isBreathing = SEA_KAIJU.fireOn.includes(frame);
   // the fire's own frames: growing, roaring, dying away while the mouth is wide
   useEffect(() => {
@@ -133,12 +140,15 @@ export const SeaKaiju = ({ x, y, height, waterRow, isMirrored = false, isShown =
   it faces the viewer (MainMenu flashes the scene on every third). In the Peninsula picture's px: its foot on the
   water, its size.
 */
-export const BUOY = { turnSeconds: 3.6, beam: 34, colors: { red: "#b8282e", white: "#d9d6cf", dark: "#2a2732", lamp: "255, 240, 190" } };
+export const BUOY = {
+  // the twinkle as it faces the viewer: a yellow star, rays of uneven lengths and widths ([angle, length, width])
+  twinkle: { color: "255, 214, 110", reach: 30, rays: [[0, 1, 1.1], [0.8, 0.55, 0.7], [1.57, 0.9, 1], [2.3, 0.5, 0.6], [3.14, 1, 1.1], [3.95, 0.6, 0.7], [4.71, 0.85, 1], [5.5, 0.45, 0.6]] },
+  turnSeconds: 3.6, beam: 34, colors: { red: "#b8282e", white: "#d9d6cf", dark: "#2a2732", lamp: "255, 240, 190" } };
 export const Buoy = ({ x, y, size, onFacing }) => {
   const ref = useRef(null);
   const facingRef = useRef(onFacing);
   facingRef.current = onFacing;
-  const box = { width: 140, height: 70 };
+  const box = { width: 200, height: 120 };
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas) return;
@@ -183,6 +193,39 @@ export const Buoy = ({ x, y, size, onFacing }) => {
       ctx.fill();
       px(lampX - 1 * u, lampY - 1 * u, 2 * u, 2 * u, `rgb(${BUOY.colors.lamp})`);
       ctx.restore();
+      // the twinkle (Jamie): as the lamp turns into the viewer's eyes, a yellow star flashes on it, so the big flash
+      // reads as that light
+      const twinkle = facing ** 10;
+      if (twinkle > 0.02) {
+        const cx = baseX + Math.sin(rock) * 11.5 * u, cy = baseY - Math.cos(rock) * 11.5 * u;
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(turn * 0.8);
+        BUOY.twinkle.rays.forEach(([angle, length, width]) => {
+          ctx.save();
+          ctx.rotate(angle);
+          const reach = length * BUOY.twinkle.reach * u * twinkle;
+          const ray = ctx.createLinearGradient(0, 0, reach, 0);
+          ray.addColorStop(0, `rgba(${BUOY.twinkle.color}, ${twinkle})`);
+          ray.addColorStop(1, `rgba(${BUOY.twinkle.color}, 0)`);
+          ctx.fillStyle = ray;
+          ctx.beginPath();
+          ctx.moveTo(0, -width * u);
+          ctx.lineTo(reach, 0);
+          ctx.lineTo(0, width * u);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        });
+        const core = ctx.createRadialGradient(0, 0, 0, 0, 0, 7 * u * twinkle + 1);
+        core.addColorStop(0, `rgba(255, 252, 230, ${twinkle})`);
+        core.addColorStop(1, `rgba(${BUOY.twinkle.color}, 0)`);
+        ctx.fillStyle = core;
+        ctx.beginPath();
+        ctx.arc(0, 0, 7 * u * twinkle + 1, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
       // its beam: sweeping round, seen side on (long) when it points across, short when toward or away from us
       const across = Math.cos(angle);
       const reach = BUOY.beam * u * Math.abs(across);
