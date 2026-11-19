@@ -18,7 +18,7 @@ export const LANDING_TUNE_DEFAULTS = {
   joiner: { both: -4.5, band: 0, glow: -1 },
   moon: { x: 992, y: 357, radius: 30 },
   reflection: { x: 1021, y: 464, radius: 33 },
-  cityscape: { y: 0 },
+  cityscape: { y: 4 },
   pressKey: { top: 0.84 }
 };
 const RANGES = {

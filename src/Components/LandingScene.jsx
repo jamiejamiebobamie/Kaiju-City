@@ -408,18 +408,30 @@ export const LandingScene = ({ spot, zoom, isBack = false, logoScale = 1, lift =
       <Surf points={SURF_POINTS} width={LANDING_VIEW.size.width} height={LANDING_VIEW.size.height} />
       <Surf points={landingTraffic.coast} width={LANDING_VIEW.size.width} height={LANDING_VIEW.size.height} pixel rest={COAST.rest} />
       <Moon {...tune.moon} />
-      {event !== undefined && <Copter key={event} path={landingTraffic.copter} horizon={LANDING_VIEW.horizon} />}
+
       <MoonReflection {...tune.reflection} />
       <TrafficLights paths={landingTraffic.paths} glints={landingTraffic.glints} width={LANDING_VIEW.size.width} height={LANDING_VIEW.size.height} zIndex={1} near={NEAR_TRAFFIC} />
     </View>
   );
+  // the helicopter flies in front of the logo (Jamie, 2026-11-19): its own stage over it, placed and zoomed as the
+  // scene's (below the zoom's pictures and [Press any key])
+  const front = event !== undefined && (
+    <View style={{ left: -LANDING_VIEW.vanish.x * scale, top: -LANDING_VIEW.vanish.y * scale + (vanish ? vanish.k : 1) * lift, transform: `scale(${scale})`, background: "none" }}>
+      <Copter key={event} path={landingTraffic.copter} horizon={LANDING_VIEW.horizon} />
+    </View>
+  );
   return (
-    <Stage ref={stageRef} aria-hidden="true">
-      {vanish && (
-        <Anchor $zoom={zoom} style={{ left: vanish.x, top: vanish.y }}>
-          {isBack ? content : <Fade>{content}</Fade>}
-        </Anchor>
-      )}
-    </Stage>
+    <>
+      <Stage ref={stageRef} aria-hidden="true">
+        {vanish && (
+          <Anchor $zoom={zoom} style={{ left: vanish.x, top: vanish.y }}>
+            {isBack ? content : <Fade>{content}</Fade>}
+          </Anchor>
+        )}
+      </Stage>
+      <Stage aria-hidden="true" style={{ zIndex: 12 }}>
+        {vanish && front && <Anchor $zoom={zoom} style={{ left: vanish.x, top: vanish.y }}>{front}</Anchor>}
+      </Stage>
+    </>
   );
 };

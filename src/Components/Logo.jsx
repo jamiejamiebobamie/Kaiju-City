@@ -7,6 +7,7 @@ import {
   StyledSpookyTextShadow
 } from './StyledComponents'
 import "App.css";
+import kaijuGlyphs from "./data/kaijuGlyphs.json";
 
 const LogoWrapper = styled.div`
   position: absolute;
@@ -337,39 +338,34 @@ const Breath = () => BREATH_EMBERS.map(({ key, delay, cx, cy, fx, fy, lx, ly, bx
 ));
 
 /*
-  The title's live border (Jamie, 2026-11-19): over "Kaiju", its own letters' outlines, as current runs round a
-  circuit: a soft purple glow on them, bright violet-white dashes running along the strokes, deeper purple ones running
-  the other way, all of it crackling (a quick jitter). An SVG copy of the word laid exactly over it: measured from the
-  word's own text box once its font is in, so it keeps the word's curves, shape and scale; it goes where the title goes.
+  The title's live border (Jamie, 2026-11-19): round each letter of "Kaiju", its own outline, offset outward with a
+  slight gap from the black letter, glowing neon purple; on each letter the outline has an opening (where it starts and
+  ends) that travels round the letter's shape, so the border is seen snaking round it. The letters' outlines are the
+  font's own (scripts/kaijuGlyphs.py -> data/kaijuGlyphs.json), placed where the browser sets the word: its baseline
+  and each letter's start measured from an SVG copy of the word in the same font.
+  In the word's own px (before the title's and the logo's scaling): the gap, the border's width, the opening (a share
+  of each letter's outline), each letter's lap.
 */
-const CIRCUIT = {
-  glow: { color: "#c45cff", width: 3.2, opacity: 0.55, blur: 1.6 },
-  runners: [
-    { color: "#f8dcff", width: 1.3, dash: "16 70", seconds: 2.4, reverse: false, opacity: 0.95 },
-    { color: "#b04cff", width: 1.8, dash: "6 30", seconds: 3.3, reverse: true, opacity: 0.85 }
-  ],
-  crackle: { scale: 1.6, seconds: 0.5 }
-};
-const circuitRun = keyframes`
-  from { stroke-dashoffset: 0; }
-  to { stroke-dashoffset: -172; }
+const BORDER = { gap: 2.4, width: 1.9, color: "#c25cff", core: "#efd0ff", opening: 0.16, seconds: [3.4, 4.6], glow: 2.2 };
+const borderFlicker = keyframes`
+  0%, 100% { opacity: 1; }
+  41% { opacity: 1; }
+  42% { opacity: 0.6; }
+  44% { opacity: 1; }
+  77% { opacity: 0.85; }
 `;
-const circuitPulse = keyframes`
-  0%, 100% { opacity: var(--low); }
-  50% { opacity: var(--high); }
-`;
-const CircuitBox = styled.svg`
+const BorderBox = styled.svg`
   position: absolute;
   overflow: visible;
   pointer-events: none;
-  & .glow { animation: ${circuitPulse} 2.2s ease-in-out infinite; }
-  & .runner { animation: ${circuitRun} var(--seconds) linear infinite; }
-  & .runner.reverse { animation-direction: reverse; }
+  & .neon { animation: ${borderFlicker} 5.3s linear infinite; }
 `;
 const KaijuCircuit = ({ wordRef }) => {
   const [box, setBox] = useState(undefined);
-  const [baseline, setBaseline] = useState(0);
+  const [layout, setLayout] = useState(undefined);
+  const [lengths, setLengths] = useState(undefined);
   const textRef = useRef(null);
+  const pathRefs = useRef([]);
   useLayoutEffect(() => {
     const word = wordRef.current;
     if (!word) return;
@@ -382,38 +378,67 @@ const KaijuCircuit = ({ wordRef }) => {
       const around = holder.getBoundingClientRect();
       const k = around.width / holder.offsetWidth; // (the title's own scale, and the logo's)
       const style = window.getComputedStyle(word);
-      setBox({ left: (text.left - around.left) / k, top: (text.top - around.top) / k, width: text.width / k, height: text.height / k, font: style.fontFamily, size: style.fontSize, spacing: style.letterSpacing });
+      setBox({ left: (text.left - around.left) / k, top: (text.top - around.top) / k, width: text.width / k, height: text.height / k, font: style.fontFamily, size: parseFloat(style.fontSize), spacing: style.letterSpacing });
     };
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(measure);
     else measure();
   }, []);
-  // (the copy's baseline found from its own box: SVG and HTML place a font's text differently)
+  // the baseline and each letter's start, from an SVG copy of the word set as the browser sets it
   useLayoutEffect(() => {
     if (!box || !textRef.current) return;
-    const own = textRef.current.getBBox();
-    setBaseline(-own.y);
+    const copy = textRef.current;
+    const baseline = -copy.getBBox().y;
+    const starts = kaijuGlyphs.letters.map((_, k) => copy.getStartPositionOfChar(k).x);
+    setLayout({ baseline, starts });
   }, [box]);
+  // each letter's outline length, for its opening's size and its lap
+  useLayoutEffect(() => {
+    if (!layout) return;
+    setLengths(pathRefs.current.map(path => (path ? path.getTotalLength() : 0)));
+  }, [layout]);
   if (!box) return null;
-  const textProps = { x: 0, y: baseline, fontFamily: box.font, fontSize: box.size, letterSpacing: box.spacing, fill: "none" };
+  const scale = box.size / kaijuGlyphs.upm;
+  const units = px => px / scale; // (the paths are in the font's units)
   return (
-    <CircuitBox aria-hidden="true" width={box.width} height={box.height} style={{ left: box.left, top: box.top }}>
+    <BorderBox aria-hidden="true" width={box.width} height={box.height} style={{ left: box.left, top: box.top }}>
+      <text ref={textRef} x={0} y={0} fontFamily={box.font} fontSize={box.size} letterSpacing={box.spacing} fill="none" opacity={0}>Kaiju</text>
       <defs>
-        <filter id="kaiju-crackle" x="-10%" y="-10%" width="120%" height="120%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="1" seed="1" result="noise">
-            <animate attributeName="seed" values="1;5;9;13;17;21" dur={`${CIRCUIT.crackle.seconds}s`} calcMode="discrete" repeatCount="indefinite" />
-          </feTurbulence>
-          <feDisplacementMap in="SourceGraphic" in2="noise" scale={CIRCUIT.crackle.scale} />
-          <feGaussianBlur stdDeviation="0.25" result="sharp" />
-          <feGaussianBlur in="sharp" stdDeviation="1.4" result="soft" />
-          <feMerge><feMergeNode in="soft" /><feMergeNode in="sharp" /></feMerge>
+        <filter id="kaiju-neon" x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation={BORDER.glow} result="wide" />
+          <feGaussianBlur in="SourceGraphic" stdDeviation={BORDER.glow * 0.35} result="near" />
+          <feMerge><feMergeNode in="wide" /><feMergeNode in="near" /><feMergeNode in="SourceGraphic" /></feMerge>
         </filter>
-        <filter id="kaiju-glow"><feGaussianBlur stdDeviation={CIRCUIT.glow.blur} /></filter>
+        {layout && kaijuGlyphs.letters.map(({ path }, k) => (
+          // (the ring only: everything within the gap of the letter, and the letter itself, masked away)
+          <mask key={k} id={`kaiju-ring-${k}`} maskUnits="userSpaceOnUse" maskContentUnits="userSpaceOnUse" x={-5000} y={-5000} width={10000} height={10000}>
+            <rect x={-5000} y={-5000} width={10000} height={10000} fill="white" />
+            <path d={path} fill="black" stroke="black" strokeWidth={units(BORDER.gap * 2)} strokeLinejoin="round" />
+          </mask>
+        ))}
       </defs>
-      <text ref={textRef} {...textProps} className="glow" stroke={CIRCUIT.glow.color} strokeWidth={CIRCUIT.glow.width} filter="url(#kaiju-glow)" style={{ "--low": CIRCUIT.glow.opacity * 0.6, "--high": CIRCUIT.glow.opacity }}>Kaiju</text>
-      {CIRCUIT.runners.map(({ color, width, dash, seconds, reverse, opacity }, k) => (
-        <text key={k} {...textProps} className={`runner${reverse ? " reverse" : ""}`} stroke={color} strokeWidth={width} strokeDasharray={dash} strokeLinecap="round" opacity={opacity} filter="url(#kaiju-crackle)" style={{ "--seconds": `${seconds}s` }}>Kaiju</text>
-      ))}
-    </CircuitBox>
+      {layout && (
+        <g className="neon" filter="url(#kaiju-neon)">
+          {kaijuGlyphs.letters.map(({ path }, k) => {
+            const length = lengths ? lengths[k] : 0;
+            const opening = length * BORDER.opening;
+            const seconds = BORDER.seconds[0] + ((BORDER.seconds[1] - BORDER.seconds[0]) * k) / (kaijuGlyphs.letters.length - 1);
+            return (
+              <g key={k} transform={`translate(${layout.starts[k]} ${layout.baseline}) scale(${scale} ${-scale})`}>
+                <path ref={el => { pathRefs.current[k] = el; }} d={path} fill="none" stroke={BORDER.color} strokeWidth={units((BORDER.gap + BORDER.width) * 2)} strokeLinejoin="round" mask={`url(#kaiju-ring-${k})`}
+                  strokeDasharray={length ? `${length - opening} ${opening}` : undefined}>
+                  {length > 0 && <animate attributeName="stroke-dashoffset" from={length * (k / 5)} to={length * (k / 5) - length} dur={`${seconds}s`} repeatCount="indefinite" />}
+                </path>
+                {/* (a paler core along the ring's middle, the opening with it: neon) */}
+                <path d={path} fill="none" stroke={BORDER.core} strokeWidth={units((BORDER.gap + BORDER.width * 0.45) * 2)} strokeLinejoin="round" mask={`url(#kaiju-ring-${k})`} opacity={0.55}
+                  strokeDasharray={length ? `${length - opening} ${opening}` : undefined}>
+                  {length > 0 && <animate attributeName="stroke-dashoffset" from={length * (k / 5)} to={length * (k / 5) - length} dur={`${seconds}s`} repeatCount="indefinite" />}
+                </path>
+              </g>
+            );
+          })}
+        </g>
+      )}
+    </BorderBox>
   );
 };
 
