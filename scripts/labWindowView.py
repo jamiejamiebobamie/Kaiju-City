@@ -490,11 +490,18 @@ if LANDING:
         # (Jamie, 2026-11-19: all the way to Treasure Island, its cable down to the deck at the island's edge)
         suspension([(q[0], q[1], height_at(q[2])) for q in west], (0.1, 0.3, 0.5, 0.7, 0.88), (168, 176, 190), (140, 150, 168), ends=(False, True))
     # and on past the island to the window's edge (Jamie): up from the deck at the island's far end, smaller as it goes
+    # (Jamie: the same towers as the west span, as many to the stretch and as tall: spaced as they are there, along
+    # the whole run to the window's edge; they had been spread over its full length, past the window, one in sight)
     after = [run for run in bay_pts if run[0][0] > VPX + ti_rel]
-    if after and len(after[0]) > 4:
-        far_scale = height_at(project(499, 125)[2]) * 0.9
+    if after and len(after[0]) > 4 and len(west) > 4:
         run = after[0]
-        suspension([(x, y, far_scale * (1 - 0.4 * k / (len(run) - 1))) for k, (x, y) in enumerate(run)], (0.12, 0.34, 0.56, 0.78, 0.97), (168, 176, 190), (140, 150, 168), ends=(True, False))
+        lengths = np.concatenate([[0], np.cumsum(np.hypot(*np.diff(np.array(run), axis=0).T))])
+        west_length = float(np.sum(np.hypot(*np.diff(np.array([q[:2] for q in west]), axis=0).T)))
+        gap = west_length * 0.2
+        west_scale = height_at(west[-1][2])
+        shares = [min(0.999, (gap * (0.55 + i)) / lengths[-1]) for i in range(int(lengths[-1] / gap) + 1) if gap * (0.55 + i) < lengths[-1]]
+        if shares:
+            suspension([(x, y, west_scale) for x, y in run], tuple(shares), (168, 176, 190), (140, 150, 168), ends=(True, False))
 
 # ---- the city at the tip: the landing page's skyline (from SVG_logo.svg), taller, dimmed for the night ----
 SKYLINE = os.path.join(here, 'assets', 'landing-skyline.png')
@@ -686,7 +693,16 @@ if traffic_path:
         def off_island(points):
             return [p for p in points if not (0 <= int(round(p[1])) < H and 0 <= int(round(p[0])) < W and ti_shape[int(round(p[1])), int(round(p[0]))])]
         surf, island, coast = off_island(surf), off_island(island), off_island(coast)
-        extra = {'surf': surf, 'islandSurf': island, 'coast': coast, 'stars': STAR_LIST}
+        # the helicopter's way (Jamie, 2026-11-19): along the Peninsula's middle from near its base up to the city,
+        # each point its ground spot in the picture, its scale (px per map px) and its distance
+        copter = []
+        for my in range(720, 150, -6):
+            along = (BASE_Y - my) / (BASE_Y - TIP_Y)
+            mx = base_mid[0] + (tip_mid[0] - base_mid[0]) * along
+            q = project(float(mx), float(my))
+            if q:
+                copter.append([round(float(q[0]), 1), round(float(q[1]), 1), round(float(height_at(q[2])), 3), round(float(q[2]), 1)])
+        extra = {'surf': surf, 'islandSurf': island, 'coast': coast, 'stars': STAR_LIST, 'copter': copter}
         print('coast', len(coast))
         print('surf', len(surf), 'island surf', len(island))
     json.dump({'paths': paths, 'glints': glints, 'near': NEAR, 'horizon': HZ, **extra}, open(traffic_path, 'w'))
