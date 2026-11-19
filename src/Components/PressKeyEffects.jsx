@@ -8,6 +8,7 @@ import styled, { css, keyframes } from "styled-components";
   shows the panel.
 */
 export const PRESS_EFFECTS = [
+  { id: "neon", label: "Neon (the landing's own, 2026-11-19): the city's warm light in the title's purple, breathing" },
   { id: "hud", label: "HUD lock-on: ghosts fired at a square's corners" },
   { id: "blink", label: "Classic blink: hard on/off, color-split edges and a scan line" },
   { id: "chase", label: "Marquee chase: a wave of color along the letters and the bars" },
@@ -39,10 +40,10 @@ export const PRESS_DEFAULTS = {
   zoom: { on: false, everyMs: 700, copies: 0, scale: 1.5, pump: false }
 };
 
-// with no ?press=, the tuned mix, without its panel
+// with no ?press=, the neon (Jamie, 2026-11-19: to go with the logo; the tuned mix is ?press=mix, with its panel)
 export const getPressEffect = () => {
   const id = new URLSearchParams(window.location.search).get("press");
-  return PRESS_EFFECTS.some(effect => effect.id == id) ? id : "mix";
+  return PRESS_EFFECTS.some(effect => effect.id == id) ? id : "neon";
 };
 export const getIsPressPanel = () => new URLSearchParams(window.location.search).get("press") == "mix";
 
@@ -227,6 +228,87 @@ const useZoom = settings => useMemo(() => ({
 }), [JSON.stringify(settings)]);
 
 // the row: a bar, the words with their effects, a bar
+/*
+  Neon (Jamie, 2026-11-19: to complement the logo): the words in the skyline's warm cream-yellow, outlined in the
+  title's deep purple with a purple glow about them, breathing slowly brighter and dimmer, a neon tube's flicker now and
+  then; a sheen runs across the letters, and as it does a spark runs out along each bar, the bars purple, fading away
+  from the words.
+*/
+const NEON = { fill: "#f4c27a", hot: "#fff1d6", stroke: "#5a1a72", glow: "176, 76, 255", warm: "244, 194, 122", bar: "176, 76, 255", breatheSeconds: 2.8, flickerSeconds: 7, sweepSeconds: 3.4, stepMs: 60 };
+const neonBreathe = keyframes`
+  0%, 100% { opacity: 0.72; text-shadow: 0 0 6px rgba(${NEON.glow}, 0.55), 0 0 14px rgba(${NEON.glow}, 0.25); }
+  50% { opacity: 1; text-shadow: 0 0 8px rgba(${NEON.glow}, 0.9), 0 0 20px rgba(${NEON.glow}, 0.45), 0 0 3px rgba(${NEON.warm}, 0.6); }
+`;
+const neonFlicker = keyframes`
+  0%, 70%, 74%, 78%, 100% { filter: none; }
+  71% { filter: brightness(0.35); }
+  73% { filter: brightness(1.15); }
+  76% { filter: brightness(0.55); }
+`;
+const neonSheen = keyframes`
+  0%, 14%, 100% { color: ${NEON.fill}; }
+  6% { color: ${NEON.hot}; text-shadow: 0 0 10px rgba(${NEON.warm}, 0.9); }
+`;
+const NeonText = styled.div`
+  position: relative;
+  font-family: gameboy;
+  font-size: 22px;
+  letter-spacing: 3px;
+  white-space: nowrap;
+  color: ${NEON.fill};
+  -webkit-text-stroke: 2px ${NEON.stroke};
+  paint-order: stroke fill;
+  animation: ${neonBreathe} ${NEON.breatheSeconds}s ease-in-out infinite, ${neonFlicker} ${NEON.flickerSeconds}s steps(1) infinite;
+  ${props => props.$isStill && css`animation: none;`}
+`;
+const NeonLetter = styled.span`
+  animation: ${neonSheen} ${NEON.sweepSeconds}s linear infinite;
+  ${props => props.$isStill && css`animation: none;`}
+`;
+const sparkOut = keyframes`
+  0% { left: var(--from); opacity: 0; }
+  4% { opacity: 1; }
+  40% { left: var(--to); opacity: 0; }
+  100% { left: var(--to); opacity: 0; }
+`;
+const NeonBar = styled.div`
+  position: relative;
+  flex: 1;
+  height: 2px;
+  background: linear-gradient(to ${props => props.$side == "left" ? "left" : "right"}, rgba(${NEON.bar}, 0.95), rgba(${NEON.bar}, 0.35) 60%, rgba(${NEON.bar}, 0));
+  box-shadow: 0 0 6px rgba(${NEON.bar}, 0.45);
+  &::after {
+    content: "";
+    position: absolute;
+    top: -2px;
+    width: 18px;
+    height: 6px;
+    margin-left: -9px;
+    border-radius: 3px;
+    background: radial-gradient(ellipse, rgba(255, 241, 214, 0.95), rgba(${NEON.warm}, 0.5) 45%, rgba(${NEON.warm}, 0) 75%);
+    animation: ${sparkOut} ${NEON.sweepSeconds}s ease-out var(--delay) infinite;
+    ${props => props.$isStill && css`animation: none; opacity: 0;`}
+  }
+`;
+export const NeonRow = ({ isLeaving }) => {
+  const text = "Press any key";
+  const lastMs = (text.length + 1) * NEON.stepMs;
+  return (
+    <>
+      {/* (the left bar's spark leaves as the sheen starts, the right's as it ends: out from the words) */}
+      <NeonBar $side="left" $isStill={isLeaving} style={{ "--from": "100%", "--to": "0%", "--delay": "0ms" }} />
+      <NeonText $isStill={isLeaving}>
+        <NeonLetter $isStill={isLeaving}><Bracket>[</Bracket></NeonLetter>
+        {text.split("").map((letter, k) => (
+          <NeonLetter key={k} $isStill={isLeaving} style={{ animationDelay: `${(k + 1) * NEON.stepMs}ms` }}>{letter}</NeonLetter>
+        ))}
+        <NeonLetter $isStill={isLeaving} style={{ animationDelay: `${lastMs}ms` }}><Bracket>]</Bracket></NeonLetter>
+      </NeonText>
+      <NeonBar $side="right" $isStill={isLeaving} style={{ "--from": "0%", "--to": "100%", "--delay": `${lastMs}ms` }} />
+    </>
+  );
+};
+
 export const PressKeyRow = ({ settings, isLeaving }) => {
   const { hud, blink, chase, zoom } = settings;
   const hudLook = useHud(hud);

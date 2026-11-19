@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useRef, useState } from "react";
 import styled, { css, keyframes } from "styled-components";
 import { SpeedBlurFilter, slideAway } from "./Components/SlideAway";
 import { getZoomBackMs, ZOOM_BACK, ZoomThrough } from "./Components/ZoomThrough";
-import { getIsPressPanel, getPressEffect, PressKeyPanel, PressKeyRow, usePressSettings } from "./Components/PressKeyEffects";
+import { getIsPressPanel, getPressEffect, NeonRow, PressKeyPanel, PressKeyRow, usePressSettings } from "./Components/PressKeyEffects";
 import {
   Wrapper,
   ButtonGroup,
@@ -29,7 +29,8 @@ import { PIECES_INFO } from "Utils/gameState";
 // trailSeconds: 3 (was 6, livelier: Jamie)
 // trailSeconds 5 (slower again: Jamie, playtest 22); confirmMs: the confirm's blinks, white and slow fade, which runs on
 // under the clouds as they come
-const PRESS_KEY = { topShare: 0.68, leaveMs: 1500, confirmMs: 750, /* (gone by the zoom's middle: Jamie; was 2800) */ trailSeconds: 6.5, color: "#e25cff", trailColor: "#80EF80" }; // the trail: the character select's green (Jamie, 2026-11-14; was pink #ff5cc8)
+// (topShare: lower, Jamie 2026-11-19; was 0.68)
+const PRESS_KEY = { topShare: 0.84, leaveMs: 1500, confirmMs: 750, /* (gone by the zoom's middle: Jamie; was 2800) */ trailSeconds: 6.5, color: "#e25cff", trailColor: "#80EF80" }; // the trail: the character select's green (Jamie, 2026-11-14; was pink #ff5cc8)
 
 /*
   Embers (Jamie): glowing purple pixels drifting down all over the landing page, swaying as they fall and flickering,
@@ -326,7 +327,7 @@ export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = ()
     <ZoomThrough isOn={isLeaving} startMs={ZOOM_START_MS} onDone={enterRoom || handleClickGame} />
     {isZoomingBack && <ZoomThrough isOn isReverse startMs={0} onDone={() => setIsZoomingBack(false)} />}
     <PressAnyKey $isLeaving={isLeaving} style={{ opacity: isZoomingBack ? 0 : undefined, transition: "opacity 600ms ease-out" }}>
-      <PressKeyRow settings={pressSettings} isLeaving={isLeaving} />
+      {pressEffect == "neon" ? <NeonRow isLeaving={isLeaving} /> : <PressKeyRow settings={pressSettings} isLeaving={isLeaving} />}
     </PressAnyKey>
     </ShiftLayer>
     {navButtons}
