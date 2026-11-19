@@ -408,7 +408,7 @@ const Breath = () => BREATH_EMBERS.map(({ key, delay, cx, cy, fx, fy, lx, ly, bx
 // (Jamie: the word's own outline colour, CSS purple, glowing in it, then brighter (same hue); the opening halved three
 // times; then, 2026-11-19: no longer moving round, a neon tube instead: its gaps kept still, it blinks like one now and
 // then (every 'blinkSeconds'), and the first time the landing shows it flickers on, sparks cascading off it)
-const BORDER = { gap: 1.2, width: 1.9, color: "#b41db4", opening: 0.02, glow: 2.2, onSeconds: 2.4, blinkSeconds: 4 };
+const BORDER = { gap: 1.2, width: 1.9, color: "#d83cd8", opening: 0.02, glow: 2.2, onSeconds: 2.4, blinkSeconds: 4 };
 const neonOn = keyframes`
   0% { opacity: 0; }
   10% { opacity: 0.9; }
