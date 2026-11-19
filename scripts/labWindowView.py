@@ -82,6 +82,7 @@ if LANDING:
     TI_AT, TI_SIZE = -25, (64, 7)
     # the bridges past the map, on Jamie's green lines (from where the map's own end, at its edge)
     GOLDEN_GATE = [(-150, -4)]  # (flatter: Jamie, round 4)
+    TOWER_TALL = 7  # the bridges' towers, map px high (drawn by their distance)
     CITY = 0
     MOON_X, MOON_Y, MOON_R = 1000, HZ - 55, 35  # (as big as round 2 looked, the logo now 1.2 times; clear of the horizon)
 for arg in sys.argv[3:]:
@@ -447,10 +448,41 @@ if LANDING:
     for run in bay_pts:
         pen.line(run, fill=bridge_color, width=1)
         BRIDGE_LINES.append(run)
-    (gx1, gy1), (gx2, gy2) = golden[0], golden[-1]
-    for share, tall in ((0.45, 5), (0.75, 4)):
-        tx, ty = gx1 + (gx2 - gx1) * share, gy1 + (gy2 - gy1) * share
-        pen.line([(tx, ty), (tx, ty - tall)], fill=(150, 58, 44), width=1)
+    # ---- the suspensions (Jamie, 2026-11-19): towers up from the deck, their height by how far off they are, the main
+    # cable from the deck up to the first tower's top, sagging nearly to the deck between towers, and back down ----
+    def suspension(deck, towers, color, cable_color, ends=True):
+        # deck: [(x, y, px per map px there)], towers: shares along it, each tower TOWER_TALL map px high
+        def at(share):
+            k = share * (len(deck) - 1)
+            i = min(int(k), len(deck) - 2)
+            f = k - i
+            return tuple(deck[i][c] + (deck[i + 1][c] - deck[i][c]) * f for c in range(3))
+        tops = []
+        for share in towers:
+            x, y, scale = at(share)
+            tall = max(2.0, TOWER_TALL * scale)
+            pen.line([(x, y), (x, y - tall)], fill=color, width=1)
+            tops.append((share, tall))
+        spans = list(zip(tops, tops[1:]))
+        if ends:
+            spans = [((0.0, 0.0), tops[0])] + spans + [(tops[-1], (1.0, 0.0))]
+        for (s0, h0), (s1, h1) in spans:
+            cable = []
+            for k in range(41):
+                t = k / 40
+                x, y, _ = at(s0 + (s1 - s0) * t)
+                sag = (h0 + h1) / 2 * 0.8 * 4 * t * (1 - t) if h0 and h1 else 0
+                cable.append((x, y - ((1 - t) * h0 + t * h1 - sag)))
+            pen.line(cable, fill=cable_color, width=1)
+    # the Golden Gate: its two towers, international orange, smaller as it goes off toward the North Bay
+    g_scale = height_at(project(88, 0)[2])
+    golden_deck = [(x, y, g_scale * (1 - 0.45 * k / max(1, len(golden) - 1))) for k, (x, y) in enumerate(golden)]
+    golden_deck = [tuple(golden_deck[0][c] + (golden_deck[-1][c] - golden_deck[0][c]) * k / 30 for c in range(3)) for k in range(31)]
+    suspension(golden_deck, (0.3, 0.72), (170, 66, 48), (150, 60, 46))
+    # the Bay Bridge's west span, the city to Treasure Island: four silver towers (its east span, past the island, a truss)
+    west = [q for q in bay_map if q is not None and not (0 <= int(round(q[1])) < H and 0 <= int(round(q[0])) < W and ti_shape[int(round(q[1])), int(round(q[0]))]) and q[0] < VPX + ti_rel]
+    if len(west) > 4:
+        suspension([(q[0], q[1], height_at(q[2])) for q in west], (0.12, 0.34, 0.6, 0.84), (168, 176, 190), (140, 150, 168), ends=False)
 
 # ---- the city at the tip: the landing page's skyline (from SVG_logo.svg), taller, dimmed for the night ----
 SKYLINE = os.path.join(here, 'assets', 'landing-skyline.png')
