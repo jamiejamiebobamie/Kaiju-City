@@ -84,7 +84,8 @@ const MoonReflection = ({ x, y, radius }) => {
   The sky's colour by row: as scripts/labWindowView.py paints it (night black at the top to blue at the horizon, the
   horizon's glow), so the dark side matches it.
 */
-const MOON = { lit: [250, 238, 168], glow: [38, 44, 70], glowReach: 1.6, bite: { x: -0.45, y: -0.15, size: 0.95 } };
+// (brightness: 0.75 of what it was, Jamie 2026-11-19: it outshone the title and the skyline)
+const MOON = { lit: [250, 238, 168], glow: [38, 44, 70], glowReach: 1.6, bite: { x: -0.45, y: -0.15, size: 0.95 }, brightness: 0.75 };
 const getSkyAt = row => {
   const t = Math.pow(Math.max(0, Math.min(1, row / LANDING_VIEW.horizon)), 2.2);
   const shine = Math.exp(-Math.pow((row - LANDING_VIEW.horizon) / 6, 2));
@@ -113,11 +114,11 @@ const Moon = ({ x, y, radius }) => {
         if (distance <= radius) {
           const inBite = Math.hypot(dx - MOON.bite.x * radius, dy - MOON.bite.y * radius) <= MOON.bite.size * radius;
           const base = sky.map((value, c) => value + MOON.glow[c]);
-          const color = inBite ? base : base.map((value, c) => value * 0.15 + MOON.lit[c] * 0.85);
+          const color = inBite ? base : base.map((value, c) => Math.max(value, (value * 0.15 + MOON.lit[c] * 0.85) * MOON.brightness));
           discData.data.set([...color.map(Math.round), 255], k);
         } else {
           const halo = Math.pow(Math.max(0, 1 - (distance - radius) / (radius * MOON.glowReach)), 2);
-          if (halo > 0) glowData.data.set([...MOON.glow.map(value => Math.round(value * halo)), 255], k);
+          if (halo > 0) glowData.data.set([...MOON.glow.map(value => Math.round(value * halo * MOON.brightness)), 255], k);
         }
       }
     }
