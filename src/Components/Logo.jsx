@@ -346,7 +346,8 @@ const Breath = () => BREATH_EMBERS.map(({ key, delay, cx, cy, fx, fy, lx, ly, bx
   In the word's own px (before the title's and the logo's scaling): the gap, the border's width, the opening (a share
   of each letter's outline), each letter's lap.
 */
-const BORDER = { gap: 2.4, width: 1.9, color: "#c25cff", core: "#efd0ff", opening: 0.16, seconds: [3.4, 4.6], glow: 2.2 };
+// (Jamie: the word's own outline colour, CSS purple, glowing in it; the opening half what it was)
+const BORDER = { gap: 2.4, width: 1.9, color: "#800080", opening: 0.08, seconds: [3.4, 4.6], glow: 2.2 };
 const borderFlicker = keyframes`
   0%, 100% { opacity: 1; }
   41% { opacity: 1; }
@@ -406,7 +407,8 @@ const KaijuCircuit = ({ wordRef }) => {
         <filter id="kaiju-neon" x="-30%" y="-30%" width="160%" height="160%">
           <feGaussianBlur in="SourceGraphic" stdDeviation={BORDER.glow} result="wide" />
           <feGaussianBlur in="SourceGraphic" stdDeviation={BORDER.glow * 0.35} result="near" />
-          <feMerge><feMergeNode in="wide" /><feMergeNode in="near" /><feMergeNode in="SourceGraphic" /></feMerge>
+          {/* (the wide glow twice: purple is dark, once was faint) */}
+          <feMerge><feMergeNode in="wide" /><feMergeNode in="wide" /><feMergeNode in="near" /><feMergeNode in="SourceGraphic" /></feMerge>
         </filter>
         {layout && kaijuGlyphs.letters.map(({ path }, k) => (
           // (the ring only: everything within the gap of the letter, and the letter itself, masked away)
@@ -425,11 +427,6 @@ const KaijuCircuit = ({ wordRef }) => {
             return (
               <g key={k} transform={`translate(${layout.starts[k]} ${layout.baseline}) scale(${scale} ${-scale})`}>
                 <path ref={el => { pathRefs.current[k] = el; }} d={path} fill="none" stroke={BORDER.color} strokeWidth={units((BORDER.gap + BORDER.width) * 2)} strokeLinejoin="round" mask={`url(#kaiju-ring-${k})`}
-                  strokeDasharray={length ? `${length - opening} ${opening}` : undefined}>
-                  {length > 0 && <animate attributeName="stroke-dashoffset" from={length * (k / 5)} to={length * (k / 5) - length} dur={`${seconds}s`} repeatCount="indefinite" />}
-                </path>
-                {/* (a paler core along the ring's middle, the opening with it: neon) */}
-                <path d={path} fill="none" stroke={BORDER.core} strokeWidth={units((BORDER.gap + BORDER.width * 0.45) * 2)} strokeLinejoin="round" mask={`url(#kaiju-ring-${k})`} opacity={0.55}
                   strokeDasharray={length ? `${length - opening} ${opening}` : undefined}>
                   {length > 0 && <animate attributeName="stroke-dashoffset" from={length * (k / 5)} to={length * (k / 5) - length} dur={`${seconds}s`} repeatCount="indefinite" />}
                 </path>

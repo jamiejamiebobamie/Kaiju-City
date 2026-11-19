@@ -169,6 +169,8 @@ const SceneSlide = styled.div`
   /* (Jamie, 2026-11-19: no glow on "Kaiju", nor its own outline: its live border, offset outward, instead; "City" glows) */
   & > div > :first-child > p:nth-child(2) { filter: brightness(1.08) drop-shadow(0 0 4px rgba(200, 90, 255, 0.36)) drop-shadow(0 0 14px rgba(160, 50, 240, 0.22)); }
   & > div > :first-child > p:first-child { -webkit-text-stroke: 0 transparent; filter: none; }
+  /* (its letters spaced wider, so the offset border shows between them: Jamie; its black copy behind spaced alike) */
+  & > div > :first-child > p:first-child, & > div > :first-child > p:nth-child(3) { letter-spacing: 8px; }
   /* the Kaiju keeps its walk and its own glow: it slides by 'translate' alone */
   & > div > :nth-child(n + 3):not(img) { ${props => props.$isLeaving && css`transition: translate ${SLIDE.ms}ms ease-in; translate: ${SLIDE.kaiju} 0;`} }
 `;
