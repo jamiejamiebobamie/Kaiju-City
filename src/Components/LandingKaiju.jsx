@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import styled from "styled-components";
+import styled, { keyframes } from "styled-components";
 import kaijuSea from "./data/kaijuSea.json";
 
 /*
@@ -22,7 +22,9 @@ export const SEA_KAIJU = {
   roar: [2, 3, 4, 5, 5, 5, 5, 4, 3, 2],
   fireOn: [4, 5],
   holdFrame: 5, // (the widest roar: held, breathing fire, from when it's reached)
+  holdTicks: 11, // (frames it holds the roar: about 4.6 s; to the end of the event was too long: Jamie)
   heaveTicks: 2, // (frames: how long each of the two roars shows as it heaves between them)
+  revealMs: 1500, // (its fade in: as long as its fade out)
   fire: { angle: 52, length: 1.05, seconds: 1.6 } // (degrees from upright toward its face; its length: of its height)
 };
 
@@ -30,6 +32,16 @@ const Holder = styled.div`
   position: absolute;
   pointer-events: none;
   transition: opacity 1500ms ease-in-out;
+`;
+// it fades in, plainly (Jamie, 2026-11-19: the scene's white flash and then the buoy's flare both tried and taken out)
+const reveal = keyframes`
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+`;
+const Reveal = styled.div`
+  position: absolute;
+  inset: 0;
+  animation: ${reveal} ${props => props.$ms}ms ease-in-out ${props => props.$delayMs}ms both;
 `;
 
 // the wake: foam along the waterline where the body and the tail break it, flickering, ripples spreading out
@@ -72,30 +84,45 @@ const Wake = ({ spans, scale, width }) => {
 
 // 'isMirrored': it faces left (the one on the right of the Peninsula); 'isShown': in (fades in and out);
 // 'fireX', 'fireY': its fire moved off its mouth (px, as it faces right), 'fireScale', 'fireAngle' (degrees from upright);
-// 'isPreview': held still breathing its fire, for the tuner (Jamie: to set it against its fire)
-export const SeaKaiju = ({ x, y, height, waterRow, isMirrored = false, isShown = true, delayMs = 0, fireX = 0, fireY = 0, fireScale: fireSize = 1, fireAngle = SEA_KAIJU.fire.angle, isPreview = false }) => {
+// 'isPreview': held still breathing its fire, for the tuner (Jamie: to set it against its fire); 'revealDelayMs': when
+// it fades in, after it's placed
+export const SeaKaiju = ({ x, y, height, waterRow, isMirrored = false, isShown = true, delayMs = 0, fireX = 0, fireY = 0, fireScale: fireSize = 1, fireAngle = SEA_KAIJU.fire.angle, isPreview = false, revealDelayMs = 0 }) => {
   const [step, setStep] = useState(0);
   const [tick, setTick] = useState(0); // (counting on while it holds, for its body's breathing between two poses)
   const [fireStep, setFireStep] = useState(-1);
-  const sequence = useRef([...SEA_KAIJU.idle, ...SEA_KAIJU.idle, ...SEA_KAIJU.roar]);
+  // (one roar to an event: idle, the roar, then idle on to the end)
+  const sequence = useRef([...SEA_KAIJU.idle, ...SEA_KAIJU.idle, ...SEA_KAIJU.roar, ...SEA_KAIJU.idle, ...SEA_KAIJU.idle, ...SEA_KAIJU.idle]);
+  const stepRef = useRef(0);
+  const heldRef = useRef(0);
   useEffect(() => {
     let timer;
     const start = setTimeout(() => {
-      // (Jamie: as normal until it breathes fire, then held breathing it until it fades)
+      // (Jamie: as normal until it breathes fire, then held breathing it a good while (not to the end: too long), then
+      // down and on)
       timer = setInterval(() => {
-        setStep(k => (sequence.current[k] == SEA_KAIJU.holdFrame ? k : (k + 1) % sequence.current.length));
-        setTick(k => k + 1);
+        const k = stepRef.current;
+        if (sequence.current[k] == SEA_KAIJU.holdFrame && heldRef.current < SEA_KAIJU.holdTicks) heldRef.current += 1;
+        else stepRef.current = Math.min(k + 1, sequence.current.length - 1);
+        setStep(stepRef.current);
+        setTick(n => n + 1);
       }, SEA_KAIJU.frameMs);
     }, delayMs);
     return () => { clearTimeout(start); clearInterval(timer); };
   }, []);
   // (holding its fire, its body heaves between the two widest roars: Jamie, so it isn't still as it spews)
-  const isHolding = sequence.current[step] == SEA_KAIJU.holdFrame;
+  const isHolding = sequence.current[step] == SEA_KAIJU.holdFrame && heldRef.current < SEA_KAIJU.holdTicks;
   const frame = isPreview ? SEA_KAIJU.holdFrame : isHolding ? SEA_KAIJU.fireOn[Math.floor(tick / SEA_KAIJU.heaveTicks) % SEA_KAIJU.fireOn.length] : sequence.current[step];
   const isBreathing = SEA_KAIJU.fireOn.includes(frame);
   // the fire's own frames: growing, roaring, dying away while the mouth is wide
   useEffect(() => {
-    if (!isBreathing) { setFireStep(-1); return; }
+    if (!isBreathing) {
+      // (dying away over its last flames, not cut off)
+      if (fireStep < 0) return;
+      const count = kaijuSea.fire.count;
+      setFireStep(count - 2);
+      const out = [setTimeout(() => setFireStep(count - 1), 140), setTimeout(() => setFireStep(-1), 300)];
+      return () => out.forEach(clearTimeout);
+    }
     if (fireStep >= 0) return;
     let k = 0;
     setFireStep(0);
@@ -118,6 +145,7 @@ export const SeaKaiju = ({ x, y, height, waterRow, isMirrored = false, isShown =
   const fireScale = ((height * SEA_KAIJU.fire.length) / fireHeight) * fireSize;
   return (
     <Holder style={{ left: x - legsX, top: y - height, width, height, opacity: isShown ? 1 : 0, transformOrigin: `${legsX}px 50%`, transform: isMirrored ? "scaleX(-1)" : undefined }}>
+      <Reveal $ms={isPreview ? 1 : SEA_KAIJU.revealMs} $delayMs={isPreview ? 0 : revealDelayMs}>
       {/* the body, cut by the water */}
       <div style={{ position: "absolute", left: 0, top: 0, width, height, overflow: "hidden", filter: `drop-shadow(0 0 0.6px ${SEA_KAIJU.outline}) drop-shadow(0 0 0.6px ${SEA_KAIJU.outline})` }}>
         <div style={{ width, height: frameHeight * scale, backgroundImage: `url(${SEA_KAIJU.sheet})`, backgroundSize: `${kaijuSea.frames.length * 100}% 100%`, backgroundPosition: `${(frame / (kaijuSea.frames.length - 1)) * 100}% 0`, backgroundRepeat: "no-repeat" }} />
@@ -130,6 +158,7 @@ export const SeaKaiju = ({ x, y, height, waterRow, isMirrored = false, isShown =
       <div style={{ position: "absolute", left: 0, top: height - 1 }}>
         <Wake spans={spans} scale={scale} width={width} />
       </div>
+      </Reveal>
     </Holder>
   );
 };
@@ -137,7 +166,7 @@ export const SeaKaiju = ({ x, y, height, waterRow, isMirrored = false, isShown =
 /*
   The buoy (Jamie, 2026-11-19): a little pixel-art buoy out on the water, bobbing and rocking on the swell, its lamp
   turning: a beam sweeping round, and as it swings toward the viewer the lamp flares. 'onFacing' is called each time
-  it faces the viewer (MainMenu flashes the scene on every third). In the Peninsula picture's px: its foot on the
+  it faces the viewer (MainMenu starts an event on every third). In the Peninsula picture's px: its foot on the
   water, its size.
 */
 export const BUOY = {
@@ -193,8 +222,8 @@ export const Buoy = ({ x, y, size, onFacing }) => {
       ctx.fill();
       px(lampX - 1 * u, lampY - 1 * u, 2 * u, 2 * u, `rgb(${BUOY.colors.lamp})`);
       ctx.restore();
-      // the twinkle (Jamie): as the lamp turns into the viewer's eyes, a yellow star flashes on it, so the big flash
-      // reads as that light
+      // the twinkle (Jamie): as the lamp turns into the viewer's eyes, a yellow star flashes on it, as the event
+      // begins on its third
       const twinkle = facing ** 10;
       if (twinkle > 0.02) {
         const cx = baseX + Math.sin(rock) * 11.5 * u, cy = baseY - Math.cos(rock) * 11.5 * u;

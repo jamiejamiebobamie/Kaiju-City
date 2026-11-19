@@ -14,7 +14,6 @@ import {
 } from "./Components/StyledComponents";
 import { Logo } from "./Components/Logo";
 import { COPTER_MS, LandingScene } from "./Components/LandingScene";
-import { FLASH, SceneFlash } from "./Components/LandingFlash";
 import { getIsTunePanel, LandingTuner, loadLandingTune } from "./Components/LandingTuner";
 import { GlobalSettingsContext } from "Home";
 import { IrradiationVat } from "./Game/ReactComponents/IrradiationVat";
@@ -147,8 +146,9 @@ const getBaseJoinerShape = ({ middle, topWidth, bottomWidth }) => {
     "--base-joiner-shape": `polygon(${inset(topWidth)} 0, ${out(topWidth)} 0, ${out(bottomWidth)} 100%, ${inset(bottomWidth)} 100%)`
   };
 };
-// (the event starts under the flash's full white: Jamie: the Kaiju there as it clears)
-const LANDING_CYCLE = { everyFacing: 3, flashPeakMs: FLASH.whiteMs + 40, fadeMs: 1500, embersMs: 2200 };
+// (the event starts as the buoy's lamp turns to the viewer, the Kaiju fading in. The whole scene flashing white with a
+// sun star, and then a flare on the buoy, both tried and taken out: Jamie, 2026-11-19; LandingFlash.jsx kept)
+const LANDING_CYCLE = { everyFacing: 3, startMs: 0, fadeMs: 1500, embersMs: 2200 };
 
 const getLogoScale = () => LOGO_SIZE.scale * Math.min(window.innerWidth / LOGO_SIZE.window.width, window.innerHeight / LOGO_SIZE.window.height);
 
@@ -284,21 +284,19 @@ export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = ()
   // the joiner's, the moon's and its reflection's places (?tune: Jamie's panel)
   const [tune, setTune] = useState(loadLandingTune);
   // the scene's cycle (Jamie, 2026-11-19): the buoy's lamp turning; every third time it swings into the viewer's eyes,
-  // the scene flashes white, and as it clears the Kaiju stand in the water, the helicopters fly in and the embers glow;
+  // the Kaiju fade in, standing in the water, the helicopters fly in and the embers glow;
   // once the helicopters are gone the Kaiju and embers fade out, and the buoy counts again
   const [event, setEvent] = useState(undefined);
   const [isEventFading, setIsEventFading] = useState(false);
-  const [flash, setFlash] = useState(0);
   const cycle = useRef({ count: 0, facings: 0, isBusy: false, timers: [] });
   const beginEvent = useCallback(() => {
     const now = cycle.current;
     if (now.isBusy) return;
     now.isBusy = true;
-    setFlash(k => k + 1);
     const later = (ms, then) => now.timers.push(setTimeout(then, ms));
-    later(LANDING_CYCLE.flashPeakMs, () => { now.count += 1; setIsEventFading(false); setEvent(now.count); });
-    later(LANDING_CYCLE.flashPeakMs + COPTER_MS, () => setIsEventFading(true));
-    later(LANDING_CYCLE.flashPeakMs + COPTER_MS + LANDING_CYCLE.fadeMs, () => { setEvent(undefined); setIsEventFading(false); now.isBusy = false; now.facings = 0; });
+    later(LANDING_CYCLE.startMs, () => { now.count += 1; setIsEventFading(false); setEvent(now.count); });
+    later(LANDING_CYCLE.startMs + COPTER_MS, () => setIsEventFading(true));
+    later(LANDING_CYCLE.startMs + COPTER_MS + LANDING_CYCLE.fadeMs, () => { setEvent(undefined); setIsEventFading(false); now.isBusy = false; now.facings = 0; });
   }, []);
   const onBuoyFacing = useCallback(() => {
     const now = cycle.current;
@@ -390,7 +388,6 @@ export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = ()
     <SpeedBlurFilter />
     <LandingScene spot={CITY_ZOOM.spot} zoom={getSceneZoom(isLeaving, isLogoZoomingOut)} isBack={isLogoZoomingOut} logoScale={logoScale} lift={LOGO_LIFT - tune.cityscape.y} tune={tune} event={event} isEventFading={isEventFading} onBuoyFacing={onBuoyFacing} />
     <EmberSlide $isLeaving={isLeaving} style={isLeaving ? undefined : { opacity: event === undefined || isEventFading ? 0 : 1, transition: `opacity ${LANDING_CYCLE.embersMs}ms ease-in-out` }}><Embers /></EmberSlide>
-    {flash > 0 && <SceneFlash key={flash} aria-hidden="true" />}
     <SceneSlide $isLeaving={isLeaving} $isZoomingBack={isLogoZoomingOut} style={{ "--logo-scale": logoScale, "--logo-lift": `${LOGO_LIFT}px`, "--joiner-both": `${tune.joiner.both}px`, "--joiner-band": `${tune.joiner.band}px`, "--joiner-glow": `${tune.joiner.glow}px`, "--skyline-y": `${tune.cityscape.y}px`, "--base-joiner-top": `${tune.baseJoiner.top}px`, "--base-joiner-height": `${tune.baseJoiner.height}px`, ...getBaseJoinerShape(tune.baseJoiner), "--base-joiner-solid": `${tune.baseJoiner.solid * 100}%`, "--base-joiner-opacity": tune.baseJoiner.opacity }}><Logo spotlights circuit baseJoiner /></SceneSlide>{/* (the joiner off, to see it without: Jamie, 2026-11-19; <Logo joiner spotlights /> brings it back) */}
     <ZoomThrough isOn={isLeaving} startMs={ZOOM_START_MS} onDone={enterRoom || handleClickGame} />
     {isZoomingBack && <ZoomThrough isOn isReverse startMs={0} onDone={() => setIsZoomingBack(false)} />}

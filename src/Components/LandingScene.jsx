@@ -452,8 +452,8 @@ export const LandingScene = ({ spot, zoom, isBack = false, logoScale = 1, lift =
       <Surf points={SURF_POINTS} width={LANDING_VIEW.size.width} height={LANDING_VIEW.size.height} />
       <Surf points={landingTraffic.coast} width={LANDING_VIEW.size.width} height={LANDING_VIEW.size.height} pixel rest={COAST.rest} />
       <Buoy {...tune.buoy} onFacing={onBuoyFacing} />
-      {(event !== undefined || tune.kaiju.preview > 0) && <SeaKaiju key={`left ${event}`} {...tune.kaijuLeft} isShown={!isEventFading || tune.kaiju.preview > 0} isPreview={tune.kaiju.preview > 0} />}
-      {(event !== undefined || tune.kaiju.preview > 0) && <SeaKaiju key={`right ${event}`} {...tune.kaijuRight} isShown={!isEventFading || tune.kaiju.preview > 0} isPreview={tune.kaiju.preview > 0} isMirrored delayMs={700} />}
+      {(event !== undefined || tune.kaiju.preview > 0) && <SeaKaiju key={`left ${event}`} {...tune.kaijuLeft} isShown={!isEventFading || tune.kaiju.preview > 0} isPreview={tune.kaiju.preview > 0} revealDelayMs={0} />}
+      {(event !== undefined || tune.kaiju.preview > 0) && <SeaKaiju key={`right ${event}`} {...tune.kaijuRight} isShown={!isEventFading || tune.kaiju.preview > 0} isPreview={tune.kaiju.preview > 0} isMirrored delayMs={700} revealDelayMs={450} />}
       <Moon {...tune.moon} />
 
       <MoonReflection {...tune.reflection} />
