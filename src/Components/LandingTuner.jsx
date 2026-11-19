@@ -26,14 +26,14 @@ import styled from "styled-components";
 export const LANDING_TUNE_DEFAULTS = {
   joiner: { both: -4.5, band: 0, glow: -1 },
   moon: { x: 992, y: 357, radius: 30, darkSide: 0.03, glow: 0.55 },
-  reflection: { x: 1021, y: 464, radius: 33 },
+  reflection: { x: 1039, y: 464, radius: 36 },
   cityscape: { y: 4 },
   pressKey: { top: 0.655 },
   baseJoiner: { top: 194.5, height: 10.5, middle: 292.5, topWidth: 506, bottomWidth: 678, solid: 0.58, opacity: 0.81 },
-  kaijuLeft: { x: 510, y: 512, height: 143, waterRow: 306, fireX: 0, fireY: -6, fireScale: 1, fireAngle: 52 },
-  kaijuRight: { x: 1103, y: 525, height: 92, waterRow: 306, fireX: 0, fireY: -6, fireScale: 1, fireAngle: 52 },
+  kaijuLeft: { x: 510, y: 533, height: 151, waterRow: 306, fireX: 0, fireY: -6, fireScale: 1, fireAngle: 52 },
+  kaijuRight: { x: 1101, y: 570, height: 173, waterRow: 306, fireX: 0, fireY: -6, fireScale: 1, fireAngle: 52 },
   kaiju: { show: 0 }, // (on with ?tune: loadLandingTune)
-  buoy: { x: 478, y: 452, size: 1 }
+  buoy: { x: 582, y: 448, size: 1 }
 };
 const RANGES = {
   joiner: { both: [-20, 20, 0.5], band: [-20, 20, 0.5], glow: [-20, 20, 0.5] },
