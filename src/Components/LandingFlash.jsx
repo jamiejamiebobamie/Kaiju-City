@@ -17,11 +17,12 @@ const white = keyframes`
   ${share(FLASH.whiteMs + FLASH.starInMs + FLASH.holdMs)} { opacity: 1; }
   100% { opacity: 0; }
 `;
+// (turning in place as it shines: Jamie)
 const star = keyframes`
-  0%, ${share(FLASH.whiteMs)} { opacity: 0; transform: translate(-50%, -50%) scale(0.6) rotate(-4deg); }
-  ${share(FLASH.whiteMs + FLASH.starInMs)} { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0deg); }
-  ${share(FLASH.whiteMs + FLASH.starInMs + FLASH.holdMs)} { opacity: 1; transform: translate(-50%, -50%) scale(1.06) rotate(1.5deg); }
-  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.15) rotate(2.5deg); }
+  0%, ${share(FLASH.whiteMs)} { opacity: 0; transform: translate(-50%, -50%) scale(0.6) rotate(-14deg); }
+  ${share(FLASH.whiteMs + FLASH.starInMs)} { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(-4deg); }
+  ${share(FLASH.whiteMs + FLASH.starInMs + FLASH.holdMs)} { opacity: 1; transform: translate(-50%, -50%) scale(1.06) rotate(10deg); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.15) rotate(18deg); }
 `;
 const Cover = styled.div`
   position: fixed;
@@ -39,7 +40,7 @@ const Star = styled.svg`
   top: 46%;
   width: min(90vw, 1150px);
   height: min(90vw, 1150px);
-  z-index: 0;
+  z-index: 30; /* (shining over the logo and [Press any key] too, as a test: Jamie; the white stays behind them) */
   pointer-events: none;
   opacity: 0;
   overflow: visible;
