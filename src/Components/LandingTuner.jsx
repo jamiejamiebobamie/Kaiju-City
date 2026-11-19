@@ -11,19 +11,22 @@ import styled from "styled-components";
     moon, reflection: the Peninsula picture's px (its horizon is row 403): middle x, y, and radius
     cityscape: logo px down (negative: up): the skyline (with its spotlights and joiner) over the Peninsula, which
       stays put; the title and the Kaiju don't move
+    pressKey: "[Press any key]"'s height, as a share of the window's (0 the top, 1 the bottom)
 */
 // (Jamie's, 2026-11-18)
 export const LANDING_TUNE_DEFAULTS = {
   joiner: { both: -4.5, band: 0, glow: -1 },
   moon: { x: 992, y: 357, radius: 30 },
   reflection: { x: 1021, y: 464, radius: 33 },
-  cityscape: { y: 0 }
+  cityscape: { y: 0 },
+  pressKey: { top: 0.84 }
 };
 const RANGES = {
   joiner: { both: [-20, 20, 0.5], band: [-20, 20, 0.5], glow: [-20, 20, 0.5] },
   moon: { x: [600, 1700, 1], y: [120, 400, 1], radius: [8, 90, 1] },
   reflection: { x: [600, 1700, 1], y: [405, 760, 1], radius: [6, 70, 1] },
-  cityscape: { y: [-30, 30, 0.5] }
+  cityscape: { y: [-30, 30, 0.5] },
+  pressKey: { top: [0.5, 0.97, 0.005] }
 };
 const STORE_KEY = "kaiju-landing-tune";
 

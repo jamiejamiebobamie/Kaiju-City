@@ -339,7 +339,7 @@ export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = ()
     <SceneSlide $isLeaving={isLeaving} $isZoomingBack={isLogoZoomingOut} style={{ "--logo-scale": logoScale, "--logo-lift": `${LOGO_LIFT}px`, "--joiner-both": `${tune.joiner.both}px`, "--joiner-band": `${tune.joiner.band}px`, "--joiner-glow": `${tune.joiner.glow}px`, "--skyline-y": `${tune.cityscape.y}px` }}><Logo spotlights circuit /></SceneSlide>{/* (the joiner off, to see it without: Jamie, 2026-11-19; <Logo joiner spotlights /> brings it back) */}
     <ZoomThrough isOn={isLeaving} startMs={ZOOM_START_MS} onDone={enterRoom || handleClickGame} />
     {isZoomingBack && <ZoomThrough isOn isReverse startMs={0} onDone={() => setIsZoomingBack(false)} />}
-    <PressAnyKey $isLeaving={isLeaving} style={{ opacity: isZoomingBack ? 0 : undefined, transition: "opacity 600ms ease-out" }}>
+    <PressAnyKey $isLeaving={isLeaving} style={{ top: `calc(100dvh * ${tune.pressKey.top})`, opacity: isZoomingBack ? 0 : undefined, transition: "opacity 600ms ease-out" }}>
       {pressEffect == "neon" ? <NeonRow isLeaving={isLeaving} /> : <PressKeyRow settings={pressSettings} isLeaving={isLeaving} />}
     </PressAnyKey>
     </ShiftLayer>
