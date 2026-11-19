@@ -16,7 +16,9 @@ import styled from "styled-components";
     baseJoiner: the skyline's base blue carried down over its feet: its top and height, its middle across, its top's and
       its bottom's widths (logo px), where its fade begins (a share of its height, solid above it) and its opacity
     kaijuLeft, kaijuRight: the Kaiju in the water (the Peninsula picture's px): x its legs' middle, y the waterline at
-      it, its height out of the water; kaiju.waterRow: where in its frame (feet at 374) the water cuts it
+      it, its height out of the water, waterRow where on its body the water starts (its frame's row: feet at 380);
+      its fire: fireX, fireY moved off its mouth (px, as it faces right: mirrored on the right one), fireScale,
+      fireAngle (degrees from upright); kaiju.preview 1: both held still breathing fire, to set them
     buoy: its foot on the water (the picture's px) and its size; "Flash now" sets an event off without waiting
 */
 // (Jamie's, 2026-11-18)
@@ -27,9 +29,9 @@ export const LANDING_TUNE_DEFAULTS = {
   cityscape: { y: 4 },
   pressKey: { top: 0.655 },
   baseJoiner: { top: 194.5, height: 10.5, middle: 292.5, topWidth: 506, bottomWidth: 678, solid: 0.58, opacity: 0.81 },
-  kaijuLeft: { x: 532, y: 525, height: 92 },
-  kaijuRight: { x: 1103, y: 525, height: 92 },
-  kaiju: { waterRow: 300 },
+  kaijuLeft: { x: 532, y: 525, height: 92, waterRow: 306, fireX: 0, fireY: -6, fireScale: 1, fireAngle: 52 },
+  kaijuRight: { x: 1103, y: 525, height: 92, waterRow: 306, fireX: 0, fireY: -6, fireScale: 1, fireAngle: 52 },
+  kaiju: { preview: 0 },
   buoy: { x: 478, y: 452, size: 1 }
 };
 const RANGES = {
@@ -39,9 +41,9 @@ const RANGES = {
   cityscape: { y: [-30, 30, 0.5] },
   pressKey: { top: [0.5, 0.97, 0.005] },
   baseJoiner: { top: [150, 240, 0.5], height: [2, 60, 0.5], middle: [200, 400, 0.5], topWidth: [100, 700, 1], bottomWidth: [100, 700, 1], solid: [0, 1, 0.01], opacity: [0, 1, 0.01] },
-  kaijuLeft: { x: [300, 1500, 1], y: [404, 760, 1], height: [20, 220, 1] },
-  kaijuRight: { x: [300, 1500, 1], y: [404, 760, 1], height: [20, 220, 1] },
-  kaiju: { waterRow: [200, 374, 1] },
+  kaijuLeft: { x: [300, 1500, 1], y: [404, 760, 1], height: [20, 220, 1], waterRow: [150, 380, 1], fireX: [-60, 60, 0.5], fireY: [-60, 60, 0.5], fireScale: [0.2, 3, 0.05], fireAngle: [-30, 120, 1] },
+  kaijuRight: { x: [300, 1500, 1], y: [404, 760, 1], height: [20, 220, 1], waterRow: [150, 380, 1], fireX: [-60, 60, 0.5], fireY: [-60, 60, 0.5], fireScale: [0.2, 3, 0.05], fireAngle: [-30, 120, 1] },
+  kaiju: { preview: [0, 1, 1] },
   buoy: { x: [300, 1500, 1], y: [404, 760, 1], size: [0.5, 3, 0.05] }
 };
 const STORE_KEY = "kaiju-landing-tune";

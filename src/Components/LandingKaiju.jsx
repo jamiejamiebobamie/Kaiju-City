@@ -15,6 +15,7 @@ export const SEA_KAIJU = {
   sheet: "/zoom-scene/kaiju-sea.png",
   fireSheet: "/zoom-scene/kaiju-fire.png",
   outline: "rgb(191, 64, 191)",
+  fireGlow: "rgba(170, 60, 255, 0.7)", // (the fire glowing purple: Jamie)
   frameMs: 420,
   // idle, then the roar: rearing (frames 2-5), holding the widest (with fire), and back down
   idle: [0, 1, 0, 7, 6, 7],
@@ -67,8 +68,10 @@ const Wake = ({ spans, scale, width }) => {
   return <canvas ref={ref} width={size.width} height={size.height} style={{ position: "absolute", left: -12, top: -2, width: size.width, height: size.height, imageRendering: "pixelated" }} />;
 };
 
-// 'isMirrored': it faces left (the one on the right of the Peninsula); 'isShown': in (fades in and out)
-export const SeaKaiju = ({ x, y, height, waterRow, isMirrored = false, isShown = true, delayMs = 0 }) => {
+// 'isMirrored': it faces left (the one on the right of the Peninsula); 'isShown': in (fades in and out);
+// 'fireX', 'fireY': its fire moved off its mouth (px, as it faces right), 'fireScale', 'fireAngle' (degrees from upright);
+// 'isPreview': held still breathing its fire, for the tuner (Jamie: to set it against its fire)
+export const SeaKaiju = ({ x, y, height, waterRow, isMirrored = false, isShown = true, delayMs = 0, fireX = 0, fireY = 0, fireScale: fireSize = 1, fireAngle = SEA_KAIJU.fire.angle, isPreview = false }) => {
   const [step, setStep] = useState(0);
   const [fireStep, setFireStep] = useState(-1);
   const sequence = useRef([...SEA_KAIJU.idle, ...SEA_KAIJU.idle, ...SEA_KAIJU.roar]);
@@ -79,7 +82,7 @@ export const SeaKaiju = ({ x, y, height, waterRow, isMirrored = false, isShown =
     }, delayMs);
     return () => { clearTimeout(start); clearInterval(timer); };
   }, []);
-  const frame = sequence.current[step];
+  const frame = isPreview ? SEA_KAIJU.fireOn[SEA_KAIJU.fireOn.length - 1] : sequence.current[step];
   const isBreathing = SEA_KAIJU.fireOn.includes(frame);
   // the fire's own frames: growing, roaring, dying away while the mouth is wide
   useEffect(() => {
@@ -100,19 +103,21 @@ export const SeaKaiju = ({ x, y, height, waterRow, isMirrored = false, isShown =
   const [frameWidth, frameHeight] = kaijuSea.frame;
   const scale = height / waterRow;
   const width = frameWidth * scale;
+  const legsX = kaijuSea.legsX * scale; // (placed and turned about its legs)
+  const shownFire = isPreview ? kaijuSea.fire.count - 3 : fireStep; // (the biggest flame, held, in the preview)
   const spans = (kaijuSea.frames[frame].spans[Math.round(waterRow)] || []);
   const [mouthX, mouthY] = kaijuSea.frames[frame].mouth;
   const [fireWidth, fireHeight] = kaijuSea.fire.frame;
-  const fireScale = (height * SEA_KAIJU.fire.length) / fireHeight;
+  const fireScale = ((height * SEA_KAIJU.fire.length) / fireHeight) * fireSize;
   return (
-    <Holder style={{ left: x - (frameWidth / 2) * scale, top: y - height, width, height, opacity: isShown ? 1 : 0, transform: isMirrored ? "scaleX(-1)" : undefined }}>
+    <Holder style={{ left: x - legsX, top: y - height, width, height, opacity: isShown ? 1 : 0, transformOrigin: `${legsX}px 50%`, transform: isMirrored ? "scaleX(-1)" : undefined }}>
       {/* the body, cut by the water */}
       <div style={{ position: "absolute", left: 0, top: 0, width, height, overflow: "hidden", filter: `drop-shadow(0 0 0.6px ${SEA_KAIJU.outline}) drop-shadow(0 0 0.6px ${SEA_KAIJU.outline})` }}>
-        <div style={{ width: frameWidth * kaijuSea.frames.length * scale, height: frameHeight * scale, backgroundImage: `url(${SEA_KAIJU.sheet})`, backgroundSize: "100% 100%", transform: `translateX(${-frame * width}px)` }} />
+        <div style={{ width, height: frameHeight * scale, backgroundImage: `url(${SEA_KAIJU.sheet})`, backgroundSize: `${kaijuSea.frames.length * 100}% 100%`, backgroundPosition: `${(frame / (kaijuSea.frames.length - 1)) * 100}% 0`, backgroundRepeat: "no-repeat" }} />
       </div>
       {/* its fire, from its mouth, turned toward its face and up */}
-      {fireStep >= 0 && (
-        <div style={{ position: "absolute", left: mouthX * scale - (fireWidth * fireScale) / 2, top: mouthY * scale - fireHeight * fireScale, width: fireWidth * fireScale, height: fireHeight * fireScale, transformOrigin: "50% 100%", transform: `rotate(${SEA_KAIJU.fire.angle}deg)`, backgroundImage: `url(${SEA_KAIJU.fireSheet})`, backgroundSize: `${kaijuSea.fire.count * 100}% 100%`, backgroundPosition: `${(fireStep / (kaijuSea.fire.count - 1)) * 100}% 0`, mixBlendMode: "plus-lighter" }} />
+      {shownFire >= 0 && (
+        <div style={{ position: "absolute", left: mouthX * scale + fireX - (fireWidth * fireScale) / 2, top: mouthY * scale + fireY - fireHeight * fireScale, width: fireWidth * fireScale, height: fireHeight * fireScale, transformOrigin: "50% 100%", transform: `rotate(${fireAngle}deg)`, backgroundImage: `url(${SEA_KAIJU.fireSheet})`, backgroundSize: `${kaijuSea.fire.count * 100}% 100%`, backgroundPosition: `${(shownFire / (kaijuSea.fire.count - 1)) * 100}% 0`, mixBlendMode: "plus-lighter", filter: `drop-shadow(0 0 2px ${SEA_KAIJU.fireGlow}) drop-shadow(0 0 5px ${SEA_KAIJU.fireGlow})` }} />
       )}
       {/* the wake along the waterline */}
       <div style={{ position: "absolute", left: 0, top: height - 1 }}>
