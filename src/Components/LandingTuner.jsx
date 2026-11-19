@@ -15,6 +15,9 @@ import styled from "styled-components";
     pressKey: "[Press any key]"'s height, as a share of the window's (0 the top, 1 the bottom)
     baseJoiner: the skyline's base blue carried down over its feet: its top and height, its middle across, its top's and
       its bottom's widths (logo px), where its fade begins (a share of its height, solid above it) and its opacity
+    kaijuLeft, kaijuRight: the Kaiju in the water (the Peninsula picture's px): x its legs' middle, y the waterline at
+      it, its height out of the water; kaiju.waterRow: where in its frame (feet at 374) the water cuts it
+    buoy: its foot on the water (the picture's px) and its size; "Flash now" sets an event off without waiting
 */
 // (Jamie's, 2026-11-18)
 export const LANDING_TUNE_DEFAULTS = {
@@ -23,7 +26,11 @@ export const LANDING_TUNE_DEFAULTS = {
   reflection: { x: 1021, y: 464, radius: 33 },
   cityscape: { y: 4 },
   pressKey: { top: 0.655 },
-  baseJoiner: { top: 194.5, height: 10.5, middle: 292.5, topWidth: 506, bottomWidth: 678, solid: 0.58, opacity: 0.81 }
+  baseJoiner: { top: 194.5, height: 10.5, middle: 292.5, topWidth: 506, bottomWidth: 678, solid: 0.58, opacity: 0.81 },
+  kaijuLeft: { x: 532, y: 525, height: 92 },
+  kaijuRight: { x: 1103, y: 525, height: 92 },
+  kaiju: { waterRow: 300 },
+  buoy: { x: 478, y: 452, size: 1 }
 };
 const RANGES = {
   joiner: { both: [-20, 20, 0.5], band: [-20, 20, 0.5], glow: [-20, 20, 0.5] },
@@ -31,7 +38,11 @@ const RANGES = {
   reflection: { x: [600, 1700, 1], y: [405, 760, 1], radius: [6, 70, 1] },
   cityscape: { y: [-30, 30, 0.5] },
   pressKey: { top: [0.5, 0.97, 0.005] },
-  baseJoiner: { top: [150, 240, 0.5], height: [2, 60, 0.5], middle: [200, 400, 0.5], topWidth: [100, 700, 1], bottomWidth: [100, 700, 1], solid: [0, 1, 0.01], opacity: [0, 1, 0.01] }
+  baseJoiner: { top: [150, 240, 0.5], height: [2, 60, 0.5], middle: [200, 400, 0.5], topWidth: [100, 700, 1], bottomWidth: [100, 700, 1], solid: [0, 1, 0.01], opacity: [0, 1, 0.01] },
+  kaijuLeft: { x: [300, 1500, 1], y: [404, 760, 1], height: [20, 220, 1] },
+  kaijuRight: { x: [300, 1500, 1], y: [404, 760, 1], height: [20, 220, 1] },
+  kaiju: { waterRow: [200, 374, 1] },
+  buoy: { x: [300, 1500, 1], y: [404, 760, 1], size: [0.5, 3, 0.05] }
 };
 const STORE_KEY = "kaiju-landing-tune";
 
@@ -83,7 +94,7 @@ const Panel = styled.div`
 
 const stop = event => event.stopPropagation();
 
-export const LandingTuner = ({ tune, setTune }) => {
+export const LandingTuner = ({ tune, setTune, onFlash = undefined }) => {
   const set = (group, key, value) => setTune(all => {
     const next = { ...all, [group]: { ...all[group], [key]: value } };
     saveLandingTune(next);
@@ -110,6 +121,7 @@ export const LandingTuner = ({ tune, setTune }) => {
       ))}
       <button onClick={() => navigator.clipboard && navigator.clipboard.writeText(JSON.stringify(tune))}>Copy values</button>
       <button onClick={reset}>Reset</button>
+      {onFlash && <button onClick={onFlash}>Flash now</button>}
     </Panel>
   );
 };

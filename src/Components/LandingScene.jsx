@@ -3,6 +3,7 @@ import styled, { keyframes } from "styled-components";
 import { TrafficLights } from "../Game/ReactComponents/GameBoard/TrafficLights";
 import landingTraffic from "./data/landingTraffic.json";
 import { LANDING_TUNE_DEFAULTS } from "./LandingTuner";
+import { Buoy, SeaKaiju } from "./LandingKaiju";
 
 /*
   The landing's scene (Jamie, 2026-11-18): the Lab windows' Peninsula, but seen straight up its middle (one-point
@@ -416,8 +417,9 @@ const Fade = styled.div`
 // 'logoScale': the logo's size (the picture is drawn for it at 1, and scaled with it); 'lift': how far (logo px) the
 // logo's skyline is raised (MainMenu): the anchor goes with the skyline's zoom spot, the picture stays put;
 // 'tune': the moon's and its reflection's places and sizes (LandingTuner); 'event': the scene's current event (its
-// number, while one is on: MainMenu's cycle), when the helicopter flies
-export const LandingScene = ({ spot, zoom, isBack = false, logoScale = 1, lift = 0, tune = LANDING_TUNE_DEFAULTS, event = undefined }) => {
+// number, while one is on: MainMenu's cycle), when the Kaiju stand in the water and the helicopters fly;
+// 'isEventFading': it's ending (the Kaiju fading out); 'onBuoyFacing': the buoy's lamp has turned to the viewer
+export const LandingScene = ({ spot, zoom, isBack = false, logoScale = 1, lift = 0, tune = LANDING_TUNE_DEFAULTS, event = undefined, isEventFading = false, onBuoyFacing = undefined }) => {
   const stageRef = useRef(null);
   const [vanish, setVanish] = useState(undefined);
   useLayoutEffect(() => {
@@ -449,6 +451,9 @@ export const LandingScene = ({ spot, zoom, isBack = false, logoScale = 1, lift =
       <Stars points={landingTraffic.stars} width={LANDING_VIEW.size.width} height={LANDING_VIEW.size.height} />
       <Surf points={SURF_POINTS} width={LANDING_VIEW.size.width} height={LANDING_VIEW.size.height} />
       <Surf points={landingTraffic.coast} width={LANDING_VIEW.size.width} height={LANDING_VIEW.size.height} pixel rest={COAST.rest} />
+      <Buoy {...tune.buoy} onFacing={onBuoyFacing} />
+      {event !== undefined && <SeaKaiju key={`left ${event}`} {...tune.kaijuLeft} waterRow={tune.kaiju.waterRow} isShown={!isEventFading} />}
+      {event !== undefined && <SeaKaiju key={`right ${event}`} {...tune.kaijuRight} waterRow={tune.kaiju.waterRow} isShown={!isEventFading} isMirrored delayMs={700} />}
       <Moon {...tune.moon} />
 
       <MoonReflection {...tune.reflection} />
