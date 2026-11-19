@@ -43,7 +43,9 @@ export const TrafficLights = ({ paths, glints = [], width, height, zIndex, near 
       const speed = between(TRAFFIC.pointsPerSecond) * (near ? 1 + (near.speed - 1) * closeness(nearest) : 1);
       const spacing = (path.length - 1) / count;
       const start = Math.random() * spacing;
-      return [...Array(count).keys()].map(k => ({ p, at: (start + k * spacing + (Math.random() - 0.5) * spacing * 0.4) % (path.length - 1), speed }));
+      const span = path.length - 1;
+      // (wrapped onto the road either way: a nudge back could put the first car before its start, off the road)
+      return [...Array(count).keys()].map(k => ({ p, at: (((start + k * spacing + (Math.random() - 0.5) * spacing * 0.4) % span) + span) % span, speed }));
     });
     const sparkles = glints.map(([x, y, distance]) => ({ x, y, distance, period: between(GLINT.seconds), phase: Math.random() }));
     let frameId;
