@@ -30,8 +30,8 @@ export const LANDING_TUNE_DEFAULTS = {
   cityscape: { y: 4 },
   pressKey: { top: 0.655 },
   baseJoiner: { top: 194.5, height: 10.5, middle: 292.5, topWidth: 506, bottomWidth: 678, solid: 0.58, opacity: 0.81 },
-  kaijuLeft: { x: 510, y: 533, height: 151, waterRow: 306, fireX: 0, fireY: -6, fireScale: 1, fireAngle: 52 },
-  kaijuRight: { x: 1101, y: 570, height: 173, waterRow: 306, fireX: 0, fireY: -6, fireScale: 1, fireAngle: 52 },
+  kaijuLeft: { x: 510, y: 533, height: 151, waterRow: 286, fireX: 0, fireY: -9.5, fireScale: 1, fireAngle: 52 },
+  kaijuRight: { x: 1101, y: 570, height: 173, waterRow: 298, fireX: 0, fireY: -12, fireScale: 1, fireAngle: 52 },
   kaiju: { show: 0 }, // (on with ?tune: loadLandingTune)
   buoy: { x: 582, y: 448, size: 1 }
 };
