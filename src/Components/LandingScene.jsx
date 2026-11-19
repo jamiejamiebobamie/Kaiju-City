@@ -142,7 +142,8 @@ const Moon = ({ x, y, radius }) => {
 // (Jamie, round 8: the top chunk's coasts outlined, 'coast'; always showing was tried and taken back: too strong at
 // the top, Treasure Island janky)
 const SURF = { color: "170, 205, 255", rest: 0.12, most: 0.75, swell: { speed: 1.5, across: 0.045, down: 0.11 }, size: { near: 90, least: 0.5, most: 1.6 } };
-const Surf = ({ points, width, height }) => {
+// 'pixel': each point one pixel of the picture (the top chunk's thin coast outline), at 'rest' when no swell is on it
+const Surf = ({ points, width, height, pixel = false, rest = SURF.rest }) => {
   const ref = useRef(null);
   useEffect(() => {
     const canvas = ref.current;
@@ -158,15 +159,16 @@ const Surf = ({ points, width, height }) => {
         // a swell rolling along (by place), and each point's own flicker
         const swell = Math.max(0, Math.sin(t * SURF.swell.speed - x * SURF.swell.across - y * SURF.swell.down)) ** 3;
         const twinkle = 0.5 + 0.5 * Math.sin(t * speed + phase);
-        ctx.globalAlpha = SURF.rest + (SURF.most - SURF.rest) * swell * twinkle;
-        ctx.fillRect(x - size, y - size * 0.4, size * 2, size * 0.8);
+        ctx.globalAlpha = rest + (SURF.most - rest) * swell * twinkle;
+        if (pixel) ctx.fillRect(x, y, 1, 1);
+        else ctx.fillRect(x - size, y - size * 0.4, size * 2, size * 0.8);
       });
       frameId = requestAnimationFrame(run);
     };
     frameId = requestAnimationFrame(run);
     return () => cancelAnimationFrame(frameId);
-  }, [points, width, height]);
-  return <canvas ref={ref} width={width} height={height} aria-hidden="true" style={{ position: "absolute", left: 0, top: 0, width, height, zIndex: 1, pointerEvents: "none" }} />;
+  }, [points, width, height, pixel, rest]);
+  return <canvas ref={ref} width={width} height={height} aria-hidden="true" style={{ position: "absolute", left: 0, top: 0, width, height, zIndex: 1, pointerEvents: "none", imageRendering: pixel ? "pixelated" : undefined }} />;
 };
 /*
   The stars (Jamie, 2026-11-19): gently twinkling, each brightening and dimming slowly in its own time, a few now and
@@ -204,7 +206,9 @@ const Stars = ({ points, width, height }) => {
   return <canvas ref={ref} width={width} height={height} aria-hidden="true" style={{ position: "absolute", left: 0, top: 0, width, height, pointerEvents: "none", imageRendering: "pixelated" }} />;
 };
 
-const SURF_POINTS = [...(landingTraffic.surf || []), ...(landingTraffic.islandSurf || []), ...(landingTraffic.coast || [])];
+const SURF_POINTS = [...(landingTraffic.surf || []), ...(landingTraffic.islandSurf || [])];
+// (the top chunk's coast: pixel thin, a little brighter at rest so its shape reads: Jamie, 2026-11-19)
+const COAST = { rest: 0.3 };
 
 const fadeIn = keyframes`
   from { opacity: 0; }
@@ -280,6 +284,7 @@ export const LandingScene = ({ spot, zoom, isBack = false, logoScale = 1, lift =
     <View style={{ left: -LANDING_VIEW.vanish.x * scale, top: -LANDING_VIEW.vanish.y * scale + (vanish ? vanish.k : 1) * lift, transform: `scale(${scale})` }}>
       <Stars points={landingTraffic.stars} width={LANDING_VIEW.size.width} height={LANDING_VIEW.size.height} />
       <Surf points={SURF_POINTS} width={LANDING_VIEW.size.width} height={LANDING_VIEW.size.height} />
+      <Surf points={landingTraffic.coast} width={LANDING_VIEW.size.width} height={LANDING_VIEW.size.height} pixel rest={COAST.rest} />
       <Moon {...tune.moon} />
       <MoonReflection {...tune.reflection} />
       <TrafficLights paths={landingTraffic.paths} glints={landingTraffic.glints} width={LANDING_VIEW.size.width} height={LANDING_VIEW.size.height} zIndex={1} near={NEAR_TRAFFIC} />
