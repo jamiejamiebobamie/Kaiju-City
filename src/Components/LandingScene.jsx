@@ -216,6 +216,121 @@ const SURF_POINTS = [...(landingTraffic.surf || []), ...(landingTraffic.islandSu
 // (the top chunk's coast: pixel thin, a little brighter at rest so its shape reads: Jamie, 2026-11-19)
 const COAST = { rest: 0.3 };
 
+/*
+  The helicopter (Jamie, 2026-11-19): a police or military one, its searchlight down on the Peninsula. It swoops in
+  from the top right, settles over the Peninsula's near end, then flies on up its middle toward the city, smaller and
+  smaller as it goes (it and its circle of light on the land), until it's lost behind the skyline's buildings. Small
+  pixel art: a dark body, its rotor a blur, skids, a red light blinking and a white strobe. Its way: the Peninsula's
+  middle, from scripts/labWindowView.py ('copter': [x, y, scale, distance] of its ground spot). In the picture's px.
+*/
+const COPTER = {
+  ms: 17000, enterMs: 2600, lightOnMs: 800, leaveMs: 1400,
+  from: { x: 1340, y: 230, size: 2.6 }, // (off the window's top right, near and big)
+  altitude: 62, // px above its ground spot, at size 1
+  body: 1.35, // its drawing's scale (it was too small to make out)
+  light: { color: "255, 246, 222", rx: 10, ry: 3.2, sway: 4 }
+};
+const Copter = ({ path, horizon }) => {
+  const ref = useRef(null);
+  const { width, height } = LANDING_VIEW.size;
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas || !path || !path.length) return;
+    const ctx = canvas.getContext("2d");
+    const nearRow = path[0][1];
+    // its size by how far below the horizon its ground spot is (it shrinks into the distance)
+    const sizeAt = row => 0.22 + 0.95 * Math.pow(Math.max(0, (row - horizon) / (nearRow - horizon)), 0.85);
+    const ground = share => {
+      const k = Math.max(0, Math.min(path.length - 1.001, share * (path.length - 1)));
+      const i = Math.floor(k), f = k - i;
+      return { x: path[i][0] + (path[i + 1][0] - path[i][0]) * f, y: path[i][1] + (path[i + 1][1] - path[i][1]) * f };
+    };
+    const ease = t => t * t * (3 - 2 * t);
+    const start = performance.now();
+    let frameId;
+    const block = (x, y, w, h) => ctx.fillRect(Math.round(x), Math.round(y), Math.max(1, Math.round(w)), Math.max(1, Math.round(h)));
+    const run = now => {
+      const ms = now - start;
+      ctx.clearRect(0, 0, width, height);
+      if (ms > COPTER.ms) return;
+      const first = ground(0);
+      let spot, size, air;
+      if (ms < COPTER.enterMs) {
+        // swooping in: from off the top right to over the near end
+        const t = ease(ms / COPTER.enterMs);
+        size = COPTER.from.size + (sizeAt(first.y) - COPTER.from.size) * t;
+        spot = first;
+        air = { x: COPTER.from.x + (first.x - COPTER.from.x) * t, y: COPTER.from.y + (first.y - COPTER.altitude * sizeAt(first.y) - COPTER.from.y) * t };
+      } else {
+        const t = ease((ms - COPTER.enterMs) / (COPTER.ms - COPTER.enterMs));
+        spot = ground(t);
+        size = sizeAt(spot.y);
+        air = { x: spot.x + Math.sin(ms / 900) * 2 * size, y: spot.y - COPTER.altitude * size };
+      }
+      const fade = Math.min(1, (COPTER.ms - ms) / COPTER.leaveMs);
+      // the searchlight: a cone from its belly to a circle on the ground, sweeping a little
+      const lightOn = ms < COPTER.enterMs ? 0 : Math.min(1, (ms - COPTER.enterMs) / COPTER.lightOnMs);
+      if (lightOn > 0) {
+        const sway = Math.sin(ms / 1300) * COPTER.light.sway * size;
+        const gx = spot.x + sway, gy = spot.y;
+        const rx = COPTER.light.rx * size, ry = COPTER.light.ry * size;
+        const cone = ctx.createLinearGradient(0, air.y, 0, gy);
+        cone.addColorStop(0, `rgba(${COPTER.light.color}, ${0.32 * lightOn * fade})`);
+        cone.addColorStop(1, `rgba(${COPTER.light.color}, ${0.1 * lightOn * fade})`);
+        ctx.fillStyle = cone;
+        ctx.beginPath();
+        ctx.moveTo(air.x - 0.8 * size, air.y + 2 * size);
+        ctx.lineTo(air.x + 0.8 * size, air.y + 2 * size);
+        ctx.lineTo(gx + rx, gy);
+        ctx.lineTo(gx - rx, gy);
+        ctx.closePath();
+        ctx.fill();
+        const pool = ctx.createRadialGradient(gx, gy, 0, gx, gy, rx);
+        pool.addColorStop(0, `rgba(${COPTER.light.color}, ${0.55 * lightOn * fade})`);
+        pool.addColorStop(1, `rgba(${COPTER.light.color}, 0)`);
+        ctx.fillStyle = pool;
+        ctx.save();
+        ctx.translate(gx, gy);
+        ctx.scale(1, ry / rx);
+        ctx.beginPath();
+        ctx.arc(0, 0, rx, 0, Math.PI * 2);
+        ctx.restore();
+        ctx.fill();
+      }
+      // the helicopter: seen from behind as it goes away (made out against the dark land: a lighter body, its top edge
+      // caught by the moon, its lights bright)
+      ctx.globalAlpha = fade;
+      const u = size * COPTER.body;
+      ctx.fillStyle = "#2b2f3d";
+      block(air.x - 3.5 * u, air.y - 1.5 * u, 7 * u, 3 * u); // body
+      block(air.x - 2.5 * u, air.y - 2.4 * u, 5 * u, 1 * u); // cabin top
+      block(air.x - 0.5 * u, air.y + 1.5 * u, 1 * u, 2.2 * u); // tail, toward us
+      ctx.fillStyle = "#6a7396";
+      block(air.x - 2.5 * u, air.y - 2.4 * u, 5 * u, Math.max(1, 0.4 * u)); // moonlit top
+      block(air.x + 2.6 * u, air.y - 1.5 * u, Math.max(1, 0.5 * u), 2.4 * u); // moonlit right side
+      ctx.fillStyle = "#363a4a";
+      block(air.x - 4 * u, air.y + 2.2 * u, 2.2 * u, 0.6 * u); // skids
+      block(air.x + 1.8 * u, air.y + 2.2 * u, 2.2 * u, 0.6 * u);
+      // the rotor: a pale blur, flickering
+      ctx.fillStyle = `rgba(200, 210, 232, ${0.35 + 0.25 * Math.abs(Math.sin(ms / 23))})`;
+      block(air.x - 8 * u, air.y - 3.3 * u, 16 * u, Math.max(1, 0.7 * u));
+      // a red light blinking, a white strobe (a glow round each)
+      const light = (x, y, color, glow) => {
+        ctx.fillStyle = glow; block(x - 1, y - 1, 3, 3);
+        ctx.fillStyle = color; block(x, y, 1, 1);
+      };
+      if (Math.floor(ms / 600) % 2 == 0) light(air.x, air.y + 3.6 * u, "#ff4848", "rgba(255, 72, 72, 0.35)");
+      if (ms % 1300 < 110) light(air.x + 3 * u, air.y - 0.6 * u, "#ffffff", "rgba(255, 255, 255, 0.45)");
+      ctx.globalAlpha = 1;
+      frameId = requestAnimationFrame(run);
+    };
+    frameId = requestAnimationFrame(run);
+    return () => cancelAnimationFrame(frameId);
+  }, [path, horizon]);
+  return <canvas ref={ref} width={width} height={height} aria-hidden="true" style={{ position: "absolute", left: 0, top: 0, width, height, zIndex: 2, pointerEvents: "none", imageRendering: "pixelated" }} />;
+};
+export const COPTER_MS = COPTER.ms;
+
 const fadeIn = keyframes`
   from { opacity: 0; }
   to { opacity: 1; }
@@ -258,8 +373,9 @@ const Fade = styled.div`
 // it (in on leaving, back out after Leave); 'isBack': the landing came back by the zoom out (no fade in then);
 // 'logoScale': the logo's size (the picture is drawn for it at 1, and scaled with it); 'lift': how far (logo px) the
 // logo's skyline is raised (MainMenu): the anchor goes with the skyline's zoom spot, the picture stays put;
-// 'tune': the moon's and its reflection's places and sizes (LandingTuner)
-export const LandingScene = ({ spot, zoom, isBack = false, logoScale = 1, lift = 0, tune = LANDING_TUNE_DEFAULTS }) => {
+// 'tune': the moon's and its reflection's places and sizes (LandingTuner); 'event': the scene's current event (its
+// number, while one is on: MainMenu's cycle), when the helicopter flies
+export const LandingScene = ({ spot, zoom, isBack = false, logoScale = 1, lift = 0, tune = LANDING_TUNE_DEFAULTS, event = undefined }) => {
   const stageRef = useRef(null);
   const [vanish, setVanish] = useState(undefined);
   useLayoutEffect(() => {
@@ -292,6 +408,7 @@ export const LandingScene = ({ spot, zoom, isBack = false, logoScale = 1, lift =
       <Surf points={SURF_POINTS} width={LANDING_VIEW.size.width} height={LANDING_VIEW.size.height} />
       <Surf points={landingTraffic.coast} width={LANDING_VIEW.size.width} height={LANDING_VIEW.size.height} pixel rest={COAST.rest} />
       <Moon {...tune.moon} />
+      {event !== undefined && <Copter key={event} path={landingTraffic.copter} horizon={LANDING_VIEW.horizon} />}
       <MoonReflection {...tune.reflection} />
       <TrafficLights paths={landingTraffic.paths} glints={landingTraffic.glints} width={LANDING_VIEW.size.width} height={LANDING_VIEW.size.height} zIndex={1} near={NEAR_TRAFFIC} />
     </View>

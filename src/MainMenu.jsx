@@ -13,7 +13,7 @@ import {
   StyledLink,
 } from "./Components/StyledComponents";
 import { Logo } from "./Components/Logo";
-import { LandingScene } from "./Components/LandingScene";
+import { COPTER_MS, LandingScene } from "./Components/LandingScene";
 import { getIsTunePanel, LandingTuner, loadLandingTune } from "./Components/LandingTuner";
 import { GlobalSettingsContext } from "Home";
 import { IrradiationVat } from "./Game/ReactComponents/IrradiationVat";
@@ -134,6 +134,8 @@ const zoomIntoCity = keyframes`
 const LOGO_SIZE = { scale: 1.2, window: { width: 1908, height: 915 } };
 // the logo's title, skyline and joiner raised a little over the Peninsula (Jamie, round 5; logo px), not its Kaiju
 const LOGO_LIFT = 12;
+// the scene's cycle: the first event so long after the landing shows, then this quiet between events
+const LANDING_CYCLE = { firstMs: 3500, quietMs: 14000, embersMs: 2200 };
 const getLogoScale = () => LOGO_SIZE.scale * Math.min(window.innerWidth / LOGO_SIZE.window.width, window.innerHeight / LOGO_SIZE.window.height);
 
 // the Peninsula behind the logo (LandingScene) zooms with the skyline, about the same spot: its vanishing point
@@ -240,6 +242,17 @@ export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = ()
   const [logoScale, setLogoScale] = useState(getLogoScale);
   // the joiner's, the moon's and its reflection's places (?tune: Jamie's panel)
   const [tune, setTune] = useState(loadLandingTune);
+  // the scene's cycle (Jamie, 2026-11-19): a quiet spell, then an event (the helicopter now; the Kaiju in the water and
+  // the buoy's light to come), over and over; the embers glow while an event is on
+  const [event, setEvent] = useState(undefined);
+  useEffect(() => {
+    let count = 0;
+    let timer;
+    const quiet = ms => { setEvent(undefined); timer = setTimeout(begin, ms); };
+    const begin = () => { count += 1; setEvent(count); timer = setTimeout(() => quiet(LANDING_CYCLE.quietMs), COPTER_MS); };
+    quiet(LANDING_CYCLE.firstMs);
+    return () => clearTimeout(timer);
+  }, []);
   useEffect(() => {
     const onResize = () => setLogoScale(getLogoScale());
     window.addEventListener("resize", onResize);
@@ -321,8 +334,8 @@ export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = ()
   return <Wrapper>
     <ShiftLayer $isShiftingIn={isShiftingIn && isLandingShifting}>
     <SpeedBlurFilter />
-    <LandingScene spot={CITY_ZOOM.spot} zoom={getSceneZoom(isLeaving, isLogoZoomingOut)} isBack={isLogoZoomingOut} logoScale={logoScale} lift={LOGO_LIFT - tune.cityscape.y} tune={tune} />
-    <EmberSlide $isLeaving={isLeaving}><Embers /></EmberSlide>
+    <LandingScene spot={CITY_ZOOM.spot} zoom={getSceneZoom(isLeaving, isLogoZoomingOut)} isBack={isLogoZoomingOut} logoScale={logoScale} lift={LOGO_LIFT - tune.cityscape.y} tune={tune} event={event} />
+    <EmberSlide $isLeaving={isLeaving} style={isLeaving ? undefined : { opacity: event === undefined ? 0 : 1, transition: `opacity ${LANDING_CYCLE.embersMs}ms ease-in-out` }}><Embers /></EmberSlide>
     <SceneSlide $isLeaving={isLeaving} $isZoomingBack={isLogoZoomingOut} style={{ "--logo-scale": logoScale, "--logo-lift": `${LOGO_LIFT}px`, "--joiner-both": `${tune.joiner.both}px`, "--joiner-band": `${tune.joiner.band}px`, "--joiner-glow": `${tune.joiner.glow}px`, "--skyline-y": `${tune.cityscape.y}px` }}><Logo spotlights circuit /></SceneSlide>{/* (the joiner off, to see it without: Jamie, 2026-11-19; <Logo joiner spotlights /> brings it back) */}
     <ZoomThrough isOn={isLeaving} startMs={ZOOM_START_MS} onDone={enterRoom || handleClickGame} />
     {isZoomingBack && <ZoomThrough isOn isReverse startMs={0} onDone={() => setIsZoomingBack(false)} />}
