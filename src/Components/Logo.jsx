@@ -34,7 +34,7 @@ const LogoImage = styled.img`
   justify-content: space-between;
   width: 600px;
   height: 300px;
-  translate: 0 calc(var(--logo-lift, 0px) * -1); /* (the landing raises its skyline, not its Kaiju) */
+  translate: 0 calc(var(--logo-lift, 0px) * -1 + var(--skyline-y, 0px)); /* (the landing raises its skyline, not its Kaiju; the tuner moves it) */
 
   -webkit-animation-duration: 3s;
   animation-duration: 3s;
@@ -94,7 +94,7 @@ const SpotlightBox = styled.div`
   align-self: center;
   width: 600px;
   height: 300px;
-  translate: 0 calc(var(--logo-lift, 0px) * -1);
+  translate: 0 calc(var(--logo-lift, 0px) * -1 + var(--skyline-y, 0px));
   mix-blend-mode: plus-lighter; /* (lighting up the skyline where they cross it) */
 `;
 const Beam = styled.div`
@@ -431,8 +431,8 @@ export const Logo = ({ joiner = false, spotlights = false, circuit = false }) =>
     {circuit && <KaijuCircuit wordRef={wordRef} />}
   </Title>
   {/* (behind the skyline: Jamie, round 6; each part placed up or down by the landing's tuner: --joiner-* in logo px) */}
-  {joiner && <LogoImage src={"/zoom-scene/landing-joiner-glow.png"} alt="" style={{ translate: "0 calc(var(--logo-lift, 0px) * -1 + var(--joiner-both, 0px) + var(--joiner-glow, 0px))" }} />}
-  {joiner && <LogoImage src={"/zoom-scene/landing-joiner.png"} alt="" style={{ translate: "0 calc(var(--logo-lift, 0px) * -1 + var(--joiner-both, 0px) + var(--joiner-band, 0px))" }} />}
+  {joiner && <LogoImage src={"/zoom-scene/landing-joiner-glow.png"} alt="" style={{ translate: "0 calc(var(--logo-lift, 0px) * -1 + var(--skyline-y, 0px) + var(--joiner-both, 0px) + var(--joiner-glow, 0px))" }} />}
+  {joiner && <LogoImage src={"/zoom-scene/landing-joiner.png"} alt="" style={{ translate: "0 calc(var(--logo-lift, 0px) * -1 + var(--skyline-y, 0px) + var(--joiner-both, 0px) + var(--joiner-band, 0px))" }} />}
   <LogoImage src={"./SVG_logo.svg"} data-landing-logo />
   {spotlights && <Spotlights />}
   <KaijuWrapper >

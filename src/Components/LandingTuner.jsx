@@ -9,17 +9,21 @@ import styled from "styled-components";
     joiner: logo px down (negative: up): 'both' moves the two together, 'band' the blue-to-black band and its threads,
       'glow' the yellow under it
     moon, reflection: the Peninsula picture's px (its horizon is row 403): middle x, y, and radius
+    cityscape: logo px down (negative: up): the skyline (with its spotlights and joiner) over the Peninsula, which
+      stays put; the title and the Kaiju don't move
 */
 // (Jamie's, 2026-11-18)
 export const LANDING_TUNE_DEFAULTS = {
   joiner: { both: -4.5, band: 0, glow: -1 },
   moon: { x: 992, y: 357, radius: 30 },
-  reflection: { x: 999, y: 464, radius: 29 }
+  reflection: { x: 1021, y: 464, radius: 33 },
+  cityscape: { y: 0 }
 };
 const RANGES = {
   joiner: { both: [-20, 20, 0.5], band: [-20, 20, 0.5], glow: [-20, 20, 0.5] },
   moon: { x: [600, 1700, 1], y: [120, 400, 1], radius: [8, 90, 1] },
-  reflection: { x: [600, 1700, 1], y: [405, 760, 1], radius: [6, 70, 1] }
+  reflection: { x: [600, 1700, 1], y: [405, 760, 1], radius: [6, 70, 1] },
+  cityscape: { y: [-30, 30, 0.5] }
 };
 const STORE_KEY = "kaiju-landing-tune";
 
