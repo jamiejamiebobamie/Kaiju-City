@@ -245,7 +245,7 @@ export const FullscreenPage = ({ text, buttons, image, homeButtonOnClick = undef
     {bImgs}
     <ImgWrapper>
       {homeButton}
-      <StyledImg src={image.src} width={image.width} height={image.height} />
+      {image && <StyledImg src={image.src} width={image.width} height={image.height} />} {/* (none on multiplayer's waiting page) */}
     </ImgWrapper>
     <ContentWrapper>
       <TextWrapper>

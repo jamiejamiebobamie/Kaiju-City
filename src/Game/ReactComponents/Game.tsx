@@ -1245,9 +1245,10 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     setIsPlayingGame(false);
   };
 
-  const handleClickPlay = () => {
+  // ('picks': dev only, a multiplayer side's { avatar, powers } given, for scripted browser checks)
+  const handleClickPlay = (picks = undefined) => {
     if (multiplayer) {
-      const self = { avatar: selectedAvatar, powers: settingsManager.getSortedPlayerChosenAbilityElementsString() };
+      const self = picks && picks.avatar ? picks : { avatar: selectedAvatar, powers: settingsManager.getSortedPlayerChosenAbilityElementsString() };
       mp.current.self = self;
       multiplayer.link.send({ t: 'ready', ...self });
       setFullScreenPageData({ text: ["Waiting for the other player..."], buttons: [] });
@@ -1341,6 +1342,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   }, [multiplayer]);
   // the guest's keys go to the host
   const getIsGuestPlaying = () => !!multiplayer && multiplayer.link.role == 'guest' && mp.current.isStarted;
+  if (import.meta.env.DEV) (window as any).__kaijuMultiplayerPlay = picks => handleClickPlay(picks); // (dev only: scripted checks)
 
   const getWinTitle = () => {
     if (level.rival) return "Target Subdued";
