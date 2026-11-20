@@ -23,7 +23,7 @@ const getNewPieceInfo = (piece: any) => ({ kind: getPieceKind(piece), avatar: pi
 */
 const PIECE_SKIP = new Set(['gameManagerProxy', 'pieces', 'teams', 'onBeforeDeath', 'pieceClass', 'deathPieces', 'inputHandler']);
 const TILE_FIELDS = ['tileStatus', 'teleportTileStatus', 'currCount', 'teamIndex', 'targetIndex', 'dirs', 'wall', 'trailAge', 'cast', 'updateKey', 'dmgMultiplier'];
-const GAME_FIELDS = ['accTime'];
+const GAME_FIELDS = ['accTime', 'activePhases']; // (the phases: the subway's train coming and going, among them)
 const MAX_DEPTH = 3;
 
 const isPlain = (value: any) => {
@@ -62,9 +62,12 @@ const encode = (value: any, depth = 0): any => {
 
 const decode = (value: any, gm: any, current: any = undefined): any => {
   if (value === null || typeof value != 'object') return value;
-  if (Array.isArray(value)) return value.map((item, k) => decode(item, gm, Array.isArray(current) ? current[k] : undefined));
+  if (Array.isArray(value)) {
+    // (an instance the guest hasn't one of to set on is left out, not left a hole: the HUD reads every power)
+    return value.map((item, k) => decode(item, gm, Array.isArray(current) ? current[k] : undefined)).filter((item, k) => item !== undefined || !(value[k] && value[k].$o));
+  }
   if (value.$u) return undefined;
-  if (value.$s !== undefined) return gm.settingsManager.abilityAndTileStatusData[value.$s];
+  if (value.$s !== undefined) return gm.settingsManager.abilityAndTileStatusData[value.$s] || current; // (unknown here: its own kept)
   if (value.$p !== undefined) return gm.getPieces()[value.$p];
   if (value.$set) return new Set(value.$set.map((item: any) => decode(item, gm)));
   if (value.$o) {

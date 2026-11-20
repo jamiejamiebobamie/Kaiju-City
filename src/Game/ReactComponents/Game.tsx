@@ -49,7 +49,8 @@ import { applyLevelFile, LAB_TALK_PHASE, LEVEL_FILES, LEVELS, PENINSULA, SPARRIN
 import { TileEditor } from './Levels/TileEditor';
 import { gameUiStore, publishGameUi, resetGameUi } from '../DataClasses/gameUiStore';
 import { applyChanges, MirrorSender } from '../Multiplayer/mirror';
-import { getMultiplayerKillsToWin, GUEST_PIECE_INDEX, MULTIPLAYER_LEVEL, setUpMultiplayerMatch } from '../Multiplayer/multiplayerMatch';
+import { getBattleground, getMultiplayerKillsToWin, GUEST_PIECE_INDEX, makeTeam, setUpMultiplayerMatch } from '../Multiplayer/multiplayerMatch';
+import { MatchSetup } from '../Multiplayer/MatchSetup';
 
 const GameArea = styled.div`
   position: relative;
@@ -752,7 +753,9 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const [levelId, setLevelId] = useState(startingLevelId || PENINSULA.id);
   const [campaignIndex, setCampaignIndex] = useState(startingLevelId ? null : 0); // null: playing one level on its own
   useEffect(() => setIsRadioAlarm(false), [campaignIndex]);
-  const level = LEVELS[levelId] || PENINSULA;
+  // (a multiplayer match's battleground, its boss and hazards left out: drawn as it's played, not the level id's own)
+  const [multiplayerLevel, setMultiplayerLevel] = useState<any>(undefined);
+  const level = multiplayerLevel || LEVELS[levelId] || PENINSULA;
   const togglePhase = id => {
     gameManager.current.togglePhase(id);
     publishGameUi(gameManager.current.getUiState());
@@ -869,6 +872,13 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   // the match's side of it: each player's pick once they press Play, the match's config once started, and the mirror
   const mp = useRef<any>({ sender: new MirrorSender(), link: undefined, self: undefined, other: undefined, config: undefined, isStarted: false, round: 0, color: undefined, isAgainSelf: false, isAgainOther: false });
   const [isMultiplayerVat, setIsMultiplayerVat] = useState(false); // (each player's color, after the picker: Jamie)
+  // the host's match setup (the match type, the battleground, the teams' size), sent to the guest
+  const [multiplayerSetup, setMultiplayerSetup] = useState<any>(undefined);
+  const chooseMultiplayerSetup = setup => {
+    mp.current.setup = setup;
+    setMultiplayerSetup(setup);
+    if (mp.current.link) mp.current.link.send({ t: 'setup', setup });
+  };
   useEffect(() => {
     if (!isMonitorOn || isConsoleIn || isPlayingGame || !isBooted) return;
     const aside = setTimeout(() => setIsConsoleIn(true), MINI_TIMING.consoleDelayMs);
@@ -1254,7 +1264,9 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
       return;
     }
     if (multiplayer) {
-      const self = picks && picks.avatar ? picks : { avatar: selectedAvatar, powers: settingsManager.getSortedPlayerChosenAbilityElementsString(), color: mp.current.color || undefined };
+      // (their team from what they have: their teammate, their recruits; Jamie)
+      const team = makeTeam({ size: (mp.current.setup || {}).teamSize || 0, teammate: selectedTeammate, recruits: getCallableRecruits(), settingsManager });
+      const self = picks && picks.avatar ? { team, ...picks } : { avatar: selectedAvatar, powers: settingsManager.getSortedPlayerChosenAbilityElementsString(), color: mp.current.color || undefined, team };
       mp.current.self = self;
       multiplayer.link.send({ t: 'ready', ...self });
       setFullScreenPageData({ text: ["Waiting for the other player..."], buttons: [] });
@@ -1297,12 +1309,14 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     mp.current.isAgainOther = false;
     mp.current.config = config;
     mp.current.sender.reset();
-    startMatch(MULTIPLAYER_LEVEL, false, getMultiplayerKillsToWin(config), { multiplayerSetup: { config, role } });
+    const matchLevel = getBattleground(config.level).getLevel();
+    setMultiplayerLevel(matchLevel);
+    startMatch(matchLevel, false, getMultiplayerKillsToWin(config), { multiplayerSetup: { config, role } });
   };
   const startMultiplayerIfReady = () => {
     const { link, self, other, isStarted } = mp.current;
     if (!link || link.role != 'host' || !self || !other || isStarted) return;
-    const config = { mode: 'standing', host: self, guest: other };
+    const config = { ...(mp.current.setup || { mode: 'standing', level: 'peninsula', teamSize: 0 }), host: self, guest: other };
     link.send({ t: 'start', config, round: 1 });
     beginMultiplayerMatch(config, 'host');
   };
@@ -1323,8 +1337,11 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const onMultiplayerMessage = message => {
     if (!message || typeof message != 'object') return;
     const gm = gameManager.current;
-    if (message.t == 'ready') {
-      mp.current.other = { avatar: message.avatar, powers: message.powers };
+    if (message.t == 'setup' && mp.current.link.role == 'guest') {
+      mp.current.setup = message.setup;
+      setMultiplayerSetup(message.setup);
+    } else if (message.t == 'ready') {
+      mp.current.other = { avatar: message.avatar, powers: message.powers, color: message.color, team: message.team };
       startMultiplayerIfReady();
     } else if (message.t == 'start' && mp.current.link.role == 'guest' && (message.round || 1) > mp.current.round) {
       beginMultiplayerMatch(message.config, 'guest', message.round || 1);
@@ -1848,6 +1865,8 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
           isPauseOff: true, // nothing to pause yet
           ticker: <ObjectiveTicker text="" isKaijuCount={false} count={0} toWin={0} />
         })}>
+          {/* multiplayer's match setup: the host's, the guest waiting on it (Jamie) */}
+          {isMonitorOn && isBooted && multiplayer && !multiplayerSetup && <MatchSetup isWaiting={multiplayer.link.role == 'guest'} onDone={chooseMultiplayerSetup} />}
           {isMonitorOn && !isBooted && <MonitorBoot onDone={linked => { if (linked && linked.link) setMultiplayer(linked); setIsBooted(true); }} />}
           {/* the Lab behind them, darkened, lit round the avatars (Jamie) */}
           <MonitorLabBackdrop mode={isChoosingAvatar ? "choice" : "picker"} hovered={hoveredAvatar} focus={isChoosingAvatar ? handOverAvatar : selectedAvatar} />

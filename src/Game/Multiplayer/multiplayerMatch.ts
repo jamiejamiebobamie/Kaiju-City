@@ -26,14 +26,17 @@ export const DEFAULT_SETUP: MultiplayerSetup = { mode: 'standing', level: 'penin
 
 // the battlegrounds: each level as it is, less its boss, its hazards, its Kaiju ('thumbnail': its whole scene, small)
 const NO_HAZARDS = { rival: undefined, ghostBoss: undefined, aquariumFlood: undefined, kaijuEntry: undefined, agentDrops: undefined, walkIn: undefined, isMultiplayer: true };
+// (the boss fights' Kaiju parts, the eye, the head, the tongue, are the boss's: left out too)
+const BOSS_PARTS = ['eye', 'head', 'tongue'];
+const getCalmPhases = (level: any) => level.defaultPhases.filter((id: string) => !BOSS_PARTS.includes(id));
 const getGlassPhases = (level: any) => level.phases.map(({ id }: any) => id).filter((id: string) => id.startsWith('glass'));
 export const BATTLEGROUNDS = [
   { id: 'peninsula', name: 'Peninsula', thumbnail: ['/Map.gif'], getLevel: () => ({ ...LEVELS.peninsula, ...NO_HAZARDS }) },
-  { id: 'rapidTransit', name: 'Rapid Transit', thumbnail: ['/levels/rapidTransit.png'], getLevel: () => ({ ...LEVELS.rapidTransit, ...NO_HAZARDS }) }, // (its train kept: Jamie)
-  { id: 'rooftop', name: 'Rooftop', thumbnail: ['/levels/rooftop.png'], getLevel: () => ({ ...LEVELS.rooftop, ...NO_HAZARDS }) },
-  { id: 'aquarium', name: 'Aquarium', thumbnail: ['/levels/aquarium.png'], getLevel: () => ({ ...LEVELS.aquarium, ...NO_HAZARDS }) },
+  { id: 'rapidTransit', name: 'Rapid Transit', thumbnail: ['/levels/rapidTransit.png'], getLevel: () => ({ ...LEVELS.rapidTransit, ...NO_HAZARDS, defaultPhases: getCalmPhases(LEVELS.rapidTransit) }) }, // (its train kept: Jamie)
+  { id: 'rooftop', name: 'Rooftop', thumbnail: ['/levels/rooftop.png'], getLevel: () => ({ ...LEVELS.rooftop, ...NO_HAZARDS, defaultPhases: getCalmPhases(LEVELS.rooftop) }) },
+  { id: 'aquarium', name: 'Aquarium', thumbnail: ['/levels/aquarium.png'], getLevel: () => ({ ...LEVELS.aquarium, ...NO_HAZARDS, defaultPhases: getCalmPhases(LEVELS.aquarium) }) },
   // (flooded from the start: the glass broken and the hall under water, the wakes behind everyone in it: Jamie)
-  { id: 'floodedAquarium', name: 'Flooded Aquarium', thumbnail: ['/levels/aquarium.png', '/levels/aquarium/shattered.png'], getLevel: () => ({ ...LEVELS.aquarium, ...NO_HAZARDS, defaultPhases: ['shards', 'shattered', ...getGlassPhases(LEVELS.aquarium)] }) }
+  { id: 'floodedAquarium', name: 'Flooded Aquarium', thumbnail: ['/levels/aquarium.png', '/levels/aquarium/shattered.png'], getLevel: () => ({ ...LEVELS.aquarium, ...NO_HAZARDS, defaultPhases: [...getCalmPhases(LEVELS.aquarium), 'shattered', ...getGlassPhases(LEVELS.aquarium)] }) }
 ];
 export const getBattleground = (id: string) => BATTLEGROUNDS.find(ground => ground.id == id) || BATTLEGROUNDS[0];
 // where each side starts: the Peninsula's top and bottom; elsewhere, the player's own start and the boss's
@@ -49,8 +52,10 @@ export const getMultiplayerKillsToWin = (config: MultiplayerConfig) => undefined
 // to defend...), the recruits' their own, the Agent's one of the Agents' kits
 export const makeTeam = ({ size, teammate, recruits, settingsManager }: { size: number; teammate: string; recruits: Array<string>; settingsManager: any }): Array<TeamMember> => {
   const members: Array<TeamMember> = [];
+  // (the powers' data is only made as a match starts: before the first, it isn't there yet)
+  if (!settingsManager.abilityAndTileStatusData || !Object.keys(settingsManager.abilityAndTileStatusData).length) settingsManager.initAbilityStatusData();
   const getRecruitPowers = (avatar: string) => avatar == 'hazmat' ? HAZMAT_RECRUIT.abilities : ((Object.values(LEVELS) as any).find(({ rival }: any) => rival && rival.avatar == avatar) || { rival: { abilities: [] } }).rival.abilities;
-  if (size > 0 && teammate) members.push({ avatar: teammate, kind: 'teammate', powers: settingsManager.getThreeRandomAbilities().map((ability: any) => ability.gameBoardPieceAbilityData.element) });
+  if (size > 0 && teammate) members.push({ avatar: teammate, kind: 'teammate', powers: settingsManager.getThreeRandomAbilities().map((ability: any) => ability.element || (ability.gameBoardPieceAbilityData && ability.gameBoardPieceAbilityData.element)) });
   recruits.slice(0, 3).forEach(avatar => { if (members.length < size) members.push({ avatar, kind: 'recruit', powers: getRecruitPowers(avatar) }); });
   if (members.length < size) {
     const kits = Object.values((LEVELS as any).lab.agentDrops.kits) as Array<Array<string>>;
