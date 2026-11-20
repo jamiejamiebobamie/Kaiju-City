@@ -170,12 +170,15 @@ export const setUpCoop = (gm: any, config: MultiplayerConfig, role: 'host' | 'gu
   const piecesManager = gm.gameBoardPiecesManager;
   const pieces = gm.getPieces();
   gm.isCoop = true;
-  if (role == 'host') wrapCoopDialogue(gm);
+  if (role == 'host') {
+    wrapCoopDialogue(gm);
+    wrapCoopWalking(gm);
+  }
   const host = pieces[0];
   host.side = 0;
   if (config.host.color) host.color = config.host.color;
   const teammate = pieces.find((piece: any) => piece.pieceIndex != 0 && piece.teamIndex == host.teamIndex && !piece.isRecruit && piece.avatar == config.guest.avatar);
-  if (role == 'guest') gm.getCameraShot = () => gm.coopHostShot;
+  if (role == 'guest') { gm.getCameraShot = () => gm.coopHostShot; gm.isCoopGuest = true; }
   if (!teammate) return undefined;
   teammate.side = 1;
   teammate.abilities = gm.settingsManager.getAbilitiesFromElements(config.guest.powers.map(power => power[0].toLowerCase() + power.slice(1)));
@@ -187,6 +190,7 @@ export const setUpCoop = (gm: any, config: MultiplayerConfig, role: 'host' | 'gu
   } else {
     piecesManager.getPlayerPiece = () => teammate;
     gm.controlledPiece = teammate;
+    gm.isCoopGuest = true; // (their places on the walking map: GameBoard greys the ones not open to them)
     // (their own HUD first, the player's place; the host's after it)
     const ownFirst = piecesManager.getPlayerTeamUiState;
     piecesManager.getPlayerTeamUiState = () => {
@@ -272,6 +276,62 @@ export const updateCoopTurnedKaiju = (gm: any): number | undefined => {
   handler.piece = target;
   handler.pressedKeys = [];
   return target.pieceIndex;
+};
+
+/*
+  Co-op's walking scenes (Jamie): a place (a site, the exit, the training spot) is gone into together. Whoever gets
+  there first is held ('coopWait'), till the other comes; COOP_WALK.promptMs on, the other's told where. The host's
+  choice of place stands: the guest held somewhere else is let go when the host waits elsewhere. The guest's own icons:
+  only the objective's, the host's choice of place, and the Lab are open to them (getIsSiteLocked, on the guest).
+*/
+export const COOP_WALK = { promptMs: 10000, nearRows: 3 };
+const getIsPieceNear = (gm: any, piece: any, spot: any, rows = COOP_WALK.nearRows) => {
+  if (!piece || !piece.getTileIndex || !piece.getTileIndex()) return false;
+  const { x, y } = gm.gameBoardManager.getCharXAndYFromTileIndex(piece.getTileIndex());
+  const { rowStep, scale } = gm.level.grid;
+  return Math.hypot(x - spot.x, y - spot.y) <= rows * rowStep * scale;
+};
+const getPlaceSpot = (gm: any) => (gm.reachedSite && gm.reachedSite.spot) || (gm.isTrainingChosen && gm.level.training && gm.level.training.spot) || (gm.level.exit && gm.level.exit.spot) || undefined;
+export const wrapCoopWalking = (gm: any) => {
+  const atGoal = gm.getIsAtGoal.bind(gm);
+  gm.getIsAtGoal = () => {
+    const guest = gm.guestInputHandler && gm.guestInputHandler.piece;
+    if (!gm.level.isWalkingLevel || !guest || guest.getIsDead()) return atGoal();
+    const host = gm.getPieces()[0];
+    const now = Date.now();
+    if (atGoal()) {
+      const spot = getPlaceSpot(gm);
+      if (!spot || getIsPieceNear(gm, guest, spot)) {
+        host.isHeld = false;
+        guest.isHeld = false;
+        gm.coopWait = undefined;
+        return true;
+      }
+      host.isHeld = true;
+      guest.isHeld = false; // (the host's place stands: the guest, held anywhere else, may come)
+      const place = gm.reachedSite ? gm.reachedSite.icon : 'there';
+      if (!gm.coopWait || gm.coopWait.who != 'host') gm.coopWait = { who: 'host', spot, place, since: now };
+      return false;
+    }
+    host.isHeld = false;
+    const site = (gm.level.sites || []).find((each: any) => getIsPieceNear(gm, guest, each.spot) && !gm.getIsSiteLockedFor(each));
+    if (site) {
+      guest.isHeld = true;
+      if (!gm.coopWait || gm.coopWait.who != 'guest' || gm.coopWait.place != site.icon) gm.coopWait = { who: 'guest', spot: site.spot, place: site.icon, since: now };
+    } else {
+      guest.isHeld = false;
+      if (gm.coopWait && gm.coopWait.who == 'guest') gm.coopWait = undefined;
+    }
+    return false;
+  };
+  // (the guest's places: the objective's, the host's choice, the Lab)
+  gm.getIsSiteLockedFor = (site: any) => getIsSiteLocked(site, gm.coopWait);
+  gm.getCoopWait = () => (gm.coopWait ? { who: gm.coopWait.who, place: gm.coopWait.place, spot: gm.coopWait.spot, isPrompt: Date.now() - gm.coopWait.since >= COOP_WALK.promptMs } : undefined);
+};
+export const getIsSiteLocked = (site: any, wait: any) => {
+  if (site.icon == 'lab') return false;
+  if (wait && wait.who == 'host') return !(wait.spot && wait.spot.x == site.spot.x && wait.spot.y == site.spot.y);
+  return !!site.visitLevelId; // (the objective: a place not yet been)
 };
 
 // the two pieces in place, after the match's own initGame (the host's avatar and powers already its player)

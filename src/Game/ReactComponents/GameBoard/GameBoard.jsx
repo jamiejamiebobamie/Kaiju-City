@@ -11,6 +11,7 @@ import { getSpeechScreenBox, PagedSpeechBalloon, SpeechBalloon } from 'Game/Reac
 import { TileCanvas } from 'Game/ReactComponents/GameBoard/Tile/TileCanvas';
 import { SceneElements, getActiveHotspots } from 'Game/ReactComponents/GameBoard/SceneElements';
 import { CHARACTER_FEET, CHARACTER_HEIGHT_PX, EXIT_OPEN_PHASE, getSortZIndex, getTileTone, MAP_LABEL, MAP_LABELS, PENINSULA } from 'Game/DataClasses/Levels/levels';
+import { getIsSiteLocked } from 'Game/Multiplayer/multiplayerMatch';
 import { WakeCanvas } from 'Game/ReactComponents/GameBoard/WakeCanvas';
 import { Camera, CAMERA, getCloseZoom, getFitZoom, WIDE_SHOT } from 'Game/DataClasses/Camera';
 import { CUTSCENE } from 'Game/DataClasses/GameManager';
@@ -1072,7 +1073,8 @@ export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade 
 
   const focusPiece = pieces.length ? gameManager.getFocusPiece() : undefined;
   // a battleground already won has no glow on the map, so its caret's icon has none either
-  const siteTargets = (level.sites || []).map(({ spot, color, icon, visitLevelId }) => ({ key: `${spot.x} ${spot.y}`, color, charLocation: spot, icon, isGlowing: !visitLevelId }));
+  // (co-op's guest: the places not open to them are grey: Jamie)
+  const siteTargets = (level.sites || []).map(site => ({ key: `${site.spot.x} ${site.spot.y}`, color: site.color, charLocation: site.spot, icon: site.icon, isGlowing: !site.visitLevelId, isLocked: !!gameManager.isCoopGuest && getIsSiteLocked(site, gameManager.coopWaitShown) }));
   // in a walking scene that fills the monitor, a caret points the way out once it is open (Sewer 1's "Deeper")
   const isCoverScene = getIsCoverScene();
   const caretCamera = isCoverScene ? coverCamera : closeCamera;
@@ -1125,7 +1127,7 @@ export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade 
   const getSiteScale = tiles => Math.max(1 - (tiles - nearestSiteTiles) * CARET_INFO.siteScalePerTile, CARET_INFO.minSiteScale);
   const edgeCarets = caretTargets
     .filter(({ caret }) => !!caret)
-    .map(({ key, color, icon, piece, caret, isGlowing, tiles }) => (
+    .map(({ key, color, icon, piece, caret, isGlowing, isLocked, tiles }) => (
       <React.Fragment key={key}>
         {icon && (() => {
           const siteScale = getSiteScale(tiles);
@@ -1135,7 +1137,7 @@ export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade 
           const isOver = MAP_LABEL.position == "top" || spot.y > (boardRef.current ? boardRef.current.clientHeight : 0) / 2;
           return (
             <>
-              <CaretIcon src={`/levels/map/${icon}.png`} style={{ left: `${spot.x}px`, top: `${spot.y}px`, height: `${iconHeight}px`, "--glow": isGlowing ? color : "transparent" }} />
+              <CaretIcon src={`/levels/map/${icon}.png`} style={{ left: `${spot.x}px`, top: `${spot.y}px`, height: `${iconHeight}px`, "--glow": isGlowing && !isLocked ? color : "transparent", filter: isLocked ? "grayscale(1) brightness(0.7)" : undefined }} />
               {/* its word, as on the map (MAP_LABELS) */}
               <CaretLabel style={{ left: `${spot.x}px`, top: `${spot.y + (isOver ? -1 : 1) * (iconHeight / 2 + 2)}px`, transform: `translate(-50%, ${isOver ? "-100%" : "0"})`, fontSize: `${Math.max(caret.size * 0.45 * siteScale, 7)}px` }}>{MAP_LABELS[icon] || icon}</CaretLabel>
             </>
@@ -1361,7 +1363,8 @@ export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade 
         {levelLayers}
         {level.windowTraffic && <TrafficLights paths={level.windowTraffic.paths} glints={level.windowTraffic.glints} width={world.width} height={world.height} zIndex={level.windowTraffic.zIndex} />}
         {foregroundLayers}
-        <SceneElements level={level} activePhases={activePhases} isPaused={isPaused} onHotspot={onHotspot} isDialogueLog={getIsDialogueLog()} isSettled={!isMain || !!gameManager.isRetry} />
+        <SceneElements level={level} activePhases={activePhases} isPaused={isPaused} onHotspot={onHotspot} isDialogueLog={getIsDialogueLog()} isSettled={!isMain || !!gameManager.isRetry}
+          lockedSites={gameManager.isCoopGuest ? (level.sites || []).filter(site => getIsSiteLocked(site, gameManager.coopWaitShown)).map(site => site.icon) : []} />
         {isSlowMotion && !recruitScene && <WinDimmer />}
         {recruitScene && renderRecruitBody()}
         {isMain && recruitScene && !getIsDialogueLog() && (

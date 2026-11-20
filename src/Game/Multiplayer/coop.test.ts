@@ -3,7 +3,8 @@ import { GameManager } from 'Game/DataClasses/GameManager';
 import { SettingsManager } from 'Game/DataClasses/SettingsManager';
 import { LEVELS } from 'Game/DataClasses/Levels/levels';
 import { applyChanges, MirrorSender } from './mirror';
-import { COOP_LINE, MultiplayerConfig, resolveCoopVote, setUpCoop, updateCoopTurnedKaiju, wrapCoopDialogue } from './multiplayerMatch';
+import { placePiece } from 'Game/DataClasses/testHelpers';
+import { COOP_LINE, getIsSiteLocked, MultiplayerConfig, resolveCoopVote, setUpCoop, updateCoopTurnedKaiju, wrapCoopDialogue } from './multiplayerMatch';
 
 const CONFIG: MultiplayerConfig = { mode: 'coop', level: 'peninsula', teamSize: 0, host: { avatar: 'guy', powers: ['Fire', 'Ice', 'Water'], color: '#ff0000' }, guest: { avatar: 'girl', powers: ['Lightning', 'Wood', 'Metal'], color: '#00ff00' } };
 
@@ -82,5 +83,27 @@ describe('co-op campaign', { timeout: 20000 }, () => {
     expect(gm.rivalPiece.inputHandler).toBe(gm.guestInputHandler);
     expect(gm.rivalPiece.isNpc).toBe(false);
     expect(updateCoopTurnedKaiju(gm)).toBeUndefined(); // (once)
+  });
+
+  it('goes into a place on the map together: the first there waits, held, till the other comes', () => {
+    const { gm, teammate } = makeSide('host', LEVELS.mapSubway);
+    const site = gm.level.sites.find((each: any) => each.icon == 'subway');
+    const board = gm.gameBoardManager;
+    const at = (spot: any) => board.getClosestWalkableTileToLocation(spot);
+    const far = at({ x: site.spot.x + 150, y: site.spot.y + 200 });
+    placePiece(gm, teammate, far);
+    placePiece(gm, gm.getPieces()[0], far);
+    gm.getIsAtGoal(); // (armed: away from it)
+    placePiece(gm, gm.getPieces()[0], at(site.spot));
+    expect(gm.getIsAtGoal()).toBe(false);
+    expect(gm.getPieces()[0].isHeld).toBe(true);
+    expect(gm.getCoopWait().who).toBe('host');
+    // the guest's places: the host's choice, and the Lab; the rest locked
+    expect(getIsSiteLocked(site, gm.getCoopWait())).toBe(false);
+    expect(getIsSiteLocked({ icon: 'lab', spot: { x: 0, y: 0 } }, gm.getCoopWait())).toBe(false);
+    expect(getIsSiteLocked({ icon: 'rooftop', spot: { x: 1, y: 1 } }, gm.getCoopWait())).toBe(true);
+    placePiece(gm, teammate, at(site.spot));
+    expect(gm.getIsAtGoal()).toBe(true);
+    expect(gm.getPieces()[0].isHeld).toBe(false);
   });
 });

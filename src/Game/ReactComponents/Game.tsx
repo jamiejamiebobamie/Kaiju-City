@@ -45,7 +45,7 @@ import { addUnlock, GAME_BEATEN_UNLOCK, clearRecruitChoices, getBattlegroundUnlo
 updateMapWalkSites(getWonBattlegrounds());
 import { CAMPAIGN_SECTIONS, getIsLastSection, getRecommendedPowers } from '../DataClasses/Campaign';
 import { GameLoop } from '../DataClasses/GameLoop';
-import { applyLevelFile, LAB_TALK_PHASE, LEVEL_FILES, LEVELS, PENINSULA, SPARRING, updateMapWalkSites } from '../DataClasses/Levels/levels';
+import { applyLevelFile, LAB_TALK_PHASE, LEVEL_FILES, LEVELS, MAP_LABELS, PENINSULA, SPARRING, updateMapWalkSites } from '../DataClasses/Levels/levels';
 import { TileEditor } from './Levels/TileEditor';
 import { gameUiStore, publishGameUi, resetGameUi } from '../DataClasses/gameUiStore';
 import { applyChanges, MirrorSender } from '../Multiplayer/mirror';
@@ -896,6 +896,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const [isCoopHostBusy, setIsCoopHostBusy] = useState(false); // (co-op's guest: between fights, the host in the campaign's calls and pages)
   const [coopChecks, setCoopChecks] = useState<any>(undefined); // (co-op: who's pressed Enter on the line up)
   const [coopVote, setCoopVote] = useState<any>(undefined); // (co-op: Recruit or Terminate, each one's pick: the host's to run)
+  const [coopWait, setCoopWait] = useState<any>(undefined); // (co-op's walking: who's waiting where for the other)
   const [voteNow, setVoteNow] = useState(Date.now());
   const isCoopMatch = () => !!mp.current.config && mp.current.config.mode == 'coop' && mp.current.isStarted;
   // the host: the vote opens with the choice, closes on both picks or the time, and the choice is made as ever
@@ -1108,7 +1109,10 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
             const checks = (gm as any).updateCoopDialogue ? (gm as any).updateCoopDialogue(Date.now()) : undefined;
             const checksJson = JSON.stringify(checks);
             if (checksJson != mp.current.checksSent) { mp.current.checksSent = checksJson; setCoopChecks(checks); mp.current.link.send({ t: 'checks', checks }); }
-            const ui = { ...gm.getUiState(), players: undefined, recruits: undefined, isPlayerDead: undefined, cameraShot: (gm as any).isCoop && ((gm as any).cutscene || (gm as any).recruitScene) ? gm.getCameraShot() : undefined };
+            const wait = (gm as any).getCoopWait ? (gm as any).getCoopWait() : undefined;
+            const waitJson = JSON.stringify(wait);
+            if (waitJson != mp.current.waitShown) { mp.current.waitShown = waitJson; setCoopWait(wait); }
+            const ui = { ...gm.getUiState(), coopWait: wait, players: undefined, recruits: undefined, isPlayerDead: undefined, cameraShot: (gm as any).isCoop && ((gm as any).cutscene || (gm as any).recruitScene) ? gm.getCameraShot() : undefined };
             const json = JSON.stringify(ui);
             if (json != mp.current.uiSent) { mp.current.uiSent = json; mp.current.link.send({ t: 'ui', ui }); }
           }
@@ -1491,6 +1495,8 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
       gm.coopVote('guest');
     } else if (message.t == 'ui' && mp.current.link.role == 'guest') {
       mp.current.hostUi = message.ui;
+      setCoopWait(message.ui.coopWait || undefined);
+      if (gm) gm.coopWaitShown = message.ui.coopWait || undefined;
       if (gm) gm.coopHostShot = message.ui.cameraShot;
     } else if (message.t == 'start' && mp.current.link.role == 'guest' && (message.round || 1) > mp.current.round) {
       beginMultiplayerMatch(message.config, 'guest', message.round || 1);
@@ -2470,6 +2476,13 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
               {screenFade == 'in' && <ScreenBlack $isIn />}
               {/* inside the Kaiju-Vision screen itself (Jamie), not over the casing */}
               {isBuffering && !matchEnd && createPortal(<NetNotice>Buffering...</NetNotice>, document.querySelector("[data-play-screen]") || document.body)}
+              {/* co-op's walking: waiting on the other, and, 10 s on, the other told where (Jamie) */}
+              {!isBuffering && coopWait && !matchEnd && (() => {
+                const own = multiplayer ? multiplayer.link.role : 'host';
+                const place = MAP_LABELS[coopWait.place] || coopWait.place;
+                const text = coopWait.who == own ? `Waiting for ${own == 'host' ? 'guest' : 'host'}...` : coopWait.isPrompt ? `${own == 'host' ? 'Guest' : 'Host'} is waiting at ${place}` : undefined;
+                return text ? createPortal(<NetNotice>{text}</NetNotice>, document.querySelector("[data-play-screen]") || document.body) : null;
+              })()}
               {objectiveNotice && createPortal(<ObjectiveNotice key={objectiveNotice.key} style={getPausedNoticeStyle(isPaused)}>{objectiveNotice.text}</ObjectiveNotice>, document.querySelector("[data-play-screen]") || document.body)}
               {takeOverNotice && createPortal(<TakeOverNotice key={takeOverNotice.key} style={getPausedNoticeStyle(isPaused)}>{takeOverNotice.text}</TakeOverNotice>, document.querySelector("[data-play-screen]") || document.body)}
               {rewardNotice && !rewardNotice.power && createPortal(<RewardNotice key={rewardNotice.key} style={getPausedNoticeStyle(isPaused)}>{rewardNotice.text}</RewardNotice>, document.querySelector("[data-play-screen]") || document.body)}

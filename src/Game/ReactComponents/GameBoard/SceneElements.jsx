@@ -728,7 +728,8 @@ const HotspotLabel = styled.div`
 `;
 
 // 'isDialogueLog': a scene's speech goes to the log beside the monitor instead
-export const SceneElements = ({ level, activePhases, isPaused, onHotspot, isDialogueLog = false, isSettled = false }) => (
+// 'lockedSites': co-op's guest, the map's places not open to them (their icons, glows and mist: grey. Jamie)
+export const SceneElements = ({ level, activePhases, isPaused, onHotspot, isDialogueLog = false, isSettled = false, lockedSites = [] }) => (
   <>
     {level.sceneElements.map(element => {
       const {
@@ -746,7 +747,8 @@ export const SceneElements = ({ level, activePhases, isPaused, onHotspot, isDial
         opacity: isPaused ? 0 : undefined,
         mixBlendMode: blend,
         animationPlayState: isPaused ? "paused" : "running",
-        zIndex: sortY !== undefined ? getSortZIndex(level, sortY) : zIndex
+        zIndex: sortY !== undefined ? getSortZIndex(level, sortY) : zIndex,
+        filter: lockedSites.some(icon => id.startsWith(icon)) ? "grayscale(1) brightness(0.7)" : undefined
       };
 
       // always mounted: a train has to play its way out after its phase ends
