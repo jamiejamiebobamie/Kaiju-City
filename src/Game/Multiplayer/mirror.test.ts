@@ -45,4 +45,18 @@ describe('multiplayer mirroring', () => {
     sender.collect(host.gm);
     expect(sender.collect(host.gm)).toBeUndefined();
   });
+
+  it('sends the ragdolls: a body falls on the guest too', () => {
+    const host = makeGame();
+    const guest = makeGame();
+    const sender = new MirrorSender();
+    const send = () => { const changes = sender.collect(host.gm); if (changes) applyChanges(guest.gm, JSON.parse(JSON.stringify(changes))); };
+    send();
+    host.player.decrementHealth(host.gm.getAccTime(), 99);
+    for (let tick = 0; tick < 10; tick++) { host.gm.stepPieces(); send(); }
+    const hostDeaths = host.gm.getDeathPieces();
+    expect(hostDeaths.length).toBeGreaterThan(0);
+    expect(guest.gm.getDeathPieces().map((death: any) => death.key)).toEqual(hostDeaths.map((death: any) => death.key));
+    expect(guest.gm.getDeathPieces()[0].avatar).toBe(hostDeaths[0].avatar);
+  });
 });

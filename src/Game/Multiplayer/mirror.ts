@@ -82,12 +82,13 @@ const decode = (value: any, gm: any, current: any = undefined): any => {
 };
 
 type NewPiece = { kind: string; avatar: string; teamIndex: number; elements: Array<string> };
-type Changes = { wormholes?: any; game?: any; pieces?: Array<[number, any]>; tiles?: Array<[number, any]>; added?: Array<[number, NewPiece]> };
+type Changes = { wormholes?: any; deaths?: { keys: Array<string>; added: Array<any> }; game?: any; pieces?: Array<[number, any]>; tiles?: Array<[number, any]>; added?: Array<[number, NewPiece]> };
 
 // the host's side: what changed since the last call
 export class MirrorSender {
   private sent = new Map<string, string>();
   private pieceCount = 0;
+  private deathKeysSent = new Set<string>();
 
   private changed(key: string, value: any) {
     const json = JSON.stringify(value);
@@ -100,6 +101,7 @@ export class MirrorSender {
   reset() {
     this.sent.clear();
     this.pieceCount = 0;
+    this.deathKeysSent = new Set();
   }
 
   collect(gm: any): Changes | undefined {
@@ -136,10 +138,19 @@ export class MirrorSender {
       if (Object.keys(fields).length) tileChanges.push([index, fields]);
     });
     if (tileChanges.length) changes.tiles = tileChanges;
+    // (the ragdolls (deaths, knockdowns): which there are, and the new ones in full, less the physics' body: the guest's own
+    // falls as the host's did. Jamie: no ragdolls on the guest's screen)
+    const deaths = gm.gameBoardPiecesManager.deathPieces || [];
+    const keys = deaths.map((death: any) => death.key);
+    if (this.changed('deathKeys', keys)) {
+      const added = deaths.filter((death: any) => !this.deathKeysSent.has(death.key)).map(({ body, ...death }: any) => Object.fromEntries(Object.entries(death).map(([key, value]) => [key, encode(value, 2)]))); // (field by field: an entry has a pieceIndex and a charLocation, as a piece does)
+      deaths.forEach((death: any) => this.deathKeysSent.add(death.key));
+      changes.deaths = { keys, added };
+    }
     // (the wormholes a Teleport leaves, and the Lab's portal: the board's own list)
     const wormholes = encode(gm.gameBoardManager.wormholes, 1);
     if (this.changed('wormholes', wormholes)) changes.wormholes = wormholes;
-    return changes.game || changes.pieces || changes.tiles || changes.added || changes.wormholes ? changes : undefined;
+    return changes.game || changes.pieces || changes.tiles || changes.added || changes.wormholes || changes.deaths ? changes : undefined;
   }
 }
 
@@ -160,6 +171,14 @@ export const applyChanges = (gm: any, changes: Changes) => {
     Object.entries(fields).forEach(([key, value]) => { piece[key] = decode(value, gm, piece[key]); });
   });
   if (changes.wormholes) gm.gameBoardManager.wormholes = decode(changes.wormholes, gm);
+  if (changes.deaths) {
+    const manager = gm.gameBoardPiecesManager;
+    const kept = new Set(changes.deaths.keys);
+    manager.deathPieces = manager.deathPieces.filter((death: any) => kept.has(death.key));
+    changes.deaths.added.forEach((death: any) => {
+      if (!manager.deathPieces.some((other: any) => other.key == death.key)) manager.deathPieces.push({ ...Object.fromEntries(Object.entries(death).map(([key, value]) => [key, decode(value, gm)])), body: undefined });
+    });
+  }
   if (changes.tiles) {
     const tiles = gm.gameBoardManager.getTilesInFlatArray();
     changes.tiles.forEach(([index, fields]) => {
