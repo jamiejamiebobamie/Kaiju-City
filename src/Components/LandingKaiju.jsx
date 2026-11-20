@@ -86,9 +86,11 @@ const Wake = ({ spans, scale, width }) => {
 // 'fireX', 'fireY': its fire moved off its mouth (px, as it faces right), 'fireScale', 'fireAngle' (degrees from upright);
 // 'isPreview': held still breathing its fire, for the tuner (Jamie: to set it against its fire); 'revealDelayMs': when
 // it fades in, after it's placed
-export const SeaKaiju = ({ x, y, height, waterRow, isMirrored = false, isShown = true, delayMs = 0, fireX = 0, fireY = 0, fireScale: fireSize = 1, fireAngle = SEA_KAIJU.fire.angle, isPreview = false, revealDelayMs = 0, onFireDone = undefined }) => {
+export const SeaKaiju = ({ x, y, height, waterRow, isMirrored = false, isShown = true, delayMs = 0, fireX = 0, fireY = 0, fireScale: fireSize = 1, fireAngle = SEA_KAIJU.fire.angle, isPreview = false, revealDelayMs = 0, onFireDone = undefined, onFireStart = undefined }) => {
   const fireDoneRef = useRef(onFireDone);
   fireDoneRef.current = onFireDone;
+  const fireStartRef = useRef(onFireStart);
+  fireStartRef.current = onFireStart;
   const [step, setStep] = useState(0);
   const [tick, setTick] = useState(0); // (counting on while it holds, for its body's breathing between two poses)
   const [fireStep, setFireStep] = useState(-1);
@@ -127,6 +129,7 @@ export const SeaKaiju = ({ x, y, height, waterRow, isMirrored = false, isShown =
       return () => out.forEach(clearTimeout);
     }
     if (fireStep >= 0) return;
+    if (!isPreview && fireStartRef.current) fireStartRef.current(); // (MainMenu: the embers start with it)
     let k = 0;
     setFireStep(0);
     const timer = setInterval(() => {

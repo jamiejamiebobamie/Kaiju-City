@@ -475,7 +475,7 @@ const Fade = styled.div`
 // 'tune': the moon's and its reflection's places and sizes (LandingTuner); 'event': the scene's current event (its
 // number, while one is on: MainMenu's cycle), when the Kaiju stand in the water and the helicopters fly;
 // 'isEventFading': it's ending (the Kaiju fading out); 'onBuoyFacing': the buoy's lamp has turned to the viewer
-export const LandingScene = ({ spot, zoom, isBack = false, logoScale = 1, lift = 0, tune = LANDING_TUNE_DEFAULTS, event = undefined, isEventFading = false, onBuoyFacing = undefined, isKaijuFading = false, onKaijuDone = undefined, isHidden = false, fadeMs = 0 }) => {
+export const LandingScene = ({ spot, zoom, isBack = false, logoScale = 1, lift = 0, tune = LANDING_TUNE_DEFAULTS, event = undefined, isEventFading = false, onBuoyFacing = undefined, isKaijuFading = false, onKaijuDone = undefined, onKaijuFire = undefined, isHidden = false, fadeMs = 0 }) => {
   // ('isHidden': not shown, for the landing's intro, faded in (opacity) over 'fadeMs'; 'isKaijuFading': the Kaiju in the
   // water fading out before the event ends; 'onKaijuDone': each has finished breathing fire)
   const hiddenStyle = { opacity: isHidden ? 0 : 1, transition: `opacity ${fadeMs}ms ease-in-out` };
@@ -526,8 +526,8 @@ export const LandingScene = ({ spot, zoom, isBack = false, logoScale = 1, lift =
     <View style={{ left: -LANDING_VIEW.vanish.x * scale, top: -LANDING_VIEW.vanish.y * scale + (vanish ? vanish.k : 1) * lift, transform: `scale(${scale})`, background: "none" }}>
       {event !== undefined && <Copter key={event} path={landingTraffic.copter} horizon={LANDING_VIEW.horizon} />}
       {event !== undefined && <Copter key={`${event} wingman`} path={landingTraffic.copter} horizon={LANDING_VIEW.horizon} {...COPTER.wingman} />}
-      <SeaKaiju key={`left ${event}`} {...tune.kaijuLeft} isShown={!(isEventFading || isKaijuFading) || isKaijuHeld} isPreview={isKaijuHeld} revealDelayMs={0} onFireDone={onKaijuDone} />
-      <SeaKaiju key={`right ${event}`} {...tune.kaijuRight} isShown={!(isEventFading || isKaijuFading) || isKaijuHeld} isPreview={isKaijuHeld} onFireDone={onKaijuDone} isMirrored delayMs={700} revealDelayMs={450} />
+      <SeaKaiju key={`left ${event}`} {...tune.kaijuLeft} isShown={!(isEventFading || isKaijuFading) || isKaijuHeld} isPreview={isKaijuHeld} revealDelayMs={0} onFireDone={onKaijuDone} onFireStart={onKaijuFire} />
+      <SeaKaiju key={`right ${event}`} {...tune.kaijuRight} isShown={!(isEventFading || isKaijuFading) || isKaijuHeld} isPreview={isKaijuHeld} onFireDone={onKaijuDone} onFireStart={onKaijuFire} isMirrored delayMs={700} revealDelayMs={450} />
     </View>
   );
   return (

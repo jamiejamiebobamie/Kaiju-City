@@ -156,9 +156,14 @@ const LANDING_CYCLE = { everyFacing: 3, startMs: 0, fadeMs: 1500, embersMs: 2200
   skyline and its spotlights come up to full, the walking Kaiju fading in at the left as they do; at full, "City"'s sheen
   flashes and the rest of the scene fades in (opacity); then "[Press any key]" (opacity), and only once it's fully shown
   does a key or a click do anything.
-  Its stages: 0 dark (the neon coming on), 1 the city coming up, 2 the scene, 3 [Press any key], 4 ready.
+  Its stages: 0 dark (the neon coming on), 1 the city coming up, 2 lit (the sheen; a beat, then the scene fading in),
+  3 [Press any key], 4 ready.
 */
-const INTRO = { neonMs: 2400, cityMs: 1600, sceneMs: 1500, pressMs: 900, dim: 0.1 };
+// (Jamie: the neon's wait halved, the logo's fade-in came too late; that time a beat ('holdMs') with the logo, the
+// walking Kaiju and the skyline alone, lit, before the scene fades in, over 5 s; [Press any key] after it. The water
+// Kaiju keep their own timing: the buoy's third turn to the viewer)
+const INTRO = { neonMs: 1200, cityMs: 1600, holdMs: 1200, sceneMs: 5000, pressMs: 900, dim: 0.1 };
+const SCENE_AT_MS = INTRO.neonMs + INTRO.cityMs + INTRO.holdMs;
 const getIntroStyle = stage => css`
   & img[data-landing-logo], & > div > :first-child > p:nth-child(2), & [data-base-joiner], & [data-spotlights] {
     transition: filter ${INTRO.cityMs}ms ease-in-out, opacity ${INTRO.cityMs}ms ease-in-out;
@@ -314,14 +319,14 @@ export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = ()
   const [event, setEvent] = useState(undefined);
   const [isEventFading, setIsEventFading] = useState(false);
   const [isKaijuFading, setIsKaijuFading] = useState(false);
-  const [isEmbersOut, setIsEmbersOut] = useState(false); // (the embers fade once the Kaiju have: Jamie)
+  const [isEmbersOn, setIsEmbersOn] = useState(false); // (the embers from the Kaiju's first fire till 1 s after it's out: Jamie)
   const cycle = useRef({ count: 0, facings: 0, isBusy: false, timers: [], kaijuDone: 0 });
   const beginEvent = useCallback(() => {
     const now = cycle.current;
     if (now.isBusy) return;
     now.isBusy = true;
     const later = (ms, then) => now.timers.push(setTimeout(then, ms));
-    later(LANDING_CYCLE.startMs, () => { now.count += 1; now.kaijuDone = 0; setIsEventFading(false); setIsKaijuFading(false); setIsEmbersOut(false); setEvent(now.count); });
+    later(LANDING_CYCLE.startMs, () => { now.count += 1; now.kaijuDone = 0; setIsEventFading(false); setIsKaijuFading(false); setIsEmbersOn(false); setEvent(now.count); });
     later(LANDING_CYCLE.startMs + COPTER_MS, () => setIsEventFading(true));
     later(LANDING_CYCLE.startMs + COPTER_MS + LANDING_CYCLE.fadeMs, () => { setEvent(undefined); setIsEventFading(false); now.isBusy = false; now.facings = 0; });
   }, []);
@@ -331,8 +336,9 @@ export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = ()
     now.kaijuDone += 1;
     if (now.kaijuDone != 2) return;
     now.timers.push(setTimeout(() => setIsKaijuFading(true), LANDING_CYCLE.kaijuOutMs));
-    now.timers.push(setTimeout(() => setIsEmbersOut(true), LANDING_CYCLE.kaijuOutMs + LANDING_CYCLE.kaijuFadeMs));
+    now.timers.push(setTimeout(() => setIsEmbersOn(false), LANDING_CYCLE.kaijuOutMs));
   }, []);
+  const onKaijuFire = useCallback(() => setIsEmbersOn(true), []);
   const onBuoyFacing = useCallback(() => {
     const now = cycle.current;
     if (now.isBusy) return;
@@ -347,12 +353,14 @@ export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = ()
   }, []);
   // the intro (only with the neon's first turn-on, and not coming back from the game)
   const [introStage, setIntroStage] = useState(() => (getIsNeonLit() || ZOOM_BACK.isPending || isShiftingIn ? 4 : 0));
+  const [isSceneShown, setIsSceneShown] = useState(introStage >= 4);
   const introStageRef = useRef(introStage);
   introStageRef.current = introStage;
   useEffect(() => {
     if (introStage >= 4) return;
-    const at = [INTRO.neonMs, INTRO.neonMs + INTRO.cityMs, INTRO.neonMs + INTRO.cityMs + INTRO.sceneMs, INTRO.neonMs + INTRO.cityMs + INTRO.sceneMs + INTRO.pressMs];
+    const at = [INTRO.neonMs, INTRO.neonMs + INTRO.cityMs, SCENE_AT_MS + INTRO.sceneMs, SCENE_AT_MS + INTRO.sceneMs + INTRO.pressMs];
     const timers = at.map((ms, k) => setTimeout(() => setIntroStage(k + 1), ms));
+    timers.push(setTimeout(() => setIsSceneShown(true), SCENE_AT_MS)); // (the scene, a beat after the city's lit)
     return () => timers.forEach(clearTimeout);
   }, []);
   // "[Press any key]"'s effect, picked with ?press= (Jamie's mock-ups); 'mix' has a panel to switch and tune them
@@ -431,8 +439,8 @@ export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = ()
   return <Wrapper>
     <ShiftLayer $isShiftingIn={isShiftingIn && isLandingShifting}>
     <SpeedBlurFilter />
-    <LandingScene spot={CITY_ZOOM.spot} zoom={getSceneZoom(isLeaving, isLogoZoomingOut)} isBack={isLogoZoomingOut} logoScale={logoScale} lift={LOGO_LIFT - tune.cityscape.y} tune={tune} event={event} isEventFading={isEventFading} onBuoyFacing={onBuoyFacing} isKaijuFading={isKaijuFading} onKaijuDone={onKaijuDone} isHidden={introStage < 2} fadeMs={INTRO.sceneMs} />
-    <EmberSlide $isLeaving={isLeaving} style={isLeaving ? undefined : { opacity: event === undefined || isEventFading || isEmbersOut ? 0 : 1, transition: `opacity ${LANDING_CYCLE.embersMs}ms ease-in-out` }}><Embers /></EmberSlide>
+    <LandingScene spot={CITY_ZOOM.spot} zoom={getSceneZoom(isLeaving, isLogoZoomingOut)} isBack={isLogoZoomingOut} logoScale={logoScale} lift={LOGO_LIFT - tune.cityscape.y} tune={tune} event={event} isEventFading={isEventFading} onBuoyFacing={onBuoyFacing} isKaijuFading={isKaijuFading} onKaijuDone={onKaijuDone} onKaijuFire={onKaijuFire} isHidden={!isSceneShown} fadeMs={INTRO.sceneMs} />
+    <EmberSlide $isLeaving={isLeaving} style={isLeaving ? undefined : { opacity: event === undefined || isEventFading || !isEmbersOn ? 0 : 1, transition: `opacity ${LANDING_CYCLE.embersMs}ms ease-in-out` }}><Embers /></EmberSlide>
     <SceneSlide $isLeaving={isLeaving} $isZoomingBack={isLogoZoomingOut} $intro={introStage} style={{ "--logo-scale": logoScale, "--logo-lift": `${LOGO_LIFT}px`, "--joiner-both": `${tune.joiner.both}px`, "--joiner-band": `${tune.joiner.band}px`, "--joiner-glow": `${tune.joiner.glow}px`, "--skyline-y": `${tune.cityscape.y}px`, "--base-joiner-top": `${tune.baseJoiner.top}px`, "--base-joiner-height": `${tune.baseJoiner.height}px`, ...getBaseJoinerShape(tune.baseJoiner), "--base-joiner-solid": `${tune.baseJoiner.solid * 100}%`, "--base-joiner-opacity": tune.baseJoiner.opacity }}><Logo spotlights circuit baseJoiner /></SceneSlide>{/* (the joiner off, to see it without: Jamie, 2026-11-19; <Logo joiner spotlights /> brings it back) */}
     <ZoomThrough isOn={isLeaving} startMs={ZOOM_START_MS} onDone={enterRoom || handleClickGame} />
     {isZoomingBack && <ZoomThrough isOn isReverse startMs={0} onDone={() => setIsZoomingBack(false)} />}
