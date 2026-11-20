@@ -92,6 +92,31 @@ export class RemoteInputHandler extends PlayerInputHandler {
   }
 }
 
+/*
+  The guest's take-over (Jamie), on the host: their piece down and someone of their side still fighting, once the camera's
+  held on the death (as the player's own: GameManager.updateTakeOver), their keys move on to the next of their side, in
+  the HUDs' order. Returns that one's index when it changes (the guest's camera and HUD follow: Game's 'control').
+*/
+const TAKE_OVER_HOLD_MS = 1800;
+export const updateGuestTakeOver = (gm: any): number | undefined => {
+  const handler = gm.guestInputHandler;
+  if (!handler || !handler.piece.getIsDead()) return undefined;
+  if (gm.guestTakeOverAt === undefined) gm.guestTakeOverAt = Date.now() + TAKE_OVER_HOLD_MS;
+  if (Date.now() < gm.guestTakeOverAt) return undefined;
+  gm.guestTakeOverAt = undefined;
+  const next = gm.getPieces().find((piece: any) => piece.teamIndex == 1 && !piece.getIsDead() && piece.isOnTiles);
+  if (!next) return undefined;
+  handler.piece.inputHandler = undefined;
+  next.isNpc = false;
+  next.moveToTiles = [];
+  next.walkToTile = undefined;
+  next.brainAction = undefined;
+  next.inputHandler = handler;
+  handler.piece = next;
+  handler.pressedKeys = [];
+  return next.pieceIndex;
+};
+
 // the two pieces in place, after the match's own initGame (the host's avatar and powers already its player)
 export const setUpMultiplayerMatch = (gm: any, config: MultiplayerConfig, role: 'host' | 'guest') => {
   const piecesManager = gm.gameBoardPiecesManager;
@@ -114,15 +139,23 @@ export const setUpMultiplayerMatch = (gm: any, config: MultiplayerConfig, role: 
       teamIndex
     });
     if (member.kind == 'recruit') piece.isRecruit = true;
-    if (member.avatar == 'hazmat') piece.color = HAZMAT_RECRUIT.color;
     piece.initCharLocation(true, gm.getFreeTileNear(leader.getTileIndex(), { except: piece }) || leader.getTileIndex());
   }));
+  // each side in its player's color (Jamie): every one's glow and the tile under them, and their damaging powers' tiles
+  const teamColors = [config.host.color || hostPiece.color, config.guest.color || guestPiece.color];
+  piecesManager.pieces.forEach((piece: any) => { piece.color = teamColors[piece.teamIndex]; });
+  const own = role == 'host' ? 0 : 1;
+  gm.getStatusTeamColor = (casterIndex: number, teamIndex: number) => teamColors[teamIndex];
+  gm.getEnemyLeaderColor = () => teamColors[1 - own];
+  gm.getPlayerColor = () => teamColors[own];
+  // the other side's health over their heads, on each screen (Jamie)
+  piecesManager.pieces.forEach((piece: any) => { piece.isShowHealthBarOnComponent = piece.teamIndex != own; });
   // won or lost when a whole side is down (both browsers: the guest's from its own side)
   const getIsSideDown = (teamIndex: number) => piecesManager.pieces.filter((piece: any) => piece.teamIndex == teamIndex).every((piece: any) => piece.getIsDead());
-  const own = role == 'host' ? 0 : 1;
   gm.getGameResult = () => (getIsSideDown(own) ? GameResult.PlayerLost : getIsSideDown(1 - own) ? GameResult.PlayerWon : null);
   if (role == 'host') {
     guestPiece.inputHandler = new RemoteInputHandler({ gameManagerProxy: gm.gameManagerProxy, piece: guestPiece });
+    gm.guestInputHandler = guestPiece.inputHandler;
   } else {
     // the guest's view: its own piece is "the player" here (the camera, the HUD); this copy is never run, so it's only seen
     piecesManager.getPlayerPiece = () => piecesManager.pieces[GUEST_PIECE_INDEX];

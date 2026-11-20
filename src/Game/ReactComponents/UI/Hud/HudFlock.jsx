@@ -60,7 +60,7 @@ export const FLOCK = {
   },
   // beside the monitor: just right of the casing, never over it, never taller than the frame. Shares of the frame's
   // width. 'smokeRoom': how much of the top HUD's passive smoke the column leaves room for (Jamie: some cut is fine)
-  place: { gap: 0.012, top: 0.01, smokeRoom: 0.4 },
+  place: { gap: 0.012, top: 0.01, smokeRoom: 0.4, footRoom: 40 /* (px: under the lowest HUD, its bars and its drift) */ },
   // a crowd (compact HUDs): two to a row, each row after the first set over half a HUD, into the gap above (Jamie)
   // (Jamie, playtest 26: rows fine, but no orderly columns): each row set in by its own amount, each HUD nudged a little
   // (Jamie, playtest 29: much larger: one to a row, nearly full size, zig-zagging by uneven amounts down the side, rows
@@ -230,6 +230,9 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused, deadKeys = [],
           y += size.height + HUD_LOOK.gap;
         }
       });
+      // (the column's real foot: the lowest HUD's bottom, its bars and its drift below it: Jamie, multiplayer playtest 1, the
+      // bottom ones went out of frame: the crowd's rows overlap upward, so 'y' fell short of it)
+      const footY = Math.max(y, ...[...slots.values()].map(slot => slot.y + slot.height)) + FLOCK.place.footRoom;
       // a crowd's rows can reach past the column's left: the column then starts that much further right of the monitor
       const reachLeft = Math.max(0, -Math.min(0, ...[...slots.values()].map(slot => slot.x)));
       let leavingIndex = 0;
@@ -264,7 +267,7 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused, deadKeys = [],
         // crowded (more than the player's and the teammate's), the room kept above for the player's passive smoke goes:
         // the column moves up (Jamie, playtest 34: they've seen the smoke by then, and the screen needs the space)
         const headroom = live.length > 2 ? 0 : SMOKE_HEADROOM * FLOCK.place.smokeRoom;
-        if (!held) columnScale = Math.max(0.2, Math.min(columnScale, (frameBox.height - 2 * top) / Math.max(y + headroom, 1)));
+        if (!held) columnScale = Math.max(0.2, Math.min(columnScale, (frameBox.height - 2 * top) / Math.max(footY + headroom, 1)));
         const columnTop = held ? held.top : top + headroom * columnScale;
         column.style.transform = `translate(${left}px, ${columnTop}px) scale(${columnScale})`;
         placeRef.current = { frameBox, left, top: columnTop, columnScale };

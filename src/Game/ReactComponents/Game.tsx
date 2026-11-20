@@ -49,8 +49,8 @@ import { applyLevelFile, LAB_TALK_PHASE, LEVEL_FILES, LEVELS, PENINSULA, SPARRIN
 import { TileEditor } from './Levels/TileEditor';
 import { gameUiStore, publishGameUi, resetGameUi } from '../DataClasses/gameUiStore';
 import { applyChanges, MirrorSender } from '../Multiplayer/mirror';
-import { getBattleground, getMultiplayerKillsToWin, GUEST_PIECE_INDEX, makeTeam, setUpMultiplayerMatch } from '../Multiplayer/multiplayerMatch';
-import { MatchSetup, MultiplayerWaiting } from '../Multiplayer/MatchSetup';
+import { getBattleground, getMultiplayerKillsToWin, GUEST_PIECE_INDEX, makeTeam, setUpMultiplayerMatch, updateGuestTakeOver } from '../Multiplayer/multiplayerMatch';
+import { MatchSetup, MultiplayerWaiting, NetNotice } from '../Multiplayer/MatchSetup';
 
 const GameArea = styled.div`
   position: relative;
@@ -352,6 +352,7 @@ const CardStack = styled.div`
 const OBJECTIVE_NOTICE_MS = 2600;
 const MULTIPLAYER_COUNTDOWN = ["3...", "2...", "1...", "FIGHT!"]; // (a multiplayer match's start: Jamie)
 const MULTIPLAYER_COUNTDOWN_MS = 1000;
+const MULTIPLAYER_NET = { pingMs: 1000, bufferingMs: 2500, lostMs: 12000 };
 const noticeInOut = keyframes`
   0% { opacity: 0; transform: translateX(-50%) scale(1.6); }
   12% { opacity: 1; transform: translateX(-50%) scale(1); }
@@ -878,6 +879,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const [multiplayerSetup, setMultiplayerSetup] = useState<any>(undefined);
   const [multiplayerProgress, setMultiplayerProgress] = useState<any>({}); // (the guest's checklist of the host's choices)
   const [isMultiplayerWaiting, setIsMultiplayerWaiting] = useState(false); // (ready, the other not yet: on the monitor)
+  const [isBuffering, setIsBuffering] = useState(false); // (the other quiet a while: "Buffering...")
   const isMultiplayerSetupOpen = !!multiplayer && !multiplayerSetup; // (nothing else on the monitor, nor beside it, till it's set up: Jamie)
   const chooseMultiplayerSetup = setup => {
     mp.current.setup = setup;
@@ -1011,7 +1013,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     }
 
     setIsDialogueLog(isMonitorAlways); // in the monitor, conversations go to the log beside it
-    const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival, killsToWin, returnSpot, isRetry, autoRecruits: isAutoRecruits && !multiplayerSetup ? getCallableRecruits() : [], recruits: multiplayerSetup ? [] : getCallableRecruits(), carriedObjective: lastObjective.current, terminated: terminatedAvatars, fallen: isPermadeath ? fallenRecruits : [], trainingPoints, healthReward: isHealthRewardDue.current, trainingOutcome: trainingOutcome.current, sparredHere: sparredLevelIds.includes(matchLevel.id), isRevisit: matchLevel.id == 'labIntro' && labVisits.current > 0 && !returnSpot, isTakeOverOnDeath: isTakeOverOnDeath && !multiplayerSetup });
+    const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival, killsToWin, returnSpot, isRetry, autoRecruits: isAutoRecruits && !multiplayerSetup ? getCallableRecruits() : [], recruits: multiplayerSetup ? [] : getCallableRecruits(), carriedObjective: lastObjective.current, terminated: terminatedAvatars, fallen: isPermadeath ? fallenRecruits : [], trainingPoints, healthReward: isHealthRewardDue.current, trainingOutcome: trainingOutcome.current, sparredHere: sparredLevelIds.includes(matchLevel.id), isRevisit: matchLevel.id == 'labIntro' && labVisits.current > 0 && !returnSpot, isTakeOverOnDeath });
     if (matchLevel.id == 'labIntro' && !returnSpot) labVisits.current += 1;
     isHealthRewardDue.current = false;
     trainingOutcome.current = undefined;
@@ -1037,6 +1039,8 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
         publishGameUi(gm.getUiState());
         // the host: what changed, to the guest
         if (multiplayerSetup && mp.current.link) {
+          const controlled = updateGuestTakeOver(gm);
+          if (controlled !== undefined) mp.current.link.send({ t: 'control', index: controlled });
           const changes = mp.current.sender.collect(gm);
           if (changes) mp.current.link.send({ t: 'tick', changes });
         }
@@ -1347,9 +1351,12 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     link.send({ t: 'start', config, round: round + 1 });
     beginMultiplayerMatch(config, 'host', round + 1);
   };
-  const getGuestPiece = () => gameManager.current && mp.current.isStarted ? gameManager.current.getPieces()[GUEST_PIECE_INDEX] : undefined;
+  // (whoever the guest plays as on the host: their own piece, or the one they took over)
+  const getGuestPiece = () => gameManager.current && mp.current.isStarted && gameManager.current.guestInputHandler ? gameManager.current.guestInputHandler.piece : undefined;
   const onMultiplayerMessage = message => {
     if (!message || typeof message != 'object') return;
+    mp.current.lastHeardAt = Date.now();
+    if (message.t == 'ping') return;
     const gm = gameManager.current;
     if (message.t == 'setupProgress' && mp.current.link.role == 'guest') {
       setMultiplayerProgress(message.progress || {});
@@ -1368,6 +1375,11 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
       applyChanges(gm, message.changes);
       gm.notifyBoard();
       publishGameUi(gm.getUiState());
+    } else if (message.t == 'control' && gm && mp.current.link.role == 'guest') {
+      const next = gm.getPieces()[message.index];
+      if (next) gm.controlledPiece = next;
+      gm.notifyBoard();
+      publishGameUi(gm.getUiState());
     } else if (message.t == 'key' && getGuestPiece()) {
       const handler = getGuestPiece().inputHandler;
       if (message.isDown) handler.addKey(message.code);
@@ -1384,7 +1396,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
       return;
     }
     if (gameLoop.current) gameLoop.current.stop();
-    setMatchEnd(end => end || { title: "The other player left", buttons: [quit] });
+    setMatchEnd(end => end || { title: "Other player disconnected", buttons: [quit] });
   };
   // (through refs: the handlers of the latest render, not the first's)
   mp.current.onMessage = onMultiplayerMessage;
@@ -1398,6 +1410,23 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
       onMessage: message => mp.current.onMessage(message)
     });
     messages.forEach(message => mp.current.onMessage(message));
+  }, [multiplayer]);
+  // the heartbeat (Jamie): each side pings every second; quiet over BUFFERING_MS, "Buffering..."; over LOST_MS, gone
+  useEffect(() => {
+    if (!multiplayer) return;
+    mp.current.lastHeardAt = Date.now();
+    const timer = setInterval(() => {
+      const link = mp.current.link;
+      if (!link) return;
+      link.send({ t: 'ping' });
+      const quietMs = Date.now() - (mp.current.lastHeardAt || Date.now());
+      setIsBuffering(quietMs > MULTIPLAYER_NET.bufferingMs);
+      if (quietMs > MULTIPLAYER_NET.lostMs && !mp.current.isLost) {
+        mp.current.isLost = true;
+        mp.current.onLost();
+      }
+    }, MULTIPLAYER_NET.pingMs);
+    return () => clearInterval(timer);
   }, [multiplayer]);
   // the guest's keys go to the host
   const getIsGuestPlaying = () => !!multiplayer && multiplayer.link.role == 'guest' && mp.current.isStarted;
@@ -2231,6 +2260,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
               {isWiping && <ScreenClip><BlackWipe /></ScreenClip>}
               {screenFade == 'in' && <ScreenBlack $isIn />}
               {/* inside the Kaiju-Vision screen itself (Jamie), not over the casing */}
+              {isBuffering && !matchEnd && createPortal(<NetNotice>Buffering...</NetNotice>, document.querySelector("[data-play-screen]") || document.body)}
               {objectiveNotice && createPortal(<ObjectiveNotice key={objectiveNotice.key} style={getPausedNoticeStyle(isPaused)}>{objectiveNotice.text}</ObjectiveNotice>, document.querySelector("[data-play-screen]") || document.body)}
               {takeOverNotice && createPortal(<TakeOverNotice key={takeOverNotice.key} style={getPausedNoticeStyle(isPaused)}>{takeOverNotice.text}</TakeOverNotice>, document.querySelector("[data-play-screen]") || document.body)}
               {rewardNotice && !rewardNotice.power && createPortal(<RewardNotice key={rewardNotice.key} style={getPausedNoticeStyle(isPaused)}>{rewardNotice.text}</RewardNotice>, document.querySelector("[data-play-screen]") || document.body)}

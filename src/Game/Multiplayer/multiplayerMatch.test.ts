@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { GameManager } from 'Game/DataClasses/GameManager';
 import { SettingsManager } from 'Game/DataClasses/SettingsManager';
 import { applyChanges, MirrorSender } from './mirror';
-import { BATTLEGROUNDS, getBattleground, getMultiplayerKillsToWin, GUEST_PIECE_INDEX, MULTIPLAYER_LEVEL, MultiplayerConfig, setUpMultiplayerMatch } from './multiplayerMatch';
+import { updateGuestTakeOver, BATTLEGROUNDS, getBattleground, getMultiplayerKillsToWin, GUEST_PIECE_INDEX, MULTIPLAYER_LEVEL, MultiplayerConfig, setUpMultiplayerMatch } from './multiplayerMatch';
 
 const CONFIG: MultiplayerConfig = { mode: 'standing', level: 'peninsula', teamSize: 0, host: { avatar: 'guy', powers: ['Fire', 'Ice', 'Water'] }, guest: { avatar: 'girl', powers: ['Lightning', 'Wood', 'Metal'] } };
 
@@ -85,5 +85,24 @@ describe('a multiplayer match', () => {
       expect(JSON.stringify(a.getTileIndex())).not.toBe(JSON.stringify(b.getTileIndex()));
       expect(gm.rivalPiece).toBeUndefined();
     });
+  });
+
+  it("hands the guest's keys to the next of their side once their piece is down, and colors each side as its player", () => {
+    vi.useFakeTimers();
+    const team = [{ avatar: 'agent', kind: 'agent' as const, powers: ['death', 'wood', 'glass'] }];
+    const config: MultiplayerConfig = { ...CONFIG, teamSize: 1, host: { ...CONFIG.host, color: '#ff0000', team }, guest: { ...CONFIG.guest, color: '#00ff00', team } };
+    const host = makeSide('host', config);
+    const pieces = host.getPieces();
+    expect(pieces.map((piece: any) => piece.color)).toEqual(['#ff0000', '#00ff00', '#ff0000', '#00ff00']);
+    expect(host.getStatusTeamColor(1, 1)).toBe('#00ff00');
+    expect(pieces.map((piece: any) => piece.isShowHealthBarOnComponent)).toEqual([false, true, false, true]);
+    const guestAgent = pieces[3];
+    pieces[GUEST_PIECE_INDEX].decrementHealth(host.getAccTime(), 99);
+    expect(updateGuestTakeOver(host)).toBeUndefined(); // (the camera holds on the death first)
+    vi.advanceTimersByTime(2000);
+    expect(updateGuestTakeOver(host)).toBe(3);
+    expect(guestAgent.inputHandler).toBe(host.guestInputHandler);
+    expect(guestAgent.isNpc).toBe(false);
+    vi.useRealTimers();
   });
 });

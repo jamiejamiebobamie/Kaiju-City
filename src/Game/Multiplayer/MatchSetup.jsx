@@ -117,6 +117,24 @@ const Box = styled.span`
   }
 `;
 
+// the link's state over a match (Jamie): "Buffering..." while the other's gone quiet, on the monitor's screen
+export const NetNotice = styled.div`
+  position: absolute;
+  left: 50%;
+  top: 12%;
+  transform: translateX(-50%);
+  z-index: 30;
+  padding: 0.5cqw 1.2cqw;
+  font-family: gameboy;
+  font-size: 1.2cqw;
+  letter-spacing: 0.15cqw;
+  color: #c8ffb8;
+  background: rgba(3, 6, 4, 0.85);
+  border: 0.15cqw solid #3aff3a;
+  text-shadow: 0 0 0.5cqw #3aff3a;
+  pointer-events: none;
+`;
+
 // waiting on the other player, on the monitor (Jamie: no fade to a black page)
 export const MultiplayerWaiting = ({ text = "Waiting for other player...", children = undefined }) => (
   <Screen>
