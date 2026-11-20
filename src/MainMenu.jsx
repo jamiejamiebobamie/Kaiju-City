@@ -148,7 +148,7 @@ const getBaseJoinerShape = ({ middle, topWidth, bottomWidth }) => {
 };
 // (the event starts as the buoy's lamp turns to the viewer, the Kaiju fading in. The whole scene flashing white with a
 // sun star, and then a flare on the buoy, both tried and taken out: Jamie, 2026-11-19; LandingFlash.jsx kept)
-const LANDING_CYCLE = { everyFacing: 3, startMs: 0, fadeMs: 1500, embersMs: 2200, kaijuOutMs: 2000 /* (after both have breathed their fire: Jamie) */ };
+const LANDING_CYCLE = { everyFacing: 3, startMs: 0, fadeMs: 1500, embersMs: 2200, kaijuOutMs: 1000 /* (after both have breathed their fire: Jamie; halved, was 2 s) */ };
 
 /*
   The landing's intro (Jamie, 2026-11-19), the first time it shows in a visit: all black but the logo and the skyline,

@@ -16,16 +16,16 @@ export const SEA_KAIJU = {
   fireSheet: "/zoom-scene/kaiju-fire.png",
   outline: "rgb(191, 64, 191)",
   fireGlow: "rgba(170, 60, 255, 0.7)", // (the fire glowing purple: Jamie)
-  frameMs: 420,
+  frameMs: 210, // (twice as quick between frames, the parts as long, with twice the frames: more energetic: Jamie)
   // idle, then the roar: rearing (frames 2-5), holding the widest (with fire), and back down
   idle: [0, 1, 0, 7, 6, 7],
-  roar: [2, 3, 4, 5, 5, 5, 5, 4, 3, 2],
+  roar: [2, 3, 4, 5, 4, 5, 4, 5, 4, 5, 4, 4, 3, 3, 2, 2], // (after the hold: heaving on, then down)
   fireOn: [4, 5],
   holdFrame: 5, // (the widest roar: held, breathing fire, from when it's reached)
-  holdTicks: 11, // (frames it holds the roar: about 4.6 s; to the end of the event was too long: Jamie)
+  holdTicks: 22, // (frames it holds the roar: about 4.6 s; to the end of the event was too long: Jamie)
   heaveTicks: 2, // (frames: how long each of the two roars shows as it heaves between them)
   revealMs: 1500, // (its fade in: as long as its fade out)
-  fire: { angle: 52, length: 1.05, seconds: 1.6 } // (degrees from upright toward its face; its length: of its height)
+  fire: { angle: 52, length: 1.05, seconds: 1.1 /* (quicker flames: Jamie; was 1.6) */ } // (degrees from upright toward its face; its length: of its height)
 };
 
 const Holder = styled.div`
@@ -94,7 +94,7 @@ export const SeaKaiju = ({ x, y, height, waterRow, isMirrored = false, isShown =
   const [fireStep, setFireStep] = useState(-1);
   // (one roar to an event: idle, the roar, then idle on to the end)
   // (one idle before the roar, not two: half the wait before the fire: Jamie, 2026-11-19)
-  const sequence = useRef([...SEA_KAIJU.idle, ...SEA_KAIJU.roar, ...SEA_KAIJU.idle, ...SEA_KAIJU.idle, ...SEA_KAIJU.idle]);
+  const sequence = useRef([...SEA_KAIJU.idle, ...SEA_KAIJU.idle, 0, 1, ...SEA_KAIJU.roar, ...[...Array(6)].flatMap(() => SEA_KAIJU.idle)]);
   const stepRef = useRef(0);
   const heldRef = useRef(0);
   useEffect(() => {
