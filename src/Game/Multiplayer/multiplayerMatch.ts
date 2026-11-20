@@ -13,15 +13,16 @@ import { PIECES_INFO } from 'Utils/gameState';
   Mode 1, last one standing: won when the other side's whole team is down.
   The match setup (Jamie, 2026-11-19): the host picks the battleground (BATTLEGROUNDS: their bosses and hazards left
   out, the subway's train kept, the flooded Aquarium flooded) and whether there are teams: up to 5 more on each side,
-  in this order: up to 3 recruits (theirs), then an Agent (Jamie: 4 at most). Each player's team is their own (their teammate, the recruits
+  in this order: an Agent, then their recruits (Jamie: 5 at most, the Hazmat Worker if the host has them). Each player's team is their own (their teammate, the recruits
   they have), its powers settled in their browser and sent with the rest, so both build it alike.
 */
 export type TeamMember = { avatar: string; powers: Array<string>; kind: 'teammate' | 'recruit' | 'agent' }; // (powers: elements)
 export type MultiplayerSide = { avatar: string; powers: Array<string>; color?: string; team?: Array<TeamMember> }; // (powers: the picker's elements, uppercase; color: picked in the vat)
-export type MultiplayerSetup = { mode: 'standing' | 'defense'; level: string; teamSize: number };
+export type MultiplayerSetup = { mode: 'standing' | 'defense'; level: string; teamSize: number; isHazmat?: boolean }; // ('isHazmat': the host has the Hazmat Worker, so both sides may)
 export type MultiplayerConfig = MultiplayerSetup & { host: MultiplayerSide; guest: MultiplayerSide };
 export const GUEST_PIECE_INDEX = 1;
-export const MAX_TEAM_SIZE = 4; // (up to 3 recruits and the Agent: no Guy or Girl teammate, the players are those: Jamie)
+export const MAX_TEAM_SIZE = 5; // (the Agent and up to 4 recruits, the Hazmat Worker among them once the host has them: no Guy or Girl teammate, the players are those. 6 HUDs with the player's: Jamie)
+const TEAM_ORDER = ['mermaid', 'punk', 'black_female', 'hazmat'];
 export const DEFAULT_SETUP: MultiplayerSetup = { mode: 'standing', level: 'peninsula', teamSize: 0 };
 
 // the battlegrounds: each level as it is, less its boss, its hazards, its Kaiju ('thumbnail': its whole scene, small)
@@ -74,11 +75,12 @@ export const makeTeam = ({ size, recruits, settingsManager }: { size: number; te
   // (the powers' data is only made as a match starts: before the first, it isn't there yet)
   if (!settingsManager.abilityAndTileStatusData || !Object.keys(settingsManager.abilityAndTileStatusData).length) settingsManager.initAbilityStatusData();
   const getRecruitPowers = (avatar: string) => avatar == 'hazmat' ? HAZMAT_RECRUIT.abilities : ((Object.values(LEVELS) as any).find(({ rival }: any) => rival && rival.avatar == avatar) || { rival: { abilities: [] } }).rival.abilities;
-  recruits.slice(0, 3).forEach(avatar => { if (members.length < size) members.push({ avatar, kind: 'recruit', powers: getRecruitPowers(avatar) }); });
-  if (members.length < size) {
+  // (Jamie's order: the Agent, then the Aquarium Worker, Punk Guy, Ghost Girl, the Hazmat Worker, as they're had)
+  if (size > 0) {
     const kits = Object.values((LEVELS as any).lab.agentDrops.kits) as Array<Array<string>>;
     members.push({ avatar: 'agent', kind: 'agent', powers: kits[Math.floor(Math.random() * kits.length)] });
   }
+  TEAM_ORDER.filter(avatar => recruits.includes(avatar)).forEach(avatar => { if (members.length < size) members.push({ avatar, kind: 'recruit', powers: getRecruitPowers(avatar) }); });
   return members.slice(0, size);
 };
 

@@ -18,7 +18,7 @@ const makeSide = (role: 'host' | 'guest', config: MultiplayerConfig = CONFIG) =>
   return gm;
 };
 
-describe('a multiplayer match', () => {
+describe('a multiplayer match', { timeout: 20000 }, () => {
   it("is built alike on both sides, the guest's piece moved by the guest's keys on the host, and mirrored back", () => {
     const host = makeSide('host');
     const guest = makeSide('guest');

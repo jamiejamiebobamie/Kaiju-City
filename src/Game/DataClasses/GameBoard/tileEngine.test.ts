@@ -26,7 +26,8 @@ describe('tile statuses match master', () => {
   const CLEAR_TOLERANCE = { isWet: 3, isElectrified: 2, isCold: 2, isOnFire: 2, isOnKaijuFire: 2, isBubble: 1, isGhosted: 1, isHealing: 1 };
   // the peninsula now has more tiles at the bottom than master's, so walls can run wider there
   const PEAK_TOLERANCE = { isElectrified: 1.4, isWooded: 1.8, isOnFire: 1.6, isOnKaijuFire: 1.6 };
-  const OPENING_TICKS = { isOnFire: 6, isOnKaijuFire: 6, isCold: 5, isShielded: 5, isGhosted: 8, isHealing: 8 };
+  const CHASERS_END_ON_TARGET = ['isCold', 'isGhosted', 'isHealing'];
+  const OPENING_TICKS = { isOnFire: 6, isOnKaijuFire: 6, isCold: 5, isShielded: 5, isGhosted: 7, isHealing: 7 }; // (ghosts and heals: to their hit on the target, tick 7, where they end now)
 
   Object.entries(statuses).forEach(([status, { clearsAfterTicks, peakTiles, dirs: castDirs, example }]: [string, any]) => {
     it(`${status} lasts as long and spreads as far as on master`, () => {
@@ -38,6 +39,10 @@ describe('tile statuses match master', () => {
         // overgrowth and shields fade on purpose: master's stayed forever
       } else if (clearsAfterTicks === null) {
         expect(series[series.length - 1]).toBeGreaterThan(0); // persistent statuses stay
+      } else if (CHASERS_END_ON_TARGET.includes(status)) {
+        // (they end on their target's tile now, not past it and round again: Jamie, multiplayer playtest 1. No later than
+        // master's, then: master's ran on past the target)
+        expect(series.length - 1).toBeLessThanOrEqual(clearsAfterTicks + (CLEAR_TOLERANCE[status] ?? 0));
       } else {
         expect(Math.abs(series.length - 1 - clearsAfterTicks)).toBeLessThanOrEqual(CLEAR_TOLERANCE[status] ?? 0);
       }

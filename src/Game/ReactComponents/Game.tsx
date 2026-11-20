@@ -881,7 +881,8 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const [isMultiplayerWaiting, setIsMultiplayerWaiting] = useState(false); // (ready, the other not yet: on the monitor)
   const [isBuffering, setIsBuffering] = useState(false); // (the other quiet a while: "Buffering...")
   const isMultiplayerSetupOpen = !!multiplayer && !multiplayerSetup; // (nothing else on the monitor, nor beside it, till it's set up: Jamie)
-  const chooseMultiplayerSetup = setup => {
+  const chooseMultiplayerSetup = chosen => {
+    const setup = { ...chosen, isHazmat: getUnlocks().includes('hazmat') }; // (the Hazmat Worker on both sides if the host has them: Jamie)
     mp.current.setup = setup;
     setMultiplayerSetup(setup);
     if (mp.current.link) mp.current.link.send({ t: 'setup', setup });
@@ -1276,7 +1277,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
       // (their team from what they have: their teammate, their recruits; Jamie)
       // (their recruits: the ones they recruited, and the Hazmat Worker once unlocked)
       const choices = getRecruitChoices();
-      const ownRecruits = ['punk', 'black_female', 'mermaid'].filter(avatar => choices[avatar] == 'recruit').concat(getUnlocks().includes('hazmat') ? ['hazmat'] : []);
+      const ownRecruits = ['punk', 'black_female', 'mermaid'].filter(avatar => choices[avatar] == 'recruit').concat((mp.current.setup || {}).isHazmat ? ['hazmat'] : []);
       const team = makeTeam({ size: (mp.current.setup || {}).teamSize || 0, recruits: ownRecruits, settingsManager });
       const self = picks && picks.avatar ? { team, ...picks } : { avatar: selectedAvatar, powers: settingsManager.getSortedPlayerChosenAbilityElementsString(), color: mp.current.color || undefined, team };
       mp.current.self = self;

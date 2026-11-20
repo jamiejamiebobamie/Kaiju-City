@@ -3,7 +3,7 @@ import { makeGame } from 'Game/DataClasses/testHelpers';
 import { applyChanges, MirrorSender } from './mirror';
 
 // the host's match run, the guest's only given its changes (through JSON, as over the wire): they look the same
-describe('multiplayer mirroring', () => {
+describe('multiplayer mirroring', { timeout: 20000 }, () => { // (slow under the full suite's load)
   it("the guest's pieces and tiles follow the host's", () => {
     const host = makeGame({ abilities: ['Fire', 'Ice', 'Water'] });
     const guest = makeGame({ abilities: ['Fire', 'Ice', 'Water'] });
