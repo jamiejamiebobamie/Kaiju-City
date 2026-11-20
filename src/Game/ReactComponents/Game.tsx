@@ -28,7 +28,7 @@ import { getAvatarColor, saveAvatarColor, saveTeamAvatars, unlockEverything, unl
 import { AbilityPicker, FLY_OFF, LAB_LIGHTS_DELAY_MS, MINI_TIMING, PlayConsole, SideMonitor } from "./AbilityPicker";
 import { holdTamagotchi } from "./Tamagotchi";
 import { FOCUS_MOVE, getFocusTransform, MonitorLabBackdrop } from "./MonitorLabBackdrop";
-import { getHasBooted, MonitorBoot } from "./MonitorBoot";
+import { getHasBooted, MonitorBoot, resetBoot } from "./MonitorBoot";
 import { ROOM_HANDOFF, RoomBackdrop } from "Components/RoomScene";
 import { ZOOM_BACK } from "Components/ZoomThrough";
 import { HudExplosions } from "./UI/Hud/HudExplosions";
@@ -880,6 +880,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const [multiplayerProgress, setMultiplayerProgress] = useState<any>({}); // (the guest's checklist of the host's choices)
   const [isMultiplayerWaiting, setIsMultiplayerWaiting] = useState(false); // (ready, the other not yet: on the monitor)
   const [isBuffering, setIsBuffering] = useState(false); // (the other quiet a while: "Buffering...")
+  const [multiplayerLostText, setMultiplayerLostText] = useState<string | undefined>(undefined); // (gone before the match: on the monitor)
   const isMultiplayerSetupOpen = !!multiplayer && !multiplayerSetup; // (nothing else on the monitor, nor beside it, till it's set up: Jamie)
   const chooseMultiplayerSetup = chosen => {
     const setup = { ...chosen, isHazmat: getUnlocks().includes('hazmat') }; // (the Hazmat Worker on both sides if the host has them: Jamie)
@@ -1358,6 +1359,10 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     if (!message || typeof message != 'object') return;
     mp.current.lastHeardAt = Date.now();
     if (message.t == 'ping') return;
+    if (message.t == 'leave') {
+      mp.current.onLost('left');
+      return;
+    }
     const gm = gameManager.current;
     if (message.t == 'setupProgress' && mp.current.link.role == 'guest') {
       setMultiplayerProgress(message.progress || {});
@@ -1390,15 +1395,45 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     }
   };
   // (the other player gone: the match is over, or never starts)
-  const onMultiplayerLost = () => {
-    const quit = { text: "Quit", onClick: () => leaveByZoom() };
+  /*
+    Leaving and dropping out (Jamie, step 9): Quit tells the other ('leave') and closes the link; the other is told at
+    once ("Other player left"), or, the link lost without a word, by the heartbeat ("Other player disconnected"). Before
+    the match, on the monitor (no full-screen page); in it, the match stops and its end says so, Play again gone (even
+    while waiting on one). Either way, out of it the start screen comes back next time (resetBoot).
+  */
+  const leaveMultiplayer = () => {
+    const link = mp.current.link;
+    mp.current.isLeaving = true;
+    if (link) {
+      link.send({ t: 'leave' });
+      setTimeout(() => link.close(), 300); // (the word sent before the line drops)
+    }
+    resetBoot();
+    leaveByZoom();
+  };
+  const onMultiplayerLost = (reason = 'disconnected') => {
+    if (mp.current.isLeaving || mp.current.isLost) return;
+    mp.current.isLost = true;
+    const text = reason == 'left' ? "Other player left" : "Other player disconnected";
+    setIsBuffering(false);
     if (!mp.current.isStarted) {
-      setFullScreenPageData({ text: ["The other player left."], buttons: [quit] });
+      setIsMultiplayerWaiting(false);
+      setIsMultiplayerVat(false);
+      setMultiplayerLostText(text);
       return;
     }
     if (gameLoop.current) gameLoop.current.stop();
-    setMatchEnd(end => end || { title: "Other player disconnected", buttons: [quit] });
+    setMatchEnd({ title: text, buttons: [{ text: "Quit", onClick: leaveMultiplayer }] });
   };
+  // (the link closed with the page: the other told)
+  useEffect(() => () => {
+    const link = mp.current.link;
+    if (link && !mp.current.isLeaving) {
+      link.send({ t: 'leave' });
+      link.close();
+      resetBoot();
+    }
+  }, []);
   // (through refs: the handlers of the latest render, not the first's)
   mp.current.onMessage = onMultiplayerMessage;
   mp.current.onLost = onMultiplayerLost;
@@ -1407,7 +1442,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     const { link, messages = [] } = multiplayer;
     mp.current.link = link;
     link.setEvents({
-      onStatus: status => { if (status == 'closed' || status == 'down') mp.current.onLost(); },
+      onStatus: status => { if (status == 'closed' || status == 'down') mp.current.onLost('disconnected'); },
       onMessage: message => mp.current.onMessage(message)
     });
     messages.forEach(message => mp.current.onMessage(message));
@@ -1422,10 +1457,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
       link.send({ t: 'ping' });
       const quietMs = Date.now() - (mp.current.lastHeardAt || Date.now());
       setIsBuffering(quietMs > MULTIPLAYER_NET.bufferingMs);
-      if (quietMs > MULTIPLAYER_NET.lostMs && !mp.current.isLost) {
-        mp.current.isLost = true;
-        mp.current.onLost();
-      }
+      if (quietMs > MULTIPLAYER_NET.lostMs && !mp.current.isLost) mp.current.onLost('disconnected');
     }, MULTIPLAYER_NET.pingMs);
     return () => clearInterval(timer);
   }, [multiplayer]);
@@ -1677,7 +1709,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     <>
       <BezelButton title="Pause" onClick={handleClickPause} disabled={isPauseOff}>Pause</BezelButton>
       <BezelButton title="How to play" onClick={openControls}>Controls</BezelButton>
-      <BezelButton title="Goodbye!" onClick={() => leaveByZoom()}>Quit</BezelButton>
+      <BezelButton title="Goodbye!" onClick={() => (multiplayer ? leaveMultiplayer() : leaveByZoom())}>Quit</BezelButton>
       {ticker}
     </>
   );
@@ -1756,7 +1788,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     const isWon = winner === GameResult.PlayerWon;
     if (mp.current.isStarted) {
       const title = gameManager.current && gameManager.current.getMultiplayerTitle ? gameManager.current.getMultiplayerTitle(isWon) : isWon ? "You Won!" : "You Lost";
-      const timeout = setTimeout(() => setMatchEnd({ title, buttons: [{ text: "Play again", onClick: playMultiplayerAgain }, { text: "Quit", onClick: () => leaveByZoom() }] }), MATCH_END_DELAY_MS);
+      const timeout = setTimeout(() => setMatchEnd({ title, buttons: [{ text: "Play again", onClick: playMultiplayerAgain }, { text: "Quit", onClick: leaveMultiplayer }] }), MATCH_END_DELAY_MS);
       return () => clearTimeout(timeout);
     }
     if (isWon && level.skillOnLeave) unlockSkill(level.skillOnLeave); // the Street's Teleport
@@ -1959,7 +1991,12 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
           <MonitorLabBackdrop layer="front" mode={isChoosingAvatar ? "choice" : "picker"} focus={isChoosingAvatar ? handOverAvatar : selectedAvatar} />
           {/* (not again when back from the picker: the lights are on already, Jamie, playtest 34) */}
           {isChoosingAvatar && isBooted && !isBackFromPicker && !isMultiplayerSetupOpen && <LabLightsOn />}
-          {isMultiplayerWaiting && <MultiplayerWaiting />}
+          {isMultiplayerWaiting && !multiplayerLostText && <MultiplayerWaiting />}
+          {multiplayerLostText && (
+            <MultiplayerWaiting text={multiplayerLostText}>
+              <EndButton onClick={leaveMultiplayer}>Quit</EndButton>
+            </MultiplayerWaiting>
+          )}
           {screenFade == 'out' && <ScreenBlack />}
           {isMultiplayerVat && (
             <IrradiationVat avatar={selectedAvatar} startColor={getAvatarColor(selectedAvatar) || PIECES_INFO[selectedAvatar].color} backLabel="Ready" isReadyMain

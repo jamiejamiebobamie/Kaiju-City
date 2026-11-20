@@ -15,6 +15,8 @@ import { MultiplayerLobby } from "../Multiplayer/MultiplayerLobby";
 const BOOT = { minLoadMs: 2200, startHoldMs: 700, cursorMoveMs: 1300, clickHoldMs: 260, afterClickMs: 450 };
 let hasBooted = false;
 export const getHasBooted = () => hasBooted;
+// (out of a multiplayer match: the start screen again next time, Single Player or Multiplayer, not straight to the avatars)
+export const resetBoot = () => { hasBooted = false; };
 
 const Screen = styled.div`
   position: absolute;
