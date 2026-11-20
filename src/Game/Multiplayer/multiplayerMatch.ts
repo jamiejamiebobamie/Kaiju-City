@@ -18,7 +18,7 @@ import { PIECES_INFO } from 'Utils/gameState';
 */
 export type TeamMember = { avatar: string; powers: Array<string>; kind: 'teammate' | 'recruit' | 'agent' }; // (powers: elements)
 export type MultiplayerSide = { avatar: string; powers: Array<string>; color?: string; team?: Array<TeamMember> }; // (powers: the picker's elements, uppercase; color: picked in the vat)
-export type MultiplayerSetup = { mode: 'standing' | 'defense'; level: string; teamSize: number; isHazmat?: boolean; kaijuToWin?: number }; // ('isHazmat': the host has the Hazmat Worker, so both sides may; 'kaijuToWin': defense's count)
+export type MultiplayerSetup = { mode: 'standing' | 'defense' | 'coop'; level: string; teamSize: number; isHazmat?: boolean; kaijuToWin?: number }; // ('isHazmat': the host has the Hazmat Worker, so both sides may; 'kaijuToWin': defense's count)
 export type MultiplayerConfig = MultiplayerSetup & { host: MultiplayerSide; guest: MultiplayerSide };
 export const GUEST_PIECE_INDEX = 1;
 export const MAX_TEAM_SIZE = 5; // (the Agent and up to 4 recruits, the Hazmat Worker among them once the host has them: no Guy or Girl teammate, the players are those. 6 HUDs with the player's: Jamie)
@@ -146,7 +146,8 @@ export const updateGuestTakeOver = (gm: any): number | undefined => {
   if (gm.guestTakeOverAt === undefined) gm.guestTakeOverAt = Date.now() + TAKE_OVER_HOLD_MS;
   if (Date.now() < gm.guestTakeOverAt) return undefined;
   gm.guestTakeOverAt = undefined;
-  const next = gm.getPieces().find((piece: any) => piece.side == 1 && !piece.getIsDead() && piece.isOnTiles);
+  const isFree = (piece: any) => !piece.getIsDead() && piece.isOnTiles && !piece.inputHandler;
+  const next = gm.getPieces().find((piece: any) => isFree(piece) && (gm.isCoop ? piece.teamIndex == 0 && piece.isRecruit && piece != gm.getControlledPiece() : piece.side == 1));
   if (!next) return undefined;
   handler.piece.inputHandler = undefined;
   next.isNpc = false;
@@ -157,6 +158,36 @@ export const updateGuestTakeOver = (gm: any): number | undefined => {
   handler.piece = next;
   handler.pressedKeys = [];
   return next.pieceIndex;
+};
+
+/*
+  Co-op Campaign (Jamie, 2026-11-20): the campaign as ever on the host, the teammate played by the guest. Both browsers
+  build each fight alike ('coopMatch': the host's own GameManager's arguments), and here the teammate takes the guest's
+  powers and color; on the host it's driven by the guest's keys, on the guest it's who they play (camera, HUD). A fight
+  with no teammate (a solo one): the guest watches. In a cutscene the guest's camera is the host's ('coopHostShot').
+*/
+export const setUpCoop = (gm: any, config: MultiplayerConfig, role: 'host' | 'guest') => {
+  const piecesManager = gm.gameBoardPiecesManager;
+  const pieces = gm.getPieces();
+  gm.isCoop = true;
+  const host = pieces[0];
+  host.side = 0;
+  if (config.host.color) host.color = config.host.color;
+  const teammate = pieces.find((piece: any) => piece.pieceIndex != 0 && piece.teamIndex == host.teamIndex && !piece.isRecruit && piece.avatar == config.guest.avatar);
+  if (role == 'guest') gm.getCameraShot = () => gm.coopHostShot;
+  if (!teammate) return undefined;
+  teammate.side = 1;
+  teammate.abilities = gm.settingsManager.getAbilitiesFromElements(config.guest.powers.map(power => power[0].toLowerCase() + power.slice(1)));
+  if (config.guest.color) teammate.color = config.guest.color;
+  teammate.isNpc = false;
+  if (role == 'host') {
+    teammate.inputHandler = new RemoteInputHandler({ gameManagerProxy: gm.gameManagerProxy, piece: teammate });
+    gm.guestInputHandler = teammate.inputHandler;
+  } else {
+    piecesManager.getPlayerPiece = () => teammate;
+    gm.controlledPiece = teammate;
+  }
+  return teammate;
 };
 
 // the two pieces in place, after the match's own initGame (the host's avatar and powers already its player)

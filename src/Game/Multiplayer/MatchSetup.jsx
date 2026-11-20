@@ -173,9 +173,13 @@ export const MatchSetup = ({ isWaiting = false, progress = {}, onProgress = (pro
       <Row>
         <Choice $isOn={setup.mode == "standing"} onClick={() => change({ mode: "standing" }, { match: true })}>Last team standing</Choice>
         <Choice $isOn={setup.mode == "defense"} onClick={() => change({ mode: "defense" }, { match: true })}>Peninsula defense</Choice>
+        {/* (the campaign together, the guest the teammate: nothing more to set. Jamie, 2026-11-20) */}
+        <Choice $isOn={setup.mode == "coop"} onClick={() => change({ mode: "coop" }, { match: true, teams: true, count: true })}>Co-op Campaign</Choice>
       </Row>
       {/* (defense: always the Peninsula; how many Kaiju instead, up to 100: Jamie) */}
-      {setup.mode == "defense" ? (
+      {setup.mode == "coop" ? (
+        <Label>The campaign together: the guest plays your teammate</Label>
+      ) : setup.mode == "defense" ? (
         <>
           <Label>Kaiju to defeat</Label>
           <Row>
@@ -199,6 +203,8 @@ export const MatchSetup = ({ isWaiting = false, progress = {}, onProgress = (pro
       </Row>
       </>
       )}
+      {setup.mode != "coop" && (
+      <>
       <Label>Have Teammates?</Label>
       <Row>
         <Choice $isOn={!isTeams} onClick={() => change({ teamSize: 0 }, { teams: true, count: true })}>Off</Choice>
@@ -213,6 +219,8 @@ export const MatchSetup = ({ isWaiting = false, progress = {}, onProgress = (pro
             <Choice onClick={() => change({ teamSize: Math.min(MAX_TEAM_SIZE, setup.teamSize + 1) }, { count: true })} disabled={setup.teamSize >= MAX_TEAM_SIZE}>+</Choice>
           </Row>
         </>
+      )}
+      </>
       )}
       <Choice $isOn onClick={() => onDone(setup)}>Continue</Choice>
     </Screen>

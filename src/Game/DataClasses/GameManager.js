@@ -3428,7 +3428,8 @@ export class GameManager {
         if (this.takeOverAtMs === undefined) this.takeOverAtMs = Date.now() + CAMERA_THREATS.deathHoldMs;
         if (Date.now() < this.takeOverAtMs) return;
         this.takeOverAtMs = undefined;
-        const next = this.getTakeOverOrder().find(piece => !piece.getIsDead() && piece.isOnTiles);
+        // (never one the other player plays: co-op's teammate, Jamie)
+        const next = this.getTakeOverOrder().find(piece => !piece.getIsDead() && piece.isOnTiles && !piece.inputHandler);
         if (!next) return;
         next.isNpc = false;
         next.moveToTiles = [];

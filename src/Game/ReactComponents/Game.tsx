@@ -49,7 +49,7 @@ import { applyLevelFile, LAB_TALK_PHASE, LEVEL_FILES, LEVELS, PENINSULA, SPARRIN
 import { TileEditor } from './Levels/TileEditor';
 import { gameUiStore, publishGameUi, resetGameUi } from '../DataClasses/gameUiStore';
 import { applyChanges, MirrorSender } from '../Multiplayer/mirror';
-import { DEFENSE_LEVEL, getBattleground, getMultiplayerKillsToWin, GUEST_PIECE_INDEX, makeTeam, setUpMultiplayerMatch, updateGuestTakeOver } from '../Multiplayer/multiplayerMatch';
+import { DEFENSE_LEVEL, getBattleground, getMultiplayerKillsToWin, GUEST_PIECE_INDEX, makeTeam, setUpCoop, setUpMultiplayerMatch, updateGuestTakeOver } from '../Multiplayer/multiplayerMatch';
 import { MatchSetup, MultiplayerWaiting, NetNotice } from '../Multiplayer/MatchSetup';
 
 const GameArea = styled.div`
@@ -352,6 +352,17 @@ const CardStack = styled.div`
 const OBJECTIVE_NOTICE_MS = 2600;
 const MULTIPLAYER_COUNTDOWN = ["3...", "2...", "1...", "FIGHT!"]; // (a multiplayer match's start: Jamie)
 const MULTIPLAYER_COUNTDOWN_MS = 1000;
+// co-op's guest between fights (the host in the campaign's calls, pages and choices): on the monitor
+const CoopHostBusy = ({ playWindow }) => (
+  <GameArea>
+    <RoomBackdrop />
+    <GameFrame data-game-frame>
+      <PlayWindow playWindow={playWindow} setPlayWindow={() => {}} isAdjusting={false} isOpen={false} isPoweredOn isClipped hasGlare>
+        <MultiplayerWaiting text="Host is choosing..." />
+      </PlayWindow>
+    </GameFrame>
+  </GameArea>
+);
 const MULTIPLAYER_NET = { pingMs: 1000, bufferingMs: 2500, lostMs: 12000 };
 const noticeInOut = keyframes`
   0% { opacity: 0; transform: translateX(-50%) scale(1.6); }
@@ -881,6 +892,8 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const [isMultiplayerWaiting, setIsMultiplayerWaiting] = useState(false); // (ready, the other not yet: on the monitor)
   const [isBuffering, setIsBuffering] = useState(false); // (the other quiet a while: "Buffering...")
   const [multiplayerLostText, setMultiplayerLostText] = useState<string | undefined>(undefined); // (gone before the match: on the monitor)
+  const [isCoopAvatarWaiting, setIsCoopAvatarWaiting] = useState(true); // (co-op's guest: till the host has picked theirs)
+  const [isCoopHostBusy, setIsCoopHostBusy] = useState(false); // (co-op's guest: between fights, the host in the campaign's calls and pages)
   const isMultiplayerSetupOpen = !!multiplayer && !multiplayerSetup; // (nothing else on the monitor, nor beside it, till it's set up: Jamie)
   const chooseMultiplayerSetup = chosen => {
     const setup = { ...chosen, isHazmat: getUnlocks().includes('hazmat') }; // (the Hazmat Worker on both sides if the host has them: Jamie)
@@ -965,6 +978,8 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const isLeavingScene = useRef(false);
 
   const endMatch = () => {
+    // (co-op's host: the guest's fight ends with it; they wait on the next)
+    if (mp.current.link && mp.current.link.role == 'host' && mp.current.config && mp.current.config.mode == 'coop' && gameManager.current) mp.current.link.send({ t: 'coopEnd' });
     if (gameLoop.current) gameLoop.current.stop();
     gameLoop.current = null;
     gameManager.current = null;
@@ -1015,14 +1030,36 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     }
 
     setIsDialogueLog(isMonitorAlways); // in the monitor, conversations go to the log beside it
-    const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival, killsToWin, returnSpot, isRetry, autoRecruits: isAutoRecruits && !multiplayerSetup ? getCallableRecruits() : [], recruits: multiplayerSetup ? [] : getCallableRecruits(), carriedObjective: lastObjective.current, terminated: terminatedAvatars, fallen: isPermadeath ? fallenRecruits : [], trainingPoints, healthReward: isHealthRewardDue.current, trainingOutcome: trainingOutcome.current, sparredHere: sparredLevelIds.includes(matchLevel.id), isRevisit: matchLevel.id == 'labIntro' && labVisits.current > 0 && !returnSpot, isTakeOverOnDeath });
+    // (co-op: the host's campaign fight, the guest's built from the host's own arguments, 'coopMatch')
+    const coopConfig = !multiplayerSetup && mp.current.config && mp.current.config.mode == 'coop' && mp.current.link && mp.current.link.role == 'host' ? mp.current.config : undefined;
+    const isCoopGuest = !!multiplayerSetup && !!multiplayerSetup.coop;
+    if (isCoopGuest) {
+      const { settings } = multiplayerSetup;
+      settingsManager.updatePlayerAvatar(settings.playerAvatar);
+      settingsManager.setTeammateAvatar(settings.teammateAvatar);
+      settingsManager.setSortedPlayerChosenAbilityElementsString(settings.powers);
+      settingsManager.setIsTeammate(settings.isTeammate);
+      settingsManager.setDifficulty(settings.difficulty);
+    } else if (coopConfig) {
+      settingsManager.setTeammateAvatar(coopConfig.guest.avatar);
+      settingsManager.setIsTeammate(!isSolo);
+    }
+    const gmArgs = isCoopGuest ? multiplayerSetup.gmArgs : { hasArrival, killsToWin, returnSpot, isRetry, autoRecruits: isAutoRecruits && !multiplayerSetup ? getCallableRecruits() : [], recruits: multiplayerSetup ? [] : getCallableRecruits(), carriedObjective: lastObjective.current, terminated: terminatedAvatars, fallen: isPermadeath ? fallenRecruits : [], trainingPoints, healthReward: isHealthRewardDue.current, trainingOutcome: trainingOutcome.current, sparredHere: sparredLevelIds.includes(matchLevel.id), isRevisit: matchLevel.id == 'labIntro' && labVisits.current > 0 && !returnSpot, isTakeOverOnDeath };
+    const gm = new GameManager({ level: matchLevel, settingsManager, ...gmArgs });
     if (matchLevel.id == 'labIntro' && !returnSpot) labVisits.current += 1;
     isHealthRewardDue.current = false;
     trainingOutcome.current = undefined;
     rewardText.current = pendingRewardText.current;
     pendingRewardText.current = undefined;
     gm.initGame();
-    if (multiplayerSetup) setUpMultiplayerMatch(gm, multiplayerSetup.config, multiplayerSetup.role);
+    if (isCoopGuest) setUpCoop(gm, multiplayerSetup.config, 'guest');
+    else if (multiplayerSetup) setUpMultiplayerMatch(gm, multiplayerSetup.config, multiplayerSetup.role);
+    if (coopConfig) {
+      setUpCoop(gm, coopConfig, 'host');
+      mp.current.sender.reset();
+      mp.current.uiSent = undefined;
+      mp.current.link.send({ t: 'coopMatch', levelId: matchLevel.id, gmArgs: JSON.parse(JSON.stringify(gmArgs)), settings: { playerAvatar: settingsManager.getPlayerAvatar(), teammateAvatar: coopConfig.guest.avatar, powers: settingsManager.getSortedPlayerChosenAbilityElementsString(), isTeammate: settingsManager.getIsTeammate(), difficulty: selectedDifficulty } });
+    }
     gameManager.current = gm;
     if (import.meta.env.DEV) (window as any).__kaijuGame = gm; // dev only: a handle for scripted browser checks
     resetGameUi();
@@ -1040,7 +1077,13 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
         gm.notifyBoard();
         publishGameUi(gm.getUiState());
         // the host: what changed, to the guest
-        if (multiplayerSetup && mp.current.link) {
+        if ((multiplayerSetup || coopConfig) && mp.current.link && !isGuestMatch) {
+          // (co-op: the host's words, objectives and cutscene camera, for the guest's screen)
+          if (coopConfig) {
+            const ui = { ...gm.getUiState(), players: undefined, recruits: undefined, isPlayerDead: undefined, cameraShot: (gm as any).isCoop && ((gm as any).cutscene || (gm as any).recruitScene) ? gm.getCameraShot() : undefined };
+            const json = JSON.stringify(ui);
+            if (json != mp.current.uiSent) { mp.current.uiSent = json; mp.current.link.send({ t: 'ui', ui }); }
+          }
           const controlled = updateGuestTakeOver(gm);
           if (controlled !== undefined) mp.current.link.send({ t: 'control', index: controlled });
           const changes = mp.current.sender.collect(gm);
@@ -1268,13 +1311,14 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   };
 
   // ('picks': dev only, a multiplayer side's { avatar, powers } given, for scripted browser checks)
-  const handleClickPlay = (picks = undefined) => {
+  // ('isCoopGo': co-op's host, both ready: on into the campaign as in single player)
+  const handleClickPlay = (picks = undefined, isCoopGo = false) => {
     // (in multiplayer, after the picker: the vat for their color first; closed, this again)
-    if (multiplayer && !(picks && picks.avatar) && mp.current.color === undefined) {
+    if (multiplayer && !isCoopGo && !(picks && picks.avatar) && mp.current.color === undefined) {
       setIsMultiplayerVat(true);
       return;
     }
-    if (multiplayer) {
+    if (multiplayer && !isCoopGo) {
       // (their team from what they have: their teammate, their recruits; Jamie)
       // (their recruits: the ones they recruited, and the Hazmat Worker once unlocked)
       const choices = getRecruitChoices();
@@ -1336,6 +1380,16 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const startMultiplayerIfReady = () => {
     const { link, self, other, isStarted } = mp.current;
     if (!link || link.role != 'host' || !self || !other || isStarted) return;
+    if ((mp.current.setup || {}).mode == 'coop') {
+      // co-op: the host plays the campaign; the guest waits on each fight ('coopMatch')
+      const coopConfig = { ...mp.current.setup, host: self, guest: other };
+      mp.current.isStarted = true;
+      mp.current.config = coopConfig;
+      link.send({ t: 'start', config: coopConfig, round: 1 });
+      setIsMultiplayerWaiting(false);
+      handleClickPlay(undefined, true);
+      return;
+    }
     const config = { ...(mp.current.setup || { mode: 'standing', level: 'peninsula', teamSize: 0 }), host: self, guest: other };
     link.send({ t: 'start', config, round: 1 });
     beginMultiplayerMatch(config, 'host');
@@ -1372,6 +1426,32 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     } else if (message.t == 'ready') {
       mp.current.other = { avatar: message.avatar, powers: message.powers, color: message.color, team: message.team };
       startMultiplayerIfReady();
+    } else if (message.t == 'coopAvatar' && mp.current.link.role == 'guest') {
+      // the host's avatar picked: the guest is the other one, the teammate, straight to the powers
+      const other = message.avatar == 'guy' ? 'girl' : 'guy';
+      chooseTeam(other, message.avatar);
+      setPickerFrom('avatar');
+      setIsChoosingAvatar(false);
+      setIsCoopAvatarWaiting(false);
+    } else if (message.t == 'start' && mp.current.link.role == 'guest' && message.config && message.config.mode == 'coop') {
+      mp.current.isStarted = true;
+      mp.current.config = message.config;
+      setIsMultiplayerWaiting(false);
+      setIsCoopHostBusy(true);
+      setIsPlayingGame(true);
+    } else if (message.t == 'coopMatch' && mp.current.link.role == 'guest') {
+      const matchLevel = LEVELS[message.levelId];
+      if (!matchLevel) return;
+      setMultiplayerLevel(matchLevel);
+      setIsCoopHostBusy(false);
+      startMatch(matchLevel, message.gmArgs.hasArrival, message.gmArgs.killsToWin, { multiplayerSetup: { config: mp.current.config, role: 'guest', coop: true, gmArgs: message.gmArgs, settings: message.settings } });
+      setIsPlayingGame(true);
+    } else if (message.t == 'coopEnd' && mp.current.link.role == 'guest') {
+      if (gm) endMatch();
+      setIsCoopHostBusy(true);
+    } else if (message.t == 'ui' && mp.current.link.role == 'guest') {
+      mp.current.hostUi = message.ui;
+      if (gm) gm.coopHostShot = message.ui.cameraShot;
     } else if (message.t == 'start' && mp.current.link.role == 'guest' && (message.round || 1) > mp.current.round) {
       beginMultiplayerMatch(message.config, 'guest', message.round || 1);
     } else if (message.t == 'again') {
@@ -1380,7 +1460,11 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     } else if (message.t == 'tick' && gm && mp.current.isStarted && mp.current.link.role == 'guest') {
       applyChanges(gm, message.changes);
       gm.notifyBoard();
-      publishGameUi(gm.getUiState());
+      const own = gm.getUiState();
+      const hostUi = gm.isCoop && mp.current.hostUi;
+      // (the host's words over the guest's own HUDs; the link turns undefined into null, so they're left out by name)
+      const OWN_UI_KEYS = ['players', 'recruits', 'isPlayerDead', 'cameraShot', 'winner'];
+      publishGameUi(hostUi ? { ...own, ...Object.fromEntries(Object.entries(hostUi).filter(([key, value]) => value !== undefined && value !== null && !OWN_UI_KEYS.includes(key))) } : own);
     } else if (message.t == 'control' && gm && mp.current.link.role == 'guest') {
       const next = gm.getPieces()[message.index];
       if (next) gm.controlledPiece = next;
@@ -1786,6 +1870,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   useEffect(() => {
     if (winner === null || !isPlayingGame) return;
     const isWon = winner === GameResult.PlayerWon;
+    if (mp.current.isStarted && mp.current.config && mp.current.config.mode == 'coop') return; // (co-op: the host's campaign decides what's next)
     if (mp.current.isStarted) {
       const title = gameManager.current && gameManager.current.getMultiplayerTitle ? gameManager.current.getMultiplayerTitle(isWon) : isWon ? "You Won!" : "You Lost";
       const timeout = setTimeout(() => setMatchEnd({ title, buttons: [{ text: "Play again", onClick: playMultiplayerAgain }, { text: "Quit", onClick: leaveMultiplayer }] }), MATCH_END_DELAY_MS);
@@ -1935,6 +2020,25 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     setIsFlyingOff(true);
     setTimeout(callback, Math.max(0, FLY_OFF.ms - SCREEN_FADE.ms + 100));
   };
+  // the avatar select's choice (named: dev only, scripted checks choose it too)
+  const chooseAvatar = (player, teammate) => {
+    // a first play skips the power picker: Discharge, Wildfire and Dispel to start (Jamie); every replay after it shows it
+    const isFirstPlay = getIsFirstPlay();
+    markPlaythroughStarted();
+    chooseTeam(player, teammate);
+    // (co-op: the guest is the other one, the teammate)
+    if (mp.current.link && mp.current.link.role == 'host' && multiplayerSetup && multiplayerSetup.mode == 'coop') mp.current.link.send({ t: 'coopAvatar', avatar: player });
+    startNewPlaythrough();
+    // (Jamie, playtest 34: the first play shows the picker too, nothing picked; "Recommended" on the
+    // first fight's powers. It skipped it before, with Discharge, Wildfire and Dispel set)
+    if (isFirstPlay) {
+      settingsManager.setSortedPlayerChosenAbilityElementsString([]);
+      setPickedAbilities([]);
+    }
+    setPickerFrom('avatar');
+    setIsChoosingAvatar(false); // the picker comes up on the same monitor
+  };
+  if (import.meta.env.DEV) (window as any).__kaijuChooseAvatar = chooseAvatar;
   const preGameMonitor = (
     <GameArea style={pullStyle}>
       <RoomBackdrop />
@@ -1951,21 +2055,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
           <MonitorLabBackdrop mode={isChoosingAvatar ? "choice" : "picker"} hovered={hoveredAvatar} focus={isChoosingAvatar ? handOverAvatar : selectedAvatar} />
           {isMultiplayerSetupOpen ? null : isChoosingAvatar ? (
             <AvatarsInTheDark style={{ position: "absolute", inset: 0, transformOrigin: "0 0", transition: FOCUS_MOVE, transform: getFocusTransform(handOverAvatar), ...(isBooted && !isBackFromPicker ? {} : { animation: "none" }) }}>
-            <AvatarChoice isReady={isMonitorOn} isArcs={!isBackFromPicker} onPick={() => setIsAvatarPicked(true)} onHover={setHoveredAvatar} onHandOver={setHandOverAvatar} onChoose={(player, teammate) => {
-              // a first play skips the power picker: Discharge, Wildfire and Dispel to start (Jamie); every replay after it shows it
-              const isFirstPlay = getIsFirstPlay();
-              markPlaythroughStarted();
-              chooseTeam(player, teammate);
-              startNewPlaythrough();
-              // (Jamie, playtest 34: the first play shows the picker too, nothing picked; "Recommended" on the
-              // first fight's powers. It skipped it before, with Discharge, Wildfire and Dispel set)
-              if (isFirstPlay) {
-                settingsManager.setSortedPlayerChosenAbilityElementsString([]);
-                setPickedAbilities([]);
-              }
-              setPickerFrom('avatar');
-              setIsChoosingAvatar(false); // the picker comes up on the same monitor
-            }} />
+            <AvatarChoice isReady={isMonitorOn} isArcs={!isBackFromPicker} onPick={() => setIsAvatarPicked(true)} onHover={setHoveredAvatar} onHandOver={setHandOverAvatar} onChoose={chooseAvatar} />
             </AvatarsInTheDark>
           ) : (
             <AbilityPicker
@@ -1991,7 +2081,8 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
           <MonitorLabBackdrop layer="front" mode={isChoosingAvatar ? "choice" : "picker"} focus={isChoosingAvatar ? handOverAvatar : selectedAvatar} />
           {/* (not again when back from the picker: the lights are on already, Jamie, playtest 34) */}
           {isChoosingAvatar && isBooted && !isBackFromPicker && !isMultiplayerSetupOpen && <LabLightsOn />}
-          {isMultiplayerWaiting && !multiplayerLostText && <MultiplayerWaiting />}
+          {isMultiplayerWaiting && !multiplayerLostText && <MultiplayerWaiting text={multiplayerSetup && multiplayerSetup.mode == 'coop' ? "Waiting for host..." : undefined} />}
+          {multiplayer && multiplayer.link.role == 'guest' && multiplayerSetup && multiplayerSetup.mode == 'coop' && isCoopAvatarWaiting && !multiplayerLostText && <MultiplayerWaiting text="Host is choosing a character..." />}
           {multiplayerLostText && (
             <MultiplayerWaiting text={multiplayerLostText}>
               <EndButton onClick={leaveMultiplayer}>Quit</EndButton>
@@ -2073,7 +2164,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
           buttons={fullScreenPageData.buttons}
           image={fullScreenPageData.image}
         />
-        : !gameManager.current ? null : (<GameArea style={pullStyle}>
+        : !gameManager.current ? (isCoopHostBusy ? <CoopHostBusy playWindow={preGameWindow} /> : null) : (<GameArea style={pullStyle}>
           <RoomBackdrop />
           <HudExplosions />
           {import.meta.env.DEV && !isDevHidden && (
