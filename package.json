@@ -18,6 +18,7 @@
   "dependencies": {
     "@emotion/is-prop-valid": "^1.4.0",
     "onnxruntime-web": "^1.27.0",
+    "peerjs": "^1.5.5",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "styled-components": "^6.6.0",

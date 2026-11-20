@@ -862,6 +862,8 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const [isConsoleIn, setIsConsoleIn] = useState(false);
   // the monitor's first boot (logo, the game's load, its start screen): the side units wait for it (Jamie, playtest 29)
   const [isBooted, setIsBooted] = useState(getHasBooted());
+  // Multiplayer (Jamie, 2026-11-19): the link to the other player, once the lobby's joined them ({ link, messages })
+  const [multiplayer, setMultiplayer] = useState<any>(undefined);
   useEffect(() => {
     if (!isMonitorOn || isConsoleIn || isPlayingGame || !isBooted) return;
     const aside = setTimeout(() => setIsConsoleIn(true), MINI_TIMING.consoleDelayMs);
@@ -1723,7 +1725,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
           isPauseOff: true, // nothing to pause yet
           ticker: <ObjectiveTicker text="" isKaijuCount={false} count={0} toWin={0} />
         })}>
-          {isMonitorOn && !isBooted && <MonitorBoot onDone={() => setIsBooted(true)} />}
+          {isMonitorOn && !isBooted && <MonitorBoot onDone={linked => { if (linked && linked.link) setMultiplayer(linked); setIsBooted(true); }} />}
           {/* the Lab behind them, darkened, lit round the avatars (Jamie) */}
           <MonitorLabBackdrop mode={isChoosingAvatar ? "choice" : "picker"} hovered={hoveredAvatar} focus={isChoosingAvatar ? handOverAvatar : selectedAvatar} />
           {isChoosingAvatar ? (

@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import styled, { css, keyframes } from "styled-components";
 import { loadAssets } from "Utils/assetLoader";
 import { getIsGameBeaten } from "../DataClasses/Unlocks";
+import { checkPeerService } from "../Multiplayer/peerLink";
+import { MultiplayerLobby } from "../Multiplayer/MultiplayerLobby";
 
 /*
   The main monitor's boot (Jamie, playtest 29), the first time it comes on in a visit: the game's logo (off the
@@ -224,10 +226,20 @@ const ModeNote = styled.span`
   text-shadow: 0 0 0.3cqw rgba(171, 72, 64, 0.3);
 `;
 
+// 'onDone': on into the game; with Multiplayer, given the link to the other player (and any messages already come)
 export const MonitorBoot = ({ onDone }) => {
   const [phase, setPhase] = useState("loading"); // loading, start, moving, pressed, mode
-  const [isMultiplayerNoted, setIsMultiplayerNoted] = useState(false);
-  const isMultiplayerOpen = getIsGameBeaten();
+  const isBeaten = getIsGameBeaten();
+  // the multiplayer service checked once the game's beaten (Jamie): undefined while asking, then up or down
+  const [isServiceUp, setIsServiceUp] = useState(undefined);
+  useEffect(() => {
+    if (!isBeaten || phase != "mode") return;
+    let isCancelled = false;
+    checkPeerService(isServiceUp === false).then(isUp => !isCancelled && setIsServiceUp(isUp));
+    return () => { isCancelled = true; };
+  }, [phase]);
+  const isMultiplayerOpen = isBeaten && isServiceUp === true;
+  const multiplayerNote = !isBeaten ? "Beat the game to unlock" : isServiceUp === undefined ? "Checking..." : !isServiceUp ? "Currently down" : "";
   const [progress, setProgress] = useState(0);
   useEffect(() => {
     let isCancelled = false;
@@ -262,11 +274,13 @@ export const MonitorBoot = ({ onDone }) => {
       ) : phase == "mode" ? (
         <ModeRow>
           <ModeButton onClick={() => { hasBooted = true; setTimeout(onDone, BOOT.afterClickMs); }}>Single Player</ModeButton>
-          <ModeButton disabled={!isMultiplayerOpen} onClick={() => setIsMultiplayerNoted(true)}>
+          <ModeButton disabled={!isMultiplayerOpen} onClick={() => setPhase("lobby")}>
             Multiplayer
-            {(!isMultiplayerOpen || isMultiplayerNoted) && <ModeNote>{!isMultiplayerOpen ? "Beat the game to unlock" : "Coming soon"}</ModeNote>}
+            {multiplayerNote && <ModeNote>{multiplayerNote}</ModeNote>}
           </ModeButton>
         </ModeRow>
+      ) : phase == "lobby" ? (
+        <MultiplayerLobby onBack={() => setPhase("mode")} onConnected={(link, messages) => { hasBooted = true; onDone({ link, messages }); }} />
       ) : (
         <>
           <PlayButton as="button" $isPressed={phase == "pressed"} onClick={() => phase == "start" && setPhase("pressed")}>PLAY</PlayButton>
