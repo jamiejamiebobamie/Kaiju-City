@@ -160,6 +160,31 @@ export const CoopChecks = ({ checks, ownRole }) => {
   );
 };
 
+// co-op's vote (Jamie): each one's pick, the seconds left, and the coin flip if it came to that
+const VoteBar = styled.div`
+  display: flex;
+  justify-content: space-between;
+  gap: 1cqw;
+  padding: 0.3cqw 0.6cqw;
+  font-family: gameboy;
+  font-size: 0.75cqw;
+  letter-spacing: 0.08cqw;
+  color: #c8ffb8;
+`;
+const VOTE_NAMES = { recruit: "Recruit", terminate: "Terminate" };
+export const CoopVote = ({ vote, ownRole, now }) => {
+  if (!vote) return null;
+  const otherRole = ownRole == "host" ? "guest" : "host";
+  const left = Math.max(0, Math.ceil((vote.endsAt - now) / 1000));
+  return (
+    <VoteBar>
+      <span>You: {VOTE_NAMES[vote[ownRole]] || "..."}</span>
+      <span>{ownRole == "host" ? "Guest" : "Host"}: {vote.result ? VOTE_NAMES[vote[otherRole]] || "-" : vote[otherRole] ? "Voted" : "..."}</span>
+      <span>{vote.result ? (vote.isFlip ? `Coin flip: ${VOTE_NAMES[vote.result]}!` : `${VOTE_NAMES[vote.result]}!`) : `${left}s`}</span>
+    </VoteBar>
+  );
+};
+
 // waiting on the other player, on the monitor (Jamie: no fade to a black page)
 export const MultiplayerWaiting = ({ text = "Waiting for other player...", children = undefined }) => (
   <Screen>

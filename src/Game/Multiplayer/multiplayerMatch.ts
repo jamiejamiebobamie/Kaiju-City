@@ -205,6 +205,17 @@ export const setUpCoop = (gm: any, config: MultiplayerConfig, role: 'host' | 'gu
   that move on by themselves are left alone. Returns the checks, for both screens.
 */
 export const COOP_LINE = { autoMs: 3000, holdMs: 700 };
+
+/*
+  Co-op's Recruit or Terminate (Jamie): each player votes within COOP_VOTE.ms. One vote: it stands; the same: it stands;
+  split, or none: a coin flip. 'flip' (0..1) is the coin.
+*/
+export const COOP_VOTE = { ms: 7000, revealMs: 1600 };
+export const resolveCoopVote = (host: string | undefined, guest: string | undefined, flip: number) => {
+  const votes = [host, guest].filter(Boolean) as Array<string>;
+  if (votes.length == 1 || (votes.length == 2 && votes[0] == votes[1])) return { choice: votes[0], isFlip: false };
+  return { choice: flip < 0.5 ? 'recruit' : 'terminate', isFlip: true };
+};
 export type CoopChecks = { isWaiting: boolean; host: boolean; guest: boolean };
 const getLineKey = (gm: any) => (gm.cutscene ? `c${gm.cutscene.index}` : `t${gm.talks.map((talk: any) => `${talk.index}${talk.isWaiting ? 'w' : ''}`).join()}`);
 export const wrapCoopDialogue = (gm: any) => {

@@ -49,8 +49,8 @@ import { applyLevelFile, LAB_TALK_PHASE, LEVEL_FILES, LEVELS, PENINSULA, SPARRIN
 import { TileEditor } from './Levels/TileEditor';
 import { gameUiStore, publishGameUi, resetGameUi } from '../DataClasses/gameUiStore';
 import { applyChanges, MirrorSender } from '../Multiplayer/mirror';
-import { DEFENSE_LEVEL, getBattleground, getMultiplayerKillsToWin, GUEST_PIECE_INDEX, makeTeam, setUpCoop, setUpMultiplayerMatch, updateGuestTakeOver } from '../Multiplayer/multiplayerMatch';
-import { CoopChecks, MatchSetup, MultiplayerWaiting, NetNotice } from '../Multiplayer/MatchSetup';
+import { COOP_VOTE, resolveCoopVote, DEFENSE_LEVEL, getBattleground, getMultiplayerKillsToWin, GUEST_PIECE_INDEX, makeTeam, setUpCoop, setUpMultiplayerMatch, updateGuestTakeOver } from '../Multiplayer/multiplayerMatch';
+import { CoopChecks, CoopVote, MatchSetup, MultiplayerWaiting, NetNotice } from '../Multiplayer/MatchSetup';
 
 const GameArea = styled.div`
   position: relative;
@@ -895,6 +895,30 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const [isCoopAvatarWaiting, setIsCoopAvatarWaiting] = useState(true); // (co-op's guest: till the host has picked theirs)
   const [isCoopHostBusy, setIsCoopHostBusy] = useState(false); // (co-op's guest: between fights, the host in the campaign's calls and pages)
   const [coopChecks, setCoopChecks] = useState<any>(undefined); // (co-op: who's pressed Enter on the line up)
+  const [coopVote, setCoopVote] = useState<any>(undefined); // (co-op: Recruit or Terminate, each one's pick: the host's to run)
+  const [voteNow, setVoteNow] = useState(Date.now());
+  const isCoopMatch = () => !!mp.current.config && mp.current.config.mode == 'coop' && mp.current.isStarted;
+  // the host: the vote opens with the choice, closes on both picks or the time, and the choice is made as ever
+  const shareVote = vote => { mp.current.vote = vote; setCoopVote(vote); if (mp.current.link) mp.current.link.send({ t: 'voteState', vote }); };
+  const closeCoopVote = () => {
+    const vote = mp.current.vote;
+    if (!vote || vote.result) return;
+    const { choice, isFlip } = resolveCoopVote(vote.host, vote.guest, Math.random());
+    shareVote({ ...vote, result: choice, isFlip });
+    setTimeout(() => handleChooseRecruit(choice), COOP_VOTE.revealMs);
+  };
+  const castCoopVote = (who, choice) => {
+    const vote = mp.current.vote;
+    if (!vote || vote.result || vote[who]) return;
+    const next = { ...vote, [who]: choice };
+    shareVote(next);
+    if (next.host && next.guest) closeCoopVote();
+  };
+  const chooseRecruitShared = choice => {
+    if (!isCoopMatch()) return handleChooseRecruit(choice);
+    if (mp.current.link.role == 'guest') { mp.current.link.send({ t: 'vote', choice }); setCoopVote(vote => vote && !vote.guest ? { ...vote, guest: choice } : vote); return; }
+    castCoopVote('host', choice);
+  };
   const isMultiplayerSetupOpen = !!multiplayer && !multiplayerSetup; // (nothing else on the monitor, nor beside it, till it's set up: Jamie)
   const chooseMultiplayerSetup = chosen => {
     const setup = { ...chosen, isHazmat: getUnlocks().includes('hazmat') }; // (the Hazmat Worker on both sides if the host has them: Jamie)
@@ -1455,6 +1479,10 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     } else if (message.t == 'coopEnd' && mp.current.link.role == 'guest') {
       if (gm) endMatch();
       setIsCoopHostBusy(true);
+    } else if (message.t == 'voteState' && mp.current.link.role == 'guest') {
+      setCoopVote(message.vote);
+    } else if (message.t == 'vote' && mp.current.link.role == 'host') {
+      castCoopVote('guest', message.choice);
     } else if (message.t == 'checks' && mp.current.link.role == 'guest') {
       setCoopChecks(message.checks);
     } else if (message.t == 'enter' && gm && gm.coopVote) {
@@ -1541,6 +1569,22 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     });
     messages.forEach(message => mp.current.onMessage(message));
   }, [multiplayer]);
+  // co-op's vote: the host opens it as the choice comes up, and closes it when the time's up (Jamie: 7 s)
+  useEffect(() => {
+    const isHost = !!multiplayer && multiplayer.link.role == 'host';
+    if (!isCoopMatch()) return;
+    if (!(recruitScene && isRecruitTalkDone)) {
+      if (isHost && mp.current.vote) { mp.current.vote = undefined; setCoopVote(undefined); multiplayer.link.send({ t: 'voteState', vote: undefined }); }
+      if (!isHost) setCoopVote(undefined);
+      return;
+    }
+    if (isHost && !mp.current.vote) shareVote({ endsAt: Date.now() + COOP_VOTE.ms });
+    const timer = setInterval(() => {
+      setVoteNow(Date.now());
+      if (isHost && mp.current.vote && !mp.current.vote.result && Date.now() >= mp.current.vote.endsAt) closeCoopVote();
+    }, 250);
+    return () => clearInterval(timer);
+  }, [recruitScene, isRecruitTalkDone]);
   // the heartbeat (Jamie): each side pings every second; quiet over BUFFERING_MS, "Buffering..."; over LOST_MS, gone
   useEffect(() => {
     if (!multiplayer) return;
@@ -2390,7 +2434,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
                 speech={speech}
                 recruitScene={recruitScene}
                 recruitChoice={recruitChoice}
-                onChooseRecruit={handleChooseRecruit}
+                onChooseRecruit={chooseRecruitShared}
                 onHotspot={openLabScreen}
               />
               </SlideAway></SlideClip>
@@ -2434,8 +2478,9 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
               footer={coopChecks && coopChecks.isWaiting && !recruitScene ? <CoopChecks checks={coopChecks} ownRole={multiplayer ? multiplayer.link.role : 'host'} /> : recruitScene && isMonitorAlways && isRecruitTalkDone && (
                 <>
                   {["recruit", "terminate"].map(choice => (
-                    <ChoiceButton key={choice} choice={choice} recruitChoice={recruitChoice} onChooseRecruit={(chosen, box) => { recruitChoiceFrom.current = box; handleChooseRecruit(chosen); }} />
+                    <ChoiceButton key={choice} choice={choice} recruitChoice={recruitChoice} onChooseRecruit={(chosen, box) => { recruitChoiceFrom.current = box; chooseRecruitShared(chosen); }} />
                   ))}
+                  {coopVote && <CoopVote vote={coopVote} ownRole={multiplayer ? multiplayer.link.role : 'host'} now={voteNow} />}
                 </>
               )}
               entries={dialogueLog}

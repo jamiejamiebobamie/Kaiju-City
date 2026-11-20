@@ -3,7 +3,7 @@ import { GameManager } from 'Game/DataClasses/GameManager';
 import { SettingsManager } from 'Game/DataClasses/SettingsManager';
 import { LEVELS } from 'Game/DataClasses/Levels/levels';
 import { applyChanges, MirrorSender } from './mirror';
-import { COOP_LINE, MultiplayerConfig, setUpCoop, wrapCoopDialogue } from './multiplayerMatch';
+import { COOP_LINE, MultiplayerConfig, resolveCoopVote, setUpCoop, wrapCoopDialogue } from './multiplayerMatch';
 
 const CONFIG: MultiplayerConfig = { mode: 'coop', level: 'peninsula', teamSize: 0, host: { avatar: 'guy', powers: ['Fire', 'Ice', 'Water'], color: '#ff0000' }, guest: { avatar: 'girl', powers: ['Lightning', 'Wood', 'Metal'], color: '#00ff00' } };
 
@@ -64,5 +64,13 @@ describe('co-op campaign', { timeout: 20000 }, () => {
     expect(gm.updateCoopDialogue(5000 + COOP_LINE.autoMs)).toEqual({ isWaiting: true, host: true, guest: true });
     gm.updateCoopDialogue(5000 + COOP_LINE.autoMs + COOP_LINE.holdMs);
     expect(advanced).toBe(2);
+  });
+
+  it("settles Recruit or Terminate: one vote stands, the same stands, split or none is a coin flip", () => {
+    expect(resolveCoopVote('recruit', undefined, 0.9)).toEqual({ choice: 'recruit', isFlip: false });
+    expect(resolveCoopVote(undefined, 'terminate', 0.1)).toEqual({ choice: 'terminate', isFlip: false });
+    expect(resolveCoopVote('terminate', 'terminate', 0.1)).toEqual({ choice: 'terminate', isFlip: false });
+    expect(resolveCoopVote('recruit', 'terminate', 0.1)).toEqual({ choice: 'recruit', isFlip: true });
+    expect(resolveCoopVote(undefined, undefined, 0.9)).toEqual({ choice: 'terminate', isFlip: true });
   });
 });
