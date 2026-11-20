@@ -57,6 +57,7 @@ export class PeerLink {
   private connection: DataConnection | undefined;
   private events: LinkEvents;
 
+
   constructor(role: LinkRole, code: string, events: LinkEvents) {
     this.role = role;
     this.code = cleanRoomCode(code);
@@ -102,6 +103,11 @@ export class PeerLink {
     });
     // (the PeerJS server lost: an open match carries on browser to browser; one not yet joined can't be)
     this.peer.on('disconnected', () => { if (this.status != 'connected') this.setStatus('down'); });
+  }
+
+  // (the lobby's handlers handed over to the match's)
+  setEvents(events: LinkEvents) {
+    this.events = events;
   }
 
   send(message: any) {

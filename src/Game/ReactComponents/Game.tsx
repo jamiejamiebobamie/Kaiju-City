@@ -48,6 +48,8 @@ import { GameLoop } from '../DataClasses/GameLoop';
 import { applyLevelFile, LAB_TALK_PHASE, LEVEL_FILES, LEVELS, PENINSULA, SPARRING, updateMapWalkSites } from '../DataClasses/Levels/levels';
 import { TileEditor } from './Levels/TileEditor';
 import { gameUiStore, publishGameUi, resetGameUi } from '../DataClasses/gameUiStore';
+import { applyChanges, MirrorSender } from '../Multiplayer/mirror';
+import { getMultiplayerKillsToWin, GUEST_PIECE_INDEX, MULTIPLAYER_LEVEL, setUpMultiplayerMatch } from '../Multiplayer/multiplayerMatch';
 
 const GameArea = styled.div`
   position: relative;
@@ -864,6 +866,8 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const [isBooted, setIsBooted] = useState(getHasBooted());
   // Multiplayer (Jamie, 2026-11-19): the link to the other player, once the lobby's joined them ({ link, messages })
   const [multiplayer, setMultiplayer] = useState<any>(undefined);
+  // the match's side of it: each player's pick once they press Play, the match's config once started, and the mirror
+  const mp = useRef<any>({ sender: new MirrorSender(), link: undefined, self: undefined, other: undefined, config: undefined, isStarted: false });
   useEffect(() => {
     if (!isMonitorOn || isConsoleIn || isPlayingGame || !isBooted) return;
     const aside = setTimeout(() => setIsConsoleIn(true), MINI_TIMING.consoleDelayMs);
@@ -977,27 +981,37 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   }, []);
 
   // 'isSolo': without the teammate, whatever the settings (a recruit's training, one on one)
-  const startMatch = (matchLevel = level, hasArrival = false, killsToWin = undefined, { returnSpot = undefined, isRetry = false, isSolo = false } = {}) => {
+  // 'multiplayerSetup': { config, role } (multiplayerMatch.ts): no recruits, no take-over; the guest's match isn't run
+  const startMatch = (matchLevel = level, hasArrival = false, killsToWin = undefined, { returnSpot = undefined, isRetry = false, isSolo = false, multiplayerSetup = undefined as any } = {}) => {
     settingsManager.updatePlayerAvatar(selectedAvatar);
     settingsManager.setTeammateAvatar(selectedTeammate);
     settingsManager.setDifficulty(selectedDifficulty);
     settingsManager.setIsTeammate(isTeammate && !isSolo);
+    if (multiplayerSetup) {
+      // (piece 0 is the host's in both browsers)
+      settingsManager.updatePlayerAvatar(multiplayerSetup.config.host.avatar);
+      settingsManager.setSortedPlayerChosenAbilityElementsString(multiplayerSetup.config.host.powers);
+      settingsManager.setIsTeammate(false);
+    }
 
     setIsDialogueLog(isMonitorAlways); // in the monitor, conversations go to the log beside it
-    const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival, killsToWin, returnSpot, isRetry, autoRecruits: isAutoRecruits ? getCallableRecruits() : [], recruits: getCallableRecruits(), carriedObjective: lastObjective.current, terminated: terminatedAvatars, fallen: isPermadeath ? fallenRecruits : [], trainingPoints, healthReward: isHealthRewardDue.current, trainingOutcome: trainingOutcome.current, sparredHere: sparredLevelIds.includes(matchLevel.id), isRevisit: matchLevel.id == 'labIntro' && labVisits.current > 0 && !returnSpot, isTakeOverOnDeath });
+    const gm = new GameManager({ level: matchLevel, settingsManager, hasArrival, killsToWin, returnSpot, isRetry, autoRecruits: isAutoRecruits && !multiplayerSetup ? getCallableRecruits() : [], recruits: multiplayerSetup ? [] : getCallableRecruits(), carriedObjective: lastObjective.current, terminated: terminatedAvatars, fallen: isPermadeath ? fallenRecruits : [], trainingPoints, healthReward: isHealthRewardDue.current, trainingOutcome: trainingOutcome.current, sparredHere: sparredLevelIds.includes(matchLevel.id), isRevisit: matchLevel.id == 'labIntro' && labVisits.current > 0 && !returnSpot, isTakeOverOnDeath: isTakeOverOnDeath && !multiplayerSetup });
     if (matchLevel.id == 'labIntro' && !returnSpot) labVisits.current += 1;
     isHealthRewardDue.current = false;
     trainingOutcome.current = undefined;
     rewardText.current = pendingRewardText.current;
     pendingRewardText.current = undefined;
     gm.initGame();
+    if (multiplayerSetup) setUpMultiplayerMatch(gm, multiplayerSetup.config, multiplayerSetup.role);
     gameManager.current = gm;
     if (import.meta.env.DEV) (window as any).__kaijuGame = gm; // dev only: a handle for scripted browser checks
     resetGameUi();
     publishGameUi(gm.getUiState());
 
+    const isGuestMatch = !!multiplayerSetup && multiplayerSetup.role == 'guest';
     gameLoop.current = new GameLoop({
-      steps: [
+      // (the guest's match isn't run: the host's changes come in instead, onMultiplayerMessage)
+      steps: isGuestMatch ? [] : [
         { everyMs: GAME_TICK.pieceMs, run: () => gm.stepPieces() },
         { everyMs: GAME_TICK.tileMs, run: () => gm.stepTiles() }
       ],
@@ -1005,6 +1019,11 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
       onAdvanced: () => {
         gm.notifyBoard();
         publishGameUi(gm.getUiState());
+        // the host: what changed, to the guest
+        if (multiplayerSetup && mp.current.link) {
+          const changes = mp.current.sender.collect(gm);
+          if (changes) mp.current.link.send({ t: 'tick', changes });
+        }
       }
     });
     gameLoop.current.start();
@@ -1227,7 +1246,13 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   };
 
   const handleClickPlay = () => {
-    if (isPickingPowersInLab.current) {
+    if (multiplayer) {
+      const self = { avatar: selectedAvatar, powers: settingsManager.getSortedPlayerChosenAbilityElementsString() };
+      mp.current.self = self;
+      multiplayer.link.send({ t: 'ready', ...self });
+      setFullScreenPageData({ text: ["Waiting for the other player..."], buttons: [] });
+      startMultiplayerIfReady();
+    } else if (isPickingPowersInLab.current) {
       returnToLab();
       return;
     } else if (isResumingRadio) {
@@ -1250,6 +1275,72 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
       setTimeout(() => setScreenFade(undefined), SCREEN_FADE.ms + 100);
     }, SCREEN_FADE.ms);
   };
+
+  /*
+    Multiplayer's messages (Jamie, 2026-11-19), over the lobby's link:
+    'ready' { avatar, powers }: a player has pressed Play; once both have, the host sends
+    'start' { config }, and both build the match (multiplayerMatch.ts); then the host sends
+    'tick' { changes } each frame (mirror.ts), and the guest sends 'key' { code, isDown } and 'power' { code }.
+  */
+  const beginMultiplayerMatch = (config, role) => {
+    mp.current.isStarted = true;
+    mp.current.config = config;
+    mp.current.sender.reset();
+    startMatch(MULTIPLAYER_LEVEL, false, getMultiplayerKillsToWin(config), { multiplayerSetup: { config, role } });
+  };
+  const startMultiplayerIfReady = () => {
+    const { link, self, other, isStarted } = mp.current;
+    if (!link || link.role != 'host' || !self || !other || isStarted) return;
+    const config = { mode: 'standing', host: self, guest: other };
+    link.send({ t: 'start', config });
+    beginMultiplayerMatch(config, 'host');
+  };
+  const getGuestPiece = () => gameManager.current && mp.current.isStarted ? gameManager.current.getPieces()[GUEST_PIECE_INDEX] : undefined;
+  const onMultiplayerMessage = message => {
+    if (!message || typeof message != 'object') return;
+    const gm = gameManager.current;
+    if (message.t == 'ready') {
+      mp.current.other = { avatar: message.avatar, powers: message.powers };
+      startMultiplayerIfReady();
+    } else if (message.t == 'start' && mp.current.link.role == 'guest' && !mp.current.isStarted) {
+      beginMultiplayerMatch(message.config, 'guest');
+    } else if (message.t == 'tick' && gm && mp.current.isStarted && mp.current.link.role == 'guest') {
+      applyChanges(gm, message.changes);
+      gm.notifyBoard();
+      publishGameUi(gm.getUiState());
+    } else if (message.t == 'key' && getGuestPiece()) {
+      const handler = getGuestPiece().inputHandler;
+      if (message.isDown) handler.addKey(message.code);
+      else handler.removeKey(message.code);
+    } else if (message.t == 'power' && getGuestPiece()) {
+      getGuestPiece().inputHandler.usePlayerAbility(message.code, gm.getAccTime());
+    }
+  };
+  // (the other player gone: the match is over, or never starts)
+  const onMultiplayerLost = () => {
+    const quit = { text: "Quit", onClick: () => leaveByZoom() };
+    if (!mp.current.isStarted) {
+      setFullScreenPageData({ text: ["The other player left."], buttons: [quit] });
+      return;
+    }
+    if (gameLoop.current) gameLoop.current.stop();
+    setMatchEnd(end => end || { title: "The other player left", buttons: [quit] });
+  };
+  // (through refs: the handlers of the latest render, not the first's)
+  mp.current.onMessage = onMultiplayerMessage;
+  mp.current.onLost = onMultiplayerLost;
+  useEffect(() => {
+    if (!multiplayer) return;
+    const { link, messages = [] } = multiplayer;
+    mp.current.link = link;
+    link.setEvents({
+      onStatus: status => { if (status == 'closed' || status == 'down') mp.current.onLost(); },
+      onMessage: message => mp.current.onMessage(message)
+    });
+    messages.forEach(message => mp.current.onMessage(message));
+  }, [multiplayer]);
+  // the guest's keys go to the host
+  const getIsGuestPlaying = () => !!multiplayer && multiplayer.link.role == 'guest' && mp.current.isStarted;
 
   const getWinTitle = () => {
     if (level.rival) return "Target Subdued";
@@ -1558,20 +1649,24 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
 
   useKeyPress({
     keyCodes: ["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowLeft", "ArrowDown", "ArrowRight"],
-    keyDownCallback: code => gameManager.current && gameManager.current.getPlayerInputHandler().addKey(code),
-    keyUpCallback: code => gameManager.current && gameManager.current.getPlayerInputHandler().removeKey(code),
+    keyDownCallback: code => getIsGuestPlaying() ? mp.current.link.send({ t: 'key', code, isDown: true }) : gameManager.current && gameManager.current.getPlayerInputHandler().addKey(code),
+    keyUpCallback: code => getIsGuestPlaying() ? mp.current.link.send({ t: 'key', code, isDown: false }) : gameManager.current && gameManager.current.getPlayerInputHandler().removeKey(code),
     isCharacterDead: isPaused || isPlayerDead
   });
 
   useKeyPress({
     keyCodes: ABILITY_KEY_CODES,
-    keyDownCallback: code => gameManager.current && gameManager.current.getPlayerInputHandler().usePlayerAbility(code, gameManager.current.getAccTime()),
+    keyDownCallback: code => getIsGuestPlaying() ? mp.current.link.send({ t: 'power', code }) : gameManager.current && gameManager.current.getPlayerInputHandler().usePlayerAbility(code, gameManager.current.getAccTime()),
     isCharacterDead: isPaused || level.isWalkingLevel
   });
 
   useEffect(() => {
     if (winner === null || !isPlayingGame) return;
     const isWon = winner === GameResult.PlayerWon;
+    if (mp.current.isStarted) {
+      const timeout = setTimeout(() => setMatchEnd({ title: isWon ? "You Won!" : "You Lost", buttons: [{ text: "Quit", onClick: () => leaveByZoom() }] }), MATCH_END_DELAY_MS);
+      return () => clearTimeout(timeout);
+    }
     if (isWon && level.skillOnLeave) unlockSkill(level.skillOnLeave); // the Street's Teleport
     // the training points left: lost when hit, for good (F7)
     const pointsLeft = gameManager.current ? gameManager.current.getTrainingPoints() : trainingPoints;

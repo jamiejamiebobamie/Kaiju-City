@@ -1,4 +1,5 @@
 import { PlayerInputHandler } from '../DataClasses/PlayerInputHandler';
+import { GameResult } from '../DataClasses/GameManager';
 import { LEVELS } from '../DataClasses/Levels/levels';
 import { BOTTOM_SPOTS, TOP_SPOTS } from '../DataClasses/balance/simulate';
 import { PIECES_INFO } from 'Utils/gameState';
@@ -65,6 +66,9 @@ export const setUpMultiplayerMatch = (gm: any, config: MultiplayerConfig, role: 
     piecesManager.getPlayerPiece = () => piecesManager.pieces[GUEST_PIECE_INDEX];
     piecesManager.getPlayerTeamIndex = () => 1;
     gm.controlledPiece = guestPiece;
+    // (no score kept here: the match is over when either falls, as the host's pieces show it)
+    const pieces = piecesManager.pieces;
+    gm.getGameResult = () => (pieces[GUEST_PIECE_INDEX].getIsDead() ? GameResult.PlayerLost : pieces[0].getIsDead() ? GameResult.PlayerWon : null);
   }
   return guestPiece;
 };
