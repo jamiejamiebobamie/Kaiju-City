@@ -29,23 +29,42 @@ const NO_HAZARDS = { rival: undefined, ghostBoss: undefined, aquariumFlood: unde
 // (the boss fights' Kaiju parts, the eye, the head, the tongue, are the boss's: left out too)
 const BOSS_PARTS = ['eye', 'head', 'tongue'];
 const getCalmPhases = (level: any) => level.defaultPhases.filter((id: string) => !BOSS_PARTS.includes(id));
-const getGlassPhases = (level: any) => level.phases.map(({ id }: any) => id).filter((id: string) => id.startsWith('glass'));
 export const BATTLEGROUNDS = [
   { id: 'peninsula', name: 'Peninsula', thumbnail: ['/Map.gif'], thumbnailPosition: '50% 4%', thumbnailZoom: 1.5, getLevel: () => ({ ...LEVELS.peninsula, ...NO_HAZARDS }) },
   { id: 'rapidTransit', name: 'Rapid Transit', thumbnail: ['/levels/rapidTransit.png'], getLevel: () => ({ ...LEVELS.rapidTransit, ...NO_HAZARDS, defaultPhases: getCalmPhases(LEVELS.rapidTransit) }) }, // (its train kept: Jamie)
   { id: 'rooftop', name: 'Rooftop', thumbnail: ['/levels/rooftop.png'], getLevel: () => ({ ...LEVELS.rooftop, ...NO_HAZARDS, defaultPhases: getCalmPhases(LEVELS.rooftop) }) },
-  { id: 'aquarium', name: 'Aquarium', thumbnail: ['/levels/aquarium.png'], getLevel: () => ({ ...LEVELS.aquarium, ...NO_HAZARDS, defaultPhases: getCalmPhases(LEVELS.aquarium) }) },
-  // (flooded from the start: the glass broken and the hall under water, the wakes behind everyone in it: Jamie)
-  { id: 'floodedAquarium', name: 'Flooded Aquarium', thumbnail: ['/levels/aquarium.png', '/levels/aquarium/shattered.png'], getLevel: () => ({ ...LEVELS.aquarium, ...NO_HAZARDS, defaultPhases: [...getCalmPhases(LEVELS.aquarium), 'shattered', ...getGlassPhases(LEVELS.aquarium)] }) }
+  // (no skylight shards on its floor: they're the scream's, Jamie)
+  { id: 'aquarium', name: 'Aquarium', thumbnail: ['/levels/aquarium.png'], getLevel: () => ({ ...LEVELS.aquarium, ...NO_HAZARDS, defaultPhases: getCalmPhases(LEVELS.aquarium).filter((id: string) => id != 'shards') }) },
+  // (flooded from the start: the hall broken, dim and under water, the wakes behind everyone in it; already so as it
+  // opens, not breaking: the glass panels' breaking (the fish falling) never runs, and the shattered hall's there at once:
+  // Jamie)
+  { id: 'floodedAquarium', name: 'Flooded Aquarium', thumbnail: ['/levels/aquarium.png', '/levels/aquarium/shattered.png'], getLevel: () => ({ ...LEVELS.aquarium, ...NO_HAZARDS, defaultPhases: [...getCalmPhases(LEVELS.aquarium), 'shattered'], sceneElements: LEVELS.aquarium.sceneElements.map((element: any) => element.phase == 'shattered' && element.type == 'image' ? { ...element, fadeSeconds: 0, delaySeconds: 0 } : element) }) },
+  // the Lab (Jamie): its fight's portal up to the catwalk open the whole match (setUpMultiplayerMatch), no Agents or talk
+  { id: 'lab', name: 'Lab', thumbnail: ['/levels/lab-window.png', '/levels/lab.png'], getLevel: () => ({ ...LEVELS.lab, ...NO_HAZARDS, showdown: undefined, extras: [], transformScene: undefined }) }
 ];
 export const getBattleground = (id: string) => BATTLEGROUNDS.find(ground => ground.id == id) || BATTLEGROUNDS[0];
 // where each side starts: the Peninsula's top and bottom; elsewhere, the player's own start and the boss's
 const getStartSpots = (id: string) => {
   if (id == 'peninsula') return { host: TOP_SPOTS[0], guest: BOTTOM_SPOTS[0] };
+  if (id == 'lab') return { host: undefined, guest: LAB_GUEST_SPOT };
   const level: any = (LEVELS as any)[id == 'floodedAquarium' ? 'aquarium' : id];
   return { host: undefined, guest: level.rival.spot };
 };
 export const MULTIPLAYER_LEVEL = BATTLEGROUNDS[0].getLevel(); // (the default)
+const LAB_GUEST_SPOT = { x: 1150, y: 640 }; // (the Lab's floor, across from the player's start)
+const LAB_PORTAL_FROM = { x: 700, y: 480 }; // (where its fight's Agent stands, and leaves his portal: levels.ts LAB_SCENE's extras)
+
+// the Lab's portal, as its fight leaves it (GameManager.startShowdownFight), open for good
+const openLabPortal = (gm: any) => {
+  const { catwalkY, catwalkLastRow, portalWallRows, portalColumns } = (LEVELS as any).lab.agentDrops;
+  const board = gm.gameBoardManager;
+  const standTile = board.getClosestWalkableTileToLocation(LAB_PORTAL_FROM);
+  const floorRows = board.walkableTiles.filter(({ i, j }: any) => i == standTile.i && j > catwalkLastRow).map(({ j }: any) => j);
+  const below = floorRows.length ? { i: standTile.i, j: Math.min(...floorRows) + portalWallRows } : standTile;
+  const floorTile = board.getIsInBounds(below) ? below : standTile;
+  const portalTop = board.getClosestWalkableTileToLocation({ x: LAB_PORTAL_FROM.x + portalColumns * gm.level.grid.colStep * gm.level.grid.scale, y: catwalkY });
+  board.addWormhole(floorTile, portalTop, gm.getAccTime(), Infinity);
+};
 export const getMultiplayerKillsToWin = (config: MultiplayerConfig) => undefined; // (decided by the teams: setUpMultiplayerMatch)
 
 // a player's team, in their browser, from what they have (Jamie): the teammate's powers random as ever (one to attack, one
@@ -150,6 +169,7 @@ export const setUpMultiplayerMatch = (gm: any, config: MultiplayerConfig, role: 
   gm.getPlayerColor = () => teamColors[own];
   // the other side's health over their heads, on each screen (Jamie)
   piecesManager.pieces.forEach((piece: any) => { piece.isShowHealthBarOnComponent = piece.teamIndex != own; });
+  if (config.level == 'lab') openLabPortal(gm);
   // won or lost when a whole side is down (both browsers: the guest's from its own side)
   const getIsSideDown = (teamIndex: number) => piecesManager.pieces.filter((piece: any) => piece.teamIndex == teamIndex).every((piece: any) => piece.getIsDead());
   gm.getGameResult = () => (getIsSideDown(own) ? GameResult.PlayerLost : getIsSideDown(1 - own) ? GameResult.PlayerWon : null);

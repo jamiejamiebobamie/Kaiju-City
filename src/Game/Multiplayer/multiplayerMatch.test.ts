@@ -105,4 +105,11 @@ describe('a multiplayer match', () => {
     expect(guestAgent.isNpc).toBe(false);
     vi.useRealTimers();
   });
+
+  it("opens the Lab's portal for the whole match", () => {
+    const gm = makeSide('host', { ...CONFIG, level: 'lab' });
+    const portals = gm.gameBoardManager.wormholes;
+    expect(portals.length).toBe(1);
+    expect(portals[0].endsAt).toBe(Infinity);
+  });
 });

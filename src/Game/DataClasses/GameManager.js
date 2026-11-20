@@ -1087,11 +1087,22 @@ export class GameManager {
     };
 
     getTeleportAcross = (fromTile, pressedDir, playerInputHandler) => {
-        const rival = this.rivalPiece;
-        if (!this.level.rival || !rival || rival.isDead || !rival.isOnTiles) return undefined;
         const board = this.gameBoardManager;
-        const rivalRegion = this.getTeleportRegion(rival.getTileIndex());
-        if (this.getTeleportRegion(fromTile) == rivalRegion) return undefined;
+        // the regions it goes to: the rival's; in multiplayer (Jamie: every battleground but the Peninsula), any enemy's
+        // of whoever's teleporting. on one with an enemy already, it's an ordinary Teleport: getting away
+        let targetRegions;
+        if (this.level.isMultiplayer) {
+            if (this.level.id == 'peninsula') return undefined;
+            const piece = (playerInputHandler && playerInputHandler.piece) || this.getControlledPiece();
+            const enemies = this.getPieces().filter(other => piece && other.teamIndex != piece.teamIndex && !other.isDead && other.isOnTiles);
+            if (!enemies.length) return undefined;
+            targetRegions = new Set(enemies.map(enemy => this.getTeleportRegion(enemy.getTileIndex())));
+        } else {
+            const rival = this.rivalPiece;
+            if (!this.level.rival || !rival || rival.isDead || !rival.isOnTiles) return undefined;
+            targetRegions = new Set([this.getTeleportRegion(rival.getTileIndex())]);
+        }
+        if (targetRegions.has(this.getTeleportRegion(fromTile))) return undefined;
         // the straight line of tiles the way pressed, across gaps, to the edge of the grid
         const line = [];
         let tile = fromTile;
@@ -1103,9 +1114,11 @@ export class GameManager {
             if (tile.i < 0 || tile.j < 0 || tile.i >= board.numTileColumns || tile.j >= board.numTileRows) break;
             line.push(tile);
         }
-        const isTheirs = each => board.getIsInBounds(each) && this.getTeleportRegion(each) == rivalRegion;
-        const first = line.findIndex(isTheirs);
+        const first = line.findIndex(each => board.getIsInBounds(each) && targetRegions.has(this.getTeleportRegion(each)));
         if (first < 0) return undefined; // not toward them
+        // (to the far side of that one: the first enemy's platform the way pressed, one or two away)
+        const firstRegion = this.getTeleportRegion(line[first]);
+        const isTheirs = each => board.getIsInBounds(each) && this.getTeleportRegion(each) == firstRegion;
         let last = first;
         while (last + 1 < line.length && isTheirs(line[last + 1])) last += 1;
         return line.slice(0, last + 1);

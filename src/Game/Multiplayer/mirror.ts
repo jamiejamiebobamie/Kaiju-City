@@ -82,7 +82,7 @@ const decode = (value: any, gm: any, current: any = undefined): any => {
 };
 
 type NewPiece = { kind: string; avatar: string; teamIndex: number; elements: Array<string> };
-type Changes = { game?: any; pieces?: Array<[number, any]>; tiles?: Array<[number, any]>; added?: Array<[number, NewPiece]> };
+type Changes = { wormholes?: any; game?: any; pieces?: Array<[number, any]>; tiles?: Array<[number, any]>; added?: Array<[number, NewPiece]> };
 
 // the host's side: what changed since the last call
 export class MirrorSender {
@@ -136,7 +136,10 @@ export class MirrorSender {
       if (Object.keys(fields).length) tileChanges.push([index, fields]);
     });
     if (tileChanges.length) changes.tiles = tileChanges;
-    return changes.game || changes.pieces || changes.tiles || changes.added ? changes : undefined;
+    // (the wormholes a Teleport leaves, and the Lab's portal: the board's own list)
+    const wormholes = encode(gm.gameBoardManager.wormholes, 1);
+    if (this.changed('wormholes', wormholes)) changes.wormholes = wormholes;
+    return changes.game || changes.pieces || changes.tiles || changes.added || changes.wormholes ? changes : undefined;
   }
 }
 
@@ -156,6 +159,7 @@ export const applyChanges = (gm: any, changes: Changes) => {
     if (!piece) return; // (a piece the guest hasn't: added by the host mid-match. Not yet mirrored)
     Object.entries(fields).forEach(([key, value]) => { piece[key] = decode(value, gm, piece[key]); });
   });
+  if (changes.wormholes) gm.gameBoardManager.wormholes = decode(changes.wormholes, gm);
   if (changes.tiles) {
     const tiles = gm.gameBoardManager.getTilesInFlatArray();
     changes.tiles.forEach(([index, fields]) => {
