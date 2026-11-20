@@ -50,7 +50,7 @@ import { TileEditor } from './Levels/TileEditor';
 import { gameUiStore, publishGameUi, resetGameUi } from '../DataClasses/gameUiStore';
 import { applyChanges, MirrorSender } from '../Multiplayer/mirror';
 import { DEFENSE_LEVEL, getBattleground, getMultiplayerKillsToWin, GUEST_PIECE_INDEX, makeTeam, setUpCoop, setUpMultiplayerMatch, updateGuestTakeOver } from '../Multiplayer/multiplayerMatch';
-import { MatchSetup, MultiplayerWaiting, NetNotice } from '../Multiplayer/MatchSetup';
+import { CoopChecks, MatchSetup, MultiplayerWaiting, NetNotice } from '../Multiplayer/MatchSetup';
 
 const GameArea = styled.div`
   position: relative;
@@ -894,6 +894,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const [multiplayerLostText, setMultiplayerLostText] = useState<string | undefined>(undefined); // (gone before the match: on the monitor)
   const [isCoopAvatarWaiting, setIsCoopAvatarWaiting] = useState(true); // (co-op's guest: till the host has picked theirs)
   const [isCoopHostBusy, setIsCoopHostBusy] = useState(false); // (co-op's guest: between fights, the host in the campaign's calls and pages)
+  const [coopChecks, setCoopChecks] = useState<any>(undefined); // (co-op: who's pressed Enter on the line up)
   const isMultiplayerSetupOpen = !!multiplayer && !multiplayerSetup; // (nothing else on the monitor, nor beside it, till it's set up: Jamie)
   const chooseMultiplayerSetup = chosen => {
     const setup = { ...chosen, isHazmat: getUnlocks().includes('hazmat') }; // (the Hazmat Worker on both sides if the host has them: Jamie)
@@ -1080,6 +1081,9 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
         if ((multiplayerSetup || coopConfig) && mp.current.link && !isGuestMatch) {
           // (co-op: the host's words, objectives and cutscene camera, for the guest's screen)
           if (coopConfig) {
+            const checks = (gm as any).updateCoopDialogue ? (gm as any).updateCoopDialogue(Date.now()) : undefined;
+            const checksJson = JSON.stringify(checks);
+            if (checksJson != mp.current.checksSent) { mp.current.checksSent = checksJson; setCoopChecks(checks); mp.current.link.send({ t: 'checks', checks }); }
             const ui = { ...gm.getUiState(), players: undefined, recruits: undefined, isPlayerDead: undefined, cameraShot: (gm as any).isCoop && ((gm as any).cutscene || (gm as any).recruitScene) ? gm.getCameraShot() : undefined };
             const json = JSON.stringify(ui);
             if (json != mp.current.uiSent) { mp.current.uiSent = json; mp.current.link.send({ t: 'ui', ui }); }
@@ -1445,10 +1449,16 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
       setMultiplayerLevel(matchLevel);
       setIsCoopHostBusy(false);
       startMatch(matchLevel, message.gmArgs.hasArrival, message.gmArgs.killsToWin, { multiplayerSetup: { config: mp.current.config, role: 'guest', coop: true, gmArgs: message.gmArgs, settings: message.settings } });
+      // (the guest's Enter on a line: their check, to the host)
+      if (gameManager.current) (gameManager.current as any).advanceDialogue = () => { mp.current.link.send({ t: 'enter' }); return true; };
       setIsPlayingGame(true);
     } else if (message.t == 'coopEnd' && mp.current.link.role == 'guest') {
       if (gm) endMatch();
       setIsCoopHostBusy(true);
+    } else if (message.t == 'checks' && mp.current.link.role == 'guest') {
+      setCoopChecks(message.checks);
+    } else if (message.t == 'enter' && gm && gm.coopVote) {
+      gm.coopVote('guest');
     } else if (message.t == 'ui' && mp.current.link.role == 'guest') {
       mp.current.hostUi = message.ui;
       if (gm) gm.coopHostShot = message.ui.cameraShot;
@@ -2421,7 +2431,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
             {labScreen == "colors" && <IrradiationVat avatar={selectedAvatar} startColor={getAvatarColor(selectedAvatar) || PIECES_INFO[selectedAvatar].color} onIrradiate={irradiate} onClose={closeLabScreen} />}
             {isShowingControls && <ControlsOverlay onClose={closeControls} />}
             <DialogueLogPanel
-              footer={recruitScene && isMonitorAlways && isRecruitTalkDone && (
+              footer={coopChecks && coopChecks.isWaiting && !recruitScene ? <CoopChecks checks={coopChecks} ownRole={multiplayer ? multiplayer.link.role : 'host'} /> : recruitScene && isMonitorAlways && isRecruitTalkDone && (
                 <>
                   {["recruit", "terminate"].map(choice => (
                     <ChoiceButton key={choice} choice={choice} recruitChoice={recruitChoice} onChooseRecruit={(chosen, box) => { recruitChoiceFrom.current = box; handleChooseRecruit(chosen); }} />

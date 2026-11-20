@@ -3,7 +3,7 @@ import { GameManager } from 'Game/DataClasses/GameManager';
 import { SettingsManager } from 'Game/DataClasses/SettingsManager';
 import { LEVELS } from 'Game/DataClasses/Levels/levels';
 import { applyChanges, MirrorSender } from './mirror';
-import { MultiplayerConfig, setUpCoop } from './multiplayerMatch';
+import { COOP_LINE, MultiplayerConfig, setUpCoop, wrapCoopDialogue } from './multiplayerMatch';
 
 const CONFIG: MultiplayerConfig = { mode: 'coop', level: 'peninsula', teamSize: 0, host: { avatar: 'guy', powers: ['Fire', 'Ice', 'Water'], color: '#ff0000' }, guest: { avatar: 'girl', powers: ['Lightning', 'Wood', 'Metal'], color: '#00ff00' } };
 
@@ -40,5 +40,29 @@ describe('co-op campaign', { timeout: 20000 }, () => {
     for (let tick = 0; tick < 60; tick++) { host.gm.stepPieces(); send(); }
     expect(host.teammate.charLocation).not.toEqual(start);
     expect(guest.teammate.charLocation).toEqual(host.teammate.charLocation);
+  });
+
+  it('moves a line on once both have pressed Enter, or their 3 s are up, after a 700 ms hold', () => {
+    let advanced = 0;
+    let isWaiting = true;
+    const gm: any = { cutscene: { index: 0 }, talks: [], getIsDialogueWaiting: () => isWaiting, advanceDialogue: () => { advanced += 1; isWaiting = false; return true; } };
+    wrapCoopDialogue(gm);
+    expect(gm.updateCoopDialogue(0)).toEqual({ isWaiting: true, host: false, guest: false });
+    gm.advanceDialogue(); // (the host's Enter: its check, not the line)
+    expect(advanced).toBe(0);
+    expect(gm.updateCoopDialogue(100)).toEqual({ isWaiting: true, host: true, guest: false });
+    gm.coopVote('guest');
+    expect(gm.updateCoopDialogue(200)).toEqual({ isWaiting: true, host: true, guest: true }); // (both: held)
+    gm.updateCoopDialogue(200 + COOP_LINE.holdMs - 1);
+    expect(advanced).toBe(0);
+    gm.updateCoopDialogue(200 + COOP_LINE.holdMs);
+    expect(advanced).toBe(1);
+    // the next line: nobody presses, the 3 s press for them
+    isWaiting = true;
+    gm.cutscene.index = 1;
+    gm.updateCoopDialogue(5000);
+    expect(gm.updateCoopDialogue(5000 + COOP_LINE.autoMs)).toEqual({ isWaiting: true, host: true, guest: true });
+    gm.updateCoopDialogue(5000 + COOP_LINE.autoMs + COOP_LINE.holdMs);
+    expect(advanced).toBe(2);
   });
 });

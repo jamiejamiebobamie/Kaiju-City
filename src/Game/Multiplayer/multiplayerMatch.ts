@@ -170,6 +170,7 @@ export const setUpCoop = (gm: any, config: MultiplayerConfig, role: 'host' | 'gu
   const piecesManager = gm.gameBoardPiecesManager;
   const pieces = gm.getPieces();
   gm.isCoop = true;
+  if (role == 'host') wrapCoopDialogue(gm);
   const host = pieces[0];
   host.side = 0;
   if (config.host.color) host.color = config.host.color;
@@ -195,6 +196,45 @@ export const setUpCoop = (gm: any, config: MultiplayerConfig, role: 'host' | 'gu
     };
   }
   return teammate;
+};
+
+/*
+  Co-op's lines (Jamie): a line waiting for Enter needs both players' Enter. Each has COOP_LINE.autoMs from the line being
+  up (typed out) before it's pressed for them; with both, it holds COOP_LINE.holdMs (the two checks seen) and goes on.
+  On the host: its own Enter is its check (advanceDialogue, wrapped); the guest's comes over ('enter': coopVote). Lines
+  that move on by themselves are left alone. Returns the checks, for both screens.
+*/
+export const COOP_LINE = { autoMs: 3000, holdMs: 700 };
+export type CoopChecks = { isWaiting: boolean; host: boolean; guest: boolean };
+const getLineKey = (gm: any) => (gm.cutscene ? `c${gm.cutscene.index}` : `t${gm.talks.map((talk: any) => `${talk.index}${talk.isWaiting ? 'w' : ''}`).join()}`);
+export const wrapCoopDialogue = (gm: any) => {
+  const advance = gm.advanceDialogue.bind(gm);
+  gm.coopVotes = undefined;
+  gm.coopVote = (who: 'host' | 'guest') => { if (gm.coopVotes) gm.coopVotes[who] = true; };
+  gm.advanceDialogue = () => {
+    if (!gm.getIsDialogueWaiting()) return advance();
+    gm.coopVote('host');
+    return true;
+  };
+  gm.updateCoopDialogue = (now: number): CoopChecks => {
+    if (!gm.getIsDialogueWaiting()) {
+      gm.coopVotes = undefined;
+      return { isWaiting: false, host: false, guest: false };
+    }
+    const key = getLineKey(gm);
+    if (!gm.coopVotes || gm.coopVotes.key != key) gm.coopVotes = { key, host: false, guest: false, since: now, bothAt: undefined };
+    const votes = gm.coopVotes;
+    if (now - votes.since >= COOP_LINE.autoMs) { votes.host = true; votes.guest = true; }
+    if (votes.host && votes.guest) {
+      if (votes.bothAt === undefined) votes.bothAt = now;
+      if (now - votes.bothAt >= COOP_LINE.holdMs) {
+        gm.coopVotes = undefined;
+        advance();
+        return { isWaiting: false, host: false, guest: false };
+      }
+    }
+    return { isWaiting: true, host: votes.host, guest: votes.guest };
+  };
 };
 
 // the two pieces in place, after the match's own initGame (the host's avatar and powers already its player)

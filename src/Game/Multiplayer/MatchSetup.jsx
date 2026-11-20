@@ -135,6 +135,31 @@ export const NetNotice = styled.div`
   pointer-events: none;
 `;
 
+// co-op's line checks (Jamie): a check for each player who's pressed Enter; both in, the bar goes green a moment
+const ChecksBar = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1cqw;
+  padding: 0.4cqw 0.8cqw;
+  font-family: gameboy;
+  font-size: 0.8cqw;
+  letter-spacing: 0.08cqw;
+  color: #c8ffb8;
+  background: ${props => (props.$isBoth ? "rgba(58, 255, 58, 0.28)" : "transparent")};
+  transition: background 200ms;
+`;
+export const CoopChecks = ({ checks, ownRole }) => {
+  if (!checks || !checks.isWaiting) return null;
+  const isBoth = checks.host && checks.guest;
+  const sides = [[ownRole, "You"], [ownRole == "host" ? "guest" : "host", ownRole == "host" ? "Guest" : "Host"]];
+  return (
+    <ChecksBar $isBoth={isBoth}>
+      {sides.map(([who, label]) => <Check key={who} $isDone={!!checks[who]}><Box $isDone={!!checks[who]} />{label}</Check>)}
+    </ChecksBar>
+  );
+};
+
 // waiting on the other player, on the monitor (Jamie: no fade to a black page)
 export const MultiplayerWaiting = ({ text = "Waiting for other player...", children = undefined }) => (
   <Screen>
