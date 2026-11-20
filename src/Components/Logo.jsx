@@ -431,6 +431,7 @@ const neonBlink = keyframes`
 // the moments in the turn-on when it catches (shares of it), each throwing sparks
 const SPARK_BURSTS = [0.1, 0.25, 0.4, 0.52, 0.6];
 let isNeonLit = false; // (it flickers on with sparks only the first time the landing shows in a visit)
+export const getIsNeonLit = () => isNeonLit; // (MainMenu: its intro plays with that first turn-on)
 const BorderBox = styled.svg`
   position: absolute;
   overflow: visible;
@@ -615,11 +616,11 @@ export const Logo = ({ joiner = false, spotlights = false, circuit = false, base
   {/* (the spotlights behind the base joiner: their bright starts hidden by it: Jamie) */}
   {spotlights && <Spotlights />}
   {baseJoiner && <BaseJoinerBox data-base-joiner aria-hidden="true" />}
-  <KaijuWrapper >
+  <KaijuWrapper data-walk>
     <SpriteSheet />
     <Breath />
   </KaijuWrapper>
-  <KaijuWrapper isSmoke={true}>
+  <KaijuWrapper isSmoke={true} data-walk>
     <SpriteSheet isSmoke={true}/>
   </KaijuWrapper>
 </LogoWrapper>);

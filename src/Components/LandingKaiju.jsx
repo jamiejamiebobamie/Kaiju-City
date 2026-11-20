@@ -86,12 +86,15 @@ const Wake = ({ spans, scale, width }) => {
 // 'fireX', 'fireY': its fire moved off its mouth (px, as it faces right), 'fireScale', 'fireAngle' (degrees from upright);
 // 'isPreview': held still breathing its fire, for the tuner (Jamie: to set it against its fire); 'revealDelayMs': when
 // it fades in, after it's placed
-export const SeaKaiju = ({ x, y, height, waterRow, isMirrored = false, isShown = true, delayMs = 0, fireX = 0, fireY = 0, fireScale: fireSize = 1, fireAngle = SEA_KAIJU.fire.angle, isPreview = false, revealDelayMs = 0 }) => {
+export const SeaKaiju = ({ x, y, height, waterRow, isMirrored = false, isShown = true, delayMs = 0, fireX = 0, fireY = 0, fireScale: fireSize = 1, fireAngle = SEA_KAIJU.fire.angle, isPreview = false, revealDelayMs = 0, onFireDone = undefined }) => {
+  const fireDoneRef = useRef(onFireDone);
+  fireDoneRef.current = onFireDone;
   const [step, setStep] = useState(0);
   const [tick, setTick] = useState(0); // (counting on while it holds, for its body's breathing between two poses)
   const [fireStep, setFireStep] = useState(-1);
   // (one roar to an event: idle, the roar, then idle on to the end)
-  const sequence = useRef([...SEA_KAIJU.idle, ...SEA_KAIJU.idle, ...SEA_KAIJU.roar, ...SEA_KAIJU.idle, ...SEA_KAIJU.idle, ...SEA_KAIJU.idle]);
+  // (one idle before the roar, not two: half the wait before the fire: Jamie, 2026-11-19)
+  const sequence = useRef([...SEA_KAIJU.idle, ...SEA_KAIJU.roar, ...SEA_KAIJU.idle, ...SEA_KAIJU.idle, ...SEA_KAIJU.idle]);
   const stepRef = useRef(0);
   const heldRef = useRef(0);
   useEffect(() => {
@@ -120,7 +123,7 @@ export const SeaKaiju = ({ x, y, height, waterRow, isMirrored = false, isShown =
       if (fireStep < 0) return;
       const count = kaijuSea.fire.count;
       setFireStep(count - 2);
-      const out = [setTimeout(() => setFireStep(count - 1), 140), setTimeout(() => setFireStep(-1), 300)];
+      const out = [setTimeout(() => setFireStep(count - 1), 140), setTimeout(() => { setFireStep(-1); if (!isPreview && fireDoneRef.current) fireDoneRef.current(); }, 300)];
       return () => out.forEach(clearTimeout);
     }
     if (fireStep >= 0) return;
