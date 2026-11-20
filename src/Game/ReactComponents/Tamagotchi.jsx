@@ -219,7 +219,7 @@ const step = pet => {
     // its first words, first time out or new from its egg: who it is (Jamie), before anything else
     const isHello = !next.hasIntroduced;
     const isGreetingPick = !isHello && next.isGreeting; // (the line straight after the hello: always the pick)
-    next.line = isHello ? `I'm ${MASCOT}!` : isGreetingPick ? "Pick three abilities" : getNextLine(); // (no generation number in it: Jamie, playtest 34; was "Hi, I am ..., your virtual Kaiju!")
+    next.line = isHello ? `Hi, I am ${MASCOT}!` : isGreetingPick ? "Pick three abilities" : getNextLine(); // (no generation number in it: Jamie, playtest 34; was "Hi, I am ..., your virtual Kaiju!", then "I'm Stompy!"; now "Hi, I am Stompy!": Jamie, 2026-11-19)
     next.hasIntroduced = true;
     // (its hello up twice as long, so it's seen: Jamie, playtest 29)
     next.speakingUntil = now + getSpeakMs(next.line) * (isHello ? 2 : 1);
