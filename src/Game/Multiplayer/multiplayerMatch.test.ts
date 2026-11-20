@@ -2,19 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { GameManager } from 'Game/DataClasses/GameManager';
 import { SettingsManager } from 'Game/DataClasses/SettingsManager';
 import { applyChanges, MirrorSender } from './mirror';
-import { getMultiplayerKillsToWin, GUEST_PIECE_INDEX, MULTIPLAYER_LEVEL, MultiplayerConfig, setUpMultiplayerMatch } from './multiplayerMatch';
+import { BATTLEGROUNDS, getBattleground, getMultiplayerKillsToWin, GUEST_PIECE_INDEX, MULTIPLAYER_LEVEL, MultiplayerConfig, setUpMultiplayerMatch } from './multiplayerMatch';
 
-const CONFIG: MultiplayerConfig = { mode: 'standing', host: { avatar: 'guy', powers: ['Fire', 'Ice', 'Water'] }, guest: { avatar: 'girl', powers: ['Lightning', 'Wood', 'Metal'] } };
+const CONFIG: MultiplayerConfig = { mode: 'standing', level: 'peninsula', teamSize: 0, host: { avatar: 'guy', powers: ['Fire', 'Ice', 'Water'] }, guest: { avatar: 'girl', powers: ['Lightning', 'Wood', 'Metal'] } };
 
 // each browser's match, built as Game.tsx builds it: the host's avatar and powers the player's
-const makeSide = (role: 'host' | 'guest') => {
+const makeSide = (role: 'host' | 'guest', config: MultiplayerConfig = CONFIG) => {
   const settingsManager = new SettingsManager();
   settingsManager.updatePlayerAvatar(CONFIG.host.avatar);
   settingsManager.setSortedPlayerChosenAbilityElementsString(CONFIG.host.powers);
   settingsManager.setIsTeammate(false);
-  const gm: any = new GameManager({ level: MULTIPLAYER_LEVEL, settingsManager, killsToWin: getMultiplayerKillsToWin(CONFIG) } as any);
+  const gm: any = new GameManager({ level: getBattleground(config.level).getLevel(), settingsManager, killsToWin: getMultiplayerKillsToWin(config) } as any);
   gm.initGame();
-  setUpMultiplayerMatch(gm, CONFIG, role);
+  setUpMultiplayerMatch(gm, config, role);
   return gm;
 };
 
@@ -57,5 +57,33 @@ describe('a multiplayer match', () => {
     guestOnHost.decrementHealth(host.getAccTime(), 99);
     for (let tick = 0; tick < 200 && host.getGameResult() === null; tick++) host.stepPieces();
     expect(host.getGameResult()).not.toBeNull();
+  });
+
+  it("builds each side's team alike, and is only over when a whole side is down", () => {
+    const team = (avatar: string) => [{ avatar, kind: 'teammate' as const, powers: ['fire', 'ice', 'metal'] }, { avatar: 'agent', kind: 'agent' as const, powers: ['death', 'wood', 'glass'] }];
+    const config: MultiplayerConfig = { ...CONFIG, teamSize: 2, host: { ...CONFIG.host, team: team('girl') }, guest: { ...CONFIG.guest, team: team('guy') } };
+    const host = makeSide('host', config);
+    const guest = makeSide('guest', config);
+    const describe = (gm: any) => gm.getPieces().map((piece: any) => [piece.avatar, piece.teamIndex, piece.abilities.map((a: any) => a.gameBoardPieceAbilityData.element).join()]);
+    expect(describe(host)).toEqual(describe(guest));
+    expect(host.getPieces().length).toBe(6);
+    const pieces = host.getPieces();
+    pieces[GUEST_PIECE_INDEX].decrementHealth(host.getAccTime(), 99);
+    host.stepPieces();
+    expect(host.getGameResult()).toBeNull(); // (the guest's team fights on)
+    pieces.filter((piece: any) => piece.teamIndex == 1).forEach((piece: any) => piece.decrementHealth(host.getAccTime(), 99));
+    for (let tick = 0; tick < 50 && host.getGameResult() === null; tick++) host.stepPieces();
+    expect(host.getGameResult()).not.toBeNull();
+  });
+
+  it('builds on every battleground, the two sides apart', () => {
+    BATTLEGROUNDS.forEach(({ id }) => {
+      const gm = makeSide('host', { ...CONFIG, level: id });
+      const [a, b] = gm.getPieces();
+      expect(a.getTileIndex()).toBeDefined();
+      expect(b.getTileIndex()).toBeDefined();
+      expect(JSON.stringify(a.getTileIndex())).not.toBe(JSON.stringify(b.getTileIndex()));
+      expect(gm.rivalPiece).toBeUndefined();
+    });
   });
 });
