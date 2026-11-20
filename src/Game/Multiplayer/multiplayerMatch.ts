@@ -12,7 +12,7 @@ import { PIECES_INFO } from 'Utils/gameState';
     "player" is piece 1, so the camera and the HUD follow the guest.
   Mode 1, last one standing: the Peninsula without its Kaiju, won when the other's piece falls.
 */
-export type MultiplayerSide = { avatar: string; powers: Array<string> }; // (powers: the picker's elements, uppercase)
+export type MultiplayerSide = { avatar: string; powers: Array<string>; color?: string }; // (powers: the picker's elements, uppercase; color: picked in the vat)
 export type MultiplayerConfig = { mode: 'standing'; host: MultiplayerSide; guest: MultiplayerSide };
 export const GUEST_PIECE_INDEX = 1;
 
@@ -59,6 +59,9 @@ export const setUpMultiplayerMatch = (gm: any, config: MultiplayerConfig, role: 
   });
   guestPiece.initCharLocation(true, gm.gameBoardManager.getClosestWalkableTileToLocation(BOTTOM_SPOTS[0]));
   guestPiece.isNpc = false;
+  // each player's color, from the vat (Jamie)
+  if (config.host.color) hostPiece.setColor(config.host.color);
+  if (config.guest.color) guestPiece.setColor(config.guest.color);
   if (role == 'host') {
     guestPiece.inputHandler = new RemoteInputHandler({ gameManagerProxy: gm.gameManagerProxy, piece: guestPiece });
   } else {

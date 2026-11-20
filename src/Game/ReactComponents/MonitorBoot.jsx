@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import styled, { css, keyframes } from "styled-components";
 import { loadAssets } from "Utils/assetLoader";
-import { addUnlock, GAME_BEATEN_UNLOCK, getIsGameBeaten } from "../DataClasses/Unlocks";
+import { getIsGameBeaten } from "../DataClasses/Unlocks";
+import { unlockEverything } from "../DataClasses/Avatars";
 import { checkPeerService } from "../Multiplayer/peerLink";
 import { MultiplayerLobby } from "../Multiplayer/MultiplayerLobby";
 
@@ -189,7 +190,7 @@ const PlayButton = styled.div`
 `;
 
 // after PLAY, the game's mode (Jamie, 2026-11-18): Single Player, or Multiplayer, closed until the game's been beaten
-// once (Unlocks: GAME_BEATEN_UNLOCK). Multiplayer itself isn't built yet: opened, it says so
+// once (Unlocks: GAME_BEATEN_UNLOCK), or while the multiplayer service is down (peerLink: checkPeerService)
 const ModeRow = styled.div`
   position: absolute;
   left: 50%;
@@ -299,9 +300,9 @@ export const MonitorBoot = ({ onDone }) => {
           <PlayButton as="button" $isPressed={phase == "pressed"} onClick={() => phase == "start" && setPhase("pressed")}>PLAY</PlayButton>
         </>
       )}
-      {/* dev only (Jamie: the dev panel isn't up here): the game counted as beaten, so Multiplayer opens */}
+      {/* dev only (Jamie: the dev panel isn't up here): as if the game's beaten and everything's unlocked, so Multiplayer opens */}
       {import.meta.env.DEV && phase == "mode" && !isBeaten && (
-        <DevUnlock onClick={() => { addUnlock(GAME_BEATEN_UNLOCK); setDevTick(k => k + 1); }}>Unlock (dev)</DevUnlock>
+        <DevUnlock onClick={() => { unlockEverything(['rapidTransit', 'rooftop', 'aquarium']); setDevTick(k => k + 1); }}>Unlock everything (dev)</DevUnlock>
       )}
     </Screen>
   );

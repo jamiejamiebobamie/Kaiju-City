@@ -867,7 +867,8 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   // Multiplayer (Jamie, 2026-11-19): the link to the other player, once the lobby's joined them ({ link, messages })
   const [multiplayer, setMultiplayer] = useState<any>(undefined);
   // the match's side of it: each player's pick once they press Play, the match's config once started, and the mirror
-  const mp = useRef<any>({ sender: new MirrorSender(), link: undefined, self: undefined, other: undefined, config: undefined, isStarted: false });
+  const mp = useRef<any>({ sender: new MirrorSender(), link: undefined, self: undefined, other: undefined, config: undefined, isStarted: false, round: 0, color: undefined, isAgainSelf: false, isAgainOther: false });
+  const [isMultiplayerVat, setIsMultiplayerVat] = useState(false); // (each player's color, after the picker: Jamie)
   useEffect(() => {
     if (!isMonitorOn || isConsoleIn || isPlayingGame || !isBooted) return;
     const aside = setTimeout(() => setIsConsoleIn(true), MINI_TIMING.consoleDelayMs);
@@ -1247,8 +1248,13 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
 
   // ('picks': dev only, a multiplayer side's { avatar, powers } given, for scripted browser checks)
   const handleClickPlay = (picks = undefined) => {
+    // (in multiplayer, after the picker: the vat for their color first; closed, this again)
+    if (multiplayer && !(picks && picks.avatar) && mp.current.color === undefined) {
+      setIsMultiplayerVat(true);
+      return;
+    }
     if (multiplayer) {
-      const self = picks && picks.avatar ? picks : { avatar: selectedAvatar, powers: settingsManager.getSortedPlayerChosenAbilityElementsString() };
+      const self = picks && picks.avatar ? picks : { avatar: selectedAvatar, powers: settingsManager.getSortedPlayerChosenAbilityElementsString(), color: mp.current.color || undefined };
       mp.current.self = self;
       multiplayer.link.send({ t: 'ready', ...self });
       setFullScreenPageData({ text: ["Waiting for the other player..."], buttons: [] });
@@ -1283,8 +1289,12 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     'start' { config }, and both build the match (multiplayerMatch.ts); then the host sends
     'tick' { changes } each frame (mirror.ts), and the guest sends 'key' { code, isDown } and 'power' { code }.
   */
-  const beginMultiplayerMatch = (config, role) => {
+  const beginMultiplayerMatch = (config, role, round = 1) => {
+    if (gameManager.current) endMatch(); // (Play again: the last one cleared)
     mp.current.isStarted = true;
+    mp.current.round = round;
+    mp.current.isAgainSelf = false;
+    mp.current.isAgainOther = false;
     mp.current.config = config;
     mp.current.sender.reset();
     startMatch(MULTIPLAYER_LEVEL, false, getMultiplayerKillsToWin(config), { multiplayerSetup: { config, role } });
@@ -1293,8 +1303,21 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     const { link, self, other, isStarted } = mp.current;
     if (!link || link.role != 'host' || !self || !other || isStarted) return;
     const config = { mode: 'standing', host: self, guest: other };
-    link.send({ t: 'start', config });
+    link.send({ t: 'start', config, round: 1 });
     beginMultiplayerMatch(config, 'host');
+  };
+  // Play again (Jamie): once both have asked, the host starts the same match over for both
+  const playMultiplayerAgain = () => {
+    mp.current.isAgainSelf = true;
+    mp.current.link.send({ t: 'again' });
+    setMatchEnd(end => end && { ...end, title: "Waiting for the other player...", buttons: end.buttons.filter(({ text }) => text != "Play again") });
+    startMultiplayerAgainIfReady();
+  };
+  const startMultiplayerAgainIfReady = () => {
+    const { link, isAgainSelf, isAgainOther, config, round } = mp.current;
+    if (!link || link.role != 'host' || !isAgainSelf || !isAgainOther) return;
+    link.send({ t: 'start', config, round: round + 1 });
+    beginMultiplayerMatch(config, 'host', round + 1);
   };
   const getGuestPiece = () => gameManager.current && mp.current.isStarted ? gameManager.current.getPieces()[GUEST_PIECE_INDEX] : undefined;
   const onMultiplayerMessage = message => {
@@ -1303,8 +1326,11 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     if (message.t == 'ready') {
       mp.current.other = { avatar: message.avatar, powers: message.powers };
       startMultiplayerIfReady();
-    } else if (message.t == 'start' && mp.current.link.role == 'guest' && !mp.current.isStarted) {
-      beginMultiplayerMatch(message.config, 'guest');
+    } else if (message.t == 'start' && mp.current.link.role == 'guest' && (message.round || 1) > mp.current.round) {
+      beginMultiplayerMatch(message.config, 'guest', message.round || 1);
+    } else if (message.t == 'again') {
+      mp.current.isAgainOther = true;
+      startMultiplayerAgainIfReady();
     } else if (message.t == 'tick' && gm && mp.current.isStarted && mp.current.link.role == 'guest') {
       applyChanges(gm, message.changes);
       gm.notifyBoard();
@@ -1666,7 +1692,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     if (winner === null || !isPlayingGame) return;
     const isWon = winner === GameResult.PlayerWon;
     if (mp.current.isStarted) {
-      const timeout = setTimeout(() => setMatchEnd({ title: isWon ? "You Won!" : "You Lost", buttons: [{ text: "Quit", onClick: () => leaveByZoom() }] }), MATCH_END_DELAY_MS);
+      const timeout = setTimeout(() => setMatchEnd({ title: isWon ? "You Won!" : "You Lost", buttons: [{ text: "Play again", onClick: playMultiplayerAgain }, { text: "Quit", onClick: () => leaveByZoom() }] }), MATCH_END_DELAY_MS);
       return () => clearTimeout(timeout);
     }
     if (isWon && level.skillOnLeave) unlockSkill(level.skillOnLeave); // the Street's Teleport
@@ -1868,6 +1894,11 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
           {/* (not again when back from the picker: the lights are on already, Jamie, playtest 34) */}
           {isChoosingAvatar && isBooted && !isBackFromPicker && <LabLightsOn />}
           {screenFade == 'out' && <ScreenBlack />}
+          {isMultiplayerVat && (
+            <IrradiationVat avatar={selectedAvatar} startColor={getAvatarColor(selectedAvatar) || PIECES_INFO[selectedAvatar].color} backLabel="Ready"
+              onIrradiate={color => { mp.current.color = color; }}
+              onClose={() => { if (mp.current.color === undefined) mp.current.color = null; setIsMultiplayerVat(false); handleClickPlay(); }} />
+          )}
         </PlayWindow>
         {isMonitorOn && isBooted && (
           <>
