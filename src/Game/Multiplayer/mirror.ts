@@ -21,7 +21,7 @@ const getNewPieceInfo = (piece: any) => ({ kind: getPieceKind(piece), avatar: pi
   - a piece's powers (class instances) have their plain fields sent, set on the guest's own powers in place;
   - references back into the engine (gameManagerProxy and the like) and functions never go.
 */
-const PIECE_SKIP = new Set(['gameManagerProxy', 'pieces', 'teams', 'onBeforeDeath', 'pieceClass', 'deathPieces']);
+const PIECE_SKIP = new Set(['gameManagerProxy', 'pieces', 'teams', 'onBeforeDeath', 'pieceClass', 'deathPieces', 'inputHandler']);
 const TILE_FIELDS = ['tileStatus', 'teleportTileStatus', 'currCount', 'teamIndex', 'targetIndex', 'dirs', 'wall', 'trailAge', 'cast', 'updateKey', 'dmgMultiplier'];
 const GAME_FIELDS = ['accTime'];
 const MAX_DEPTH = 3;

@@ -164,7 +164,8 @@ export class GameBoardPiecesManager {
     }
 
     movePieces({ accTime, playerInputHandler }) {
-        this.pieces.forEach(p => p.movePiece({ accTime, playerInputHandler }));
+        // (a piece with keys of its own: multiplayer's other player, RemoteInputHandler)
+        this.pieces.forEach(p => p.movePiece({ accTime, playerInputHandler: p.inputHandler || playerInputHandler }));
     }
 
     // recruits walk with the team, and have no powers of their own here
