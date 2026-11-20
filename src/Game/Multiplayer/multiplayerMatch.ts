@@ -18,12 +18,30 @@ import { PIECES_INFO } from 'Utils/gameState';
 */
 export type TeamMember = { avatar: string; powers: Array<string>; kind: 'teammate' | 'recruit' | 'agent' }; // (powers: elements)
 export type MultiplayerSide = { avatar: string; powers: Array<string>; color?: string; team?: Array<TeamMember> }; // (powers: the picker's elements, uppercase; color: picked in the vat)
-export type MultiplayerSetup = { mode: 'standing' | 'defense'; level: string; teamSize: number; isHazmat?: boolean }; // ('isHazmat': the host has the Hazmat Worker, so both sides may)
+export type MultiplayerSetup = { mode: 'standing' | 'defense'; level: string; teamSize: number; isHazmat?: boolean; kaijuToWin?: number }; // ('isHazmat': the host has the Hazmat Worker, so both sides may; 'kaijuToWin': defense's count)
 export type MultiplayerConfig = MultiplayerSetup & { host: MultiplayerSide; guest: MultiplayerSide };
 export const GUEST_PIECE_INDEX = 1;
 export const MAX_TEAM_SIZE = 5; // (the Agent and up to 4 recruits, the Hazmat Worker among them once the host has them: no Guy or Girl teammate, the players are those. 6 HUDs with the player's: Jamie)
 const TEAM_ORDER = ['mermaid', 'punk', 'black_female', 'hazmat'];
-export const DEFAULT_SETUP: MultiplayerSetup = { mode: 'standing', level: 'peninsula', teamSize: 0 };
+export const DEFAULT_SETUP: MultiplayerSetup = { mode: 'standing', level: 'peninsula', teamSize: 0, kaijuToWin: 20 };
+export const MAX_KAIJU_TO_WIN = 100;
+
+/*
+  Peninsula defense (Jamie, 2026-11-19): both sides on the Peninsula against its Kaiju, allies (no hurting each other),
+  each Kaiju's kill to the side that hit it last; once the count's reached, the side with the most wins.
+  Both sides are one team to the game (team 0: the Kaiju's foes, never each other's); each piece's 'side' (0 the host's,
+  1 the guest's) is whose it is: their HUDs, color, take-over and kills.
+*/
+export const DEFENSE_LEVEL = () => ({ ...LEVELS.peninsula, isMultiplayer: true, isDefense: true, rival: undefined });
+export const getSideKills = (gm: any) => {
+  const kills = [0, 0];
+  gm.getPieces().forEach((piece: any) => {
+    if (piece.side !== undefined || !piece.getIsDead() || piece.lastHitBy === undefined || piece.lastHitBy < 0) return;
+    const hitter = gm.getPieces()[piece.lastHitBy];
+    if (hitter && hitter.side !== undefined) kills[hitter.side] += 1;
+  });
+  return kills;
+};
 
 // the battlegrounds: each level as it is, less its boss, its hazards, its Kaiju ('thumbnail': its whole scene, small)
 const NO_HAZARDS = { rival: undefined, ghostBoss: undefined, aquariumFlood: undefined, kaijuEntry: undefined, agentDrops: undefined, walkIn: undefined, isMultiplayer: true };
@@ -45,7 +63,8 @@ export const BATTLEGROUNDS = [
 ];
 export const getBattleground = (id: string) => BATTLEGROUNDS.find(ground => ground.id == id) || BATTLEGROUNDS[0];
 // where each side starts: the Peninsula's top and bottom; elsewhere, the player's own start and the boss's
-const getStartSpots = (id: string) => {
+const getStartSpots = (id: string, mode = 'standing') => {
+  if (mode == 'defense') return { host: TOP_SPOTS[0], guest: { x: TOP_SPOTS[0].x + 70, y: TOP_SPOTS[0].y + 20 } }; // (side by side)
   if (id == 'peninsula') return { host: TOP_SPOTS[0], guest: BOTTOM_SPOTS[0] };
   if (id == 'lab') return { host: undefined, guest: LAB_GUEST_SPOT };
   const level: any = (LEVELS as any)[id == 'floodedAquarium' ? 'aquarium' : id];
@@ -66,7 +85,7 @@ const openLabPortal = (gm: any) => {
   const portalTop = board.getClosestWalkableTileToLocation({ x: LAB_PORTAL_FROM.x + portalColumns * gm.level.grid.colStep * gm.level.grid.scale, y: catwalkY });
   board.addWormhole(floorTile, portalTop, gm.getAccTime(), Infinity);
 };
-export const getMultiplayerKillsToWin = (config: MultiplayerConfig) => undefined; // (decided by the teams: setUpMultiplayerMatch)
+export const getMultiplayerKillsToWin = (config: MultiplayerConfig) => (config.mode == 'defense' ? config.kaijuToWin || DEFAULT_SETUP.kaijuToWin : undefined); // (last team standing: decided by the teams, setUpMultiplayerMatch)
 
 // a player's team, in their browser, from what they have (Jamie): the teammate's powers random as ever (one to attack, one
 // to defend...), the recruits' their own, the Agent's one of the Agents' kits
@@ -127,7 +146,7 @@ export const updateGuestTakeOver = (gm: any): number | undefined => {
   if (gm.guestTakeOverAt === undefined) gm.guestTakeOverAt = Date.now() + TAKE_OVER_HOLD_MS;
   if (Date.now() < gm.guestTakeOverAt) return undefined;
   gm.guestTakeOverAt = undefined;
-  const next = gm.getPieces().find((piece: any) => piece.teamIndex == 1 && !piece.getIsDead() && piece.isOnTiles);
+  const next = gm.getPieces().find((piece: any) => piece.side == 1 && !piece.getIsDead() && piece.isOnTiles);
   if (!next) return undefined;
   handler.piece.inputHandler = undefined;
   next.isNpc = false;
@@ -144,46 +163,71 @@ export const updateGuestTakeOver = (gm: any): number | undefined => {
 export const setUpMultiplayerMatch = (gm: any, config: MultiplayerConfig, role: 'host' | 'guest') => {
   const piecesManager = gm.gameBoardPiecesManager;
   const [hostPiece] = gm.getPieces();
-  const spots = getStartSpots(config.level);
+  const isDefense = config.mode == 'defense';
+  const spots = getStartSpots(config.level, config.mode);
+  hostPiece.side = 0;
   if (spots.host) hostPiece.initCharLocation(true, gm.gameBoardManager.getClosestWalkableTileToLocation(spots.host));
   const guestPiece = piecesManager.addPiece({
     pieceInfo: { ...(PIECES_INFO as any)[config.guest.avatar], abilities: gm.settingsManager.getAbilitiesFromElements(config.guest.powers.map(power => power[0].toLowerCase() + power.slice(1))), maxLives: hostPiece.maxLives, moveSpeed: hostPiece.moveSpeed },
-    teamIndex: 1
+    teamIndex: isDefense ? 0 : 1 // (defense: one team with the host's against the Kaiju)
   });
+  guestPiece.side = 1;
   guestPiece.initCharLocation(true, gm.gameBoardManager.getClosestWalkableTileToLocation(spots.guest));
   guestPiece.isNpc = false;
   // each player's color, from the vat (Jamie)
   if (config.host.color) hostPiece.setColor(config.host.color);
   if (config.guest.color) guestPiece.setColor(config.guest.color);
   // each side's team, the host's then the guest's (the same order in both browsers), beside their player
-  [[config.host, hostPiece, 0], [config.guest, guestPiece, 1]].forEach(([side, leader, teamIndex]: any) => (side.team || []).forEach((member: TeamMember) => {
+  [[config.host, hostPiece, 0], [config.guest, guestPiece, 1]].forEach(([side, leader, sideIndex]: any) => (side.team || []).forEach((member: TeamMember) => {
     const piece = piecesManager.addPiece({
       pieceInfo: { ...(PIECES_INFO as any)[member.avatar], abilities: gm.settingsManager.getAbilitiesFromElements(member.powers), maxLives: hostPiece.maxLives, moveSpeed: hostPiece.moveSpeed },
-      teamIndex
+      teamIndex: isDefense ? 0 : sideIndex
     });
+    piece.side = sideIndex;
     if (member.kind == 'recruit') piece.isRecruit = true;
     piece.initCharLocation(true, gm.getFreeTileNear(leader.getTileIndex(), { except: piece }) || leader.getTileIndex());
   }));
   // each side in its player's color (Jamie): every one's glow and the tile under them, and their damaging powers' tiles
   const teamColors = [config.host.color || hostPiece.color, config.guest.color || guestPiece.color];
-  piecesManager.pieces.forEach((piece: any) => { piece.color = teamColors[piece.teamIndex]; });
+  piecesManager.pieces.forEach((piece: any) => { piece.color = teamColors[piece.side]; });
   const own = role == 'host' ? 0 : 1;
-  gm.getStatusTeamColor = (casterIndex: number, teamIndex: number) => teamColors[teamIndex];
-  gm.getEnemyLeaderColor = () => teamColors[1 - own];
+  const enemyColor = gm.getEnemyLeaderColor(); // (the Kaiju's, in defense)
+  gm.getStatusTeamColor = (casterIndex: number, teamIndex: number) => {
+    const caster = gm.getPieces()[casterIndex];
+    return caster && caster.side !== undefined ? teamColors[caster.side] : enemyColor;
+  };
+  gm.getEnemyLeaderColor = () => (isDefense ? enemyColor : teamColors[1 - own]);
   gm.getPlayerColor = () => teamColors[own];
-  // the other side's health over their heads, on each screen (Jamie)
-  piecesManager.pieces.forEach((piece: any) => { piece.isShowHealthBarOnComponent = piece.teamIndex != own; });
+  // the other side's health over their heads, on each screen (Jamie); in defense, the other side's no foe
+  piecesManager.pieces.forEach((piece: any) => { piece.isShowHealthBarOnComponent = !isDefense && piece.side != own; });
+  // each screen's HUDs: its own side's (the recruits' list was everyone's)
+  piecesManager.getPlayerTeamUiState = () => piecesManager.pieces.filter((piece: any) => piece.side == own && !piece.isRecruit).map((piece: any) => piece.getUiState());
+  piecesManager.getRecruitsUiState = () => piecesManager.pieces.filter((piece: any) => piece.side == own && piece.isRecruit).map((piece: any) => piece.getUiState());
   if (config.level == 'lab') openLabPortal(gm);
   // won or lost when a whole side is down (both browsers: the guest's from its own side)
-  const getIsSideDown = (teamIndex: number) => piecesManager.pieces.filter((piece: any) => piece.teamIndex == teamIndex).every((piece: any) => piece.getIsDead());
-  gm.getGameResult = () => (getIsSideDown(own) ? GameResult.PlayerLost : getIsSideDown(1 - own) ? GameResult.PlayerWon : null);
+  const getIsSideDown = (side: number) => piecesManager.pieces.filter((piece: any) => piece.side == side).every((piece: any) => piece.getIsDead());
+  if (isDefense) {
+    // the Kaiju beaten: the side with the most of them; both sides down: lost to the Kaiju
+    const toWin = config.kaijuToWin || DEFAULT_SETUP.kaijuToWin || 20;
+    gm.getGameResult = () => {
+      if (getIsSideDown(0) && getIsSideDown(1)) return GameResult.PlayerLost;
+      const kills = getSideKills(gm);
+      if (kills[0] + kills[1] < toWin) return null;
+      return kills[own] >= kills[1 - own] ? GameResult.PlayerWon : GameResult.PlayerLost;
+    };
+    gm.getMultiplayerScore = () => { const kills = getSideKills(gm); return { mine: kills[own], theirs: kills[1 - own], toWin }; };
+    // (both sides down: the Kaiju's win, not either player's)
+    gm.getMultiplayerTitle = (isWon: boolean) => (getIsSideDown(0) && getIsSideDown(1) ? "The Kaiju won!" : isWon ? "You Won!" : "You Lost");
+  } else {
+    gm.getGameResult = () => (getIsSideDown(own) ? GameResult.PlayerLost : getIsSideDown(1 - own) ? GameResult.PlayerWon : null);
+  }
   if (role == 'host') {
     guestPiece.inputHandler = new RemoteInputHandler({ gameManagerProxy: gm.gameManagerProxy, piece: guestPiece });
     gm.guestInputHandler = guestPiece.inputHandler;
   } else {
     // the guest's view: its own piece is "the player" here (the camera, the HUD); this copy is never run, so it's only seen
     piecesManager.getPlayerPiece = () => piecesManager.pieces[GUEST_PIECE_INDEX];
-    piecesManager.getPlayerTeamIndex = () => 1;
+    piecesManager.getPlayerTeamIndex = () => (isDefense ? 0 : 1); // (defense: both sides one team)
     gm.controlledPiece = guestPiece;
     // the guest's camera (Jamie: no train close-up, nor portal zoom for them): from what the host's changes show, as the
     // host's own shots are the host's player's. Knocked down: in close on their body; through a portal or the stairs (a

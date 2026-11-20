@@ -49,7 +49,7 @@ import { applyLevelFile, LAB_TALK_PHASE, LEVEL_FILES, LEVELS, PENINSULA, SPARRIN
 import { TileEditor } from './Levels/TileEditor';
 import { gameUiStore, publishGameUi, resetGameUi } from '../DataClasses/gameUiStore';
 import { applyChanges, MirrorSender } from '../Multiplayer/mirror';
-import { getBattleground, getMultiplayerKillsToWin, GUEST_PIECE_INDEX, makeTeam, setUpMultiplayerMatch, updateGuestTakeOver } from '../Multiplayer/multiplayerMatch';
+import { DEFENSE_LEVEL, getBattleground, getMultiplayerKillsToWin, GUEST_PIECE_INDEX, makeTeam, setUpMultiplayerMatch, updateGuestTakeOver } from '../Multiplayer/multiplayerMatch';
 import { MatchSetup, MultiplayerWaiting, NetNotice } from '../Multiplayer/MatchSetup';
 
 const GameArea = styled.div`
@@ -1323,7 +1323,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     mp.current.isAgainOther = false;
     mp.current.config = config;
     mp.current.sender.reset();
-    const matchLevel = getBattleground(config.level).getLevel();
+    const matchLevel = config.mode == 'defense' ? DEFENSE_LEVEL() : getBattleground(config.level).getLevel();
     setMultiplayerLevel(matchLevel);
     setIsMultiplayerWaiting(false);
     startMatch(matchLevel, false, getMultiplayerKillsToWin(config), { multiplayerSetup: { config, role } });
@@ -1755,7 +1755,8 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     if (winner === null || !isPlayingGame) return;
     const isWon = winner === GameResult.PlayerWon;
     if (mp.current.isStarted) {
-      const timeout = setTimeout(() => setMatchEnd({ title: isWon ? "You Won!" : "You Lost", buttons: [{ text: "Play again", onClick: playMultiplayerAgain }, { text: "Quit", onClick: () => leaveByZoom() }] }), MATCH_END_DELAY_MS);
+      const title = gameManager.current && gameManager.current.getMultiplayerTitle ? gameManager.current.getMultiplayerTitle(isWon) : isWon ? "You Won!" : "You Lost";
+      const timeout = setTimeout(() => setMatchEnd({ title, buttons: [{ text: "Play again", onClick: playMultiplayerAgain }, { text: "Quit", onClick: () => leaveByZoom() }] }), MATCH_END_DELAY_MS);
       return () => clearTimeout(timeout);
     }
     if (isWon && level.skillOnLeave) unlockSkill(level.skillOnLeave); // the Street's Teleport
@@ -2216,7 +2217,10 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
             <PlayWindow isPoweredOn={isMonitorOn} playWindow={gameWindow} setPlayWindow={updatePlayWindow} isAdjusting={isAdjustingWindow} isOpen={isWindowOpen} isCut={!!recruitScene} isSiren={!!level.kaijuEntry && winner === null && !isPaused} buttons={!isEditingTiles && getBezelButtons({
               isPauseOff: winner !== null || !!multiplayer,
               // the objective's display: always there (Jamie), running the objective, or the Kaiju count
-              ticker: !isWindowOpen && <ObjectiveTicker text={objectiveText || ""} isKaijuCount={isObjectiveKaijuCount} count={kaijuKillCount} toWin={kaijuToWin} />
+              ticker: !isWindowOpen && (gameManager.current && gameManager.current.getMultiplayerScore
+                // (defense: each side's Kaiju, on the casing's display: Jamie)
+                ? (score => <ObjectiveTicker text={`You ${score.mine} - Them ${score.theirs} of ${score.toWin}`} isKaijuCount={false} count={0} toWin={0} />)(gameManager.current.getMultiplayerScore())
+                : <ObjectiveTicker text={objectiveText || ""} isKaijuCount={isObjectiveKaijuCount} count={kaijuKillCount} toWin={kaijuToWin} />)
             })}>
               {/* for a Lab screen, the scene slides away inside the monitor, and the screen takes its place there */}
               <SlideClip><SlideAway style={leavingFor

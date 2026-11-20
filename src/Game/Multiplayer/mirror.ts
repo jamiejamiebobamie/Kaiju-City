@@ -36,6 +36,7 @@ const isPiece = (value: any) => !!value && typeof value == 'object' && typeof va
 // to plain JSON, with markers for what the guest finds its own copies of
 const encode = (value: any, depth = 0): any => {
   if (value === undefined) return { $u: 1 };
+  if (typeof value == 'number' && !Number.isFinite(value)) return { $n: String(value) }; // (JSON can't: the Lab's portal never closes)
   if (value === null || typeof value != 'object') return typeof value == 'function' ? undefined : value;
   if (value instanceof GameBoardTileStatusAndAbilityData) return { $s: (value as any).appliedStatus };
   if (depth > 0 && isPiece(value)) return { $p: value.pieceIndex };
@@ -68,6 +69,7 @@ const decode = (value: any, gm: any, current: any = undefined): any => {
     return value.map((item, k) => decode(item, gm, Array.isArray(current) ? current[k] : undefined)).filter((item, k) => item !== undefined || !(value[k] && value[k].$o));
   }
   if (value.$u) return undefined;
+  if (value.$n !== undefined) return Number(value.$n);
   if (value.$s !== undefined) return gm.settingsManager.abilityAndTileStatusData[value.$s] || current; // (unknown here: its own kept)
   if (value.$p !== undefined) return gm.getPieces()[value.$p];
   if (value.$set) return new Set(value.$set.map((item: any) => decode(item, gm)));
@@ -148,7 +150,7 @@ export class MirrorSender {
       changes.deaths = { keys, added };
     }
     // (the wormholes a Teleport leaves, and the Lab's portal: the board's own list)
-    const wormholes = encode(gm.gameBoardManager.wormholes, 1);
+    const wormholes = encode(gm.gameBoardManager.wormholes, 0); // (from the top: their ends' tiles were past the depth kept)
     if (this.changed('wormholes', wormholes)) changes.wormholes = wormholes;
     return changes.game || changes.pieces || changes.tiles || changes.added || changes.wormholes || changes.deaths ? changes : undefined;
   }

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { GameManager } from 'Game/DataClasses/GameManager';
 import { SettingsManager } from 'Game/DataClasses/SettingsManager';
 import { applyChanges, MirrorSender } from './mirror';
-import { updateGuestTakeOver, BATTLEGROUNDS, getBattleground, getMultiplayerKillsToWin, GUEST_PIECE_INDEX, MULTIPLAYER_LEVEL, MultiplayerConfig, setUpMultiplayerMatch } from './multiplayerMatch';
+import { DEFENSE_LEVEL, getSideKills, updateGuestTakeOver, BATTLEGROUNDS, getBattleground, getMultiplayerKillsToWin, GUEST_PIECE_INDEX, MULTIPLAYER_LEVEL, MultiplayerConfig, setUpMultiplayerMatch } from './multiplayerMatch';
 
 const CONFIG: MultiplayerConfig = { mode: 'standing', level: 'peninsula', teamSize: 0, host: { avatar: 'guy', powers: ['Fire', 'Ice', 'Water'] }, guest: { avatar: 'girl', powers: ['Lightning', 'Wood', 'Metal'] } };
 
@@ -12,7 +12,7 @@ const makeSide = (role: 'host' | 'guest', config: MultiplayerConfig = CONFIG) =>
   settingsManager.updatePlayerAvatar(CONFIG.host.avatar);
   settingsManager.setSortedPlayerChosenAbilityElementsString(CONFIG.host.powers);
   settingsManager.setIsTeammate(false);
-  const gm: any = new GameManager({ level: getBattleground(config.level).getLevel(), settingsManager, killsToWin: getMultiplayerKillsToWin(config) } as any);
+  const gm: any = new GameManager({ level: config.mode == 'defense' ? DEFENSE_LEVEL() : getBattleground(config.level).getLevel(), settingsManager, killsToWin: getMultiplayerKillsToWin(config) } as any);
   gm.initGame();
   setUpMultiplayerMatch(gm, config, role);
   return gm;
@@ -111,5 +111,24 @@ describe('a multiplayer match', { timeout: 20000 }, () => {
     const portals = gm.gameBoardManager.wormholes;
     expect(portals.length).toBe(1);
     expect(portals[0].endsAt).toBe(Infinity);
+  });
+
+  it('defends the Peninsula: both sides allies against the Kaiju, each kill to the side that made it', () => {
+    const config: MultiplayerConfig = { ...CONFIG, mode: 'defense', kaijuToWin: 1 };
+    const host = makeSide('host', config);
+    const pieces = host.getPieces();
+    expect(pieces.slice(0, 2).map((piece: any) => [piece.teamIndex, piece.side])).toEqual([[0, 0], [0, 1]]);
+    // a Kaiju comes in
+    for (let tick = 0; tick < 3000 && !host.getPieces().some((piece: any) => piece.side === undefined); tick++) host.stepPieces();
+    const kaiju = host.getPieces().find((piece: any) => piece.side === undefined);
+    expect(kaiju).toBeDefined();
+    expect(kaiju.teamIndex).not.toBe(0);
+    expect(host.getGameResult()).toBeNull();
+    kaiju.lastHitBy = GUEST_PIECE_INDEX;
+    kaiju.decrementHealth(host.getAccTime(), 999);
+    for (let tick = 0; tick < 20 && !kaiju.getIsDead(); tick++) host.stepPieces();
+    kaiju.lastHitBy = GUEST_PIECE_INDEX; // (as the guest's power struck it last)
+    expect(getSideKills(host)).toEqual([0, 1]);
+    expect(host.getGameResult()).toBe(-1); // (GameResult.PlayerLost: the guest's side beat more)
   });
 });

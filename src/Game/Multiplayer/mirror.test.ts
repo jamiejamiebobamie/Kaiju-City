@@ -59,4 +59,17 @@ describe('multiplayer mirroring', { timeout: 20000 }, () => { // (slow under the
     expect(guest.gm.getDeathPieces().map((death: any) => death.key)).toEqual(hostDeaths.map((death: any) => death.key));
     expect(guest.gm.getDeathPieces()[0].avatar).toBe(hostDeaths[0].avatar);
   });
+
+  it("sends the board's wormholes whole, a never-closing one too", () => {
+    const host = makeGame();
+    const guest = makeGame();
+    const sender = new MirrorSender();
+    const tiles = host.gm.gameBoardManager.walkableTiles;
+    host.gm.gameBoardManager.addWormhole(tiles[0], tiles[5], 0, Infinity);
+    applyChanges(guest.gm, JSON.parse(JSON.stringify(sender.collect(host.gm))));
+    const [portal] = guest.gm.gameBoardManager.wormholes;
+    expect(portal.from).toEqual(tiles[0]);
+    expect(portal.to).toEqual(tiles[5]);
+    expect(portal.endsAt).toBe(Infinity);
+  });
 });

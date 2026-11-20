@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import styled from "styled-components";
-import { BATTLEGROUNDS, DEFAULT_SETUP, MAX_TEAM_SIZE } from "./multiplayerMatch";
+import { BATTLEGROUNDS, DEFAULT_SETUP, MAX_KAIJU_TO_WIN, MAX_TEAM_SIZE } from "./multiplayerMatch";
 
 /*
   Multiplayer's match setup (Jamie, 2026-11-19), on the monitor once the two are linked: the host picks the match type,
@@ -171,9 +171,23 @@ export const MatchSetup = ({ isWaiting = false, progress = {}, onProgress = (pro
       <Title>Match setup</Title>
       <Label>Match</Label>
       <Row>
-        <Choice $isOn={setup.mode == "standing"} onClick={() => change({ mode: "standing" }, { match: true })}>Last one standing</Choice>
-        <Choice disabled title="Coming next">Peninsula defense - next</Choice>
+        <Choice $isOn={setup.mode == "standing"} onClick={() => change({ mode: "standing" }, { match: true })}>Last team standing</Choice>
+        <Choice $isOn={setup.mode == "defense"} onClick={() => change({ mode: "defense" }, { match: true })}>Peninsula defense</Choice>
       </Row>
+      {/* (defense: always the Peninsula; how many Kaiju instead, up to 100: Jamie) */}
+      {setup.mode == "defense" ? (
+        <>
+          <Label>Kaiju to defeat</Label>
+          <Row>
+            <Choice onClick={() => change({ kaijuToWin: Math.max(1, setup.kaijuToWin - 10) }, {})} disabled={setup.kaijuToWin <= 1}>-10</Choice>
+            <Choice onClick={() => change({ kaijuToWin: Math.max(1, setup.kaijuToWin - 1) }, {})} disabled={setup.kaijuToWin <= 1}>-</Choice>
+            <Count>{setup.kaijuToWin}</Count>
+            <Choice onClick={() => change({ kaijuToWin: Math.min(MAX_KAIJU_TO_WIN, setup.kaijuToWin + 1) }, {})} disabled={setup.kaijuToWin >= MAX_KAIJU_TO_WIN}>+</Choice>
+            <Choice onClick={() => change({ kaijuToWin: Math.min(MAX_KAIJU_TO_WIN, setup.kaijuToWin + 10) }, {})} disabled={setup.kaijuToWin >= MAX_KAIJU_TO_WIN}>+10</Choice>
+          </Row>
+        </>
+      ) : (
+      <>
       <Label>Battleground</Label>
       <Row>
         {BATTLEGROUNDS.map(({ id, name, thumbnail, thumbnailPosition, thumbnailZoom }) => (
@@ -183,6 +197,8 @@ export const MatchSetup = ({ isWaiting = false, progress = {}, onProgress = (pro
           </Card>
         ))}
       </Row>
+      </>
+      )}
       <Label>Have Teammates?</Label>
       <Row>
         <Choice $isOn={!isTeams} onClick={() => change({ teamSize: 0 }, { teams: true, count: true })}>Off</Choice>
