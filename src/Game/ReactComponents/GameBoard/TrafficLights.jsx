@@ -27,10 +27,17 @@ const between = ([low, high]) => low + Math.random() * (high - low);
   - wound so the cars going away (red) keep to the right of the road and those coming (white) to the left: run
     backward if it's the other way round ('isBackward').
 */
-const LANE = { spurPoints: 14, spurRatio: 3, inward: 0.3, otherSideGap: 6 };
-const makeDrivable = path => {
+// (both kept to a road's own width at that distance, 'width' / distance px (Jamie: in the middle ground cars were
+// pulled across the water to another road's edge, and short-cut whole bends of road as if they were spurs))
+const LANE = { spurPoints: 14, spurRatio: 3, inward: 0.3, otherSideGap: 6, width: 2400, freeWithin: 330 /* (nearer than this, uncapped: the near highways were right) */ };
+const getRoadWidth = distance => LANE.width / distance;
+const getSpurMouth = distance => (distance < LANE.freeWithin ? Infinity : 1.5 * getRoadWidth(distance)); // (near: the spurs cut whatever their size)
+export const makeDrivable = path => {
   const hop = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
   const kept = [];
+  // (the road's nearest point, its end at the bottom of the view, where its cars turn round: never cut as a spur, so
+  // they turn round there, out of shot, not before it: Jamie)
+  const nearestAt = path.reduce((best, point, k) => (point[2] < path[best][2] ? k : best), 0);
   for (let k = 0; k < path.length;) {
     kept.push(path[k]);
     let next = k + 1;
@@ -38,14 +45,15 @@ const makeDrivable = path => {
     const lengths = [];
     for (let m = k + 1; m < Math.min(path.length, k + LANE.spurPoints + 1); m++) { along += hop(path[m - 1], path[m]); lengths[m] = along; }
     for (let m = Math.min(path.length - 1, k + LANE.spurPoints); m > k + 2; m--) {
-      if (lengths[m] > LANE.spurRatio * hop(path[k], path[m]) + 2) { next = m; break; }
+      const mouth = hop(path[k], path[m]);
+      if (mouth < getSpurMouth(path[k][2]) && !(nearestAt > k && nearestAt <= m) && lengths[m] > LANE.spurRatio * mouth + 2) { next = m; break; }
     }
     k = next;
   }
   const way = k => { const a = kept[Math.max(0, k - 1)], b = kept[Math.min(kept.length - 1, k + 1)]; return [b[0] - a[0], b[1] - a[1]]; };
   const inner = kept.map((point, i) => {
     const [wx, wy] = way(i);
-    let best = null, bestGap = Infinity;
+    let best = null, bestGap = getRoadWidth(point[2]); // (no farther than the road is wide)
     for (let j = 0; j < kept.length; j++) {
       if (Math.abs(i - j) < LANE.otherSideGap) continue;
       const gap = hop(point, kept[j]);
