@@ -163,7 +163,7 @@ const LANDING_CYCLE = { everyFacing: 3, startMs: 0, fadeMs: 1500, embersMs: 2200
 // walking Kaiju and the skyline alone, lit, before the scene fades in, over 5 s; [Press any key] after it. The water
 // Kaiju keep their own timing: the buoy's third turn to the viewer)
 // (Jamie, spread out: the neon's turn-on 2.5 s (Logo's BORDER.onSeconds); 1.5 s into it the city's parts start up, over 2 s)
-const INTRO = { neonMs: 1500, cityMs: 2000, holdMs: 1200, sceneMs: 5000, pressMs: 900, dim: 0.1 };
+const INTRO = { neonMs: 1500, cityMs: 2000, holdMs: 1200, sceneMs: 2500 /* (halved: Jamie; was 5 s) */, pressMs: 900, dim: 0.1 };
 const SCENE_AT_MS = INTRO.neonMs + INTRO.cityMs + INTRO.holdMs;
 const getIntroStyle = stage => css`
   & img[data-landing-logo], & > div > :first-child > p:nth-child(2), & [data-base-joiner], & [data-spotlights] {
