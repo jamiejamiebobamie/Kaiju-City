@@ -248,6 +248,32 @@ export const wrapCoopDialogue = (gm: any) => {
   };
 };
 
+/*
+  Co-op's last fight (Jamie): the teammate turns into a Kaiju, every power and much health: the guest goes on as it,
+  against the host (as in sparring). On the host each frame: once it's there, the guest's keys move to it. Returns its
+  index when they do (the guest's camera and HUD follow: Game's 'control').
+*/
+// (and sparring's rival, once it's there: the teammate the player spars, the guest against the host. Jamie)
+export const updateCoopTurnedKaiju = (gm: any): number | undefined => {
+  if (!gm.isCoop) return undefined;
+  const rival = gm.level.rival && gm.level.rival.isSparring ? gm.rivalPiece : undefined;
+  const target = [gm.teammateKaiju, rival].find((piece: any) => piece && !piece.getIsDead());
+  let handler = gm.guestInputHandler;
+  if (!target || (handler && handler.piece == target)) return undefined;
+  if (!handler) {
+    handler = new RemoteInputHandler({ gameManagerProxy: gm.gameManagerProxy, piece: target });
+    gm.guestInputHandler = handler;
+  }
+  if (handler.piece) handler.piece.inputHandler = undefined;
+  target.isNpc = false;
+  target.moveToTiles = [];
+  target.brainAction = undefined;
+  target.inputHandler = handler;
+  handler.piece = target;
+  handler.pressedKeys = [];
+  return target.pieceIndex;
+};
+
 // the two pieces in place, after the match's own initGame (the host's avatar and powers already its player)
 export const setUpMultiplayerMatch = (gm: any, config: MultiplayerConfig, role: 'host' | 'guest') => {
   const piecesManager = gm.gameBoardPiecesManager;

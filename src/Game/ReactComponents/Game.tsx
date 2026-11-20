@@ -49,7 +49,7 @@ import { applyLevelFile, LAB_TALK_PHASE, LEVEL_FILES, LEVELS, PENINSULA, SPARRIN
 import { TileEditor } from './Levels/TileEditor';
 import { gameUiStore, publishGameUi, resetGameUi } from '../DataClasses/gameUiStore';
 import { applyChanges, MirrorSender } from '../Multiplayer/mirror';
-import { COOP_VOTE, resolveCoopVote, DEFENSE_LEVEL, getBattleground, getMultiplayerKillsToWin, GUEST_PIECE_INDEX, makeTeam, setUpCoop, setUpMultiplayerMatch, updateGuestTakeOver } from '../Multiplayer/multiplayerMatch';
+import { COOP_VOTE, resolveCoopVote, DEFENSE_LEVEL, getBattleground, getMultiplayerKillsToWin, GUEST_PIECE_INDEX, makeTeam, setUpCoop, setUpMultiplayerMatch, updateCoopTurnedKaiju, updateGuestTakeOver } from '../Multiplayer/multiplayerMatch';
 import { CoopChecks, CoopVote, MatchSetup, MultiplayerWaiting, NetNotice } from '../Multiplayer/MatchSetup';
 
 const GameArea = styled.div`
@@ -1112,6 +1112,8 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
             const json = JSON.stringify(ui);
             if (json != mp.current.uiSent) { mp.current.uiSent = json; mp.current.link.send({ t: 'ui', ui }); }
           }
+          const turned = updateCoopTurnedKaiju(gm);
+          if (turned !== undefined) mp.current.link.send({ t: 'control', index: turned });
           const controlled = updateGuestTakeOver(gm);
           if (controlled !== undefined) mp.current.link.send({ t: 'control', index: controlled });
           const changes = mp.current.sender.collect(gm);
@@ -1505,7 +1507,14 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
       publishGameUi(hostUi ? { ...own, ...Object.fromEntries(Object.entries(hostUi).filter(([key, value]) => value !== undefined && value !== null && !OWN_UI_KEYS.includes(key))) } : own);
     } else if (message.t == 'control' && gm && mp.current.link.role == 'guest') {
       const next = gm.getPieces()[message.index];
-      if (next) gm.controlledPiece = next;
+      if (next) {
+        gm.controlledPiece = next;
+        // (co-op: the sparring rival, or the teammate turned Kaiju: the guest's HUD and camera are theirs, their side)
+        if (gm.isCoop) {
+          gm.gameBoardPiecesManager.getPlayerPiece = () => next;
+          gm.gameBoardPiecesManager.getPlayerTeamIndex = () => next.teamIndex;
+        }
+      }
       gm.notifyBoard();
       publishGameUi(gm.getUiState());
     } else if (message.t == 'key' && getGuestPiece()) {
@@ -1951,6 +1960,19 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
       const skill = isWon && !isSparring ? unlockRecruitSkill(level.rival.avatar) : undefined;
       const visitLevelId = level.visitLevelId;
       const backToBattleground = () => fadeOutThen(() => returnFromTraining(visitLevelId));
+      // co-op's sparring (Jamie): the host against the guest; whoever wins, the health point is theirs alone, and either way
+      // back to the battleground
+      if (isSparring && isCoopMatch()) {
+        const gain = point => Math.min(point + SPARRING.bonusPerWin, SPARRING.maxPoints);
+        const winner = isWon ? 'player' : 'teammate';
+        setTrainingPoints({ ...pointsLeft, [winner]: gain(pointsLeft[winner]) });
+        setSparredLevelIds(ids => ids.includes(visitLevelId) ? ids : [...ids, visitLevelId]);
+        isHealthRewardDue.current = true;
+        trainingOutcome.current = { isSparring, avatar: level.rival.avatar };
+        pendingRewardText.current = { text: isWon ? "Host won: +1 temporary health point" : "Guest won: +1 temporary health point" };
+        const timeout = setTimeout(backToBattleground, TRAINING_WIN_HOLD_MS);
+        return () => clearTimeout(timeout);
+      }
       if (isWon) {
         if (isSparring) {
           const gain = point => Math.min(point + SPARRING.bonusPerWin, SPARRING.maxPoints);

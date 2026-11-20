@@ -3,18 +3,18 @@ import { GameManager } from 'Game/DataClasses/GameManager';
 import { SettingsManager } from 'Game/DataClasses/SettingsManager';
 import { LEVELS } from 'Game/DataClasses/Levels/levels';
 import { applyChanges, MirrorSender } from './mirror';
-import { COOP_LINE, MultiplayerConfig, resolveCoopVote, setUpCoop, wrapCoopDialogue } from './multiplayerMatch';
+import { COOP_LINE, MultiplayerConfig, resolveCoopVote, setUpCoop, updateCoopTurnedKaiju, wrapCoopDialogue } from './multiplayerMatch';
 
 const CONFIG: MultiplayerConfig = { mode: 'coop', level: 'peninsula', teamSize: 0, host: { avatar: 'guy', powers: ['Fire', 'Ice', 'Water'], color: '#ff0000' }, guest: { avatar: 'girl', powers: ['Lightning', 'Wood', 'Metal'], color: '#00ff00' } };
 
 // each browser's campaign fight, as Game.tsx builds it: the host's player, the guest's avatar the teammate
-const makeSide = (role: 'host' | 'guest') => {
+const makeSide = (role: 'host' | 'guest', level: any = { ...LEVELS.peninsula, kaijuEntry: undefined }) => {
   const settingsManager = new SettingsManager();
   settingsManager.updatePlayerAvatar(CONFIG.host.avatar);
   settingsManager.setTeammateAvatar(CONFIG.guest.avatar);
   settingsManager.setSortedPlayerChosenAbilityElementsString(CONFIG.host.powers);
   settingsManager.setIsTeammate(true);
-  const gm: any = new GameManager({ level: { ...LEVELS.peninsula, kaijuEntry: undefined }, settingsManager } as any);
+  const gm: any = new GameManager({ level, settingsManager } as any);
   gm.initGame();
   const teammate = setUpCoop(gm, CONFIG, role);
   return { gm, teammate };
@@ -72,5 +72,15 @@ describe('co-op campaign', { timeout: 20000 }, () => {
     expect(resolveCoopVote('terminate', 'terminate', 0.1)).toEqual({ choice: 'terminate', isFlip: false });
     expect(resolveCoopVote('recruit', 'terminate', 0.1)).toEqual({ choice: 'recruit', isFlip: true });
     expect(resolveCoopVote(undefined, undefined, 0.9)).toEqual({ choice: 'terminate', isFlip: true });
+  });
+
+  it('in sparring, the guest plays the rival: the teammate the host spars', () => {
+    const { gm } = makeSide('host', LEVELS['spar-rapidTransit']);
+    for (let tick = 0; tick < 5 && !gm.rivalPiece; tick++) gm.stepPieces();
+    expect(gm.rivalPiece).toBeDefined();
+    expect(updateCoopTurnedKaiju(gm)).toBe(gm.rivalPiece.pieceIndex);
+    expect(gm.rivalPiece.inputHandler).toBe(gm.guestInputHandler);
+    expect(gm.rivalPiece.isNpc).toBe(false);
+    expect(updateCoopTurnedKaiju(gm)).toBeUndefined(); // (once)
   });
 });
