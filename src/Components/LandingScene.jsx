@@ -92,20 +92,28 @@ const MOON = { lit: [250, 238, 168], glow: [38, 44, 70], glowReach: 1.6, bite: {
 // its craters (Jamie, 2026-11-19: detail on the crescent, in a darker yellow and brown): [x, y, size], shares of its
 // radius from its middle, all on its lit side; each a darker brown bowl with a lighter rim on its far (lower right)
 // edge, the light coming from the right
-const MOON_CRATERS = [[0.6, 0.1, 0.2], [0.45, 0.52, 0.16], [0.7, -0.36, 0.15], [0.26, 0.74, 0.11], [0.8, 0.38, 0.1], [0.52, -0.62, 0.13], [0.86, -0.06, 0.08], [0.66, 0.62, 0.08]]; // (larger: Jamie)
-const CRATER = { floor: [168, 128, 58], rim: [255, 246, 196], depth: 0.5, mare: { at: [0.62, -0.05], size: 0.32, depth: 0.16 } };
+// (larger, and organic, not round holes (Jamie: "swiss cheese"): each crater's edge wobbles, its floor shades darker
+// toward its upper-left wall (in shadow, the light from the right) with a lighter rim opposite; some cut off by the
+// moon's edge or its dark side; the surface mottled under them, and a broad faint "sea") [x, y, size, depth]
+const MOON_CRATERS = [[0.6, 0.02, 0.34, 0.42], [0.3, 0.62, 0.28, 0.44], [0.76, -0.5, 0.25, 0.4], [0.95, 0.42, 0.24, 0.34]]; // (sparser, as large: Jamie)
+const CRATER = { floor: [160, 120, 55], rim: [255, 246, 200], mare: { at: [0.6, -0.1], size: 0.45, depth: 0.14 }, mottle: 0.05, most: 0.6 };
 const getCraterShade = (dx, dy, radius) => {
-  // (a broad faint darker patch, a "sea", under the small craters)
-  const mare = Math.hypot(dx / radius - CRATER.mare.at[0], dy / radius - CRATER.mare.at[1]) / CRATER.mare.size;
-  let shade = mare < 1 ? CRATER.mare.depth * (1 - mare * mare) : 0;
+  const x = dx / radius, y = dy / radius;
+  const mare = Math.hypot((x - CRATER.mare.at[0]) * 1.3, y - CRATER.mare.at[1]) / CRATER.mare.size;
+  const mottle = Math.max(0, Math.sin(x * 9.1 + y * 3.7) * Math.sin(y * 7.3 - x * 2.1 + 1.2)) * CRATER.mottle;
+  let shade = (mare < 1 ? CRATER.mare.depth * (1 - mare * mare) : 0) + mottle;
   let rim = 0;
-  MOON_CRATERS.forEach(([cx, cy, size]) => {
-    const u = (dx / radius - cx) / size, v = (dy / radius - cy) / size;
-    const r = Math.hypot(u, v);
-    if (r < 0.8) shade = Math.max(shade, CRATER.depth * (1 - (r / 0.8) ** 3));
-    else if (r < 1.1 && u + v > 0.3) rim = Math.max(rim, 0.5);
+  MOON_CRATERS.forEach(([cx, cy, size, depth], k) => {
+    const u = (x - cx) / size, v = (y - cy) / size;
+    const angle = Math.atan2(v, u);
+    const wobble = 1 + 0.17 * Math.sin(3 * angle + k * 1.7) + 0.09 * Math.sin(5 * angle + k * 2.9) + 0.05 * Math.sin(9 * angle + k);
+    const r = Math.hypot(u, v) / wobble;
+    if (r < 0.86) {
+      const wall = Math.max(0, -(u + v) / 1.2) * (r / 0.86); // (the upper-left wall in shadow)
+      shade = Math.max(shade, depth * (0.2 + 0.8 * (1 - (r / 0.86) ** 2)) + depth * 0.5 * wall);
+    } else if (r < 1.12 && u + v > 0.15) rim = Math.max(rim, 0.38 * (1 - Math.abs(r - 0.98) / 0.14));
   });
-  return { shade, rim };
+  return { shade: Math.min(CRATER.most, shade), rim };
 };
 const getSkyAt = row => {
   const t = Math.pow(Math.max(0, Math.min(1, row / LANDING_VIEW.horizon)), 2.2);
