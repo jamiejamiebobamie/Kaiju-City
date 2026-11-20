@@ -49,7 +49,7 @@ import { applyLevelFile, LAB_TALK_PHASE, LEVEL_FILES, LEVELS, MAP_LABELS, PENINS
 import { TileEditor } from './Levels/TileEditor';
 import { gameUiStore, publishGameUi, resetGameUi } from '../DataClasses/gameUiStore';
 import { applyChanges, MirrorSender } from '../Multiplayer/mirror';
-import { COOP_VOTE, resolveCoopVote, DEFENSE_LEVEL, getBattleground, getMultiplayerKillsToWin, GUEST_PIECE_INDEX, makeTeam, setUpCoop, setUpMultiplayerMatch, updateCoopTurnedKaiju, updateGuestTakeOver } from '../Multiplayer/multiplayerMatch';
+import { COOP_VOTE, hideCoopTeammate, placeCoopTeammate, resolveCoopVote, DEFENSE_LEVEL, getBattleground, getMultiplayerKillsToWin, GUEST_PIECE_INDEX, makeTeam, setUpCoop, setUpMultiplayerMatch, updateCoopTurnedKaiju, updateGuestTakeOver } from '../Multiplayer/multiplayerMatch';
 import { CoopChecks, CoopVote, MatchSetup, MultiplayerWaiting, NetNotice } from '../Multiplayer/MatchSetup';
 
 const GameArea = styled.div`
@@ -1084,7 +1084,19 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
       setUpCoop(gm, coopConfig, 'host');
       mp.current.sender.reset();
       mp.current.uiSent = undefined;
-      mp.current.link.send({ t: 'coopMatch', levelId: matchLevel.id, gmArgs: JSON.parse(JSON.stringify(gmArgs)), settings: { playerAvatar: settingsManager.getPlayerAvatar(), teammateAvatar: coopConfig.guest.avatar, powers: settingsManager.getSortedPlayerChosenAbilityElementsString(), isTeammate: settingsManager.getIsTeammate(), difficulty: selectedDifficulty } });
+      const coopMatch = { t: 'coopMatch', levelId: matchLevel.id, gmArgs: JSON.parse(JSON.stringify(gmArgs)), settings: { playerAvatar: settingsManager.getPlayerAvatar(), teammateAvatar: coopConfig.guest.avatar, powers: settingsManager.getSortedPlayerChosenAbilityElementsString(), isTeammate: settingsManager.getIsTeammate(), difficulty: selectedDifficulty } };
+      mp.current.lastCoopMatch = coopMatch;
+      // (the host off to the Lab alone, the guest still on the map: the guest walks it on their own till they come too, or
+      // the host comes back. Jamie's dynamic Lab)
+      const isLabAlone = isOnLabDetour.current && matchLevel.id == 'labIntro' && !mp.current.isGuestInLab;
+      mp.current.isHostAloneInLab = isLabAlone;
+      if (isLabAlone) {
+        hideCoopTeammate(gm);
+        mp.current.link.send({ t: 'coopHostToLab' });
+      } else {
+        mp.current.isGuestInLab = false;
+        mp.current.link.send(coopMatch);
+      }
     }
     gameManager.current = gm;
     if (import.meta.env.DEV) (window as any).__kaijuGame = gm; // dev only: a handle for scripted browser checks
@@ -1115,6 +1127,12 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
             const ui = { ...gm.getUiState(), coopWait: wait, players: undefined, recruits: undefined, isPlayerDead: undefined, cameraShot: (gm as any).isCoop && ((gm as any).cutscene || (gm as any).recruitScene) ? gm.getCameraShot() : undefined };
             const json = JSON.stringify(ui);
             if (json != mp.current.uiSent) { mp.current.uiSent = json; mp.current.link.send({ t: 'ui', ui }); }
+          }
+          if ((gm as any).coopGuestToLab && !mp.current.isGuestInLab) {
+            (gm as any).coopGuestToLab = false;
+            mp.current.isGuestInLab = true;
+            hideCoopTeammate(gm);
+            mp.current.link.send({ t: 'coopGuestToLab' });
           }
           const turned = updateCoopTurnedKaiju(gm);
           if (turned !== undefined) mp.current.link.send({ t: 'control', index: turned });
@@ -1348,11 +1366,11 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   // ('isCoopGo': co-op's host, both ready: on into the campaign as in single player)
   const handleClickPlay = (picks = undefined, isCoopGo = false) => {
     // (in multiplayer, after the picker: the vat for their color first; closed, this again)
-    if (multiplayer && !isCoopGo && !(picks && picks.avatar) && mp.current.color === undefined) {
+    if (multiplayer && !isCoopGo && !mp.current.isLocal && !(picks && picks.avatar) && mp.current.color === undefined) {
       setIsMultiplayerVat(true);
       return;
     }
-    if (multiplayer && !isCoopGo) {
+    if (multiplayer && !isCoopGo && !mp.current.isLocal) { // (a Lab of the guest's own: its picker as in single player)
       // (their team from what they have: their teammate, their recruits; Jamie)
       // (their recruits: the ones they recruited, and the Hazmat Worker once unlocked)
       const choices = getRecruitChoices();
@@ -1473,9 +1491,42 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
       setIsMultiplayerWaiting(false);
       setIsCoopHostBusy(true);
       setIsPlayingGame(true);
+    } else if ((message.t == 'coopGuestToLab' || message.t == 'coopHostToLab') && mp.current.link.role == 'guest') {
+      startCoopLocalScene(message.t == 'coopGuestToLab' ? 'lab' : 'map');
+    } else if (message.t == 'coopPos' && mp.current.link.role == 'host' && gm) {
+      placeCoopTeammate(gm, message.spot);
+    } else if ((message.t == 'joinLab' || message.t == 'rejoin') && mp.current.link.role == 'host' && message.powers && message.powers.length) {
+      // (the guest's picks in their own Lab: theirs from now on, on the teammate too)
+      mp.current.config.guest = { ...mp.current.config.guest, powers: message.powers, color: message.color || mp.current.config.guest.color };
+      const teammate = gm && (gm as any).guestInputHandler && (gm as any).guestInputHandler.piece;
+      if (teammate) {
+        teammate.abilities = (gm as any).settingsManager.getAbilitiesFromElements(message.powers.map(power => power[0].toLowerCase() + power.slice(1)));
+        if (message.color) teammate.color = message.color;
+      }
+      onMultiplayerMessage({ ...message, powers: undefined });
+    } else if (message.t == 'joinLab' && mp.current.link.role == 'host' && gm && mp.current.isHostAloneInLab) {
+      // the guest come into the host's Lab: theirs from here on
+      mp.current.isHostAloneInLab = false;
+      mp.current.isGuestInLab = false;
+      mp.current.sender.reset();
+      mp.current.link.send(mp.current.lastCoopMatch);
+      placeCoopTeammate(gm, undefined);
+    } else if (message.t == 'rejoin' && mp.current.link.role == 'host' && gm) {
+      // the guest back from their own Lab: by its door on the map, and the host's game theirs again
+      mp.current.isGuestInLab = false;
+      mp.current.sender.reset();
+      mp.current.link.send(mp.current.lastCoopMatch);
+      const lab = ((gm as any).level.sites || []).find(site => site.icon == 'lab');
+      placeCoopTeammate(gm, lab && lab.spot);
     } else if (message.t == 'coopMatch' && mp.current.link.role == 'guest') {
       const matchLevel = LEVELS[message.levelId];
       if (!matchLevel) return;
+      // (from a scene of their own: where they stood, to the host)
+      if (mp.current.isLocal && gm) {
+        const own = gm.getControlledPiece();
+        if (own && own.charLocation) mp.current.link.send({ t: 'coopPos', spot: own.charLocation });
+      }
+      mp.current.isLocal = false;
       setMultiplayerLevel(matchLevel);
       setIsCoopHostBusy(false);
       startMatch(matchLevel, message.gmArgs.hasArrival, message.gmArgs.killsToWin, { multiplayerSetup: { config: mp.current.config, role: 'guest', coop: true, gmArgs: message.gmArgs, settings: message.settings } });
@@ -1615,7 +1666,30 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     return () => clearInterval(timer);
   }, [multiplayer]);
   // the guest's keys go to the host
-  const getIsGuestPlaying = () => !!multiplayer && multiplayer.link.role == 'guest' && mp.current.isStarted;
+  const getIsGuestPlaying = () => !!multiplayer && multiplayer.link.role == 'guest' && mp.current.isStarted && !mp.current.isLocal; // (a scene of their own: their keys their own)
+  // co-op's guest on their own (Jamie's dynamic Lab): the Lab, or the map walk while the host's in the Lab, run here as in
+  // single player, they the player; done (the Lab's door, or the map's Lab), back to the host's game
+  const startCoopLocalScene = kind => {
+    const own = gameManager.current && gameManager.current.getControlledPiece();
+    const spot = own && own.charLocation ? { ...own.charLocation } : undefined;
+    const { guest } = mp.current.config;
+    const scene = kind == 'lab' ? LEVELS.labIntro : LEVELS[(gameManager.current && (gameManager.current as any).level.id) || 'peninsula'];
+    if (gameManager.current) endMatch();
+    mp.current.isLocal = kind;
+    setIsCoopHostBusy(false);
+    settingsManager.updatePlayerAvatar(guest.avatar);
+    settingsManager.setSortedPlayerChosenAbilityElementsString(guest.powers);
+    settingsManager.setIsTeammate(false);
+    setMultiplayerLevel(scene);
+    startMatch(scene, false, undefined, { returnSpot: kind == 'map' ? spot : undefined, isSolo: true, isCoopLocal: true } as any);
+    const gm = gameManager.current as any;
+    if (gm && kind == 'map') {
+      // (on the map alone, only the Lab's theirs to go into: into the host's)
+      const lab = (scene.sites || []).find(site => site.icon == 'lab');
+      gm.getIsAtGoal = () => !!lab && gm.getIsPlayerNear(lab.spot, 3);
+    }
+    setIsPlayingGame(true);
+  };
   if (import.meta.env.DEV) (window as any).__kaijuMultiplayerPlay = picks => handleClickPlay(picks); // (dev only: scripted checks)
 
   const getWinTitle = () => {
@@ -1939,7 +2013,19 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   useEffect(() => {
     if (winner === null || !isPlayingGame) return;
     const isWon = winner === GameResult.PlayerWon;
-    if (mp.current.isStarted && mp.current.config && mp.current.config.mode == 'coop') return; // (co-op: the host's campaign decides what's next)
+    if (mp.current.isStarted && mp.current.config && mp.current.config.mode == 'coop') {
+      // co-op's guest done with a scene of their own: the Lab's door (back to the host's map), or the map's Lab (into the host's)
+      if (mp.current.isLocal && multiplayer && multiplayer.link.role == 'guest') {
+        // (with whatever they picked there: their powers, their color)
+        const guestAvatar = mp.current.config.guest.avatar;
+        const picks = { powers: settingsManager.getSortedPlayerChosenAbilityElementsString(), color: getAvatarColor(guestAvatar) || mp.current.config.guest.color };
+        mp.current.config.guest = { ...mp.current.config.guest, ...picks }; // (their own copy too: the host's game is built from it)
+        multiplayer.link.send({ t: mp.current.isLocal == 'map' ? 'joinLab' : 'rejoin', ...picks });
+        endMatch();
+        setIsCoopHostBusy(true);
+      }
+      return; // (co-op: the host's campaign decides what's next)
+    }
     if (mp.current.isStarted) {
       const title = gameManager.current && gameManager.current.getMultiplayerTitle ? gameManager.current.getMultiplayerTitle(isWon) : isWon ? "You Won!" : "You Lost";
       const timeout = setTimeout(() => setMatchEnd({ title, buttons: [{ text: "Play again", onClick: playMultiplayerAgain }, { text: "Quit", onClick: leaveMultiplayer }] }), MATCH_END_DELAY_MS);

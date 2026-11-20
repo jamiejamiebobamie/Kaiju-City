@@ -4,7 +4,7 @@ import { SettingsManager } from 'Game/DataClasses/SettingsManager';
 import { LEVELS } from 'Game/DataClasses/Levels/levels';
 import { applyChanges, MirrorSender } from './mirror';
 import { placePiece } from 'Game/DataClasses/testHelpers';
-import { COOP_LINE, getIsSiteLocked, MultiplayerConfig, resolveCoopVote, setUpCoop, updateCoopTurnedKaiju, wrapCoopDialogue } from './multiplayerMatch';
+import { COOP_LINE, getIsSiteLocked, hideCoopTeammate, placeCoopTeammate, MultiplayerConfig, resolveCoopVote, setUpCoop, updateCoopTurnedKaiju, wrapCoopDialogue } from './multiplayerMatch';
 
 const CONFIG: MultiplayerConfig = { mode: 'coop', level: 'peninsula', teamSize: 0, host: { avatar: 'guy', powers: ['Fire', 'Ice', 'Water'], color: '#ff0000' }, guest: { avatar: 'girl', powers: ['Lightning', 'Wood', 'Metal'], color: '#00ff00' } };
 
@@ -105,5 +105,30 @@ describe('co-op campaign', { timeout: 20000 }, () => {
     placePiece(gm, teammate, at(site.spot));
     expect(gm.getIsAtGoal()).toBe(true);
     expect(gm.getPieces()[0].isHeld).toBe(false);
+  });
+
+  it("goes into the Lab alone (anyone's own), notices the guest at it, and hides and places the teammate", () => {
+    const { gm, teammate } = makeSide('host', LEVELS.mapSubway);
+    const lab = gm.level.sites.find((each: any) => each.icon == 'lab');
+    const board = gm.gameBoardManager;
+    const at = (spot: any) => board.getClosestWalkableTileToLocation(spot);
+    const far = at({ x: lab.spot.x + 150, y: lab.spot.y + 200 });
+    placePiece(gm, teammate, far);
+    placePiece(gm, gm.getPieces()[0], far);
+    gm.getIsAtGoal();
+    // the guest walks to the Lab: noticed (Game sends them off to their own)
+    placePiece(gm, teammate, at(lab.spot));
+    gm.getIsAtGoal();
+    expect(gm.coopGuestToLab).toBe(true);
+    hideCoopTeammate(gm);
+    expect(teammate.isVisible).toBe(false);
+    expect(teammate.isOnTiles).toBe(false);
+    // the host into the Lab: not held, the guest away
+    placePiece(gm, gm.getPieces()[0], at(lab.spot));
+    expect(gm.getIsAtGoal()).toBe(true);
+    // the guest back: by the Lab
+    placeCoopTeammate(gm, lab.spot);
+    expect(teammate.isVisible).toBe(true);
+    expect(teammate.isOnTiles).toBe(true);
   });
 });

@@ -301,7 +301,9 @@ export const wrapCoopWalking = (gm: any) => {
     const now = Date.now();
     if (atGoal()) {
       const spot = getPlaceSpot(gm);
-      if (!spot || getIsPieceNear(gm, guest, spot)) {
+      // (the Lab's anyone's own to go into, the other carrying on: Jamie's dynamic Lab)
+      const isLab = !!gm.reachedSite && gm.reachedSite.icon == 'lab';
+      if (isLab || !spot || getIsPieceNear(gm, guest, spot)) {
         host.isHeld = false;
         guest.isHeld = false;
         gm.coopWait = undefined;
@@ -314,7 +316,10 @@ export const wrapCoopWalking = (gm: any) => {
       return false;
     }
     host.isHeld = false;
-    const site = (gm.level.sites || []).find((each: any) => getIsPieceNear(gm, guest, each.spot) && !gm.getIsSiteLockedFor(each));
+    // the guest at the Lab: off into their own (Game: 'coopGuestToLab')
+    const lab = (gm.level.sites || []).find((each: any) => each.icon == 'lab');
+    if (lab && guest.isVisible !== false && getIsPieceNear(gm, guest, lab.spot)) gm.coopGuestToLab = true;
+    const site = (gm.level.sites || []).find((each: any) => each.icon != 'lab' && getIsPieceNear(gm, guest, each.spot) && !gm.getIsSiteLockedFor(each));
     if (site) {
       guest.isHeld = true;
       if (!gm.coopWait || gm.coopWait.who != 'guest' || gm.coopWait.place != site.icon) gm.coopWait = { who: 'guest', spot: site.spot, place: site.icon, since: now };
@@ -328,6 +333,25 @@ export const wrapCoopWalking = (gm: any) => {
   gm.getIsSiteLockedFor = (site: any) => getIsSiteLocked(site, gm.coopWait);
   gm.getCoopWait = () => (gm.coopWait ? { who: gm.coopWait.who, place: gm.coopWait.place, spot: gm.coopWait.spot, isPrompt: Date.now() - gm.coopWait.since >= COOP_WALK.promptMs } : undefined);
 };
+// the teammate off the board (the guest in a Lab of their own) and back, where they say they are
+export const hideCoopTeammate = (gm: any) => {
+  const piece = gm.guestInputHandler && gm.guestInputHandler.piece;
+  if (!piece) return;
+  piece.isVisible = false;
+  piece.isOnTiles = false;
+  piece.moveToTiles = [];
+  piece.isHeld = true;
+  gm.guestInputHandler.pressedKeys = [];
+};
+export const placeCoopTeammate = (gm: any, spot: any) => {
+  const piece = gm.guestInputHandler && gm.guestInputHandler.piece;
+  if (!piece) return;
+  const tile = gm.gameBoardManager.getClosestWalkableTileToLocation(spot || gm.getPieces()[0].charLocation);
+  piece.initCharLocation(true, gm.getFreeTileNear(tile, { except: piece }) || tile);
+  piece.isVisible = true;
+  piece.isHeld = false;
+};
+
 export const getIsSiteLocked = (site: any, wait: any) => {
   if (site.icon == 'lab') return false;
   if (wait && wait.who == 'host') return !(wait.spot && wait.spot.x == site.spot.x && wait.spot.y == site.spot.y);
