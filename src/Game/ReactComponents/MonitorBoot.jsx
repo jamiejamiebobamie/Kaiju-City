@@ -195,7 +195,7 @@ const ModeRow = styled.div`
   transform: translate(-50%, -50%);
   display: flex;
   gap: 2cqw;
-  align-items: flex-start;
+  align-items: stretch;
 `;
 const ModeButton = styled.button`
   padding: 1cqw 2cqw;
@@ -213,13 +213,15 @@ const ModeButton = styled.button`
   &:hover:not(:disabled) { background: #0f2a10; }
   &:disabled { color: #3e5a3a; border-color: #2a4a28; text-shadow: none; box-shadow: none; cursor: not-allowed; }
 `;
-const ModeNote = styled.div`
-  margin-top: 0.6cqw;
-  font-family: gameboy;
-  font-size: 0.8cqw;
-  letter-spacing: 0.1cqw;
-  color: #6f8f68;
-  text-align: center;
+// (inside the button, under its name, in red: not dimmed with the closed button, but a muted red, soft against its
+// dark shading: Jamie)
+const ModeNote = styled.span`
+  display: block;
+  margin-top: 0.5cqw;
+  font-size: 0.7cqw;
+  letter-spacing: 0.08cqw;
+  color: #ab4840;
+  text-shadow: 0 0 0.3cqw rgba(171, 72, 64, 0.3);
 `;
 
 export const MonitorBoot = ({ onDone }) => {
@@ -260,10 +262,10 @@ export const MonitorBoot = ({ onDone }) => {
       ) : phase == "mode" ? (
         <ModeRow>
           <ModeButton onClick={() => { hasBooted = true; setTimeout(onDone, BOOT.afterClickMs); }}>Single Player</ModeButton>
-          <div>
-            <ModeButton disabled={!isMultiplayerOpen} onClick={() => setIsMultiplayerNoted(true)}>Multiplayer</ModeButton>
-            <ModeNote>{!isMultiplayerOpen ? "Beat the game to unlock" : isMultiplayerNoted ? "Coming soon" : ""}</ModeNote>
-          </div>
+          <ModeButton disabled={!isMultiplayerOpen} onClick={() => setIsMultiplayerNoted(true)}>
+            Multiplayer
+            {(!isMultiplayerOpen || isMultiplayerNoted) && <ModeNote>{!isMultiplayerOpen ? "Beat the game to unlock" : "Coming soon"}</ModeNote>}
+          </ModeButton>
         </ModeRow>
       ) : (
         <>
