@@ -148,7 +148,7 @@ const getBaseJoinerShape = ({ middle, topWidth, bottomWidth }) => {
 };
 // (the event starts as the buoy's lamp turns to the viewer, the Kaiju fading in. The whole scene flashing white with a
 // sun star, and then a flare on the buoy, both tried and taken out: Jamie, 2026-11-19; LandingFlash.jsx kept)
-const LANDING_CYCLE = { everyFacing: 3, startMs: 0, fadeMs: 1500, embersMs: 2200, kaijuOutMs: 1000 /* (after both have breathed their fire: Jamie; halved, was 2 s) */ };
+const LANDING_CYCLE = { everyFacing: 3, startMs: 0, fadeMs: 1500, embersMs: 2200, kaijuOutMs: 700 /* (1 s after both have breathed their fire (their flames die away over 0.3 s first): Jamie; was 2 s, then 1 s from the end of that) */, kaijuFadeMs: 1500 };
 
 /*
   The landing's intro (Jamie, 2026-11-19), the first time it shows in a visit: all black but the logo and the skyline,
@@ -314,13 +314,14 @@ export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = ()
   const [event, setEvent] = useState(undefined);
   const [isEventFading, setIsEventFading] = useState(false);
   const [isKaijuFading, setIsKaijuFading] = useState(false);
+  const [isEmbersOut, setIsEmbersOut] = useState(false); // (the embers fade once the Kaiju have: Jamie)
   const cycle = useRef({ count: 0, facings: 0, isBusy: false, timers: [], kaijuDone: 0 });
   const beginEvent = useCallback(() => {
     const now = cycle.current;
     if (now.isBusy) return;
     now.isBusy = true;
     const later = (ms, then) => now.timers.push(setTimeout(then, ms));
-    later(LANDING_CYCLE.startMs, () => { now.count += 1; now.kaijuDone = 0; setIsEventFading(false); setIsKaijuFading(false); setEvent(now.count); });
+    later(LANDING_CYCLE.startMs, () => { now.count += 1; now.kaijuDone = 0; setIsEventFading(false); setIsKaijuFading(false); setIsEmbersOut(false); setEvent(now.count); });
     later(LANDING_CYCLE.startMs + COPTER_MS, () => setIsEventFading(true));
     later(LANDING_CYCLE.startMs + COPTER_MS + LANDING_CYCLE.fadeMs, () => { setEvent(undefined); setIsEventFading(false); now.isBusy = false; now.facings = 0; });
   }, []);
@@ -328,7 +329,9 @@ export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = ()
   const onKaijuDone = useCallback(() => {
     const now = cycle.current;
     now.kaijuDone += 1;
-    if (now.kaijuDone == 2) now.timers.push(setTimeout(() => setIsKaijuFading(true), LANDING_CYCLE.kaijuOutMs));
+    if (now.kaijuDone != 2) return;
+    now.timers.push(setTimeout(() => setIsKaijuFading(true), LANDING_CYCLE.kaijuOutMs));
+    now.timers.push(setTimeout(() => setIsEmbersOut(true), LANDING_CYCLE.kaijuOutMs + LANDING_CYCLE.kaijuFadeMs));
   }, []);
   const onBuoyFacing = useCallback(() => {
     const now = cycle.current;
@@ -429,7 +432,7 @@ export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = ()
     <ShiftLayer $isShiftingIn={isShiftingIn && isLandingShifting}>
     <SpeedBlurFilter />
     <LandingScene spot={CITY_ZOOM.spot} zoom={getSceneZoom(isLeaving, isLogoZoomingOut)} isBack={isLogoZoomingOut} logoScale={logoScale} lift={LOGO_LIFT - tune.cityscape.y} tune={tune} event={event} isEventFading={isEventFading} onBuoyFacing={onBuoyFacing} isKaijuFading={isKaijuFading} onKaijuDone={onKaijuDone} isHidden={introStage < 2} fadeMs={INTRO.sceneMs} />
-    <EmberSlide $isLeaving={isLeaving} style={isLeaving ? undefined : { opacity: event === undefined || isEventFading ? 0 : 1, transition: `opacity ${LANDING_CYCLE.embersMs}ms ease-in-out` }}><Embers /></EmberSlide>
+    <EmberSlide $isLeaving={isLeaving} style={isLeaving ? undefined : { opacity: event === undefined || isEventFading || isEmbersOut ? 0 : 1, transition: `opacity ${LANDING_CYCLE.embersMs}ms ease-in-out` }}><Embers /></EmberSlide>
     <SceneSlide $isLeaving={isLeaving} $isZoomingBack={isLogoZoomingOut} $intro={introStage} style={{ "--logo-scale": logoScale, "--logo-lift": `${LOGO_LIFT}px`, "--joiner-both": `${tune.joiner.both}px`, "--joiner-band": `${tune.joiner.band}px`, "--joiner-glow": `${tune.joiner.glow}px`, "--skyline-y": `${tune.cityscape.y}px`, "--base-joiner-top": `${tune.baseJoiner.top}px`, "--base-joiner-height": `${tune.baseJoiner.height}px`, ...getBaseJoinerShape(tune.baseJoiner), "--base-joiner-solid": `${tune.baseJoiner.solid * 100}%`, "--base-joiner-opacity": tune.baseJoiner.opacity }}><Logo spotlights circuit baseJoiner /></SceneSlide>{/* (the joiner off, to see it without: Jamie, 2026-11-19; <Logo joiner spotlights /> brings it back) */}
     <ZoomThrough isOn={isLeaving} startMs={ZOOM_START_MS} onDone={enterRoom || handleClickGame} />
     {isZoomingBack && <ZoomThrough isOn isReverse startMs={0} onDone={() => setIsZoomingBack(false)} />}

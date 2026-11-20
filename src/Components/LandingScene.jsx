@@ -89,6 +89,24 @@ const MoonReflection = ({ x, y, radius }) => {
 // (earthshine: the dark side the sky's colour, a little brighter, as a crescent's is seen: Jamie, 2026-11-19: it was too
 // bright, the sky with the whole glow on it)
 const MOON = { lit: [250, 238, 168], glow: [38, 44, 70], glowReach: 1.6, bite: { x: -0.45, y: -0.15, size: 0.95 }, brightness: 0.75, earthshine: 0.83 }; // (the sky just round it, glow and all, a touch brighter: 0.22 read as a dark hole in the glow)
+// its craters (Jamie, 2026-11-19: detail on the crescent, in a darker yellow and brown): [x, y, size], shares of its
+// radius from its middle, all on its lit side; each a darker brown bowl with a lighter rim on its far (lower right)
+// edge, the light coming from the right
+const MOON_CRATERS = [[0.6, 0.1, 0.2], [0.45, 0.52, 0.16], [0.7, -0.36, 0.15], [0.26, 0.74, 0.11], [0.8, 0.38, 0.1], [0.52, -0.62, 0.13], [0.86, -0.06, 0.08], [0.66, 0.62, 0.08]]; // (larger: Jamie)
+const CRATER = { floor: [168, 128, 58], rim: [255, 246, 196], depth: 0.5, mare: { at: [0.62, -0.05], size: 0.32, depth: 0.16 } };
+const getCraterShade = (dx, dy, radius) => {
+  // (a broad faint darker patch, a "sea", under the small craters)
+  const mare = Math.hypot(dx / radius - CRATER.mare.at[0], dy / radius - CRATER.mare.at[1]) / CRATER.mare.size;
+  let shade = mare < 1 ? CRATER.mare.depth * (1 - mare * mare) : 0;
+  let rim = 0;
+  MOON_CRATERS.forEach(([cx, cy, size]) => {
+    const u = (dx / radius - cx) / size, v = (dy / radius - cy) / size;
+    const r = Math.hypot(u, v);
+    if (r < 0.8) shade = Math.max(shade, CRATER.depth * (1 - (r / 0.8) ** 3));
+    else if (r < 1.1 && u + v > 0.3) rim = Math.max(rim, 0.5);
+  });
+  return { shade, rim };
+};
 const getSkyAt = row => {
   const t = Math.pow(Math.max(0, Math.min(1, row / LANDING_VIEW.horizon)), 2.2);
   const shine = Math.exp(-Math.pow((row - LANDING_VIEW.horizon) / 6, 2));
@@ -119,7 +137,10 @@ const Moon = ({ x, y, radius, darkSide = 0.3, glow = 0.55 }) => {
           const inBite = Math.hypot(dx - MOON.bite.x * radius, dy - MOON.bite.y * radius) <= MOON.bite.size * radius;
           const base = sky.map((value, c) => value + MOON.glow[c]);
           const dark = sky.map((value, c) => value + MOON.glow[c] * darkSide);
-          const color = inBite ? dark : base.map((value, c) => Math.max(value, (value * 0.15 + MOON.lit[c] * 0.85) * MOON.brightness));
+          const { shade, rim } = inBite ? { shade: 0, rim: 0 } : getCraterShade(dx, dy, radius);
+          const surface = MOON.lit.map((value, c) => (value * (1 - shade) + CRATER.floor[c] * shade) * (1 - rim) + CRATER.rim[c] * rim);
+          // (in a crater its own brown, not the sky's blue under it: the brighter of the two left the craters purple)
+          const color = inBite ? dark : base.map((value, c) => shade > 0.02 ? (value * 0.1 + surface[c] * 0.9) * MOON.brightness : Math.max(value, (value * 0.15 + surface[c] * 0.85) * MOON.brightness));
           discData.data.set([...color.map(Math.round), 255], k);
         } else {
           const halo = Math.pow(Math.max(0, 1 - (distance - radius) / (radius * MOON.glowReach)), 2);
