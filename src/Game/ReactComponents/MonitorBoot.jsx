@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import styled, { css, keyframes } from "styled-components";
 import { loadAssets } from "Utils/assetLoader";
-import { getIsGameBeaten } from "../DataClasses/Unlocks";
+import { addUnlock, GAME_BEATEN_UNLOCK, getIsGameBeaten } from "../DataClasses/Unlocks";
 import { checkPeerService } from "../Multiplayer/peerLink";
 import { MultiplayerLobby } from "../Multiplayer/MultiplayerLobby";
 
@@ -217,6 +217,18 @@ const ModeButton = styled.button`
 `;
 // (inside the button, under its name, in red: not dimmed with the closed button, but a muted red, soft against its
 // dark shading: Jamie)
+const DevUnlock = styled.button`
+  position: absolute;
+  left: 50%;
+  top: 92%;
+  transform: translateX(-50%);
+  padding: 0.3cqw 0.8cqw;
+  font: 0.8cqw monospace;
+  color: #9fd894;
+  background: #05030a;
+  border: 1px dashed #3a6a34;
+  cursor: pointer;
+`;
 const ModeNote = styled.span`
   display: block;
   margin-top: 0.5cqw;
@@ -229,6 +241,7 @@ const ModeNote = styled.span`
 // 'onDone': on into the game; with Multiplayer, given the link to the other player (and any messages already come)
 export const MonitorBoot = ({ onDone }) => {
   const [phase, setPhase] = useState("loading"); // loading, start, moving, pressed, mode
+  const [, setDevTick] = useState(0); // (dev only: the unlock below re-renders it)
   const isBeaten = getIsGameBeaten();
   // the multiplayer service checked once the game's beaten (Jamie): undefined while asking, then up or down
   const [isServiceUp, setIsServiceUp] = useState(undefined);
@@ -237,7 +250,7 @@ export const MonitorBoot = ({ onDone }) => {
     let isCancelled = false;
     checkPeerService(isServiceUp === false).then(isUp => !isCancelled && setIsServiceUp(isUp));
     return () => { isCancelled = true; };
-  }, [phase]);
+  }, [phase, isBeaten]);
   const isMultiplayerOpen = isBeaten && isServiceUp === true;
   const multiplayerNote = !isBeaten ? "Beat the game to unlock" : isServiceUp === undefined ? "Checking..." : !isServiceUp ? "Currently down" : "";
   const [progress, setProgress] = useState(0);
@@ -285,6 +298,10 @@ export const MonitorBoot = ({ onDone }) => {
         <>
           <PlayButton as="button" $isPressed={phase == "pressed"} onClick={() => phase == "start" && setPhase("pressed")}>PLAY</PlayButton>
         </>
+      )}
+      {/* dev only (Jamie: the dev panel isn't up here): the game counted as beaten, so Multiplayer opens */}
+      {import.meta.env.DEV && phase == "mode" && !isBeaten && (
+        <DevUnlock onClick={() => { addUnlock(GAME_BEATEN_UNLOCK); setDevTick(k => k + 1); }}>Unlock (dev)</DevUnlock>
       )}
     </Screen>
   );
