@@ -186,6 +186,13 @@ export const setUpCoop = (gm: any, config: MultiplayerConfig, role: 'host' | 'gu
   } else {
     piecesManager.getPlayerPiece = () => teammate;
     gm.controlledPiece = teammate;
+    // (their own HUD first, the player's place; the host's after it)
+    const ownFirst = piecesManager.getPlayerTeamUiState;
+    piecesManager.getPlayerTeamUiState = () => {
+      const states = ownFirst.call(piecesManager);
+      const index = piecesManager.getTeamPieces(host.teamIndex).filter((piece: any) => !piece.isRecruit).indexOf(teammate);
+      return index > 0 ? [states[index], ...states.filter((_: any, k: number) => k != index)] : states;
+    };
   }
   return teammate;
 };
