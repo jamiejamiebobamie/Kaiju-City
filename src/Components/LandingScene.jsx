@@ -217,6 +217,33 @@ const Stars = ({ points, width, height }) => {
   return <canvas ref={ref} width={width} height={height} aria-hidden="true" style={{ position: "absolute", left: 0, top: 0, width, height, pointerEvents: "none", imageRendering: "pixelated" }} />;
 };
 
+// Treasure Island's lights (Jamie, 2026-11-19): houses and buildings, small warm and cool-white windows, steady but
+// for a few that now and then go out or flicker (points: scripts/labWindowView.py's islandLights)
+const ISLAND_LIGHT = { warm: "255, 228, 190", cool: "238, 242, 255", /* (whiter: Jamie) */ flickerShare: 0.2, tickMs: 180 };
+const IslandLights = ({ points, width, height }) => {
+  const ref = useRef(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas || !points || !points.length) return;
+    const ctx = canvas.getContext("2d");
+    const lights = points.map(([x, y, brightness, isWarm]) => ({ x, y, brightness, color: isWarm ? ISLAND_LIGHT.warm : ISLAND_LIGHT.cool, flickers: Math.random() < ISLAND_LIGHT.flickerShare, isOn: true }));
+    const draw = () => {
+      ctx.clearRect(0, 0, width, height);
+      lights.forEach(light => {
+        if (light.flickers && Math.random() < 0.06) light.isOn = !light.isOn;
+        if (!light.isOn) return;
+        ctx.globalAlpha = light.brightness * (light.flickers ? 0.75 + Math.random() * 0.25 : 1);
+        ctx.fillStyle = `rgb(${light.color})`;
+        ctx.fillRect(light.x, light.y, 1, 1);
+      });
+    };
+    draw();
+    const timer = setInterval(draw, ISLAND_LIGHT.tickMs);
+    return () => clearInterval(timer);
+  }, [points, width, height]);
+  return <canvas ref={ref} width={width} height={height} aria-hidden="true" style={{ position: "absolute", left: 0, top: 0, width, height, zIndex: 1, pointerEvents: "none", imageRendering: "pixelated" }} />;
+};
+
 const SURF_POINTS = [...(landingTraffic.surf || []), ...(landingTraffic.islandSurf || [])];
 // (the top chunk's coast: pixel thin, a little brighter at rest so its shape reads: Jamie, 2026-11-19)
 const COAST = { rest: 0.3 };
@@ -454,6 +481,7 @@ export const LandingScene = ({ spot, zoom, isBack = false, logoScale = 1, lift =
       <Stars points={landingTraffic.stars} width={LANDING_VIEW.size.width} height={LANDING_VIEW.size.height} />
       <Surf points={SURF_POINTS} width={LANDING_VIEW.size.width} height={LANDING_VIEW.size.height} />
       <Surf points={landingTraffic.coast} width={LANDING_VIEW.size.width} height={LANDING_VIEW.size.height} pixel rest={COAST.rest} />
+      <IslandLights points={landingTraffic.islandLights} width={LANDING_VIEW.size.width} height={LANDING_VIEW.size.height} />
       <Buoy {...tune.buoy} onFacing={onBuoyFacing} />
       <Moon {...tune.moon} />
 

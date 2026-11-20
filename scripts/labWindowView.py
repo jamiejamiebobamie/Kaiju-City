@@ -702,7 +702,14 @@ if traffic_path:
             q = project(float(mx), float(my))
             if q:
                 copter.append([round(float(q[0]), 1), round(float(q[1]), 1), round(float(height_at(q[2])), 3), round(float(q[2]), 1)])
-        extra = {'surf': surf, 'islandSurf': island, 'coast': coast, 'stars': STAR_LIST, 'copter': copter}
+        # Treasure Island's lights (Jamie, 2026-11-19: houses and buildings there): small warm points on its dark body,
+        # below its tree line, more toward its middle; [x, y, brightness, warm (1) or cool white (0)]
+        light_rng = np.random.default_rng(21)
+        lit = np.argwhere(ti_shape & (ys > ti_top[None, :] + 1.5) & (ys < ti_base - 0.5))
+        lit = lit[np.abs(lit[:, 1] - ti_mid[0]) < ti_w * 0.42]
+        picks = light_rng.choice(len(lit), size=min(13, len(lit)), replace=False) if len(lit) else []
+        island_lights = [[int(lit[k][1]), int(lit[k][0]), round(float(light_rng.uniform(0.45, 1)), 2), int(light_rng.random() < 0.5)] for k in picks]  # (sparser, more of them white: Jamie)
+        extra = {'surf': surf, 'islandSurf': island, 'coast': coast, 'stars': STAR_LIST, 'copter': copter, 'islandLights': island_lights}
         print('coast', len(coast))
         print('surf', len(surf), 'island surf', len(island))
     json.dump({'paths': paths, 'glints': glints, 'near': NEAR, 'horizon': HZ, **extra}, open(traffic_path, 'w'))
