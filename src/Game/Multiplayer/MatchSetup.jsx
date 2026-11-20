@@ -83,14 +83,67 @@ const Count = styled.div`
   font-size: 1.4cqw;
 `;
 
-export const MatchSetup = ({ isWaiting = false, onDone }) => {
+// 'progress' (the guest's): which of the host's choices are made, ticked off as they come ({ match, teams, count })
+// 'onProgress' (the host's): told as each is made
+const CHECKS = [["match", "Match selected"], ["teams", "Teammates on/off selected"], ["count", "Number of teammates selected"]];
+const Checklist = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.6cqw;
+  font-size: 0.95cqw;
+  letter-spacing: 0.1cqw;
+`;
+const Check = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.8cqw;
+  color: ${props => (props.$isDone ? "#c8ffb8" : "#4e6e48")};
+  text-shadow: ${props => (props.$isDone ? "0 0 0.4cqw #3aff3a" : "none")};
+  transition: color 300ms;
+`;
+const Box = styled.span`
+  position: relative;
+  width: 1.1cqw;
+  height: 1.1cqw;
+  border: 0.15cqw solid currentColor;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0.2cqw;
+    background: #3aff3a;
+    box-shadow: 0 0 0.4cqw #3aff3a;
+    transform: scale(${props => (props.$isDone ? 1 : 0)});
+    transition: transform 200ms ease-out;
+  }
+`;
+
+// waiting on the other player, on the monitor (Jamie: no fade to a black page)
+export const MultiplayerWaiting = ({ text = "Waiting for other player...", children = undefined }) => (
+  <Screen>
+    <Title style={{ fontSize: "1.6cqw" }}>{text}</Title>
+    {children}
+  </Screen>
+);
+
+export const MatchSetup = ({ isWaiting = false, progress = {}, onProgress = (progress) => {}, onDone }) => {
   const [setup, setSetup] = useState(DEFAULT_SETUP);
-  const change = values => setSetup(current => ({ ...current, ...values }));
+  const [done, setDone] = useState({});
+  const change = (values, ticks) => {
+    setSetup(current => ({ ...current, ...values }));
+    setDone(current => {
+      const next = { ...current, ...ticks };
+      onProgress(next);
+      return next;
+    });
+  };
   if (isWaiting) {
     return (
       <Screen>
         <Title>Connected!</Title>
         <Label>The host is setting up the match...</Label>
+        <Checklist>
+          {CHECKS.map(([key, text]) => <Check key={key} $isDone={!!progress[key]}><Box $isDone={!!progress[key]} />{text}</Check>)}
+        </Checklist>
       </Screen>
     );
   }
@@ -100,30 +153,33 @@ export const MatchSetup = ({ isWaiting = false, onDone }) => {
       <Title>Match setup</Title>
       <Label>Match</Label>
       <Row>
-        <Choice $isOn={setup.mode == "standing"} onClick={() => change({ mode: "standing" })}>Last one standing</Choice>
+        <Choice $isOn={setup.mode == "standing"} onClick={() => change({ mode: "standing" }, { match: true })}>Last one standing</Choice>
         <Choice disabled title="Coming next">Peninsula defense - next</Choice>
       </Row>
       <Label>Battleground</Label>
       <Row>
-        {BATTLEGROUNDS.map(({ id, name, thumbnail }) => (
-          <Card key={id} $isOn={setup.level == id} onClick={() => change({ level: id })}>
-            <Thumb>{thumbnail.map(src => <img key={src} src={src} alt="" />)}</Thumb>
+        {BATTLEGROUNDS.map(({ id, name, thumbnail, thumbnailPosition, thumbnailZoom }) => (
+          <Card key={id} $isOn={setup.level == id} onClick={() => change({ level: id }, { match: true })}>
+            <Thumb>{thumbnail.map(src => <img key={src} src={src} alt="" style={thumbnailPosition ? { objectPosition: thumbnailPosition, transform: `scale(${thumbnailZoom || 1})`, transformOrigin: thumbnailPosition } : undefined} />)}</Thumb>
             {name}
           </Card>
         ))}
       </Row>
-      <Label>Teams: teammate, up to 3 recruits, an Agent</Label>
+      <Label>Have Teammates?</Label>
       <Row>
-        <Choice $isOn={!isTeams} onClick={() => change({ teamSize: 0 })}>Off</Choice>
-        <Choice $isOn={isTeams} onClick={() => change({ teamSize: isTeams ? setup.teamSize : 1 })}>On</Choice>
-        {isTeams && (
-          <>
-            <Choice onClick={() => change({ teamSize: Math.max(1, setup.teamSize - 1) })} disabled={setup.teamSize <= 1}>-</Choice>
-            <Count>{setup.teamSize}</Count>
-            <Choice onClick={() => change({ teamSize: Math.min(MAX_TEAM_SIZE, setup.teamSize + 1) })} disabled={setup.teamSize >= MAX_TEAM_SIZE}>+</Choice>
-          </>
-        )}
+        <Choice $isOn={!isTeams} onClick={() => change({ teamSize: 0 }, { teams: true, count: true })}>Off</Choice>
+        <Choice $isOn={isTeams} onClick={() => change({ teamSize: isTeams ? setup.teamSize : 1 }, { teams: true })}>On</Choice>
       </Row>
+      {isTeams && (
+        <>
+          <Label>How many per team?</Label>
+          <Row>
+            <Choice onClick={() => change({ teamSize: Math.max(1, setup.teamSize - 1) }, { count: true })} disabled={setup.teamSize <= 1}>-</Choice>
+            <Count>{setup.teamSize}</Count>
+            <Choice onClick={() => change({ teamSize: Math.min(MAX_TEAM_SIZE, setup.teamSize + 1) }, { count: true })} disabled={setup.teamSize >= MAX_TEAM_SIZE}>+</Choice>
+          </Row>
+        </>
+      )}
       <Choice $isOn onClick={() => onDone(setup)}>Continue</Choice>
     </Screen>
   );

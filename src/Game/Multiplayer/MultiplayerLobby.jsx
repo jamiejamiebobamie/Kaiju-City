@@ -42,7 +42,12 @@ const LobbyButton = styled.button`
   &:hover:not(:disabled) { background: #0f2a10; }
   &:disabled { color: #3e5a3a; border-color: #2a4a28; text-shadow: none; box-shadow: none; cursor: not-allowed; }
 `;
-const Code = styled.div`
+const Code = styled.button`
+  font-family: gameboy;
+  color: #c8ffb8;
+  text-shadow: 0 0 0.5cqw #3aff3a;
+  cursor: pointer;
+  outline: none;
   font-size: 2.6cqw;
   letter-spacing: 0.8cqw;
   padding: 0.4cqw 1.2cqw;
@@ -90,6 +95,7 @@ export const MultiplayerLobby = ({ onBack, onConnected }) => {
   const [code, setCode] = useState(linkedCode.current || "");
   const [status, setStatus] = useState(undefined);
   const [isCopied, setIsCopied] = useState(false);
+  const [isCodeCopied, setIsCodeCopied] = useState(false); // (the code itself, clicked: Jamie)
   const link = useRef(undefined);
   const messages = useRef([]); // (any said before the match setup takes over: handed on with the link)
 
@@ -127,15 +133,23 @@ export const MultiplayerLobby = ({ onBack, onConnected }) => {
       setIsCopied(true);
     } catch { /* (no clipboard: the code is there to read out) */ }
   };
+  const copyCode = () => {
+    try {
+      navigator.clipboard.writeText(code);
+      setIsCodeCopied(true);
+      setTimeout(() => setIsCodeCopied(false), 1500);
+    } catch { /* (no clipboard) */ }
+  };
   const back = () => {
     stop();
+    setCode(""); // (cleared: Jamie)
     if (screen == "choose") onBack();
     else setScreen("choose");
   };
   const isBusy = status == "starting" || status == "connecting" || status == "connected";
 
   return (
-    <Panel onKeyDown={event => event.stopPropagation()} onKeyUp={event => event.stopPropagation()}>
+    <Panel onKeyDown={event => event.stopPropagation()} onKeyUp={event => event.stopPropagation()} onMouseDown={event => event.stopPropagation()} onPointerDown={event => event.stopPropagation()} onClick={event => event.stopPropagation()}>
       {screen == "choose" && (
         <Row>
           <LobbyButton onClick={host}>Host a match</LobbyButton>
@@ -144,8 +158,8 @@ export const MultiplayerLobby = ({ onBack, onConnected }) => {
       )}
       {screen == "host" && (
         <>
-          <div style={{ fontSize: "0.9cqw" }}>Your room code</div>
-          <Code>{code}</Code>
+          <div style={{ fontSize: "0.9cqw" }}>{isCodeCopied ? "Copied!" : "Room code: click to copy"}</div>
+          <Code onClick={copyCode} title="Copy">{code}</Code>
           <Row>
             <LobbyButton onClick={copyLink} disabled={status != "waiting"}>{isCopied ? "Link copied" : "Copy join link"}</LobbyButton>
           </Row>
@@ -155,7 +169,7 @@ export const MultiplayerLobby = ({ onBack, onConnected }) => {
         <>
           <div style={{ fontSize: "0.9cqw" }}>Enter the host's room code</div>
           <Row>
-            <CodeInput value={code} maxLength={5} autoFocus spellCheck={false} onChange={event => setCode(cleanRoomCode(event.target.value))} onKeyDown={event => { if (event.key == "Enter" && getIsRoomCode(code) && !isBusy) begin("guest", code); }} />
+            <CodeInput value={code} maxLength={5} autoFocus spellCheck={false} onMouseDown={event => event.stopPropagation()} onPointerDown={event => event.stopPropagation()} onClick={event => event.currentTarget.focus()} onChange={event => setCode(cleanRoomCode(event.target.value))} onKeyDown={event => { if (event.key == "Enter" && getIsRoomCode(code) && !isBusy) begin("guest", code); }} />
             <LobbyButton disabled={!getIsRoomCode(code) || isBusy} onClick={() => begin("guest", code)}>Join</LobbyButton>
           </Row>
         </>

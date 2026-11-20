@@ -13,7 +13,7 @@ import { PIECES_INFO } from 'Utils/gameState';
   Mode 1, last one standing: won when the other side's whole team is down.
   The match setup (Jamie, 2026-11-19): the host picks the battleground (BATTLEGROUNDS: their bosses and hazards left
   out, the subway's train kept, the flooded Aquarium flooded) and whether there are teams: up to 5 more on each side,
-  in this order: the teammate, up to 3 recruits, an Agent. Each player's team is their own (their teammate, the recruits
+  in this order: up to 3 recruits (theirs), then an Agent (Jamie: 4 at most). Each player's team is their own (their teammate, the recruits
   they have), its powers settled in their browser and sent with the rest, so both build it alike.
 */
 export type TeamMember = { avatar: string; powers: Array<string>; kind: 'teammate' | 'recruit' | 'agent' }; // (powers: elements)
@@ -21,7 +21,7 @@ export type MultiplayerSide = { avatar: string; powers: Array<string>; color?: s
 export type MultiplayerSetup = { mode: 'standing' | 'defense'; level: string; teamSize: number };
 export type MultiplayerConfig = MultiplayerSetup & { host: MultiplayerSide; guest: MultiplayerSide };
 export const GUEST_PIECE_INDEX = 1;
-export const MAX_TEAM_SIZE = 5;
+export const MAX_TEAM_SIZE = 4; // (up to 3 recruits and the Agent: no Guy or Girl teammate, the players are those: Jamie)
 export const DEFAULT_SETUP: MultiplayerSetup = { mode: 'standing', level: 'peninsula', teamSize: 0 };
 
 // the battlegrounds: each level as it is, less its boss, its hazards, its Kaiju ('thumbnail': its whole scene, small)
@@ -31,7 +31,7 @@ const BOSS_PARTS = ['eye', 'head', 'tongue'];
 const getCalmPhases = (level: any) => level.defaultPhases.filter((id: string) => !BOSS_PARTS.includes(id));
 const getGlassPhases = (level: any) => level.phases.map(({ id }: any) => id).filter((id: string) => id.startsWith('glass'));
 export const BATTLEGROUNDS = [
-  { id: 'peninsula', name: 'Peninsula', thumbnail: ['/Map.gif'], getLevel: () => ({ ...LEVELS.peninsula, ...NO_HAZARDS }) },
+  { id: 'peninsula', name: 'Peninsula', thumbnail: ['/Map.gif'], thumbnailPosition: '50% 4%', thumbnailZoom: 1.5, getLevel: () => ({ ...LEVELS.peninsula, ...NO_HAZARDS }) },
   { id: 'rapidTransit', name: 'Rapid Transit', thumbnail: ['/levels/rapidTransit.png'], getLevel: () => ({ ...LEVELS.rapidTransit, ...NO_HAZARDS, defaultPhases: getCalmPhases(LEVELS.rapidTransit) }) }, // (its train kept: Jamie)
   { id: 'rooftop', name: 'Rooftop', thumbnail: ['/levels/rooftop.png'], getLevel: () => ({ ...LEVELS.rooftop, ...NO_HAZARDS, defaultPhases: getCalmPhases(LEVELS.rooftop) }) },
   { id: 'aquarium', name: 'Aquarium', thumbnail: ['/levels/aquarium.png'], getLevel: () => ({ ...LEVELS.aquarium, ...NO_HAZARDS, defaultPhases: getCalmPhases(LEVELS.aquarium) }) },
@@ -50,12 +50,11 @@ export const getMultiplayerKillsToWin = (config: MultiplayerConfig) => undefined
 
 // a player's team, in their browser, from what they have (Jamie): the teammate's powers random as ever (one to attack, one
 // to defend...), the recruits' their own, the Agent's one of the Agents' kits
-export const makeTeam = ({ size, teammate, recruits, settingsManager }: { size: number; teammate: string; recruits: Array<string>; settingsManager: any }): Array<TeamMember> => {
+export const makeTeam = ({ size, recruits, settingsManager }: { size: number; teammate?: string; recruits: Array<string>; settingsManager: any }): Array<TeamMember> => {
   const members: Array<TeamMember> = [];
   // (the powers' data is only made as a match starts: before the first, it isn't there yet)
   if (!settingsManager.abilityAndTileStatusData || !Object.keys(settingsManager.abilityAndTileStatusData).length) settingsManager.initAbilityStatusData();
   const getRecruitPowers = (avatar: string) => avatar == 'hazmat' ? HAZMAT_RECRUIT.abilities : ((Object.values(LEVELS) as any).find(({ rival }: any) => rival && rival.avatar == avatar) || { rival: { abilities: [] } }).rival.abilities;
-  if (size > 0 && teammate) members.push({ avatar: teammate, kind: 'teammate', powers: settingsManager.getThreeRandomAbilities().map((ability: any) => ability.element || (ability.gameBoardPieceAbilityData && ability.gameBoardPieceAbilityData.element)) });
   recruits.slice(0, 3).forEach(avatar => { if (members.length < size) members.push({ avatar, kind: 'recruit', powers: getRecruitPowers(avatar) }); });
   if (members.length < size) {
     const kits = Object.values((LEVELS as any).lab.agentDrops.kits) as Array<Array<string>>;

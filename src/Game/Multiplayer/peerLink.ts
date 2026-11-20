@@ -35,9 +35,11 @@ export const makeRoomCode = () => [...Array(CODE_LENGTH)].map(() => CODE_LETTERS
 export const cleanRoomCode = (code: string) => code.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, CODE_LENGTH);
 export const getIsRoomCode = (code: string) => cleanRoomCode(code).length == CODE_LENGTH;
 export const getJoinLink = (code: string) => `${window.location.origin}/home?join=${code}`;
-// (a guest who opened the host's link: its code)
+// (a guest who opened the host's link: its code. Read as the page loads: the redirect to /home drops the query
+// (Jamie: the link did nothing))
+const LINKED_CODE = typeof window != 'undefined' ? new URLSearchParams(window.location.search).get('join') : null;
 export const getLinkedRoomCode = () => {
-  const code = new URLSearchParams(window.location.search).get('join');
+  const code = LINKED_CODE || new URLSearchParams(window.location.search).get('join');
   return code && getIsRoomCode(code) ? cleanRoomCode(code) : undefined;
 };
 
