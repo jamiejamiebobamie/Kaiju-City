@@ -289,3 +289,26 @@ describe('tile highlights', () => {
     expect(board.tiles[i][j + 1].getAppliedStatus()).toBe('');
   });
 });
+
+// Jamie (mp playtest 2): ghosts and heals circled a target standing still, hit after hit. Fired past it, a chasing
+// power comes round onto it and ends there, never looping
+describe('chasing powers', () => {
+  ['isGhosted', 'isHealing'].forEach(status => {
+    it(`${status} reaches a target standing still, from any side, and ends on it`, () => {
+      TILE_DIRS.forEach(dir => {
+        const { gm, kaiju } = makeGame({ playerTile: PENINSULA_TILE_LOOKUP_VALS[0] });
+        const target = { i: CENTER_TILE.i, j: CENTER_TILE.j + 4 };
+        placePiece(gm, kaiju, target);
+        if (status == 'isHealing') kaiju.teamIndex = 0; // (heals chase their own side)
+        putStatusOnTile(gm, status, CENTER_TILE, { dirs: [dir], teamIndex: 0, targetIndex: kaiju.pieceIndex }); // (at its own range: it chases for all of it)
+        let hitAt = -1;
+        for (let tick = 1; tick <= 30 && hitAt < 0; tick++) {
+          gm.gameBoardManager.updateTileState(tick);
+          if (getLitTiles(gm).some(tile => tile.tileIndex.i == target.i && tile.tileIndex.j == target.j)) hitAt = tick;
+        }
+        expect(hitAt, `${status} fired ${dir}`).toBeGreaterThan(0);
+        expect(hitAt, `${status} fired ${dir}: by a near-straight way`).toBeLessThanOrEqual(12);
+      });
+    });
+  });
+});

@@ -343,7 +343,7 @@ export class GameBoardManager {
                         const targetTile = target.isOnTiles && target.getTileIndex();
                         const isOnTarget = !!targetTile && targetTile.i == nextTileIndex.i && targetTile.j == nextTileIndex.j;
                         isTrackingHit = isOnTarget;
-                        const [_, dirs] = isOnTarget ? [undefined, []] : this.getTilesTowardPiece(tileIndex, target);
+                        const [_, dirs] = isOnTarget ? [undefined, []] : this.getTilesTowardPiece(nextTileIndex, target); // (aimed from where it goes next, not from where it was: aimed from behind, it overshot a still target and looped round it. Jamie, mp playtest 2)
                         // a soft chase: it turns toward the target only so far each step (a curve); within a few tiles of
                         // it, straight at it (Jamie, playtest 25: up close the soft turn left them circling the target)
                         const { colStep, scale } = this.grid;
