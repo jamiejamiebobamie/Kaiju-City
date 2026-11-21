@@ -47,6 +47,16 @@ const Column = styled.div`
   align-items: stretch;
   gap: 0.9cqw;
 `;
+/*
+  The setup's buttons pressed as real ones (Jamie, mp playtest 4): a lit edge under each (its depth), lighter on
+  hover; held down, it sinks onto that edge, and comes back up as it's let go.
+*/
+const PRESSABLE = `
+  position: relative;
+  box-shadow: 0 0.22cqw 0 #1c7a1c;
+  transition: background 120ms, box-shadow 70ms, transform 70ms;
+  &:active:not(:disabled) { transform: translateY(0.22cqw); box-shadow: 0 0 0 #1c7a1c, inset 0 0.2cqw 0.4cqw rgba(0, 0, 0, 0.55); }
+`;
 const Choice = styled.button`
   padding: 0.6cqw 1.3cqw;
   font-family: gameboy;
@@ -58,7 +68,9 @@ const Choice = styled.button`
   border-radius: 0.4cqw;
   cursor: pointer;
   outline: none;
-  &:disabled { color: #3e5a3a; border-color: #2a4a28; background: #05030a; cursor: not-allowed; }
+  ${PRESSABLE}
+  &:hover:not(:disabled) { background: ${props => (props.$isOn ? "#7dff6a" : "#123a12")}; box-shadow: 0 0.22cqw 0 #1c7a1c, 0 0 0.9cqw rgba(58, 255, 58, 0.45); }
+  &:disabled { color: #3e5a3a; border-color: #2a4a28; background: #05030a; cursor: not-allowed; box-shadow: none; }
 `;
 const Card = styled.button`
   display: flex;
@@ -76,6 +88,9 @@ const Card = styled.button`
   border-radius: 0.4cqw;
   cursor: pointer;
   outline: none;
+  ${PRESSABLE}
+  ${props => (props.$isOn ? "box-shadow: 0 0.22cqw 0 #1c7a1c, 0 0 1cqw rgba(58, 255, 58, 0.5);" : "")}
+  &:hover { border-color: #3aff3a; background: #0c200c; }
 `;
 // (the whole scene, small: its layers over each other, as the flooded Aquarium's shattered hall over the hall)
 const Thumb = styled.div`
@@ -202,10 +217,28 @@ export const MultiplayerWaiting = ({ text = "Waiting for other player...", child
   </Screen>
 );
 
+// (Jamie's mock-ups, mp playtest 4: where each screen starts down the screen)
+const LAYOUT = { type: { top: 10 }, level: { top: 7.3 }, kaiju: { top: 12 }, coop: { top: 10.7 }, teams: { top: 13.9 } };
+const BIG_CHOICE = { fontSize: "1.2cqw", letterSpacing: "0.2cqw", padding: "0.85cqw 0" };
+const Paren = styled.span`
+  font-family: "Courier New", Courier, monospace;
+  font-weight: bold;
+  font-size: 1.4em;
+  line-height: 0;
+`;
+
 export const MatchSetup = ({ isWaiting = false, progress = {}, onProgress = (progress) => {}, onDone }) => {
   const [setup, setSetup] = useState(DEFAULT_SETUP);
   const [done, setDone] = useState({});
   const [step, setStep] = useState("type"); // type, level, kaiju, coop, teams
+  const [teamsChoice, setTeamsChoice] = useState(undefined); // (none till picked: Jamie, mp playtest 4) "off" | "on"
+  // (taking back a choice takes its ticks off the guest's list too: Jamie, mp playtest 4)
+  const untick = keys => setDone(current => {
+    const next = { ...current };
+    keys.forEach(key => { next[key] = false; });
+    onProgress(next);
+    return next;
+  });
   const change = (values, ticks) => {
     setSetup(current => ({ ...current, ...values }));
     setDone(current => {
@@ -225,32 +258,37 @@ export const MatchSetup = ({ isWaiting = false, progress = {}, onProgress = (pro
       </Screen>
     );
   }
-  const isTeams = setup.teamSize > 0;
+  const isTeams = teamsChoice == "on";
   /*
     One choice to a screen (Jamie, mp playtest 2), each on to the next, Back to undo the last:
     Match Type → Level (Last team standing) | Kaiju to Defeat (Peninsula defense) | the campaign together (Co-op)
     → Teammates? (the two matches)
   */
   const go = next => setStep(next);
-  const back = () => setStep(({ level: "type", kaiju: "type", coop: "type", teams: setup.mode == "defense" ? "kaiju" : "level" })[step] || "type");
+  const back = () => {
+    const to = ({ level: "type", kaiju: "type", coop: "type", teams: setup.mode == "defense" ? "kaiju" : "level" })[step] || "type";
+    untick(to == "type" ? ["match", "teams", "count"] : ["teams", "count"]);
+    if (step == "teams") setTeamsChoice(undefined);
+    setStep(to);
+  };
   const finish = values => onDone({ ...setup, ...values });
   const Back = () => <Choice onClick={back}>Back</Choice>;
   return (
-    <Screen onKeyDown={event => event.stopPropagation()} style={step == "type" ? { justifyContent: "flex-start", paddingTop: "22%" } : undefined}>
+    <Screen onKeyDown={event => event.stopPropagation()} style={{ justifyContent: "flex-start", gap: 0, paddingTop: `${LAYOUT[step].top}cqw` }}>
       {step == "type" && (
         <>
-          <Title style={{ marginBottom: "1cqw" }}>Match Type</Title>
-          <Column>
-            <Choice onClick={() => { change({ mode: "standing" }, { match: true }); go("level"); }}>Last team standing</Choice>
-            <Choice onClick={() => { change({ mode: "defense" }, { match: true }); go("kaiju"); }}>Peninsula defense</Choice>
+          <Title style={{ fontSize: "2.95cqw", letterSpacing: "0.45cqw", marginBottom: "3.7cqw" }}>Match Type</Title>
+          <Column style={{ gap: "2.2cqw", width: "28.6cqw" }}>
+            <Choice style={BIG_CHOICE} onClick={() => { change({ mode: "standing" }, { match: true }); go("level"); }}>Last team standing</Choice>
+            <Choice style={BIG_CHOICE} onClick={() => { change({ mode: "defense" }, { match: true }); go("kaiju"); }}>Peninsula defense</Choice>
             {/* (the campaign together, the guest the teammate. Jamie, 2026-11-20) */}
-            <Choice onClick={() => { change({ mode: "coop" }, { match: true, teams: true, count: true }); go("coop"); }}>Co-op Campaign</Choice>
+            <Choice style={BIG_CHOICE} onClick={() => { change({ mode: "coop" }, { match: true, teams: true, count: true }); go("coop"); }}>Co-op Campaign</Choice>
           </Column>
         </>
       )}
       {step == "level" && (
         <>
-          <Title>Level</Title>
+          <Title style={{ marginBottom: "3.5cqw" }}>Level</Title>
           <Row>
             {BATTLEGROUNDS.map(({ id, name, thumbnail, thumbnailPosition, thumbnailZoom }) => (
               <Card key={id} $isOn={setup.level == id} onClick={() => { change({ level: id }, {}); go("teams"); }}>
@@ -259,12 +297,12 @@ export const MatchSetup = ({ isWaiting = false, progress = {}, onProgress = (pro
               </Card>
             ))}
           </Row>
-          <div style={{ marginTop: "1.2cqw" }}><Back /></div>
+          <div style={{ marginTop: "2.7cqw" }}><Back /></div>
         </>
       )}
       {step == "kaiju" && (
         <>
-          <Title>Kaiju to Defeat</Title>
+          <Title style={{ marginBottom: "4.5cqw" }}>Kaiju to Defeat</Title>
           <Row>
             <Choice onClick={() => change({ kaijuToWin: Math.max(1, setup.kaijuToWin - 10) }, {})} disabled={setup.kaijuToWin <= 1}>-10</Choice>
             <Choice onClick={() => change({ kaijuToWin: Math.max(1, setup.kaijuToWin - 1) }, {})} disabled={setup.kaijuToWin <= 1}>-</Choice>
@@ -272,7 +310,7 @@ export const MatchSetup = ({ isWaiting = false, progress = {}, onProgress = (pro
             <Choice onClick={() => change({ kaijuToWin: Math.min(MAX_KAIJU_TO_WIN, setup.kaijuToWin + 1) }, {})} disabled={setup.kaijuToWin >= MAX_KAIJU_TO_WIN}>+</Choice>
             <Choice onClick={() => change({ kaijuToWin: Math.min(MAX_KAIJU_TO_WIN, setup.kaijuToWin + 10) }, {})} disabled={setup.kaijuToWin >= MAX_KAIJU_TO_WIN}>+10</Choice>
           </Row>
-          <Row>
+          <Row style={{ marginTop: "2.4cqw" }}>
             <Back />
             <Choice $isOn onClick={() => go("teams")}>Next</Choice>
           </Row>
@@ -282,8 +320,9 @@ export const MatchSetup = ({ isWaiting = false, progress = {}, onProgress = (pro
         <>
           {/* (a gap between the two, and above the buttons; Play the bigger: Jamie, mp playtest 3) */}
           <Title>Play the campaign together?</Title>
-          <Title style={{ fontSize: "1.4cqw", marginTop: "0.4cqw" }}>Your guest will be your teammate.</Title>
-          <Row style={{ marginTop: "1.6cqw" }}>
+          {/* (in brackets, a monospace's: gameboy has none. Jamie, mp playtest 4) */}
+          <Title style={{ fontSize: "1.27cqw", marginTop: "3.5cqw" }}><Paren>(</Paren>Your guest will be your teammate.<Paren>)</Paren></Title>
+          <Row style={{ marginTop: "5.6cqw" }}>
             <Back />
             <Choice $isOn onClick={() => finish({})} style={{ fontSize: "1.6cqw", padding: "0.9cqw 2.6cqw" }}>Play</Choice>
           </Row>
@@ -291,11 +330,14 @@ export const MatchSetup = ({ isWaiting = false, progress = {}, onProgress = (pro
       )}
       {step == "teams" && (
         <>
-          <Title>Teammates?</Title>
+          <Title style={{ marginBottom: "3.2cqw" }}>Teammates?</Title>
+          {/* (nothing picked to start; Off doesn't go on by itself, Next does: Jamie, mp playtest 4) */}
           <Row>
-            <Choice $isOn={!isTeams && !!done.teams} onClick={() => { change({ teamSize: 0 }, { teams: true, count: true }); finish({ teamSize: 0 }); }}>Off</Choice>
-            <Choice $isOn={isTeams} onClick={() => change({ teamSize: isTeams ? setup.teamSize : 1 }, { teams: true })}>On</Choice>
+            <Choice $isOn={teamsChoice == "off"} onClick={() => { setTeamsChoice("off"); change({ teamSize: 0 }, { teams: true, count: true }); }}>Off</Choice>
+            <Choice $isOn={isTeams} onClick={() => { setTeamsChoice("on"); change({ teamSize: setup.teamSize > 0 ? setup.teamSize : 1 }, { teams: true }); }}>On</Choice>
           </Row>
+          {/* (its room kept, so Back and Next stay put as the count comes and goes) */}
+          <div style={{ height: "7.1cqw", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.8cqw" }}>
           {isTeams && (
             <>
               <Label>How many per team?</Label>
@@ -306,9 +348,10 @@ export const MatchSetup = ({ isWaiting = false, progress = {}, onProgress = (pro
               </Row>
             </>
           )}
+          </div>
           <Row>
             <Back />
-            {isTeams && <Choice $isOn onClick={() => { change({}, { count: true }); finish({}); }}>Next</Choice>}
+            <Choice $isOn={!!teamsChoice} disabled={!teamsChoice} onClick={() => { change({}, { count: true }); finish(teamsChoice == "off" ? { teamSize: 0 } : {}); }}>Next</Choice>
           </Row>
         </>
       )}
