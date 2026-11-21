@@ -1127,8 +1127,9 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
 
     const isGuestMatch = !!multiplayerSetup && multiplayerSetup.role == 'guest';
     gameLoop.current = new GameLoop({
-      // (the guest's match isn't run: the host's changes come in instead, onMultiplayerMessage)
-      steps: isGuestMatch ? [] : [
+      // (the guest's match isn't run: the host's changes come in instead, onMultiplayerMessage; only its ragdolls fall
+      // here, each screen its own: the bodies were never made on the guest's. Jamie, mp playtest 2)
+      steps: isGuestMatch ? [{ everyMs: GAME_TICK.pieceMs, run: () => gm.stepRagdolls() }] : [
         { everyMs: GAME_TICK.pieceMs, run: () => gm.stepPieces() },
         { everyMs: GAME_TICK.tileMs, run: () => gm.stepTiles() }
       ],
