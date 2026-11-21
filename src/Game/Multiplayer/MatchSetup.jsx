@@ -22,6 +22,8 @@ const Screen = styled.div`
   text-shadow: 0 0 0.5cqw #3aff3a;
 `;
 const Title = styled.div`
+  text-align: center;
+  white-space: pre-line; /* (centred, and broken where it says: Jamie) */
   font-size: 2cqw;
   letter-spacing: 0.3cqw;
 `;

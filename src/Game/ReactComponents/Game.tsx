@@ -49,6 +49,7 @@ import { applyLevelFile, LAB_TALK_PHASE, LEVEL_FILES, LEVELS, MAP_LABELS, PENINS
 import { TileEditor } from './Levels/TileEditor';
 import { gameUiStore, publishGameUi, resetGameUi } from '../DataClasses/gameUiStore';
 import { applyChanges, MirrorSender } from '../Multiplayer/mirror';
+import { getLinkedRoomCode } from '../Multiplayer/peerLink';
 import { COOP_VOTE, hideCoopTeammate, placeCoopTeammate, resolveCoopVote, DEFENSE_LEVEL, getBattleground, getMultiplayerKillsToWin, GUEST_PIECE_INDEX, makeTeam, setUpCoop, setUpMultiplayerMatch, updateCoopTurnedKaiju, updateGuestTakeOver } from '../Multiplayer/multiplayerMatch';
 import { CoopChecks, CoopVote, MatchSetup, MultiplayerWaiting, NetNotice } from '../Multiplayer/MatchSetup';
 
@@ -287,7 +288,13 @@ const EndTitle = styled.div`
 `;
 
 // a title of more than one word on two lines, split where the two are most even ("Kaiju" over "Terminated")
+// (a long word, "disconnected", fits the monitor: the title's size down to fit its longest line. Jamie)
+const getEndTitleFit = (title: string) => {
+  const longest = Math.max(...String(title).split("\n").map(line => line.length));
+  return longest > 9 ? { fontSize: `min(7.4cqw, 6.1vw, ${(62 / longest).toFixed(2)}cqw)` } : undefined;
+};
 const breakTitle = (title: string) => {
+  if (String(title).includes("\n")) return title; // (broken where it says: Jamie's "Other player / disconnected")
   const words = String(title).split(" ");
   if (words.length < 2) return title;
   let best = 1;
@@ -363,6 +370,20 @@ const CoopHostBusy = ({ playWindow }) => (
     </GameFrame>
   </GameArea>
 );
+// in by a host's join link (Jamie): the apartment fades in from black, no landing first
+const IS_LINKED_ENTRY = !!getLinkedRoomCode();
+const linkFade = keyframes`
+  from { opacity: 1; }
+  to { opacity: 0; }
+`;
+const LinkFadeIn = styled.div`
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #000;
+  pointer-events: none;
+  animation: ${linkFade} 1400ms ease-out 300ms both;
+`;
 const MULTIPLAYER_NET = { pingMs: 1000, bufferingMs: 2500, lostMs: 12000 };
 const noticeInOut = keyframes`
   0% { opacity: 0; transform: translateX(-50%) scale(1.6); }
@@ -1602,7 +1623,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const onMultiplayerLost = (reason = 'disconnected') => {
     if (mp.current.isLeaving || mp.current.isLost) return;
     mp.current.isLost = true;
-    const text = reason == 'left' ? "Other player left" : "Other player disconnected";
+    const text = reason == 'left' ? "Other player\nleft" : "Other player\ndisconnected";
     setIsBuffering(false);
     if (!mp.current.isStarted) {
       setIsMultiplayerWaiting(false);
@@ -2209,6 +2230,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   if (import.meta.env.DEV) (window as any).__kaijuChooseAvatar = chooseAvatar;
   const preGameMonitor = (
     <GameArea style={pullStyle}>
+      {IS_LINKED_ENTRY && <LinkFadeIn />}
       <RoomBackdrop />
           <HudExplosions />
       <GameFrame data-game-frame $shift={monitorShift == 'in' || monitorShift == 'fade' ? monitorShift : undefined}>
@@ -2236,7 +2258,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
               onBack={isLabPicker ? () => flyOffThen(returnToLab) : undefined}
               isTeammate={isTeammate}
               setIsTeammate={setIsTeammate}
-              recommended={getRecommendedPowers(isLabPicker ? campaignIndex : 0)}
+              recommended={multiplayerSetup && multiplayerSetup.mode != 'coop' ? [] : getRecommendedPowers(isLabPicker ? campaignIndex : 0) /* (none in a match: only the campaign has its fights to recommend for. Jamie) */}
             />
           )}
           {/* the chosen one's name and number on the picker: the avatar select's own, where the camera left them (Jamie) */}
@@ -2554,7 +2576,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
               </SlideAway></SlideClip>
               {matchEnd && (
                 <EndScreen>
-                  {matchEnd.isFinale ? <FinaleCredits title={matchEnd.title} onDone={endWithMonitorOff} /> : <EndTitle>{breakTitle(matchEnd.title)}</EndTitle>}
+                  {matchEnd.isFinale ? <FinaleCredits title={matchEnd.title} onDone={endWithMonitorOff} /> : <EndTitle style={getEndTitleFit(breakTitle(matchEnd.title))}>{breakTitle(matchEnd.title)}</EndTitle>}
                   {(!level.rival || level.isTraining || winner !== GameResult.PlayerWon) && <EndButtons>{matchEnd.buttons.map(({ text, onClick }, index) => <EndButton key={text} data-enter={index == 0 ? "" : undefined} data-choice-key={index == 0 ? 1 : undefined} onClick={onClick}>{text}{index == 0 && <EnterKeyHint />}</EndButton>)}</EndButtons>}
                 </EndScreen>
               )}

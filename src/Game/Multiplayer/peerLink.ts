@@ -34,7 +34,8 @@ export const checkPeerService = (isFresh = false): Promise<boolean> => {
 export const makeRoomCode = () => [...Array(CODE_LENGTH)].map(() => CODE_LETTERS[Math.floor(Math.random() * CODE_LETTERS.length)]).join('');
 export const cleanRoomCode = (code: string) => code.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, CODE_LENGTH);
 export const getIsRoomCode = (code: string) => cleanRoomCode(code).length == CODE_LENGTH;
-export const getJoinLink = (code: string) => `${window.location.origin}/home?join=${code}`;
+// (into the game itself, the apartment's monitor, not the landing: Jamie)
+export const getJoinLink = (code: string) => `${window.location.origin}/game?join=${code}`;
 // (a guest who opened the host's link: its code. Read as the page loads: the redirect to /home drops the query
 // (Jamie: the link did nothing))
 const LINKED_CODE = typeof window != 'undefined' ? new URLSearchParams(window.location.search).get('join') : null;

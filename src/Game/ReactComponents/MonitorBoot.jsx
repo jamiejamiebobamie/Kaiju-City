@@ -3,7 +3,7 @@ import styled, { css, keyframes } from "styled-components";
 import { loadAssets } from "Utils/assetLoader";
 import { getIsGameBeaten } from "../DataClasses/Unlocks";
 import { unlockEverything } from "../DataClasses/Avatars";
-import { checkPeerService } from "../Multiplayer/peerLink";
+import { checkPeerService, getLinkedRoomCode } from "../Multiplayer/peerLink";
 import { MultiplayerLobby } from "../Multiplayer/MultiplayerLobby";
 
 /*
@@ -268,7 +268,8 @@ export const MonitorBoot = ({ onDone }) => {
   }, []);
   // (Jamie, playtest 31: no pretend cursor: the player clicks Play themselves, with the normal arrow)
   useEffect(() => {
-    const steps = { pressed: ["mode", BOOT.clickHoldMs] }[phase];
+    // (opened from a host's link: past the mode, straight to joining them. Jamie)
+    const steps = { pressed: [getLinkedRoomCode() ? "lobby" : "mode", BOOT.clickHoldMs] }[phase];
     if (!steps) return;
     const timeout = setTimeout(() => {
       if (steps[0] == "done") {

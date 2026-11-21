@@ -92,6 +92,8 @@ const CONNECTED_HOLD_MS = 900; // ("Connected!" seen before the match setup)
 export const MultiplayerLobby = ({ onBack, onConnected }) => {
   const linkedCode = useRef(getLinkedRoomCode());
   const [screen, setScreen] = useState(linkedCode.current ? "join" : "choose"); // choose, host, join
+  // (opened from the host's link: joined at once, no code to type. Jamie)
+  useEffect(() => { if (linkedCode.current) begin("guest", linkedCode.current); }, []);
   const [code, setCode] = useState(linkedCode.current || "");
   const [status, setStatus] = useState(undefined);
   const [isCopied, setIsCopied] = useState(false);
