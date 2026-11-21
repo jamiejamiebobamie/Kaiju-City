@@ -24,7 +24,7 @@ import { BREAK_TOTAL_MS, DialogueLogPanel } from "./DialogueLogPanel";
 import { ChoiceButton } from "./GameBoard/GameBoard";
 import { DEFAULT_AGGRESSION } from "Game/DataClasses/npcBrain/brain";
 import { getKaijuSpeedMode, KaijuSpeedMode, setKaijuSpeedMode } from "../DataClasses/KaijuSpeedTest";
-import { getAvatarColor, saveAvatarColor, saveTeamAvatars, unlockEverything, unlockRecruitSkill, unlockSkill, unlockTool } from "../DataClasses/Avatars";
+import { ALL_SKILL_ELEMENTS, getOpenSkills, setSharedOpenSkills, getAvatarColor, saveAvatarColor, saveTeamAvatars, unlockEverything, unlockRecruitSkill, unlockSkill, unlockTool } from "../DataClasses/Avatars";
 import { AbilityPicker, FLY_OFF, LAB_LIGHTS_DELAY_MS, MINI_TIMING, PlayConsole, SideMonitor } from "./AbilityPicker";
 import { holdTamagotchi } from "./Tamagotchi";
 import { FOCUS_MOVE, getFocusTransform, HANDOVER_MS, MonitorLabBackdrop } from "./MonitorLabBackdrop";
@@ -946,7 +946,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   };
   const isMultiplayerSetupOpen = !!multiplayer && !multiplayerSetup; // (nothing else on the monitor, nor beside it, till it's set up: Jamie)
   const chooseMultiplayerSetup = chosen => {
-    const setup = { ...chosen, isHazmat: getUnlocks().includes('hazmat') }; // (the Hazmat Worker on both sides if the host has them: Jamie)
+    const setup = { ...chosen, isHazmat: getUnlocks().includes('hazmat'), openSkills: getOpenSkills() }; // (the Hazmat Worker on both sides if the host has them: Jamie; the host's open powers, co-op's guest's too)
     mp.current.setup = setup;
     setMultiplayerSetup(setup);
     if (mp.current.link) mp.current.link.send({ t: 'setup', setup });
@@ -1059,8 +1059,10 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   // a clicked button lets go of the focus, so Enter or Space can't press it again in the middle of play
   useEffect(() => {
     const letGo = (event: MouseEvent) => {
+      // (not a field to type in: the join code's lost its focus on the first key. Jamie, mp playtest 3)
       const button = (event.target as HTMLElement).closest("button, select, input");
-      if (button) setTimeout(() => (button as HTMLElement).blur(), 0);
+      const isTyping = !!button && button.tagName == "INPUT" && ["text", "search", "number"].includes((button as HTMLInputElement).type);
+      if (button && !isTyping) setTimeout(() => (button as HTMLElement).blur(), 0);
     };
     document.addEventListener("click", letGo, true);
     return () => document.removeEventListener("click", letGo, true);
@@ -1504,6 +1506,8 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
       setMultiplayerProgress(message.progress || {});
     } else if (message.t == 'setup' && mp.current.link.role == 'guest') {
       mp.current.setup = message.setup;
+      // (co-op: the host's campaign, the host's powers open to the guest; dev: every one. Jamie, mp playtest 3)
+      setSharedOpenSkills(import.meta.env.DEV ? ALL_SKILL_ELEMENTS() : message.setup.mode == 'coop' ? message.setup.openSkills : undefined);
       setMultiplayerSetup(message.setup);
     } else if (message.t == 'ready') {
       mp.current.other = { avatar: message.avatar, powers: message.powers, color: message.color, team: message.team };
@@ -1627,6 +1631,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const leaveMultiplayer = () => {
     const link = mp.current.link;
     mp.current.isLeaving = true;
+    setSharedOpenSkills(undefined); // (their own powers again)
     if (link) {
       link.send({ t: 'leave' });
       setTimeout(() => link.close(), 300); // (the word sent before the line drops)
@@ -1656,6 +1661,11 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     setCoopWait(undefined);
     setIsFlyingOff(false);
     setIsConsoleIn(false); // (the monitor back in the middle for the setup)
+    // (the avatar select from the start, not zoomed in on the last one chosen: Jamie, mp playtest 3)
+    setHandOverAvatar(undefined);
+    setHoveredAvatar(undefined);
+    setIsBackFromPicker(false);
+    setIsAvatarPicked(false);
     setIsChoosingAvatar(true);
     setIsPlayingGame(false);
   };
@@ -2254,6 +2264,16 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     setIsFlyingOff(true);
     setTimeout(callback, Math.max(0, FLY_OFF.ms - SCREEN_FADE.ms + 100));
   };
+  // single player's Back on the avatar select (Jamie, mp playtest 3): the side units off, the monitor's start menu
+  // again (Single Player / Multiplayer), past its PLAY
+  const [bootStartAt, setBootStartAt] = useState<string | undefined>(undefined);
+  const backToStartMenu = () => flyOffThen(() => {
+    resetBoot();
+    setBootStartAt("mode");
+    setIsConsoleIn(false);
+    setIsFlyingOff(false);
+    setIsBooted(false);
+  });
   // the avatar select's choice (named: dev only, scripted checks choose it too)
   const chooseAvatar = (player, teammate) => {
     // a first play skips the power picker: Discharge, Wildfire and Dispel to start (Jamie); every replay after it shows it
@@ -2285,7 +2305,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
         })}>
           {/* multiplayer's match setup: the host's, the guest waiting on it (Jamie) */}
           {isMonitorOn && isBooted && multiplayer && !multiplayerSetup && <MatchSetup isWaiting={multiplayer.link.role == 'guest'} progress={multiplayerProgress} onProgress={progress => mp.current.link && mp.current.link.send({ t: 'setupProgress', progress })} onDone={chooseMultiplayerSetup} />}
-          {isMonitorOn && !isBooted && <MonitorBoot onDone={linked => { if (linked && linked.link) setMultiplayer(linked); setIsBooted(true); }} />}
+          {isMonitorOn && !isBooted && <MonitorBoot startAt={bootStartAt} onDone={linked => { if (linked && linked.link) setMultiplayer(linked); setIsBooted(true); }} />}
           {/* the Lab behind them, darkened, lit round the avatars (Jamie) */}
           <MonitorLabBackdrop mode={isChoosingAvatar ? "choice" : "picker"} hovered={hoveredAvatar} focus={isChoosingAvatar ? handOverAvatar : selectedAvatar} />
           {isMultiplayerSetupOpen || isMultiplayerVat ? null : isChoosingAvatar ? (
@@ -2336,13 +2356,13 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
           <>
             {/* from the avatar select on, flying in with the console (Jamie) */}
             <SideMonitor isPickerShowing={!isChoosingAvatar} screen={isChoosingAvatar ? "avatar" : isMultiplayerVat ? "vat" : "picker"} isPoweredOff={isSideOff} isLeaving={isFlyingOff} isQuiet={isBackFromPicker} isFadingOut={isChoosingAvatar && isAvatarPicked} bioOf={hoveredAvatar || handOverAvatar} /* (the Agent's question unless a tank is hovered; once one's chosen, its file stays: Jamie, playtests 27 and 29) */ />
-            {/* its face turns over to each screen's buttons (Jamie, mp playtest 2): the avatar select's Next alone (a
-                character clicked is the way on), the picker's Back and Play (multiplayer: Next, the vat after it), the
-                vat's Back and Play */}
+            {/* multiplayer: its face turns over to each screen's buttons (Jamie, mp playtests 2-3): the avatar select's
+                Next alone (a character clicked is the way on), the picker's Back and Next, the vat's Back and Play.
+                Single player: one face, Play and Back throughout, Back on the avatar select to the start menu */}
             <PlayConsole
-              faceKey={isChoosingAvatar ? "avatar" : isMultiplayerVat ? "vat" : "picker"}
-              {...(isChoosingAvatar ? { isReady: false, playLabel: "Next", onPlay: () => {} }
-                : isMultiplayerVat ? { isReady: !isVatBusy && !isFlyingOff, playLabel: "Play", isPulsing: true, onPlay: () => vatActions.current && vatActions.current.play(), onBack: () => setIsMultiplayerVat(false), isBackDisabled: isVatBusy || isFlyingOff }
+              faceKey={!multiplayer ? undefined : isChoosingAvatar ? "avatar" : isMultiplayerVat ? "vat" : "picker"}
+              {...(isChoosingAvatar ? (multiplayer ? { isReady: false, playLabel: "Next", onPlay: () => {} } : { isReady: false, playLabel: "Play", onPlay: () => {}, onBack: backToStartMenu, isBackDisabled: isFlyingOff || isAvatarPicked })
+                : isMultiplayerVat ? { isReady: !isVatBusy && !isFlyingOff, playLabel: "Play", onPlay: () => vatActions.current && vatActions.current.play(), onBack: () => setIsMultiplayerVat(false), isBackDisabled: isVatBusy || isFlyingOff }
                 : {
                   isReady: pickedAbilities.length == 3,
                   playLabel: isLabPicker ? "Back to Lab" : multiplayer && !mp.current.isLocal ? "Next" : "Play", /* (no "!": Jamie, playtest 28) */

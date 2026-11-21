@@ -242,8 +242,9 @@ const ModeNote = styled.span`
 `;
 
 // 'onDone': on into the game; with Multiplayer, given the link to the other player (and any messages already come)
-export const MonitorBoot = ({ onDone }) => {
-  const [phase, setPhase] = useState("loading"); // loading, start, moving, pressed, mode
+// 'startAt': back from the avatar select (single player's Back): straight to the mode buttons, loaded already
+export const MonitorBoot = ({ onDone, startAt = undefined }) => {
+  const [phase, setPhase] = useState(startAt || "loading"); // loading, start, moving, pressed, mode
   const [, setDevTick] = useState(0); // (dev only: the unlock below re-renders it)
   const isBeaten = getIsGameBeaten();
   // the multiplayer service checked once the game's beaten (Jamie): undefined while asking, then up or down
@@ -260,6 +261,7 @@ export const MonitorBoot = ({ onDone }) => {
   useEffect(() => {
     let isCancelled = false;
     const minimum = new Promise(resolve => setTimeout(resolve, BOOT.minLoadMs));
+    if (startAt) return;
     Promise.all([loadAssets("game", share => !isCancelled && setProgress(share)), minimum]).then(() => {
       if (isCancelled) return;
       setPhase("start");

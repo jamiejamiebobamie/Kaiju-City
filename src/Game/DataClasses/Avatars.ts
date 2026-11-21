@@ -31,7 +31,13 @@ const getSkillId = (element: string) => `skill-${element}`;
 
 export const getSkillUnlock = (element: string) => SKILL_UNLOCKS.find(skill => skill.element == element);
 
-export const getIsSkillOpen = (element: string) => !getSkillUnlock(element) || getUnlocks().includes(getSkillId(element));
+// (a co-op guest plays with the host's powers open, not their own; in dev, a guest has them all. Jamie, mp playtest 3)
+let sharedOpenSkills: Array<string> | undefined;
+export const setSharedOpenSkills = (elements: Array<string> | undefined) => { sharedOpenSkills = elements; };
+export const getOpenSkills = () => SKILL_UNLOCKS.map(({ element }) => element).filter(element => getIsSkillOpen(element));
+export const ALL_SKILL_ELEMENTS = () => SKILL_UNLOCKS.map(({ element }) => element);
+
+export const getIsSkillOpen = (element: string) => !getSkillUnlock(element) || (sharedOpenSkills ? sharedOpenSkills.includes(element) : getUnlocks().includes(getSkillId(element)));
 
 // a first play (Jamie): no playthrough started before, and no power opened. it skips the picker, with these to start.
 // every new game after it opens the picker (Jamie, 2026-11-14), as the Lab's power option does
@@ -60,7 +66,8 @@ export const unlockTool = (tool: string) => addUnlock(TOOL_UNLOCKS[tool]);
 
 // dev testing: every character, power, tool and battleground open at once (and every recruit recruited, for their calls)
 export const unlockEverything = (battlegroundIds: Array<string>) => {
-  ROSTER.forEach(({ unlock }) => unlock && addUnlock(unlock));
+  // (not the Hazmat Worker: they're the story's to open, and the dev unlock is used to play it. Jamie, mp playtest 3)
+  ROSTER.forEach(({ unlock }) => unlock && unlock != 'hazmat' && addUnlock(unlock));
   SKILL_UNLOCKS.forEach(({ element }) => addUnlock(getSkillId(element)));
   Object.values(TOOL_UNLOCKS).forEach(id => addUnlock(id));
   battlegroundIds.forEach(levelId => addUnlock(getBattlegroundUnlockId(levelId)));

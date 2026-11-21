@@ -294,6 +294,7 @@ export class GameBoardPieceBase {
             if (!!dmg) {
                 this.lastHitDirs = this.gameManagerProxy.getStatusDirs(this.tileIndex);
                 this.lastHitBy = this.gameManagerProxy.getStatusCaster(this.tileIndex); // -1 for a Kaiju's touch
+                if (this.lastHitBy !== undefined && this.lastHitBy >= 0) this.lastCasterHitBy = this.lastHitBy; // (the last one who cast at it: defense's kills)
                 this.decrementHealth(accTime, dmg);
             }
         }
@@ -980,6 +981,8 @@ export class GameBoardPieceBase {
     }
 
     respawn(accTime) {
+        this.lifeNumber = (this.lifeNumber || 0) + 1; // (each life's death its own: defense's kills)
+        this.lastCasterHitBy = undefined;
         this.isCharmed = false;
         this.setTeamIndex(this.homeTeamIndex);
         this.lives = this.maxLives;

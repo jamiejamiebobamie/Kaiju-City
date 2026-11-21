@@ -3567,7 +3567,10 @@ export class GameManager {
     // multiplayer's portal: see QUICK_PORTAL. Any human player's piece (the host's, the guest's)
     startQuickPortal(piece, toTile) {
         if (!piece || piece.isNpc) return false;
-        this.quickPortals = (this.quickPortals || []).filter(each => each.piece != piece);
+        // (already on its way through: still on the link's tile, it takes the link again each tick, and each time it
+        // started over, never coming out: Jamie, mp playtest 3, the Aquarium's stairs)
+        if ((this.quickPortals || []).some(each => each.piece == piece)) return true;
+        this.quickPortals = this.quickPortals || [];
         piece.isVisible = false;
         piece.isOnTiles = false;
         piece.moveToTiles = [];

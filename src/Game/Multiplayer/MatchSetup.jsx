@@ -40,6 +40,13 @@ const Row = styled.div`
   flex-wrap: wrap;
   justify-content: center;
 `;
+// (the match types one above the other, in the middle, the same width: Jamie, mp playtest 3)
+const Column = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.9cqw;
+`;
 const Choice = styled.button`
   padding: 0.6cqw 1.3cqw;
   font-family: gameboy;
@@ -232,13 +239,13 @@ export const MatchSetup = ({ isWaiting = false, progress = {}, onProgress = (pro
     <Screen onKeyDown={event => event.stopPropagation()} style={step == "type" ? { justifyContent: "flex-start", paddingTop: "22%" } : undefined}>
       {step == "type" && (
         <>
-          <Title>Match Type</Title>
-          <Row>
+          <Title style={{ marginBottom: "1cqw" }}>Match Type</Title>
+          <Column>
             <Choice onClick={() => { change({ mode: "standing" }, { match: true }); go("level"); }}>Last team standing</Choice>
             <Choice onClick={() => { change({ mode: "defense" }, { match: true }); go("kaiju"); }}>Peninsula defense</Choice>
             {/* (the campaign together, the guest the teammate. Jamie, 2026-11-20) */}
             <Choice onClick={() => { change({ mode: "coop" }, { match: true, teams: true, count: true }); go("coop"); }}>Co-op Campaign</Choice>
-          </Row>
+          </Column>
         </>
       )}
       {step == "level" && (
@@ -252,7 +259,7 @@ export const MatchSetup = ({ isWaiting = false, progress = {}, onProgress = (pro
               </Card>
             ))}
           </Row>
-          <Back />
+          <div style={{ marginTop: "1.2cqw" }}><Back /></div>
         </>
       )}
       {step == "kaiju" && (
@@ -273,10 +280,12 @@ export const MatchSetup = ({ isWaiting = false, progress = {}, onProgress = (pro
       )}
       {step == "coop" && (
         <>
-          <Title>{"Play the campaign together?\nYour guest will be your teammate."}</Title>
-          <Row>
+          {/* (a gap between the two, and above the buttons; Play the bigger: Jamie, mp playtest 3) */}
+          <Title>Play the campaign together?</Title>
+          <Title style={{ fontSize: "1.4cqw", marginTop: "0.4cqw" }}>Your guest will be your teammate.</Title>
+          <Row style={{ marginTop: "1.6cqw" }}>
             <Back />
-            <Choice $isOn onClick={() => finish({})}>Play</Choice>
+            <Choice $isOn onClick={() => finish({})} style={{ fontSize: "1.6cqw", padding: "0.9cqw 2.6cqw" }}>Play</Choice>
           </Row>
         </>
       )}

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { GameManager } from 'Game/DataClasses/GameManager';
 import { SettingsManager } from 'Game/DataClasses/SettingsManager';
 import { applyChanges, MirrorSender } from './mirror';
+import { placePiece } from 'Game/DataClasses/testHelpers';
 import { DEFENSE_LEVEL, getSideKills, updateGuestTakeOver, BATTLEGROUNDS, getBattleground, getMultiplayerKillsToWin, GUEST_PIECE_INDEX, MULTIPLAYER_LEVEL, MultiplayerConfig, setUpMultiplayerMatch } from './multiplayerMatch';
 
 const CONFIG: MultiplayerConfig = { mode: 'standing', level: 'peninsula', teamSize: 0, host: { avatar: 'guy', powers: ['Fire', 'Ice', 'Water'] }, guest: { avatar: 'girl', powers: ['Lightning', 'Wood', 'Metal'] } };
@@ -132,6 +133,24 @@ describe('a multiplayer match', { timeout: 20000 }, () => {
     expect(host.getGameResult()).toBe(-1); // (GameResult.PlayerLost: the guest's side beat more)
   });
 
+  it("keeps each side's kills once the fallen Kaiju is brought back, and a Kaiju's touch doesn't take one from its caster", () => {
+    const config: MultiplayerConfig = { ...CONFIG, mode: 'defense', kaijuToWin: 5 };
+    const host = makeSide('host', config);
+    for (let tick = 0; tick < 3000 && !host.getPieces().some((piece: any) => piece.side === undefined); tick++) host.stepPieces();
+    const kaiju = host.getPieces().find((piece: any) => piece.side === undefined);
+    kaiju.lastCasterHitBy = GUEST_PIECE_INDEX; // (the guest's power struck it...)
+    kaiju.lastHitBy = -1; // (...then a Kaiju's touch finished it)
+    kaiju.decrementHealth(host.getAccTime(), 999);
+    for (let tick = 0; tick < 20 && !kaiju.getIsDead(); tick++) host.stepPieces();
+    expect(getSideKills(host)).toEqual([0, 1]);
+    kaiju.respawn(host.getAccTime()); // (brought back as the next one: Jamie, the count went back to 0)
+    expect(getSideKills(host)).toEqual([0, 1]);
+    // the guest's count is the host's, mirrored
+    const guest = makeSide('guest', config);
+    applyChanges(guest, JSON.parse(JSON.stringify(new MirrorSender().collect(host))));
+    expect(getSideKills(guest)).toEqual([0, 1]);
+  });
+
   it("ends defense on every Kaiju down, even one killed by no side's hand", () => {
     const config: MultiplayerConfig = { ...CONFIG, mode: 'defense', kaijuToWin: 1 };
     const host = makeSide('host', config);
@@ -142,6 +161,20 @@ describe('a multiplayer match', { timeout: 20000 }, () => {
     for (let tick = 0; tick < 20 && host.getGameResult() === null; tick++) host.stepPieces();
     expect(getSideKills(host)).toEqual([0, 0]);
     expect(host.getGameResult()).not.toBeNull(); // (ended: the count is the Kaiju down)
+  });
+
+  it("takes the Aquarium's stairs in a match: through, and out at the far end (it vanished there for good)", () => {
+    const host = makeSide('host', { ...CONFIG, level: 'aquarium' });
+    const guestOnHost = host.getPieces()[GUEST_PIECE_INDEX];
+    const [from, to] = host.level.tileLinks[0];
+    placePiece(host, guestOnHost, from);
+    guestOnHost.linkArrivalTile = undefined;
+    let isOut = false;
+    for (let tick = 0; tick < 80 && !isOut; tick++) {
+      host.stepPieces();
+      isOut = guestOnHost.isVisible && guestOnHost.getTileIndex().i == to.i && guestOnHost.getTileIndex().j == to.j;
+    }
+    expect(isOut).toBe(true);
   });
 
   it("goes through a portal quickly in a match (nothing pauses): off the board a moment, then out at the far end", () => {

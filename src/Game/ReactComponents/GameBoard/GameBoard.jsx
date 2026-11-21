@@ -1311,11 +1311,20 @@ export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade 
     return currentSpeech.x + pastLeft - pastRight;
   };
 
+  /*
+    A body sorts with the living by where it lies (Jamie, mp playtest 3): under one standing in front of it, over one
+    behind it (it was under them all); a step under one on its own tile. Still over the tiles and their statuses (the
+    tile canvas, far below). The Aquarium's: never under its tank either.
+  */
+  const getBodyZ = location => {
+    const sorted = 20001 + gameManager.gameBoardManager.getZIndexAtLocation(location) - 1;
+    return level.bodiesOverSortY !== undefined ? Math.max(sorted, getSortZIndex(level, level.bodiesOverSortY) + 1) : sorted;
+  };
   const deathPiecesComponents = recruitScene ? [] : gameManager.getDeathPieces().map(death => {
     const { key, avatar, charLocation, color, zIndex, body } = death;
     return avatar == 'kaiju' ?
       <ExplodingKaiju key={key} charLocation={charLocation} color={color} zIndex={zIndex} />
-      : <DeadPlayer key={key} avatar={avatar} pieceScale={pieceScale} charLocation={charLocation} body={body} spriteSheetSrc={death.spriteSheetSrc} color={color} zIndex={zIndex} ghost={death.isGhostForm ? "ghost" : undefined} bodyZ={level.bodiesOverSortY !== undefined ? getSortZIndex(level, level.bodiesOverSortY) + 1 : undefined} />;
+      : <DeadPlayer key={key} avatar={avatar} pieceScale={pieceScale} charLocation={charLocation} body={body} spriteSheetSrc={death.spriteSheetSrc} color={color} zIndex={zIndex} ghost={death.isGhostForm ? "ghost" : undefined} bodyZ={getBodyZ(body || charLocation)} />;
   });
 
   const foregroundLayers = level.foregroundLayers.map(({ src, x, y, width, height, sortY }) => (

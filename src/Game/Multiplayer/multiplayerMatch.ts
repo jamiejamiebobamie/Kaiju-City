@@ -18,7 +18,7 @@ import { PIECES_INFO } from 'Utils/gameState';
 */
 export type TeamMember = { avatar: string; powers: Array<string>; kind: 'teammate' | 'recruit' | 'agent' }; // (powers: elements)
 export type MultiplayerSide = { avatar: string; powers: Array<string>; color?: string; team?: Array<TeamMember> }; // (powers: the picker's elements, uppercase; color: picked in the vat)
-export type MultiplayerSetup = { mode: 'standing' | 'defense' | 'coop'; level: string; teamSize: number; isHazmat?: boolean; kaijuToWin?: number }; // ('isHazmat': the host has the Hazmat Worker, so both sides may; 'kaijuToWin': defense's count)
+export type MultiplayerSetup = { mode: 'standing' | 'defense' | 'coop'; level: string; teamSize: number; isHazmat?: boolean; kaijuToWin?: number; openSkills?: Array<string> }; // ('isHazmat': the host has the Hazmat Worker, so both sides may; 'kaijuToWin': defense's count)
 export type MultiplayerConfig = MultiplayerSetup & { host: MultiplayerSide; guest: MultiplayerSide };
 export const GUEST_PIECE_INDEX = 1;
 export const MAX_TEAM_SIZE = 5; // (the Agent and up to 4 recruits, the Hazmat Worker among them once the host has them: no Guy or Girl teammate, the players are those. 6 HUDs with the player's: Jamie)
@@ -33,14 +33,26 @@ export const MAX_KAIJU_TO_WIN = 100;
   1 the guest's) is whose it is: their HUDs, color, take-over and kills.
 */
 export const DEFENSE_LEVEL = () => ({ ...LEVELS.peninsula, isMultiplayer: true, isDefense: true, rival: undefined });
-export const getSideKills = (gm: any) => {
-  const kills = [0, 0];
+/*
+  Each Kaiju's kill, credited once as it falls, to the side whose power struck it last (a Kaiju's touch, or anything
+  else no one cast, doesn't take it from them), and kept: a fallen Kaiju is brought back as the next one, and its kill
+  went with it (Jamie, mp playtest 3: the count showed 1, then 0 again). The host's tally, mirrored to the guest
+  ('sideKills').
+*/
+export const getSideKills = (gm: any): Array<number> => {
+  if (gm.isMirrorGuest) return gm.sideKills || [0, 0];
+  gm.sideKills = gm.sideKills || [0, 0];
+  gm.creditedDeaths = gm.creditedDeaths || new Set();
   gm.getPieces().forEach((piece: any) => {
-    if (piece.side !== undefined || !piece.getIsDead() || piece.lastHitBy === undefined || piece.lastHitBy < 0) return;
-    const hitter = gm.getPieces()[piece.lastHitBy];
-    if (hitter && hitter.side !== undefined) kills[hitter.side] += 1;
+    if (piece.side !== undefined || !piece.getIsDead()) return;
+    const death = `${piece.pieceIndex}:${piece.lifeNumber || 0}`;
+    if (gm.creditedDeaths.has(death)) return;
+    gm.creditedDeaths.add(death);
+    const by = piece.lastCasterHitBy !== undefined ? piece.lastCasterHitBy : piece.lastHitBy;
+    const hitter = by !== undefined && by >= 0 ? gm.getPieces()[by] : undefined;
+    if (hitter && hitter.side !== undefined) gm.sideKills = gm.sideKills.map((count: number, side: number) => count + (side == hitter.side ? 1 : 0));
   });
-  return kills;
+  return gm.sideKills;
 };
 
 // the battlegrounds: each level as it is, less its boss, its hazards, its Kaiju ('thumbnail': its whole scene, small)
@@ -382,6 +394,7 @@ const makeGuestCamera = (gm: any) => {
 
 // the two pieces in place, after the match's own initGame (the host's avatar and powers already its player)
 export const setUpMultiplayerMatch = (gm: any, config: MultiplayerConfig, role: 'host' | 'guest') => {
+  gm.isMirrorGuest = role == 'guest'; // (its tallies the host's, mirrored)
   const piecesManager = gm.gameBoardPiecesManager;
   const [hostPiece] = gm.getPieces();
   const isDefense = config.mode == 'defense';

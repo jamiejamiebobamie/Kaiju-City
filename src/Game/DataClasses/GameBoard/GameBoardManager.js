@@ -324,7 +324,6 @@ export class GameBoardManager {
             const nextTileIndex = { i: tileIndex.i + tileIndexOffset.i, j: tileIndex.j + tileIndexOffset.j };
 
             let newDirs = [d];
-            let isTrackingHit = false; // (a chasing power reaching its target's tile: it ends there)
             if (this.getIsInBounds(nextTileIndex) && this.gameManagerProxy.getIsStatusAllowedOn(tileStatus.getAppliedStatus(), nextTileIndex)) {
                 if (tileStatus.getIsSpread(tickCount)) {
                     const area = tileStatus.getSpreadArea(tickCount);
@@ -338,12 +337,11 @@ export class GameBoardManager {
                     // with nothing to chase, keep going the same way
                     const target = this.gameManagerProxy.getPiece(tile.targetIndex);
                     if (!target.getIsDead() && (target.getTeamIndex() != tile.teamIndex || tileStatus.getDmgAmt() < 0)) {
-                        // (Jamie, multiplayer playtest 1: heals and ghosts hit their target once, then circled it: on
-                        // reaching the target it went on past, and came round again. Now on the target's own tile it ends)
+                        // (onto the target's own tile it runs on the way it was going, past it, and comes round again
+                        // for as long as it lasts: as it always did. Jamie, mp playtest 3: it ended there for a while)
                         const targetTile = target.isOnTiles && target.getTileIndex();
                         const isOnTarget = !!targetTile && targetTile.i == nextTileIndex.i && targetTile.j == nextTileIndex.j;
-                        isTrackingHit = isOnTarget;
-                        const [_, dirs] = isOnTarget ? [undefined, []] : this.getTilesTowardPiece(nextTileIndex, target); // (aimed from where it goes next, not from where it was: aimed from behind, it overshot a still target and looped round it. Jamie, mp playtest 2)
+                        const [_, dirs] = isOnTarget ? [undefined, [d]] : this.getTilesTowardPiece(nextTileIndex, target); // (aimed from where it goes next, not from where it was: aimed from behind, it overshot a still target and looped round it. Jamie, mp playtest 2)
                         // a soft chase: it turns toward the target only so far each step (a curve); within a few tiles of
                         // it, straight at it (Jamie, playtest 25: up close the soft turn left them circling the target)
                         const { colStep, scale } = this.grid;
@@ -359,7 +357,7 @@ export class GameBoardManager {
 
                 if (!wall || this.getIsTileInWall(wall, nextTileIndex, tick + 1)) {
                     // SIDE EFFECT: 'getTileContenderFromTile' decrements currCount for next tile update
-                    this.addContender(contenders, nextTileIndex, tile.getTileContenderFromTile({ newDirs, wall, currCount: isTrackingHit ? 0 : tileStatus.getBranchCount(dirIndex) }));
+                    this.addContender(contenders, nextTileIndex, tile.getTileContenderFromTile({ newDirs, wall, currCount: tileStatus.getBranchCount(dirIndex) }));
                 }
             } else if (tileStatus.getIsBouncy()) {
                 /*

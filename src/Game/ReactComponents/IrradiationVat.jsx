@@ -411,7 +411,7 @@ export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose, backL
         </SideFrame>
         {/* Irradiate and Back to Lab on the power picker's console (Jamie, playtest 25) */}
         {isDunkReady
-          ? <PlayConsole isReady={!isBusy && !isLeaving} playLabel="Ready" onPlay={dunkThenGo} isLeaving={isLeaving} isPulsing />
+          ? <PlayConsole isReady={!isBusy && !isLeaving} playLabel="Ready" onPlay={dunkThenGo} isLeaving={isLeaving} />
           : isReadyMain
           ? <PlayConsole isReady={!isBusy && !isLeaving} playLabel={backLabel} onPlay={leave} onBack={irradiate} isBackDisabled={isBusy || isLeaving} isLeaving={isLeaving} backLabel="Dunk" />
           : <PlayConsole isReady={!isBusy && !isLeaving} playLabel="Dunk" /* (Jamie, playtest 34: was Irradiate, too big for the console) */ onPlay={irradiate} onBack={leave} isBackDisabled={isBusy || isLeaving} isLeaving={isLeaving} backLabel={backLabel} />}

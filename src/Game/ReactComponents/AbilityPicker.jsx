@@ -778,20 +778,73 @@ const Console = styled.div`
   ${props => props.$isLeaving && css`animation: ${consoleFlyOff} ${FLY_OFF.ms}ms linear forwards;`}
 `;
 
-// the pre-game's screens change on the console in place (Jamie, mp playtest 2): its metal face turns over on its
-// horizontal middle, the new buttons on its far side (half a turn away, half a turn back in)
-export const FACE_FLIP = { ms: 240 };
-const faceOut = keyframes`
-  from { transform: perspective(30cqw) rotateX(0deg); filter: brightness(1); }
-  to { transform: perspective(30cqw) rotateX(90deg); filter: brightness(0.45); }
+/*
+  The console's face turns over (Jamie, mp playtests 2-3): a slab of metal, thick, on a bar across its middle; it
+  turns a half turn up and over, like a flashcard, the next screen's buttons on its far side (as many sides as there are
+  screens: the one it came from is gone once it's round). Behind it, the console's insides: dark, wiring dimly seen.
+*/
+export const FACE_FLIP = { ms: 720, thickness: 0.8 };
+const FACE_HEIGHT = CONSOLE.height - 2 * CONSOLE.rim;
+const slabOver = keyframes`
+  from { transform: rotateX(0deg); }
+  to { transform: rotateX(180deg); }
 `;
-const faceIn = keyframes`
-  from { transform: perspective(30cqw) rotateX(-90deg); filter: brightness(0.45); }
-  to { transform: perspective(30cqw) rotateX(0deg); filter: brightness(1); }
+const FaceWell = styled.div`
+  position: relative;
+  height: 100%;
+  border-radius: 0.7cqw;
+  perspective: 26cqw;
+  /* the cavity: near black, its walls falling away into it, a few traces and parts in the dark */
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(40, 70, 48, 0.16), transparent 65%),
+    repeating-linear-gradient(90deg, transparent 0 2.2cqw, rgba(120, 150, 130, 0.07) 2.2cqw 2.3cqw),
+    repeating-linear-gradient(0deg, transparent 0 1.6cqw, rgba(120, 150, 130, 0.05) 1.6cqw 1.68cqw),
+    linear-gradient(to bottom, #050606, #0b0d0c 50%, #040505);
+  box-shadow:
+    inset 0 0.8cqw 0.9cqw rgba(0, 0, 0, 0.95),
+    inset 0 -0.6cqw 0.8cqw rgba(0, 0, 0, 0.9),
+    inset 0.8cqw 0 0.8cqw rgba(0, 0, 0, 0.9),
+    inset -0.8cqw 0 0.8cqw rgba(0, 0, 0, 0.9);
+`;
+// (the bar it turns on, across the middle, seen at its ends)
+const FaceBar = styled.span`
+  position: absolute;
+  top: 50%;
+  width: 0.7cqw;
+  height: 0.7cqw;
+  translate: 0 -50%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #8a8f96, #2a2c30 70%);
+  box-shadow: 0 0 0.2cqw rgba(0, 0, 0, 0.9);
+`;
+const Slab = styled.div`
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  ${props => props.$isTurning && css`animation: ${slabOver} ${FACE_FLIP.ms}ms cubic-bezier(0.55, 0.05, 0.3, 1) both; pointer-events: none;`}
+`;
+const SlabSide = styled.div`
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  transform: ${props => props.$isBack ? `rotateX(180deg) translateZ(${FACE_FLIP.thickness / 2}cqw)` : `translateZ(${FACE_FLIP.thickness / 2}cqw)`};
+`;
+// its top and bottom edges: the metal's thickness, seen as it turns
+const SlabEdge = styled.div`
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(50% - ${FACE_FLIP.thickness / 2}cqw);
+  height: ${FACE_FLIP.thickness}cqw;
+  backface-visibility: hidden;
+  transform: rotateX(${props => props.$isTop ? 90 : -90}deg) translateZ(${FACE_HEIGHT / 2}cqw);
+  border-radius: 0.2cqw;
+  background:
+    repeating-linear-gradient(to right, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 4px),
+    linear-gradient(to bottom, #5c6066, #2e3135);
+  box-shadow: inset 0 0 0 0.05cqw rgba(0, 0, 0, 0.6);
 `;
 const ConsoleFace = styled.div`
-  ${props => props.$flip == "out" && css`animation: ${faceOut} ${FACE_FLIP.ms}ms ease-in forwards; pointer-events: none;`}
-  ${props => props.$flip == "in" && css`animation: ${faceIn} ${FACE_FLIP.ms}ms ease-out both; pointer-events: none;`}
   position: relative;
   height: 100%;
   box-sizing: border-box;
@@ -1334,10 +1387,12 @@ const EtchedRings = ({ faceRef, buttonRefs, glowingIndex = undefined }) => {
     const measure = () => {
       const face = faceRef.current;
       if (face) {
-        const f = face.getBoundingClientRect();
+        // (from the layout, not the screen: as the face turns over, the screen's boxes move, and the rings slid along
+        // the face with them. Jamie, mp playtest 3)
+        const f = { width: face.offsetWidth, height: face.offsetHeight };
         const next = buttonRefs.map(ref => ref.current).filter(Boolean).map(element => {
-          const b = element.getBoundingClientRect();
-          const box = { x: b.left - f.left, y: b.top - f.top, width: b.width, height: b.height };
+          const [shiftX = 0, shiftY = 0] = (getComputedStyle(element).translate || "").split(" ").map(part => parseFloat(part) || 0);
+          const box = { x: element.offsetLeft + shiftX, y: element.offsetTop + shiftY, width: element.offsetWidth, height: element.offsetHeight };
           // room to the face's edges, less a margin clear of the screws
           const margin = f.height * ETCH.edgeShare;
           const room = Math.min(box.x, box.y, f.width - box.x - box.width, f.height - box.y - box.height) - margin;
@@ -1392,65 +1447,60 @@ const EtchedRings = ({ faceRef, buttonRefs, glowingIndex = undefined }) => {
 };
 
 // 'isBackDisabled': shown, but not to be pressed (the color vat's Back to Lab while it dunks: Jamie, playtest 26)
-// 'isPulsing': the main button alone, go-green, rings pulsing out from it (multiplayer's vat Ready: Jamie)
-const readyPulseOut = keyframes`
-  0% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
-  100% { transform: translate(-50%, -50%) scale(2.4); opacity: 0; }
-`;
-const ReadyPulseRing = styled.span`
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 100%;
-  height: 100%;
-  border: 0.15cqw solid #3aff3a;
-  border-radius: 50%;
-  box-shadow: 0 0 0.6cqw rgba(58, 255, 58, 0.6);
-  pointer-events: none;
-  animation: ${readyPulseOut} 1.8s ease-out infinite;
-`;
-// 'faceKey': which screen's buttons it has (the pre-game's: avatar, picker, vat); a new one turns the face over to them
+// (Play's glow is the etched rings' own, as on every screen: Jamie, mp playtest 3, no ellipses pulsing over it)
+// one side of the face: its screws, etched rings and buttons
+const FaceSide = ({ isReady, playLabel, onPlay, onBack, backLabel = "Back", isBackDisabled = false }) => {
+  const isCompact = `${playLabel}${onBack ? backLabel : ""}`.length > 14;
+  const faceRef = useRef(null);
+  const playRef = useRef(null);
+  const backRef = useRef(null);
+  return (
+    <ConsoleFace ref={faceRef}>
+      {[[0.5, 0.5, 20], [null, 0.5, -35], [0.5, null, 60], [null, null, 5]].map(([screwLeft, top, turn], k) => (
+        <Screw key={k} $turn={turn} style={{ zIndex: 2, left: screwLeft == null ? undefined : `${screwLeft}cqw`, right: screwLeft == null ? "0.5cqw" : undefined, top: top == null ? undefined : `${top}cqw`, bottom: top == null ? "0.5cqw" : undefined }} />
+      ))}
+      {/* (no ready light: Jamie, playtest 28) */}
+      <EtchedRings faceRef={faceRef} buttonRefs={[playRef, backRef]} glowingIndex={isReady ? 0 : undefined} />
+      <MetalButton ref={playRef} style={{ position: "relative", zIndex: 1 }} disabled={!isReady} $isBacklit={isReady} $isCompact={isCompact} $isMain onClick={onPlay}>
+        {playLabel}
+      </MetalButton>
+      {onBack && <MetalButton ref={backRef} style={{ position: "relative", zIndex: 1 }} disabled={isBackDisabled} $isCompact={isCompact} onClick={onBack}>{backLabel}</MetalButton>}
+    </ConsoleFace>
+  );
+};
+
+// 'faceKey': which screen's buttons it has (multiplayer's pre-game: avatar, picker, vat); a new one turns the face over
+// to them (FACE_FLIP)
 export const PlayConsole = (props) => {
   const { faceKey = undefined, isLeaving = false } = props;
   const byKey = useRef({});
   byKey.current[faceKey] = props;
   const [shownKey, setShownKey] = useState(faceKey);
-  const [flip, setFlip] = useState(undefined);
+  const [isTurning, setIsTurning] = useState(false);
   useEffect(() => {
     if (faceKey === shownKey) return;
-    setFlip("out");
-    const swap = setTimeout(() => { setShownKey(faceKey); setFlip("in"); }, FACE_FLIP.ms);
-    const done = setTimeout(() => setFlip(undefined), FACE_FLIP.ms * 2);
-    return () => { clearTimeout(swap); clearTimeout(done); };
+    setIsTurning(true);
+    // (round: the new side is the front now, the slab back to rest in the same frame)
+    const done = setTimeout(() => { setShownKey(faceKey); setIsTurning(false); }, FACE_FLIP.ms);
+    return () => clearTimeout(done);
   }, [faceKey]);
-  // (the old buttons as they turn away, the new as they turn in)
-  const shown = flip == "out" ? byKey.current[shownKey] || props : props;
-  const { isReady, playLabel, onPlay, onBack, backLabel = "Back", isBackDisabled = false, isPulsing = false } = shown;
-  const isCompact = `${playLabel}${onBack ? backLabel : ""}`.length > 14;
-  const faceRef = useRef(null);
-  const playRef = useRef(null);
-  const backRef = useRef(null);
+  const front = isTurning ? byKey.current[shownKey] || props : props;
   return (
     <>
       <Wires delayMs={MINI_TIMING.riseDelayMs + MINI_TIMING.flyMs - 250} wires={CONSOLE_WIRES} ripFor={isLeaving ? "console" : undefined} />
       <Arm box={CONSOLE} isLeaving={isLeaving} />
       <Console $isLeaving={isLeaving}>
         <Depth radius={1.4} />
-        {isLeaving
-          ? null
-          : null /* (no thrusters: it swings on its hinge now) */}
-        <ConsoleFace ref={faceRef} $flip={flip}>
-          {[[0.5, 0.5, 20], [null, 0.5, -35], [0.5, null, 60], [null, null, 5]].map(([screwLeft, top, turn], k) => (
-            <Screw key={k} $turn={turn} style={{ zIndex: 2, left: screwLeft == null ? undefined : `${screwLeft}cqw`, right: screwLeft == null ? "0.5cqw" : undefined, top: top == null ? undefined : `${top}cqw`, bottom: top == null ? "0.5cqw" : undefined }} />
-          ))}
-          {/* (no ready light: Jamie, playtest 28) */}
-          <EtchedRings faceRef={faceRef} buttonRefs={[playRef, backRef]} glowingIndex={isReady ? 0 : undefined} />
-          <MetalButton ref={playRef} style={{ position: "relative", zIndex: 1 }} disabled={!isReady} $isBacklit={isReady} $isCompact={isCompact} $isMain onClick={onPlay}>
-            {playLabel}
-            {isPulsing && isReady && [0, 1, 2].map(k => <ReadyPulseRing key={k} style={{ animationDelay: `${k * 0.6}s` }} />)}
-          </MetalButton>
-          {onBack && <MetalButton ref={backRef} style={{ position: "relative", zIndex: 1 }} disabled={isBackDisabled} $isCompact={isCompact} onClick={onBack}>{backLabel}</MetalButton>}
-        </ConsoleFace>
+        <FaceWell>
+          <FaceBar style={{ left: "-0.2cqw" }} />
+          <FaceBar style={{ right: "-0.2cqw" }} />
+          <Slab $isTurning={isTurning}>
+            <SlabEdge $isTop />
+            <SlabEdge />
+            <SlabSide><FaceSide {...front} /></SlabSide>
+            {isTurning && <SlabSide $isBack><FaceSide {...props} /></SlabSide>}
+          </Slab>
+        </FaceWell>
       </Console>
     </>
   );

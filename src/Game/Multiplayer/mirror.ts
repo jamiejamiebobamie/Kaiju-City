@@ -24,7 +24,7 @@ const getNewPieceInfo = (piece: any) => ({ kind: getPieceKind(piece), avatar: pi
 // (and each browser's own view of them: whose health bars show over their heads)
 const PIECE_SKIP = new Set(['gameManagerProxy', 'pieces', 'teams', 'onBeforeDeath', 'pieceClass', 'deathPieces', 'inputHandler', 'isShowHealthBarOnComponent']);
 const TILE_FIELDS = ['tileStatus', 'teleportTileStatus', 'currCount', 'teamIndex', 'targetIndex', 'dirs', 'wall', 'trailAge', 'cast', 'updateKey', 'dmgMultiplier'];
-const GAME_FIELDS = ['accTime', 'activePhases', 'score']; // ('score': every Kaiju down, for defense's end on the guest too) // (the phases: the subway's train coming and going, among them)
+const GAME_FIELDS = ['accTime', 'activePhases', 'score', 'sideKills']; // ('score': every Kaiju down, for defense's end on the guest too) // (the phases: the subway's train coming and going, among them)
 const MAX_DEPTH = 3;
 
 const isPlain = (value: any) => {
