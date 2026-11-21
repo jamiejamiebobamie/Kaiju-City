@@ -143,4 +143,17 @@ describe('a multiplayer match', { timeout: 20000 }, () => {
     expect(getSideKills(host)).toEqual([0, 0]);
     expect(host.getGameResult()).not.toBeNull(); // (ended: the count is the Kaiju down)
   });
+
+  it("goes through a portal quickly in a match (nothing pauses): off the board a moment, then out at the far end", () => {
+    const host = makeSide('host');
+    const guestOnHost = host.getPieces()[GUEST_PIECE_INDEX];
+    const toTile = host.gameBoardManager.walkableTiles[10];
+    expect(host.startPortalWalk(guestOnHost, toTile)).toBe(true);
+    expect(guestOnHost.isVisible).toBe(false);
+    expect(guestOnHost.isOnTiles).toBe(false); // (no harm can come to them there)
+    expect(host.portalWalk).toBeUndefined(); // (no held scene)
+    for (let tick = 0; tick < 40 && !guestOnHost.isVisible; tick++) host.stepPieces();
+    expect(guestOnHost.isVisible).toBe(true);
+    expect(guestOnHost.getTileIndex()).toEqual(toTile);
+  });
 });

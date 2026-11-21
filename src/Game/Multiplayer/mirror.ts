@@ -84,7 +84,7 @@ const decode = (value: any, gm: any, current: any = undefined): any => {
 };
 
 type NewPiece = { kind: string; avatar: string; teamIndex: number; elements: Array<string> };
-type Changes = { wormholes?: any; deaths?: { keys: Array<string>; added: Array<any> }; game?: any; pieces?: Array<[number, any]>; tiles?: Array<[number, any]>; added?: Array<[number, NewPiece]> };
+type Changes = { walkable?: string; wormholes?: any; deaths?: { keys: Array<string>; added: Array<any> }; game?: any; pieces?: Array<[number, any]>; tiles?: Array<[number, any]>; added?: Array<[number, NewPiece]> };
 
 // the host's side: what changed since the last call
 export class MirrorSender {
@@ -149,10 +149,14 @@ export class MirrorSender {
       deaths.forEach((death: any) => this.deathKeysSent.add(death.key));
       changes.deaths = { keys, added };
     }
+    // (which tiles can be walked: the subway's tracks close as a train comes, its tiles gone from the board. Jamie, mp
+    // playtest 2: they stayed on the guest's)
+    const walkable = gm.level.tileSets && gm.gameBoardManager.walkableTiles == gm.level.tileSets.train ? 'train' : 'default';
+    if (this.changed('walkable', walkable)) changes.walkable = walkable;
     // (the wormholes a Teleport leaves, and the Lab's portal: the board's own list)
     const wormholes = encode(gm.gameBoardManager.wormholes, 0); // (from the top: their ends' tiles were past the depth kept)
     if (this.changed('wormholes', wormholes)) changes.wormholes = wormholes;
-    return changes.game || changes.pieces || changes.tiles || changes.added || changes.wormholes || changes.deaths ? changes : undefined;
+    return changes.game || changes.pieces || changes.tiles || changes.added || changes.wormholes || changes.deaths || changes.walkable ? changes : undefined;
   }
 }
 
@@ -173,6 +177,7 @@ export const applyChanges = (gm: any, changes: Changes) => {
     Object.entries(fields).forEach(([key, value]) => { piece[key] = decode(value, gm, piece[key]); });
   });
   if (changes.wormholes) gm.gameBoardManager.wormholes = decode(changes.wormholes, gm);
+  if (changes.walkable) gm.gameBoardManager.setWalkableTiles(changes.walkable == 'train' ? gm.level.tileSets.train : gm.level.walkableTiles);
   if (changes.deaths) {
     const manager = gm.gameBoardPiecesManager;
     const kept = new Set(changes.deaths.keys);

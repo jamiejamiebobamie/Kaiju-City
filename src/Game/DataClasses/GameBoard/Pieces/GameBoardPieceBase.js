@@ -635,6 +635,19 @@ export class GameBoardPieceBase {
             const { wormholeMs } = this.gameManagerProxy.getAbilityAndTileStatusData().isTeleportTile;
             if (wormholeMs) this.gameManagerProxy.addWormhole(this.tileIndex, teleportTileIndex, this.accTime, wormholeMs);
             this.linkArrivalTile = teleportTileIndex; // standing on the wormhole's far end doesn't send it straight back
+            // a human player walks into it, the first time too, as through any portal (Jamie, mp playtest 2: it only showed
+            // on going back through one): GameManager.startPortalWalk (multiplayer's quick one there)
+            // (standing on its near end while it walks in isn't a trip through it: that shut the wormhole it had just left)
+            const fromTile = this.tileIndex;
+            if (!this.isNpc && (this.linkArrivalTile = fromTile) && this.gameManagerProxy.startPortalWalk(this, teleportTileIndex)) {
+                this.shouldTeleport = false;
+                if (!!this.storedPassive) {
+                    this.storedPassive();
+                    this.storedPassive = undefined;
+                }
+                return;
+            }
+            this.linkArrivalTile = teleportTileIndex;
             const teleportLocation = this.gameManagerProxy.getCharXAndYFromTileIndex(teleportTileIndex);
             this.setTileIndex(teleportTileIndex);
             this.shouldTeleport = false;

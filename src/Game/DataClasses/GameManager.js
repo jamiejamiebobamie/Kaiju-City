@@ -69,6 +69,9 @@ const AQUARIUM_STAIRS_NEAR_ROWS = 2.5;
 
 export const HAZMAT_RECRUIT = { abilities: ['metal', 'love', 'bubble'], color: '#ff8a1f' }; // orange glow (Jamie, playtest 19; was white)
 
+// multiplayer's way through a portal (nothing can pause there): gone off the board a moment (no harm can come to them),
+// out at the far end; its player's camera in close where they come out (Jamie, mp playtest 2)
+export const QUICK_PORTAL = { goneMs: 450, shotMs: 1100, panMs: 380 };
 export const PORTAL_WALK = {
   // all half what they were (Jamie, 2026-11-06)
   zoomInMs: 275, // the camera in close on the way in, or the way out
@@ -910,6 +913,7 @@ export class GameManager {
         A level can say where a link's edge is ('linkWalls'): the Aquarium's stairs go behind a pillar.
     */
     startPortalWalk = (piece, toTile) => {
+        if (this.level.isMultiplayer || this.isCoop) return this.startQuickPortal(piece, toTile);
         // (whoever the player plays as: a taken-over avatar walks through as the player does. Jamie, playtest 26)
         if (this.portalWalk || this.cutscene || piece != this.getControlledPiece()) return false;
         const board = this.gameBoardManager;
@@ -2144,7 +2148,7 @@ export class GameManager {
     getCameraShot() {
         if (this.recruitScene) return this.recruitScene.shot;
         if (this.cutscene) return this.cutscene.steps[this.cutscene.index].shot;
-        return this.outcomeShot || this.knockShot || this.portalShot || this.getGhostRingShot(); // the player knocked down by the train: in close on them
+        return this.outcomeShot || this.knockShot || this.portalShot || (this.quickPortalShot && this.quickPortalShot.shot) || this.getGhostRingShot(); // the player knocked down by the train: in close on them
     }
 
     getTimeScale = () => {
@@ -3560,8 +3564,40 @@ export class GameManager {
     getTrainablePieces = () => this.level.isWalkingLevel ? [] : this.getPieces().filter(piece =>
         piece.isNpc && piece.avatar != 'kaiju' && !piece.isChaser && !piece.escapeTile && !(piece instanceof GameBoardPieceExtra) && piece.abilities.length > 0);
 
+    // multiplayer's portal: see QUICK_PORTAL. Any human player's piece (the host's, the guest's)
+    startQuickPortal(piece, toTile) {
+        if (!piece || piece.isNpc) return false;
+        this.quickPortals = (this.quickPortals || []).filter(each => each.piece != piece);
+        piece.isVisible = false;
+        piece.isOnTiles = false;
+        piece.moveToTiles = [];
+        piece.isHeld = true;
+        this.quickPortals.push({ piece, toTile, at: this.accTime + QUICK_PORTAL.goneMs });
+        return true;
+    }
+
+    updateQuickPortals() {
+        (this.quickPortals || []).filter(({ at }) => this.accTime >= at).forEach(({ piece, toTile }) => {
+            const location = this.gameBoardManager.getCharXAndYFromTileIndex(toTile);
+            piece.setTileIndex(toTile);
+            piece.linkArrivalTile = toTile; // (not straight back through it)
+            piece.charLocation = location;
+            piece.moveFromLocation = location;
+            piece.moveToLocation = location;
+            piece.moveToTiles = [];
+            piece.isThere = true;
+            piece.isOnTiles = true;
+            piece.isVisible = true;
+            piece.isHeld = false;
+            if (piece == this.getControlledPiece()) this.quickPortalShot = { shot: { point: { ...location }, isPlayZoom: true, panMs: QUICK_PORTAL.panMs }, until: this.accTime + QUICK_PORTAL.shotMs };
+        });
+        this.quickPortals = (this.quickPortals || []).filter(({ at }) => this.accTime < at);
+        if (this.quickPortalShot && this.accTime >= this.quickPortalShot.until) this.quickPortalShot = undefined;
+    }
+
     stepPieces() {
         if (this.isPaused || this.isEditingTiles) return;
+        this.updateQuickPortals();
         this.updateObjective();
         this.updateTakeOver();
         this.updateGuardianLine();

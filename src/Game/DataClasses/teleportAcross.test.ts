@@ -83,6 +83,8 @@ describe('Teleport toward the rival, across the gaps (Jamie)', () => {
     gm.accTime += 110;
     player.movePiece({ accTime: gm.accTime, playerInputHandler: input });
     input.removeKey('KeyA');
+    // (it walks through the portal it opens: Jamie, mp playtest 2. Then it's there)
+    for (let tick = 0; tick < 600 && gm.portalWalk; tick++) gm.stepPieces();
     expect(gm.getTeleportRegion(player.getTileIndex())).toBe(gm.getTeleportRegion(rival.getTileIndex()));
   });
 

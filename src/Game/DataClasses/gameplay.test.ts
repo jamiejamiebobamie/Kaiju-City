@@ -163,13 +163,27 @@ describe('abilities', () => {
     input.usePlayerAbilityFromIndex(0, 1000);
     expect(player.shouldTeleport).toBe(true);
     player.moveToTiles = [{ i, j: j + 1 }, { i, j: j + 2 }];
+    player.accTime = 1000; // (its clock, as a move gives it: the wormhole's time is from it)
     player.teleportPiece();
-    expect(player.tileIndex).toEqual({ i, j: j + 2 });
-    // it leaves a wormhole behind, both ways, and doesn't fall straight back through it
+    // (it walks into the portal it opens, as through any: Jamie, mp playtest 2. Then it's there)
+    expect(gm.portalWalk).toBeDefined();
+    // it leaves a wormhole behind, both ways
     expect(gm.gameBoardManager.getLinkedTile({ i, j })).toEqual({ i, j: j + 2 });
     expect(gm.gameBoardManager.getLinkedTile({ i, j: j + 2 })).toEqual({ i, j });
+    const walkStart = gm.getAccTime();
+    for (let tick = 0; tick < 600 && gm.portalWalk; tick++) gm.stepPieces();
+    const walkMs = gm.getAccTime() - walkStart;
+    expect(walkMs).toBeGreaterThan(0);
+    // (still open after the walk, for anyone: walking in from its near end didn't use it up)
+    expect(gm.gameBoardManager.getLinkedTile({ i, j })).toEqual({ i, j: j + 2 });
+    expect(gm.portalWalk).toBeUndefined();
+    // (at its far end, or the step out of it the walk takes)
+    expect(player.tileIndex.i).toBe(i);
+    expect(Math.abs(player.tileIndex.j - (j + 2))).toBeLessThanOrEqual(2);
+    // (and doesn't fall straight back through it)
+    const landed = { ...player.tileIndex };
     player.movePiece({ accTime: 1100, playerInputHandler: input });
-    expect(player.tileIndex).toEqual({ i, j: j + 2 });
+    expect(player.tileIndex).toEqual(landed);
   });
 
   it('the wormhole closes after a while', () => {
