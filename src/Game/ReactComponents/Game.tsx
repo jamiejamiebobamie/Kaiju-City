@@ -27,7 +27,7 @@ import { getKaijuSpeedMode, KaijuSpeedMode, setKaijuSpeedMode } from "../DataCla
 import { getAvatarColor, saveAvatarColor, saveTeamAvatars, unlockEverything, unlockRecruitSkill, unlockSkill, unlockTool } from "../DataClasses/Avatars";
 import { AbilityPicker, FLY_OFF, LAB_LIGHTS_DELAY_MS, MINI_TIMING, PlayConsole, SideMonitor } from "./AbilityPicker";
 import { holdTamagotchi } from "./Tamagotchi";
-import { FOCUS_MOVE, getFocusTransform, MonitorLabBackdrop } from "./MonitorLabBackdrop";
+import { FOCUS_MOVE, getFocusTransform, HANDOVER_MS, MonitorLabBackdrop } from "./MonitorLabBackdrop";
 import { getHasBooted, MonitorBoot, resetBoot } from "./MonitorBoot";
 import { ROOM_HANDOFF, RoomBackdrop } from "Components/RoomScene";
 import { ZOOM_BACK } from "Components/ZoomThrough";
@@ -1510,8 +1510,13 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
       const other = message.avatar == 'guy' ? 'girl' : 'guy';
       chooseTeam(other, message.avatar);
       setPickerFrom('avatar');
-      setIsChoosingAvatar(false);
-      setIsCoopAvatarWaiting(false);
+      // (the picker only once the avatar's slid into place in the vat, the wait still up meanwhile: its buttons slid
+      // with them. Jamie, mp playtest 2): the slide first, as the host's own choice plays it, then the picker
+      setHandOverAvatar(other);
+      setTimeout(() => {
+        setIsChoosingAvatar(false);
+        setIsCoopAvatarWaiting(false);
+      }, HANDOVER_MS + 150);
     } else if (message.t == 'start' && mp.current.link.role == 'guest' && message.config && message.config.mode == 'coop') {
       mp.current.isStarted = true;
       mp.current.config = message.config;

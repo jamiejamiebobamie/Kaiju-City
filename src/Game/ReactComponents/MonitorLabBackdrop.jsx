@@ -16,7 +16,7 @@ const LAB = { src: "/levels/lab-select.png", darkness: 0.6, darknessPicker: 0.9 
 // (its leftover background, from the picture it was cut from, cleared: Jamie, playtest 28-29)
 const TANK = { src: "/levels/lab-tank-empty.png", width: 98, height: 217 };
 const BUBBLES = { src: "/spritesheet/disc_bubbles.png", frames: 7, frameWidth: 177, frameHeight: 528, seconds: 2.4 };
-const HANDOVER_MS = 1100; // the avatar select's slide (CHOICE.slideMs)
+export const HANDOVER_MS = 1100; // the avatar select's slide (CHOICE.slideMs)
 
 /*
   The whole scene down a little (Jamie: the gap between each name and number on his line), "Choose your character"
