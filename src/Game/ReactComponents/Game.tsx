@@ -1487,6 +1487,10 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     if (!message || typeof message != 'object') return;
     mp.current.lastHeardAt = Date.now();
     if (message.t == 'ping') return;
+    if (message.t == 'toSetup') {
+      backToMultiplayerSetup(false);
+      return;
+    }
     if (message.t == 'leave') {
       mp.current.onLost('left');
       return;
@@ -1620,6 +1624,31 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     }
     resetBoot();
     leaveByZoom();
+  };
+  /*
+    After a match (Jamie, mp playtest 2): back to the match setup, both of them, still linked, for another with other
+    options (the monitor's QUIT is the way out). 'isTelling': this side asked, so the other's told.
+  */
+  const backToMultiplayerSetup = (isTelling = false) => {
+    if (isTelling && mp.current.link) mp.current.link.send({ t: 'toSetup' });
+    if (gameManager.current) endMatch();
+    Object.assign(mp.current, { isStarted: false, self: undefined, other: undefined, config: undefined, setup: undefined, color: undefined, round: 0, vote: undefined, isAgainSelf: false, isAgainOther: false });
+    mp.current.sender.reset();
+    setMatchEnd(undefined);
+    setMultiplayerSetup(undefined);
+    setMultiplayerProgress({});
+    setMultiplayerLevel(undefined);
+    setIsMultiplayerWaiting(false);
+    setIsMultiplayerVat(false);
+    setIsCoopHostBusy(false);
+    setIsCoopAvatarWaiting(true);
+    setCoopChecks(undefined);
+    setCoopVote(undefined);
+    setCoopWait(undefined);
+    setIsFlyingOff(false);
+    setIsConsoleIn(false); // (the monitor back in the middle for the setup)
+    setIsChoosingAvatar(true);
+    setIsPlayingGame(false);
   };
   const onMultiplayerLost = (reason = 'disconnected') => {
     if (mp.current.isLeaving || mp.current.isLost) return;
@@ -2050,7 +2079,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     }
     if (mp.current.isStarted) {
       const title = gameManager.current && gameManager.current.getMultiplayerTitle ? gameManager.current.getMultiplayerTitle(isWon) : isWon ? "You Won!" : "You Lost";
-      const timeout = setTimeout(() => setMatchEnd({ title, buttons: [{ text: "Play again", onClick: playMultiplayerAgain }, { text: "Quit", onClick: leaveMultiplayer }] }), MATCH_END_DELAY_MS);
+      const timeout = setTimeout(() => setMatchEnd({ title, buttons: [{ text: "Play again", onClick: playMultiplayerAgain }, { text: "New Match", onClick: () => backToMultiplayerSetup(true) }] }), MATCH_END_DELAY_MS);
       return () => clearTimeout(timeout);
     }
     if (isWon && level.skillOnLeave) unlockSkill(level.skillOnLeave); // the Street's Teleport

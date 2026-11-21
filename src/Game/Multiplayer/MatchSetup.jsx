@@ -198,6 +198,7 @@ export const MultiplayerWaiting = ({ text = "Waiting for other player...", child
 export const MatchSetup = ({ isWaiting = false, progress = {}, onProgress = (progress) => {}, onDone }) => {
   const [setup, setSetup] = useState(DEFAULT_SETUP);
   const [done, setDone] = useState({});
+  const [step, setStep] = useState("type"); // type, level, kaiju, coop, teams
   const change = (values, ticks) => {
     setSetup(current => ({ ...current, ...values }));
     setDone(current => {
@@ -218,22 +219,45 @@ export const MatchSetup = ({ isWaiting = false, progress = {}, onProgress = (pro
     );
   }
   const isTeams = setup.teamSize > 0;
+  /*
+    One choice to a screen (Jamie, mp playtest 2), each on to the next, Back to undo the last:
+    Match Type → Level (Last team standing) | Kaiju to Defeat (Peninsula defense) | the campaign together (Co-op)
+    → Teammates? (the two matches)
+  */
+  const go = next => setStep(next);
+  const back = () => setStep(({ level: "type", kaiju: "type", coop: "type", teams: setup.mode == "defense" ? "kaiju" : "level" })[step] || "type");
+  const finish = values => onDone({ ...setup, ...values });
+  const Back = () => <Choice onClick={back}>Back</Choice>;
   return (
-    <Screen onKeyDown={event => event.stopPropagation()}>
-      <Title>Match setup</Title>
-      <Label>Match</Label>
-      <Row>
-        <Choice $isOn={setup.mode == "standing"} onClick={() => change({ mode: "standing" }, { match: true })}>Last team standing</Choice>
-        <Choice $isOn={setup.mode == "defense"} onClick={() => change({ mode: "defense" }, { match: true })}>Peninsula defense</Choice>
-        {/* (the campaign together, the guest the teammate: nothing more to set. Jamie, 2026-11-20) */}
-        <Choice $isOn={setup.mode == "coop"} onClick={() => change({ mode: "coop" }, { match: true, teams: true, count: true })}>Co-op Campaign</Choice>
-      </Row>
-      {/* (defense: always the Peninsula; how many Kaiju instead, up to 100: Jamie) */}
-      {setup.mode == "coop" ? (
-        <Label>The campaign together: the guest plays your teammate</Label>
-      ) : setup.mode == "defense" ? (
+    <Screen onKeyDown={event => event.stopPropagation()} style={step == "type" ? { justifyContent: "flex-start", paddingTop: "22%" } : undefined}>
+      {step == "type" && (
         <>
-          <Label>Kaiju to defeat</Label>
+          <Title>Match Type</Title>
+          <Row>
+            <Choice onClick={() => { change({ mode: "standing" }, { match: true }); go("level"); }}>Last team standing</Choice>
+            <Choice onClick={() => { change({ mode: "defense" }, { match: true }); go("kaiju"); }}>Peninsula defense</Choice>
+            {/* (the campaign together, the guest the teammate. Jamie, 2026-11-20) */}
+            <Choice onClick={() => { change({ mode: "coop" }, { match: true, teams: true, count: true }); go("coop"); }}>Co-op Campaign</Choice>
+          </Row>
+        </>
+      )}
+      {step == "level" && (
+        <>
+          <Title>Level</Title>
+          <Row>
+            {BATTLEGROUNDS.map(({ id, name, thumbnail, thumbnailPosition, thumbnailZoom }) => (
+              <Card key={id} $isOn={setup.level == id} onClick={() => { change({ level: id }, {}); go("teams"); }}>
+                <Thumb>{thumbnail.map(src => <img key={src} src={src} alt="" style={thumbnailPosition ? { objectPosition: thumbnailPosition, transform: `scale(${thumbnailZoom || 1})`, transformOrigin: thumbnailPosition } : undefined} />)}</Thumb>
+                {name}
+              </Card>
+            ))}
+          </Row>
+          <Back />
+        </>
+      )}
+      {step == "kaiju" && (
+        <>
+          <Title>Kaiju to Defeat</Title>
           <Row>
             <Choice onClick={() => change({ kaijuToWin: Math.max(1, setup.kaijuToWin - 10) }, {})} disabled={setup.kaijuToWin <= 1}>-10</Choice>
             <Choice onClick={() => change({ kaijuToWin: Math.max(1, setup.kaijuToWin - 1) }, {})} disabled={setup.kaijuToWin <= 1}>-</Choice>
@@ -241,40 +265,45 @@ export const MatchSetup = ({ isWaiting = false, progress = {}, onProgress = (pro
             <Choice onClick={() => change({ kaijuToWin: Math.min(MAX_KAIJU_TO_WIN, setup.kaijuToWin + 1) }, {})} disabled={setup.kaijuToWin >= MAX_KAIJU_TO_WIN}>+</Choice>
             <Choice onClick={() => change({ kaijuToWin: Math.min(MAX_KAIJU_TO_WIN, setup.kaijuToWin + 10) }, {})} disabled={setup.kaijuToWin >= MAX_KAIJU_TO_WIN}>+10</Choice>
           </Row>
-        </>
-      ) : (
-      <>
-      <Label>Battleground</Label>
-      <Row>
-        {BATTLEGROUNDS.map(({ id, name, thumbnail, thumbnailPosition, thumbnailZoom }) => (
-          <Card key={id} $isOn={setup.level == id} onClick={() => change({ level: id }, { match: true })}>
-            <Thumb>{thumbnail.map(src => <img key={src} src={src} alt="" style={thumbnailPosition ? { objectPosition: thumbnailPosition, transform: `scale(${thumbnailZoom || 1})`, transformOrigin: thumbnailPosition } : undefined} />)}</Thumb>
-            {name}
-          </Card>
-        ))}
-      </Row>
-      </>
-      )}
-      {setup.mode != "coop" && (
-      <>
-      <Label>Have Teammates?</Label>
-      <Row>
-        <Choice $isOn={!isTeams} onClick={() => change({ teamSize: 0 }, { teams: true, count: true })}>Off</Choice>
-        <Choice $isOn={isTeams} onClick={() => change({ teamSize: isTeams ? setup.teamSize : 1 }, { teams: true })}>On</Choice>
-      </Row>
-      {isTeams && (
-        <>
-          <Label>How many per team?</Label>
           <Row>
-            <Choice onClick={() => change({ teamSize: Math.max(1, setup.teamSize - 1) }, { count: true })} disabled={setup.teamSize <= 1}>-</Choice>
-            <Count>{setup.teamSize}</Count>
-            <Choice onClick={() => change({ teamSize: Math.min(MAX_TEAM_SIZE, setup.teamSize + 1) }, { count: true })} disabled={setup.teamSize >= MAX_TEAM_SIZE}>+</Choice>
+            <Back />
+            <Choice $isOn onClick={() => go("teams")}>Next</Choice>
           </Row>
         </>
       )}
-      </>
+      {step == "coop" && (
+        <>
+          <Title>{"Play the campaign together?\nYour guest will be your teammate."}</Title>
+          <Row>
+            <Back />
+            <Choice $isOn onClick={() => finish({})}>Play</Choice>
+          </Row>
+        </>
       )}
-      <Choice $isOn onClick={() => onDone(setup)}>Continue</Choice>
+      {step == "teams" && (
+        <>
+          <Title>Teammates?</Title>
+          <Row>
+            <Choice $isOn={!isTeams && !!done.teams} onClick={() => { change({ teamSize: 0 }, { teams: true, count: true }); finish({ teamSize: 0 }); }}>Off</Choice>
+            <Choice $isOn={isTeams} onClick={() => change({ teamSize: isTeams ? setup.teamSize : 1 }, { teams: true })}>On</Choice>
+          </Row>
+          {isTeams && (
+            <>
+              <Label>How many per team?</Label>
+              <Row>
+                <Choice onClick={() => change({ teamSize: Math.max(1, setup.teamSize - 1) }, { count: true })} disabled={setup.teamSize <= 1}>-</Choice>
+                <Count>{setup.teamSize}</Count>
+                <Choice onClick={() => change({ teamSize: Math.min(MAX_TEAM_SIZE, setup.teamSize + 1) }, { count: true })} disabled={setup.teamSize >= MAX_TEAM_SIZE}>+</Choice>
+              </Row>
+            </>
+          )}
+          <Row>
+            <Back />
+            {isTeams && <Choice $isOn onClick={() => { change({}, { count: true }); finish({}); }}>Next</Choice>}
+          </Row>
+        </>
+      )}
     </Screen>
   );
 };
+
