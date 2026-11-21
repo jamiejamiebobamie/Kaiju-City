@@ -178,7 +178,12 @@ export const setUpCoop = (gm: any, config: MultiplayerConfig, role: 'host' | 'gu
   host.side = 0;
   if (config.host.color) host.color = config.host.color;
   const teammate = pieces.find((piece: any) => piece.pieceIndex != 0 && piece.teamIndex == host.teamIndex && !piece.isRecruit && piece.avatar == config.guest.avatar);
-  if (role == 'guest') { gm.getCameraShot = () => gm.coopHostShot; gm.isCoopGuest = true; }
+  if (role == 'guest') {
+    // (the host's cutscene camera; else their own: knockdowns and portals)
+    const ownCamera = makeGuestCamera(gm);
+    gm.getCameraShot = () => gm.coopHostShot || ownCamera();
+    gm.isCoopGuest = true;
+  }
   if (!teammate) return undefined;
   teammate.side = 1;
   teammate.abilities = gm.settingsManager.getAbilitiesFromElements(config.guest.powers.map(power => power[0].toLowerCase() + power.slice(1)));
@@ -358,6 +363,23 @@ export const getIsSiteLocked = (site: any, wait: any) => {
   return !!site.visitLevelId; // (the objective: a place not yet been)
 };
 
+// the guest's own camera (matches and co-op): in close on their knockdown, and in on them through a portal (a jump
+// across the board), from what the host's changes show
+const makeGuestCamera = (gm: any) => {
+  let last: any;
+  let jumpShot: any;
+  return () => {
+    const piece = gm.getControlledPiece();
+    if (!piece || !piece.charLocation) return undefined;
+    const knock = (piece.knockedUntil || 0) > gm.getAccTime() && gm.gameBoardPiecesManager.deathPieces.find((death: any) => death.isKnockdown && death.pieceIndex == piece.pieceIndex);
+    if (knock) return { point: { ...knock.charLocation }, zoomScale: GUEST_SHOT.knockZoom, panMs: GUEST_SHOT.knockPanMs, isPeninsulaSized: true };
+    const here = piece.charLocation;
+    if (last && last.piece == piece && Math.hypot(here.x - last.at.x, here.y - last.at.y) > GUEST_SHOT.jumpPx) jumpShot = { shot: { point: { ...here }, isPlayZoom: true, panMs: GUEST_SHOT.portalPanMs }, until: Date.now() + GUEST_SHOT.portalMs };
+    last = { piece, at: { ...here } };
+    return jumpShot && Date.now() < jumpShot.until ? jumpShot.shot : undefined;
+  };
+};
+
 // the two pieces in place, after the match's own initGame (the host's avatar and powers already its player)
 export const setUpMultiplayerMatch = (gm: any, config: MultiplayerConfig, role: 'host' | 'guest') => {
   const piecesManager = gm.gameBoardPiecesManager;
@@ -433,18 +455,7 @@ export const setUpMultiplayerMatch = (gm: any, config: MultiplayerConfig, role: 
     // the guest's camera (Jamie: no train close-up, nor portal zoom for them): from what the host's changes show, as the
     // host's own shots are the host's player's. Knocked down: in close on their body; through a portal or the stairs (a
     // jump across the board): in close where they come out, a moment
-    let last: any;
-    let jumpShot: any;
-    gm.getCameraShot = () => {
-      const piece = gm.getControlledPiece();
-      if (!piece) return undefined;
-      const knock = (piece.knockedUntil || 0) > gm.getAccTime() && piecesManager.deathPieces.find((death: any) => death.isKnockdown && death.pieceIndex == piece.pieceIndex);
-      if (knock) return { point: { ...knock.charLocation }, zoomScale: GUEST_SHOT.knockZoom, panMs: GUEST_SHOT.knockPanMs, isPeninsulaSized: true };
-      const here = piece.charLocation;
-      if (last && last.piece == piece && Math.hypot(here.x - last.at.x, here.y - last.at.y) > GUEST_SHOT.jumpPx) jumpShot = { shot: { point: { ...here }, isPlayZoom: true, panMs: GUEST_SHOT.portalPanMs }, until: Date.now() + GUEST_SHOT.portalMs };
-      last = { piece, at: { ...here } };
-      return jumpShot && Date.now() < jumpShot.until ? jumpShot.shot : undefined;
-    };
+    gm.getCameraShot = makeGuestCamera(gm);
   }
   return guestPiece;
 };
