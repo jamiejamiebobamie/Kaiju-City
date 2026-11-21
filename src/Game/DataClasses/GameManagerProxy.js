@@ -248,6 +248,11 @@ export class GameManagerProxy {
         return this.props.getIsContactDmg(pieceIndex, tileIndex);
     }
 
+    // the one whose touch hurts this piece there (a Kaiju, a charmed one among them)
+    getContactDealer(pieceIndex, tileIndex) {
+        return this.props.getContactDealer(pieceIndex, tileIndex);
+    }
+
     getAccTime() {
         return this.props.getAccTime();
     }

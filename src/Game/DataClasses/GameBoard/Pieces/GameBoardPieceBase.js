@@ -186,12 +186,26 @@ export class GameBoardPieceBase {
         this.shouldTeleport = shouldTeleport;
     }
 
+    // what hit it on that tile: its ways, who cast it (-1 for a touch), and for defense's kills the last caster, and a
+    // touch's side (a charmed Kaiju's: its charmer's. Jamie, mp playtest 3)
+    recordHit(tileIndex) {
+        this.lastHitDirs = this.gameManagerProxy.getStatusDirs(tileIndex);
+        this.lastHitBy = this.gameManagerProxy.getStatusCaster(tileIndex);
+        if (this.lastHitBy !== undefined && this.lastHitBy >= 0) this.lastCasterHitBy = this.lastHitBy;
+        this.lastTouchSide = undefined;
+        const toucher = this.lastHitBy < 0 && this.gameManagerProxy.getContactDealer(this.pieceIndex, tileIndex);
+        if (toucher) {
+            const charmer = toucher.isCharmed && toucher.charmedBy !== undefined && toucher.charmedBy >= 0 ? this.gameManagerProxy.getPiece(toucher.charmedBy) : undefined;
+            this.lastTouchSide = toucher.side !== undefined ? toucher.side : charmer ? charmer.side : undefined;
+        }
+    }
+
     applyDmgFromTouchedTiles(accTime) {
         if (!this.isDead && this.isOnTiles) {
             [...this.touchedTileIndices, this.tileIndex].forEach(tileIndex => {
                 const dmg = this.gameManagerProxy.getDmg(this.pieceIndex, tileIndex);
                 if (!dmg) return;
-                this.lastHitDirs = this.gameManagerProxy.getStatusDirs(tileIndex);
+                this.recordHit(tileIndex); // (who hit it: this path never said, and kills went to whoever hit it before)
                 this.decrementHealth(accTime, dmg);
             });
         }
@@ -292,9 +306,7 @@ export class GameBoardPieceBase {
         if (this.isOnTiles) {
             const dmg = this.gameManagerProxy.getDmg(this.pieceIndex);
             if (!!dmg) {
-                this.lastHitDirs = this.gameManagerProxy.getStatusDirs(this.tileIndex);
-                this.lastHitBy = this.gameManagerProxy.getStatusCaster(this.tileIndex); // -1 for a Kaiju's touch
-                if (this.lastHitBy !== undefined && this.lastHitBy >= 0) this.lastCasterHitBy = this.lastHitBy; // (the last one who cast at it: defense's kills)
+                this.recordHit(this.tileIndex);
                 this.decrementHealth(accTime, dmg);
             }
         }
@@ -983,6 +995,7 @@ export class GameBoardPieceBase {
     respawn(accTime) {
         this.lifeNumber = (this.lifeNumber || 0) + 1; // (each life's death its own: defense's kills)
         this.lastCasterHitBy = undefined;
+        this.lastTouchSide = undefined;
         this.isCharmed = false;
         this.setTeamIndex(this.homeTeamIndex);
         this.lives = this.maxLives;

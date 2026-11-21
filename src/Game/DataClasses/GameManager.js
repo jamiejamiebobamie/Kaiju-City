@@ -3809,6 +3809,7 @@ export class GameManager {
             getIsTeamDamaged: this.gameBoardPiecesManager.getIsTeamDamaged,
             getIsPieceOnTile: this.gameBoardPiecesManager.getIsPieceOnTile,
             getIsContactDmg: this.gameBoardPiecesManager.getIsContactDmg,
+            getContactDealer: this.gameBoardPiecesManager.getContactDealer,
             getPlayerPiece: this.gameBoardPiecesManager.getPlayerPiece,
             getControlledPiece: () => this.getControlledPiece(),
             // a fight decided: no walking (powers are off too), as its Continue shows (Jamie, playtest 24)

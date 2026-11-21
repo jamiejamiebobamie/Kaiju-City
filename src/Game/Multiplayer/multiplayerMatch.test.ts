@@ -151,6 +151,34 @@ describe('a multiplayer match', { timeout: 20000 }, () => {
     expect(getSideKills(guest)).toEqual([0, 1]);
   });
 
+  it("gives a kill made by a charmed Kaiju's touch to the side that charmed it", () => {
+    const config: MultiplayerConfig = { ...CONFIG, mode: 'defense', kaijuToWin: 5 };
+    const host = makeSide('host', config);
+    const getKaiju = () => host.getPieces().filter((piece: any) => piece.side === undefined && !piece.getIsDead());
+    for (let tick = 0; tick < 6000 && getKaiju().length < 2; tick++) host.stepPieces();
+    const [victim, charmed] = getKaiju();
+    expect(charmed).toBeDefined();
+    victim.lastCasterHitBy = 0; // (the host's power struck it earlier...)
+    charmed.isCharmed = true; // (...then a Kaiju the guest charmed walks into it)
+    charmed.charmEndsAt = Infinity;
+    charmed.charmedBy = GUEST_PIECE_INDEX;
+    charmed.setTeamIndex(0);
+    victim.lives = 1;
+    placePiece(host, victim, victim.getTileIndex());
+    placePiece(host, charmed, victim.getTileIndex());
+    for (let tick = 0; tick < 40 && !victim.getIsDead(); tick++) host.stepPieces();
+    expect(victim.getIsDead()).toBe(true);
+    expect(getSideKills(host)).toEqual([0, 1]);
+  });
+
+  it("defense: an Agent on a side does no harm by touch", () => {
+    const team = [{ avatar: 'agent', kind: 'agent' as const, powers: ['death', 'wood', 'glass'] }];
+    const host = makeSide('host', { ...CONFIG, mode: 'defense', kaijuToWin: 5, teamSize: 1, host: { ...CONFIG.host, team }, guest: { ...CONFIG.guest, team } });
+    const agents = host.getPieces().filter((piece: any) => piece.avatar == 'agent');
+    expect(agents.length).toBe(2);
+    agents.forEach((agent: any) => expect(agent.dealsContactDmg).toBe(false));
+  });
+
   it("ends defense on every Kaiju down, even one killed by no side's hand", () => {
     const config: MultiplayerConfig = { ...CONFIG, mode: 'defense', kaijuToWin: 1 };
     const host = makeSide('host', config);

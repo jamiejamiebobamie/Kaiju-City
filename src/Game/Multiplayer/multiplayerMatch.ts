@@ -34,8 +34,8 @@ export const MAX_KAIJU_TO_WIN = 100;
 */
 export const DEFENSE_LEVEL = () => ({ ...LEVELS.peninsula, isMultiplayer: true, isDefense: true, rival: undefined });
 /*
-  Each Kaiju's kill, credited once as it falls, to the side whose power struck it last (a Kaiju's touch, or anything
-  else no one cast, doesn't take it from them), and kept: a fallen Kaiju is brought back as the next one, and its kill
+  Each Kaiju's kill, credited once as it falls: to the side whose power struck it last; finished by a touch, to the
+  toucher's side (a charmed Kaiju's: its charmer's; an Agent teammate's: its own), and kept: a fallen Kaiju is brought back as the next one, and its kill
   went with it (Jamie, mp playtest 3: the count showed 1, then 0 again). The host's tally, mirrored to the guest
   ('sideKills').
 */
@@ -48,9 +48,11 @@ export const getSideKills = (gm: any): Array<number> => {
     const death = `${piece.pieceIndex}:${piece.lifeNumber || 0}`;
     if (gm.creditedDeaths.has(death)) return;
     gm.creditedDeaths.add(death);
+    // (finished by a touch: the toucher's side, a charmed Kaiju's its charmer's. Jamie, mp playtest 3)
     const by = piece.lastCasterHitBy !== undefined ? piece.lastCasterHitBy : piece.lastHitBy;
     const hitter = by !== undefined && by >= 0 ? gm.getPieces()[by] : undefined;
-    if (hitter && hitter.side !== undefined) gm.sideKills = gm.sideKills.map((count: number, side: number) => count + (side == hitter.side ? 1 : 0));
+    const side = piece.lastHitBy < 0 && piece.lastTouchSide !== undefined ? piece.lastTouchSide : hitter ? hitter.side : undefined;
+    if (side !== undefined) gm.sideKills = gm.sideKills.map((count: number, k: number) => count + (k == side ? 1 : 0));
   });
   return gm.sideKills;
 };
@@ -434,6 +436,8 @@ export const setUpMultiplayerMatch = (gm: any, config: MultiplayerConfig, role: 
   gm.getPlayerColor = () => teamColors[own];
   // the other side's health over their heads, on each screen (Jamie); in defense, the other side's no foe
   piecesManager.pieces.forEach((piece: any) => { piece.isShowHealthBarOnComponent = !isDefense && piece.side != own; });
+  // (defense: an Agent fighting on a side is like any avatar, its touch harmless: Jamie, mp playtest 3)
+  if (isDefense) piecesManager.pieces.filter((piece: any) => piece.side !== undefined).forEach((piece: any) => { piece.dealsContactDmg = false; });
   // each screen's HUDs: its own side's (the recruits' list was everyone's)
   piecesManager.getPlayerTeamUiState = () => piecesManager.pieces.filter((piece: any) => piece.side == own && !piece.isRecruit).map((piece: any) => piece.getUiState());
   piecesManager.getRecruitsUiState = () => piecesManager.pieces.filter((piece: any) => piece.side == own && piece.isRecruit).map((piece: any) => piece.getUiState());

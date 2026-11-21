@@ -66,6 +66,13 @@ export class GameBoardPiecesManager {
             dealsContactDmg && otherTeamIndex != teamIndex && !isDead && isOnTiles && tileIndex.i == i && tileIndex.j == j);
     }
 
+    // the one whose touch hurts this piece on that tile (a Kaiju, an Agent), if any
+    getContactDealer = (pieceIndex, { i, j }) => {
+        const teamIndex = this.pieces[pieceIndex].teamIndex;
+        return this.pieces.find(({ teamIndex: otherTeamIndex, dealsContactDmg, isDead, isOnTiles, tileIndex }) =>
+            dealsContactDmg && otherTeamIndex != teamIndex && !isDead && isOnTiles && tileIndex.i == i && tileIndex.j == j);
+    }
+
     // after the walkable tiles change: 'hitOffTiles' is run on any piece left off of them
     updatePiecesForWalkableTiles(hitOffTiles) {
         this.pieces.filter(piece => !piece.isDead && piece.isOnTiles).forEach(piece => {
