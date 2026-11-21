@@ -411,10 +411,12 @@ export const setUpMultiplayerMatch = (gm: any, config: MultiplayerConfig, role: 
     gm.getGameResult = () => {
       if (getIsSideDown(0) && getIsSideDown(1)) return GameResult.PlayerLost;
       const kills = getSideKills(gm);
-      if (kills[0] + kills[1] < toWin) return null;
+      // (the match ends on every Kaiju down, the game's own score, not only those a side can be credited with: a Kaiju
+      // killed by an unknown hand counted for no one, the total never came, and more kept coming. Jamie, mp playtest 2)
+      if (Math.max(gm.score || 0, kills[0] + kills[1]) < toWin) return null;
       return kills[own] >= kills[1 - own] ? GameResult.PlayerWon : GameResult.PlayerLost;
     };
-    gm.getMultiplayerScore = () => { const kills = getSideKills(gm); return { mine: kills[own], theirs: kills[1 - own], toWin }; };
+    gm.getMultiplayerScore = () => { const kills = getSideKills(gm); return { mine: kills[own], theirs: kills[1 - own], toWin, total: Math.max(gm.score || 0, kills[0] + kills[1]) }; };
     // (both sides down: the Kaiju's win, not either player's)
     gm.getMultiplayerTitle = (isWon: boolean) => (getIsSideDown(0) && getIsSideDown(1) ? "The Kaiju won!" : isWon ? "You Won!" : "You Lost");
   } else {

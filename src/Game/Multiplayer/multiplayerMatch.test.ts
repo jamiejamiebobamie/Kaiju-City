@@ -131,4 +131,16 @@ describe('a multiplayer match', { timeout: 20000 }, () => {
     expect(getSideKills(host)).toEqual([0, 1]);
     expect(host.getGameResult()).toBe(-1); // (GameResult.PlayerLost: the guest's side beat more)
   });
+
+  it("ends defense on every Kaiju down, even one killed by no side's hand", () => {
+    const config: MultiplayerConfig = { ...CONFIG, mode: 'defense', kaijuToWin: 1 };
+    const host = makeSide('host', config);
+    for (let tick = 0; tick < 3000 && !host.getPieces().some((piece: any) => piece.side === undefined); tick++) host.stepPieces();
+    const kaiju = host.getPieces().find((piece: any) => piece.side === undefined);
+    kaiju.lastHitBy = -1; // (no one's: a Kaiju's touch, an unknown status)
+    kaiju.decrementHealth(host.getAccTime(), 999);
+    for (let tick = 0; tick < 20 && host.getGameResult() === null; tick++) host.stepPieces();
+    expect(getSideKills(host)).toEqual([0, 0]);
+    expect(host.getGameResult()).not.toBeNull(); // (ended: the count is the Kaiju down)
+  });
 });
