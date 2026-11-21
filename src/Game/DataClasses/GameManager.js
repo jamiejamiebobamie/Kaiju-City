@@ -69,6 +69,8 @@ const AQUARIUM_STAIRS_NEAR_ROWS = 2.5;
 
 export const HAZMAT_RECRUIT = { abilities: ['metal', 'love', 'bubble'], color: '#ff8a1f' }; // orange glow (Jamie, playtest 19; was white)
 
+// the Teleport's flight (multiplayer): an enemy this close on one's own ground, and pressed away from them
+export const TELEPORT_FLEE = { nearTiles: 8 };
 export const PORTAL_WALK = {
   // all half what they were (Jamie, 2026-11-06)
   zoomInMs: 275, // the camera in close on the way in, or the way out
@@ -1101,29 +1103,59 @@ export class GameManager {
         // the regions it goes to: the rival's; in multiplayer (Jamie: every battleground but the Peninsula), any enemy's
         // of whoever's teleporting. on one with an enemy already, it's an ordinary Teleport: getting away
         let targetRegions;
+        // the straight line of tiles the way pressed, across gaps, to the edge of the grid
+        const getLine = () => {
+            const line = [];
+            let tile = fromTile;
+            for (let step = 0; step < 300; step += 1) {
+                const [dir] = playerInputHandler.getTileDirsFromPressedDir(pressedDir, tile);
+                if (!dir) break;
+                const offset = board.getTileOffsetFromDir(dir, tile);
+                tile = { i: tile.i + offset.i, j: tile.j + offset.j };
+                if (tile.i < 0 || tile.j < 0 || tile.i >= board.numTileColumns || tile.j >= board.numTileRows) break;
+                line.push(tile);
+            }
+            return line;
+        };
         if (this.level.isMultiplayer) {
             if (this.level.id == 'peninsula') return undefined;
             const piece = (playerInputHandler && playerInputHandler.piece) || this.getControlledPiece();
             const enemies = this.getPieces().filter(other => piece && other.teamIndex != piece.teamIndex && !other.isDead && other.isOnTiles);
             if (!enemies.length) return undefined;
             targetRegions = new Set(enemies.map(enemy => this.getTeleportRegion(enemy.getTileIndex())));
+            const ownRegion = this.getTeleportRegion(fromTile);
+            /*
+                Fleeing (Jamie, mp playtest 4): an enemy close by on their own ground (within TELEPORT_FLEE.nearTiles), and
+                the Teleport pressed away from the nearest of them: to the far edge of the furthest other ground that
+                way. No other ground that way: an ordinary Teleport, to the far edge of their own.
+            */
+            if (targetRegions.has(ownRegion)) {
+                const from = board.getCharXAndYFromTileIndex(fromTile);
+                const tilePx = this.level.grid.rowStep * this.level.grid.scale;
+                const near = enemies
+                    .filter(enemy => this.getTeleportRegion(enemy.getTileIndex()) == ownRegion)
+                    .map(enemy => ({ enemy, at: enemy.charLocation, apart: Math.hypot(enemy.charLocation.x - from.x, enemy.charLocation.y - from.y) / tilePx }))
+                    .filter(({ apart }) => apart < TELEPORT_FLEE.nearTiles)
+                    .sort((a, b) => a.apart - b.apart);
+                if (!near.length) return undefined;
+                const line = getLine();
+                if (!line.length) return undefined;
+                const ahead = board.getCharXAndYFromTileIndex(line[0]);
+                const toward = { x: near[0].at.x - from.x, y: near[0].at.y - from.y };
+                if ((ahead.x - from.x) * toward.x + (ahead.y - from.y) * toward.y >= 0) return undefined; // (not away from them)
+                let last = -1;
+                line.forEach((each, k) => {
+                    if (board.getIsInBounds(each) && this.getTeleportRegion(each) != ownRegion) last = k;
+                });
+                return last >= 0 ? line.slice(0, last + 1) : undefined;
+            }
         } else {
             const rival = this.rivalPiece;
             if (!this.level.rival || !rival || rival.isDead || !rival.isOnTiles) return undefined;
             targetRegions = new Set([this.getTeleportRegion(rival.getTileIndex())]);
         }
         if (targetRegions.has(this.getTeleportRegion(fromTile))) return undefined;
-        // the straight line of tiles the way pressed, across gaps, to the edge of the grid
-        const line = [];
-        let tile = fromTile;
-        for (let step = 0; step < 300; step += 1) {
-            const [dir] = playerInputHandler.getTileDirsFromPressedDir(pressedDir, tile);
-            if (!dir) break;
-            const offset = board.getTileOffsetFromDir(dir, tile);
-            tile = { i: tile.i + offset.i, j: tile.j + offset.j };
-            if (tile.i < 0 || tile.j < 0 || tile.i >= board.numTileColumns || tile.j >= board.numTileRows) break;
-            line.push(tile);
-        }
+        const line = getLine();
         const first = line.findIndex(each => board.getIsInBounds(each) && targetRegions.has(this.getTeleportRegion(each)));
         if (first < 0) return undefined; // not toward them
         // (to the far side of that one: the first enemy's platform the way pressed, one or two away)
