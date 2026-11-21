@@ -949,10 +949,11 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     if (mp.current.link) mp.current.link.send({ t: 'setup', setup });
   };
   useEffect(() => {
-    if (!isMonitorOn || isConsoleIn || isPlayingGame || !isBooted) return;
+    // (and not while multiplayer's setup is up: the monitor eases aside only as the side units come. Jamie, mp playtest 2)
+    if (!isMonitorOn || isConsoleIn || isPlayingGame || !isBooted || (!!multiplayer && !multiplayerSetup)) return;
     const aside = setTimeout(() => setIsConsoleIn(true), MINI_TIMING.consoleDelayMs);
     return () => clearTimeout(aside);
-  }, [isMonitorOn, isPlayingGame, isBooted]); // (isBooted too: the boot's end never eased the monitor aside. Jamie, playtest 29)
+  }, [isMonitorOn, isPlayingGame, isBooted, multiplayer, multiplayerSetup]); // (isBooted too: the boot's end never eased the monitor aside. Jamie, playtest 29)
   // the side monitor and the console: switched off (Back from the avatar select), flying off (Play!: Jamie)
   const [isSideOff, setIsSideOff] = useState(false);
   const [isFlyingOff, setIsFlyingOff] = useState(false);
@@ -2280,7 +2281,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
           )}
           {screenFade == 'out' && <ScreenBlack />}
           {isMultiplayerVat && (
-            <IrradiationVat avatar={selectedAvatar} startColor={getAvatarColor(selectedAvatar) || PIECES_INFO[selectedAvatar].color} backLabel="Ready" isReadyMain
+            <IrradiationVat avatar={selectedAvatar} startColor={getAvatarColor(selectedAvatar) || PIECES_INFO[selectedAvatar].color} backLabel="Ready" isReadyMain isDunkReady={!!multiplayerSetup && multiplayerSetup.mode != "coop"}
               onIrradiate={color => { mp.current.color = color; }}
               onClose={() => { if (mp.current.color === undefined) mp.current.color = null; setIsMultiplayerVat(false); handleClickPlay(); }} />
           )}

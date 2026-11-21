@@ -282,13 +282,15 @@ const HexInput = styled.input`
 
 // 'backLabel': its way out (multiplayer's: Ready, after picking the color)
 // 'isReadyMain' (multiplayer): Ready is the console's main button, lit and wired, Dunk beside it (Jamie)
-export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose, backLabel = "Back to Lab", isReadyMain = false }) => {
+// 'isDunkReady' (multiplayer's matches: Jamie): Ready alone, centred and pulsing; it dunks them (their color as it is,
+// changed or not) and then goes on; no glow on them till they're dunked
+export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose, backLabel = "Back to Lab", isReadyMain = false, isDunkReady = false }) => {
   const fieldRef = useRef(null);
   const firstColor = startColor || PIECES_INFO[avatar].color; // whatever color they are now
   const [hue, setHue] = useState(() => hexToHsv(firstColor).hue);
   const [spot, setSpot] = useState(() => hexToHsv(firstColor));
   const [color, setColor] = useState(firstColor);
-  const [avatarColor, setAvatarColor] = useState(startColor);
+  const [avatarColor, setAvatarColor] = useState(isDunkReady ? undefined : startColor);
   const [isDunked, setIsDunked] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const [isPraising, setIsPraising] = useState(false);
@@ -315,6 +317,11 @@ export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose, backL
     setColor(hsvToHex(nextHue, spot.saturation, spot.value));
   };
 
+  const dunkThenGo = () => {
+    if (isBusy || isLeaving) return;
+    irradiate();
+    setTimeout(leave, VAT_LOOK.dunkMs * 2 + VAT_LOOK.holdMs + 600);
+  };
   const irradiate = () => {
     setIsBusy(true);
     setIsDunked(true);
@@ -374,7 +381,9 @@ export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose, backL
         </Panel>
         </SideFrame>
         {/* Irradiate and Back to Lab on the power picker's console (Jamie, playtest 25) */}
-        {isReadyMain
+        {isDunkReady
+          ? <PlayConsole isReady={!isBusy && !isLeaving} playLabel="Ready" onPlay={dunkThenGo} isLeaving={isLeaving} isPulsing />
+          : isReadyMain
           ? <PlayConsole isReady={!isBusy && !isLeaving} playLabel={backLabel} onPlay={leave} onBack={irradiate} isBackDisabled={isBusy || isLeaving} isLeaving={isLeaving} backLabel="Dunk" />
           : <PlayConsole isReady={!isBusy && !isLeaving} playLabel="Dunk" /* (Jamie, playtest 34: was Irradiate, too big for the console) */ onPlay={irradiate} onBack={leave} isBackDisabled={isBusy || isLeaving} isLeaving={isLeaving} backLabel={backLabel} />}
       </SideUnits>, document.querySelector("[data-game-frame]") || document.body)}

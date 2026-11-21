@@ -1379,7 +1379,24 @@ const EtchedRings = ({ faceRef, buttonRefs, glowingIndex = undefined }) => {
 };
 
 // 'isBackDisabled': shown, but not to be pressed (the color vat's Back to Lab while it dunks: Jamie, playtest 26)
-export const PlayConsole = ({ isReady, playLabel, onPlay, onBack, isLeaving = false, backLabel = "Back", isBackDisabled = false }) => {
+// 'isPulsing': the main button alone, go-green, rings pulsing out from it (multiplayer's vat Ready: Jamie)
+const pulseOut = keyframes`
+  0% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+  100% { transform: translate(-50%, -50%) scale(2.4); opacity: 0; }
+`;
+const PulseRing = styled.span`
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100%;
+  height: 100%;
+  border: 0.15cqw solid #3aff3a;
+  border-radius: 50%;
+  box-shadow: 0 0 0.6cqw rgba(58, 255, 58, 0.6);
+  pointer-events: none;
+  animation: ${pulseOut} 1.8s ease-out infinite;
+`;
+export const PlayConsole = ({ isReady, playLabel, onPlay, onBack, isLeaving = false, backLabel = "Back", isBackDisabled = false, isPulsing = false }) => {
   const isCompact = `${playLabel}${onBack ? backLabel : ""}`.length > 14;
   const faceRef = useRef(null);
   const playRef = useRef(null);
@@ -1399,7 +1416,10 @@ export const PlayConsole = ({ isReady, playLabel, onPlay, onBack, isLeaving = fa
           ))}
           {/* (no ready light: Jamie, playtest 28) */}
           <EtchedRings faceRef={faceRef} buttonRefs={[playRef, backRef]} glowingIndex={isReady ? 0 : undefined} />
-          <MetalButton ref={playRef} style={{ position: "relative", zIndex: 1 }} disabled={!isReady} $isBacklit={isReady} $isCompact={isCompact} $isMain onClick={onPlay}>{playLabel}</MetalButton>
+          <MetalButton ref={playRef} style={{ position: "relative", zIndex: 1 }} disabled={!isReady} $isBacklit={isReady} $isCompact={isCompact} $isMain onClick={onPlay}>
+            {playLabel}
+            {isPulsing && isReady && [0, 1, 2].map(k => <PulseRing key={k} style={{ animationDelay: `${k * 0.6}s` }} />)}
+          </MetalButton>
           {onBack && <MetalButton ref={backRef} style={{ position: "relative", zIndex: 1 }} disabled={isBackDisabled} $isCompact={isCompact} onClick={onBack}>{backLabel}</MetalButton>}
         </ConsoleFace>
       </Console>
