@@ -1134,7 +1134,14 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     gameLoop.current = new GameLoop({
       // (the guest's match isn't run: the host's changes come in instead, onMultiplayerMessage; only its ragdolls fall
       // here, each screen its own: the bodies were never made on the guest's. Jamie, mp playtest 2)
-      steps: isGuestMatch ? [{ everyMs: GAME_TICK.pieceMs, run: () => gm.stepRagdolls() }] : [
+      steps: isGuestMatch ? [{ everyMs: GAME_TICK.pieceMs, run: () => {
+              gm.stepRagdolls();
+              // (the match decided: in close on the last to fall, as on the host: Jamie, mp playtest 4)
+              if (gm.getGameResult() !== null && !(gm as any).isCoop) {
+                if (!(gm as any).outcomeShot) (gm as any).startOutcomeShot();
+                (gm as any).updateOutcomeShot();
+              }
+            } }] : [
         { everyMs: GAME_TICK.pieceMs, run: () => gm.stepPieces() },
         { everyMs: GAME_TICK.tileMs, run: () => gm.stepTiles() }
       ],

@@ -383,8 +383,12 @@ const makeGuestCamera = (gm: any) => {
   let last: any;
   let jumpShot: any;
   return () => {
+    // (single player's shots (Jamie, mp playtest 4): the match's end in close on the last to fall, following their body;
+    // their own walk through a portal)
+    if (gm.outcomeShot) return gm.outcomeShot;
     const piece = gm.getControlledPiece();
     if (!piece || !piece.charLocation) return undefined;
+    if (piece.portalShot) return piece.portalShot;
     const knock = (piece.knockedUntil || 0) > gm.getAccTime() && gm.gameBoardPiecesManager.deathPieces.find((death: any) => death.isKnockdown && death.pieceIndex == piece.pieceIndex);
     if (knock) return { point: { ...knock.charLocation }, zoomScale: GUEST_SHOT.knockZoom, panMs: GUEST_SHOT.knockPanMs, isPeninsulaSized: true };
     const here = piece.charLocation;

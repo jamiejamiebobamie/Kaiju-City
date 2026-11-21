@@ -198,9 +198,9 @@ describe('a multiplayer match', { timeout: 20000 }, () => {
     placePiece(host, guestOnHost, from);
     guestOnHost.linkArrivalTile = undefined;
     let isOut = false;
-    for (let tick = 0; tick < 80 && !isOut; tick++) {
+    for (let tick = 0; tick < 400 && !isOut; tick++) {
       host.stepPieces();
-      isOut = guestOnHost.isVisible && guestOnHost.getTileIndex().i == to.i && guestOnHost.getTileIndex().j == to.j;
+      isOut = guestOnHost.isOnTiles && !guestOnHost.isInPortal && Math.abs(guestOnHost.getTileIndex().j - to.j) <= 2 && Math.abs(guestOnHost.getTileIndex().i - to.i) <= 2;
     }
     expect(isOut).toBe(true);
   });
@@ -210,11 +210,18 @@ describe('a multiplayer match', { timeout: 20000 }, () => {
     const guestOnHost = host.getPieces()[GUEST_PIECE_INDEX];
     const toTile = host.gameBoardManager.walkableTiles[10];
     expect(host.startPortalWalk(guestOnHost, toTile)).toBe(true);
-    expect(guestOnHost.isVisible).toBe(false);
     expect(guestOnHost.isOnTiles).toBe(false); // (no harm can come to them there)
     expect(host.portalWalk).toBeUndefined(); // (no held scene)
-    for (let tick = 0; tick < 40 && !guestOnHost.isVisible; tick++) host.stepPieces();
+    expect(guestOnHost.portalShot).toBeDefined(); // (their camera in close: Jamie, mp playtest 4)
+    let wasGone = false;
+    for (let tick = 0; tick < 400 && !guestOnHost.isOnTiles; tick++) {
+      host.stepPieces();
+      wasGone = wasGone || !guestOnHost.isVisible;
+    }
+    expect(wasGone).toBe(true); // (walked in, gone, walked out)
     expect(guestOnHost.isVisible).toBe(true);
-    expect(guestOnHost.getTileIndex()).toEqual(toTile);
+    expect(guestOnHost.portalShot).toBeUndefined();
+    const at = guestOnHost.getTileIndex(); // (out at the far end: on it, or a step on from it, all of them in view)
+    expect(Math.abs(at.i - toTile.i) + Math.abs(at.j - toTile.j)).toBeLessThanOrEqual(3);
   });
 });
