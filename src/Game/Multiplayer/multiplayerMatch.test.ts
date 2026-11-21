@@ -3,7 +3,7 @@ import { GameManager } from 'Game/DataClasses/GameManager';
 import { SettingsManager } from 'Game/DataClasses/SettingsManager';
 import { applyChanges, MirrorSender } from './mirror';
 import { placePiece } from 'Game/DataClasses/testHelpers';
-import { DEFENSE_LEVEL, getSideKills, updateGuestTakeOver, BATTLEGROUNDS, getBattleground, getMultiplayerKillsToWin, GUEST_PIECE_INDEX, MULTIPLAYER_LEVEL, MultiplayerConfig, setUpMultiplayerMatch } from './multiplayerMatch';
+import { makeMatchTeams, MATCH_TEAMMATES, DEFENSE_LEVEL, getSideKills, updateGuestTakeOver, BATTLEGROUNDS, getBattleground, getMultiplayerKillsToWin, GUEST_PIECE_INDEX, MULTIPLAYER_LEVEL, MultiplayerConfig, setUpMultiplayerMatch } from './multiplayerMatch';
 
 const CONFIG: MultiplayerConfig = { mode: 'standing', level: 'peninsula', teamSize: 0, host: { avatar: 'guy', powers: ['Fire', 'Ice', 'Water'] }, guest: { avatar: 'girl', powers: ['Lightning', 'Wood', 'Metal'] } };
 
@@ -75,6 +75,26 @@ describe('a multiplayer match', { timeout: 20000 }, () => {
     pieces.filter((piece: any) => piece.teamIndex == 1).forEach((piece: any) => piece.decrementHealth(host.getAccTime(), 99));
     for (let tick = 0; tick < 50 && host.getGameResult() === null; tick++) host.stepPieces();
     expect(host.getGameResult()).not.toBeNull();
+  });
+
+  it("makes both sides' teammates at random, none twice across the two while there are enough, each with an attack, a defense and a glow of their own", () => {
+    const settingsManager = new SettingsManager();
+    const firsts = new Set();
+    for (let round = 0; round < 30; round++) {
+      const [host, guest] = makeMatchTeams({ size: 2, settingsManager });
+      const avatars = [...host, ...guest].map(member => member.avatar);
+      expect(new Set(avatars).size).toBe(4); // (unique across both teams)
+      avatars.forEach(avatar => expect(MATCH_TEAMMATES).toContain(avatar));
+      firsts.add(host[0].avatar);
+      [...host, ...guest].forEach(member => {
+        expect(member.powers.length).toBe(3);
+        expect(new Set(member.powers).size).toBe(3);
+        expect(member.color).toMatch(/^#[0-9a-f]{6}$/);
+      });
+    }
+    expect(firsts.size).toBeGreaterThan(1); // (not the Agent first every time)
+    const [big] = makeMatchTeams({ size: 5, settingsManager });
+    expect(big.length).toBe(5); // (past five, still made)
   });
 
   it('builds on every battleground, the two sides apart', () => {

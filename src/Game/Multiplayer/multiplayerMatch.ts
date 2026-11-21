@@ -16,7 +16,7 @@ import { PIECES_INFO } from 'Utils/gameState';
   in this order: an Agent, then their recruits (Jamie: 5 at most, the Hazmat Worker if the host has them). Each player's team is their own (their teammate, the recruits
   they have), its powers settled in their browser and sent with the rest, so both build it alike.
 */
-export type TeamMember = { avatar: string; powers: Array<string>; kind: 'teammate' | 'recruit' | 'agent' }; // (powers: elements)
+export type TeamMember = { avatar: string; powers: Array<string>; kind: 'teammate' | 'recruit' | 'agent'; color?: string }; // (powers: elements; color: their own glow)
 export type MultiplayerSide = { avatar: string; powers: Array<string>; color?: string; team?: Array<TeamMember> }; // (powers: the picker's elements, uppercase; color: picked in the vat)
 export type MultiplayerSetup = { mode: 'standing' | 'defense' | 'coop'; level: string; teamSize: number; isHazmat?: boolean; kaijuToWin?: number; openSkills?: Array<string> }; // ('isHazmat': the host has the Hazmat Worker, so both sides may; 'kaijuToWin': defense's count)
 export type MultiplayerConfig = MultiplayerSetup & { host: MultiplayerSide; guest: MultiplayerSide };
@@ -115,6 +115,51 @@ export const makeTeam = ({ size, recruits, settingsManager }: { size: number; te
   }
   TEAM_ORDER.filter(avatar => recruits.includes(avatar)).forEach(avatar => { if (members.length < size) members.push({ avatar, kind: 'recruit', powers: getRecruitPowers(avatar) }); });
   return members.slice(0, size);
+};
+
+/*
+  Both sides' teams, made together by the host (Jamie, mp playtest 4): avatars at random from the five who can fight
+  beside the players, none twice across both teams while there are enough (2 each), at random still past that; each
+  one's powers at random as the campaign's teammate's are (an attack, a defense, and any other), and a glow of their
+  own. Made again for each match, Play again too.
+*/
+export const MATCH_TEAMMATES = ['agent', 'hazmat', 'punk', 'black_female', 'mermaid'];
+const shuffled = <T,>(items: Array<T>) => {
+  const out = [...items];
+  for (let k = out.length - 1; k > 0; k--) {
+    const swap = Math.floor(Math.random() * (k + 1));
+    [out[k], out[swap]] = [out[swap], out[k]];
+  }
+  return out;
+};
+const getRandomGlow = () => {
+  const hue = Math.random() * 360;
+  const f = (n: number) => {
+    const k = (n + hue / 60) % 6;
+    const value = 1 - 0.85 * Math.max(0, Math.min(k, 4 - k, 1)); // (bright and full: s 0.85, v 1)
+    return Math.round(value * 255).toString(16).padStart(2, '0');
+  };
+  return `#${f(5)}${f(3)}${f(1)}`;
+};
+export const makeMatchTeams = ({ size, settingsManager }: { size: number; settingsManager: any }): [Array<TeamMember>, Array<TeamMember>] => {
+  if (!settingsManager.abilityAndTileStatusData || !Object.keys(settingsManager.abilityAndTileStatusData).length) settingsManager.initAbilityStatusData();
+  const teams: [Array<TeamMember>, Array<TeamMember>] = [[], []];
+  let pool: Array<string> = [];
+  for (let k = 0; k < size; k++) {
+    teams.forEach(team => {
+      if (!pool.length) pool = shuffled(MATCH_TEAMMATES);
+      const avatar = pool.shift() as string;
+      const powers = settingsManager.getThreeRandomAbilities().map((ability: any) => ability.gameBoardPieceAbilityData.element);
+      team.push({ avatar, kind: avatar == 'agent' ? 'agent' : 'recruit', powers, color: getRandomGlow() });
+    });
+  }
+  return teams;
+};
+// (a config's teams made anew: each match's own)
+export const withMatchTeams = (config: MultiplayerConfig, settingsManager: any): MultiplayerConfig => {
+  if (config.mode == 'coop' || !config.teamSize) return config;
+  const [host, guest] = makeMatchTeams({ size: config.teamSize, settingsManager });
+  return { ...config, host: { ...config.host, team: host }, guest: { ...config.guest, team: guest } };
 };
 
 // the guest's keys, on the host: as the player's own, but for the guest's piece
@@ -425,11 +470,12 @@ export const setUpMultiplayerMatch = (gm: any, config: MultiplayerConfig, role: 
     });
     piece.side = sideIndex;
     if (member.kind == 'recruit') piece.isRecruit = true;
+    piece.ownGlow = member.color;
     piece.initCharLocation(true, gm.getFreeTileNear(leader.getTileIndex(), { except: piece }) || leader.getTileIndex());
   }));
   // each side in its player's color (Jamie): every one's glow and the tile under them, and their damaging powers' tiles
   const teamColors = [config.host.color || hostPiece.color, config.guest.color || guestPiece.color];
-  piecesManager.pieces.forEach((piece: any) => { piece.color = teamColors[piece.side]; });
+  piecesManager.pieces.forEach((piece: any) => { piece.color = piece.ownGlow || teamColors[piece.side]; }); // (a teammate's own glow: Jamie, mp playtest 4; their powers' tiles still their side's)
   const own = role == 'host' ? 0 : 1;
   const enemyColor = gm.getEnemyLeaderColor(); // (the Kaiju's, in defense)
   gm.getStatusTeamColor = (casterIndex: number, teamIndex: number) => {

@@ -50,7 +50,7 @@ import { TileEditor } from './Levels/TileEditor';
 import { gameUiStore, publishGameUi, resetGameUi } from '../DataClasses/gameUiStore';
 import { applyChanges, MirrorSender } from '../Multiplayer/mirror';
 import { getLinkedRoomCode } from '../Multiplayer/peerLink';
-import { COOP_VOTE, hideCoopTeammate, placeCoopTeammate, resolveCoopVote, DEFENSE_LEVEL, getBattleground, getMultiplayerKillsToWin, GUEST_PIECE_INDEX, makeTeam, setUpCoop, setUpMultiplayerMatch, updateCoopTurnedKaiju, updateGuestTakeOver } from '../Multiplayer/multiplayerMatch';
+import { COOP_VOTE, hideCoopTeammate, placeCoopTeammate, resolveCoopVote, DEFENSE_LEVEL, getBattleground, getMultiplayerKillsToWin, GUEST_PIECE_INDEX, makeTeam, setUpCoop, withMatchTeams, setUpMultiplayerMatch, updateCoopTurnedKaiju, updateGuestTakeOver } from '../Multiplayer/multiplayerMatch';
 import { CoopChecks, CoopVote, MatchSetup, MultiplayerWaiting, NetNotice } from '../Multiplayer/MatchSetup';
 
 const GameArea = styled.div`
@@ -1401,7 +1401,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   // ('isCoopGo': co-op's host, both ready: on into the campaign as in single player)
   const handleClickPlay = (picks = undefined, isCoopGo = false) => {
     // (in multiplayer, after the picker: the vat for their color first; closed, this again)
-    if (multiplayer && !isCoopGo && !mp.current.isLocal && !(picks && picks.avatar) && mp.current.color === undefined) {
+    if (multiplayer && !isCoopGo && !mp.current.isLocal && !(picks && picks.avatar) && !mp.current.isColorPicked) {
       setIsMultiplayerVat(true);
       return;
     }
@@ -1411,7 +1411,10 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
       const choices = getRecruitChoices();
       const ownRecruits = ['punk', 'black_female', 'mermaid'].filter(avatar => choices[avatar] == 'recruit').concat((mp.current.setup || {}).isHazmat ? ['hazmat'] : []);
       const team = makeTeam({ size: (mp.current.setup || {}).teamSize || 0, recruits: ownRecruits, settingsManager });
-      const self = picks && picks.avatar ? { team, ...picks } : { avatar: selectedAvatar, powers: settingsManager.getSortedPlayerChosenAbilityElementsString(), color: mp.current.color || undefined, team };
+      // (the powers the picker shows: the guest's settings hold the host's once a match has been built, and after New
+      // Match their own were lost. Jamie, mp playtest 4)
+      const powers = pickedAbilities.length == 3 ? pickedAbilities : settingsManager.getSortedPlayerChosenAbilityElementsString();
+      const self = picks && picks.avatar ? { team, ...picks } : { avatar: selectedAvatar, powers, color: mp.current.color || undefined, team };
       mp.current.self = self;
       multiplayer.link.send({ t: 'ready', ...self });
       setIsMultiplayerWaiting(true);
@@ -1477,7 +1480,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
       handleClickPlay(undefined, true);
       return;
     }
-    const config = { ...(mp.current.setup || { mode: 'standing', level: 'peninsula', teamSize: 0 }), host: self, guest: other };
+    const config = withMatchTeams({ ...(mp.current.setup || { mode: 'standing', level: 'peninsula', teamSize: 0 }), host: self, guest: other }, settingsManager);
     link.send({ t: 'start', config, round: 1 });
     beginMultiplayerMatch(config, 'host');
   };
@@ -1489,8 +1492,9 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     startMultiplayerAgainIfReady();
   };
   const startMultiplayerAgainIfReady = () => {
-    const { link, isAgainSelf, isAgainOther, config, round } = mp.current;
+    const { link, isAgainSelf, isAgainOther, round } = mp.current;
     if (!link || link.role != 'host' || !isAgainSelf || !isAgainOther) return;
+    const config = withMatchTeams(mp.current.config, settingsManager); // (new teammates each time)
     link.send({ t: 'start', config, round: round + 1 });
     beginMultiplayerMatch(config, 'host', round + 1);
   };
@@ -1653,7 +1657,11 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const backToMultiplayerSetup = (isTelling = false) => {
     if (isTelling && mp.current.link) mp.current.link.send({ t: 'toSetup' });
     if (gameManager.current) endMatch();
-    Object.assign(mp.current, { isStarted: false, self: undefined, other: undefined, config: undefined, setup: undefined, color: undefined, round: 0, vote: undefined, isAgainSelf: false, isAgainOther: false });
+    // (their color kept for the next, changeable in the vat as their powers are: Jamie, mp playtest 4)
+    Object.assign(mp.current, { isStarted: false, self: undefined, other: undefined, config: undefined, setup: undefined, isColorPicked: false, round: 0, vote: undefined, isAgainSelf: false, isAgainOther: false });
+    // (their own avatar and powers back: the match had the host's in them)
+    settingsManager.updatePlayerAvatar(selectedAvatar);
+    if (pickedAbilities.length == 3) settingsManager.setSortedPlayerChosenAbilityElementsString(pickedAbilities);
     mp.current.sender.reset();
     setMatchEnd(undefined);
     setMultiplayerSetup(undefined);
@@ -2251,7 +2259,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     if (isFlyingOff) return;
     // (multiplayer's picker: Next, on to the vat with the side units where they are, their screens changing over.
     // Jamie, mp playtest 2: they flew off and back)
-    if (multiplayer && !isLabPicker && !mp.current.isLocal && mp.current.color === undefined) {
+    if (multiplayer && !isLabPicker && !mp.current.isLocal && !mp.current.isColorPicked) {
       handleClickPlay();
       return;
     }
@@ -2352,11 +2360,11 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
           )}
           {screenFade == 'out' && <ScreenBlack />}
           {isMultiplayerVat && (
-            <IrradiationVat avatar={selectedAvatar} startColor={getAvatarColor(selectedAvatar) || PIECES_INFO[selectedAvatar].color} isDunkReady={!!multiplayerSetup && multiplayerSetup.mode != "coop"}
+            <IrradiationVat avatar={selectedAvatar} startColor={mp.current.color || getAvatarColor(selectedAvatar) || PIECES_INFO[selectedAvatar].color} isDunkReady={!!multiplayerSetup && multiplayerSetup.mode != "coop"}
               actions={vatActions} onBusy={setIsVatBusy}
               onIrradiate={color => { mp.current.color = color; }}
               // (the side units fly off from here, as from the picker's Play)
-              onClose={() => flyOffThen(() => { if (mp.current.color === undefined) mp.current.color = null; setIsMultiplayerVat(false); handleClickPlay(); })} />
+              onClose={() => flyOffThen(() => { if (mp.current.color === undefined) mp.current.color = null; mp.current.isColorPicked = true; setIsMultiplayerVat(false); handleClickPlay(); })} />
           )}
         </PlayWindow>
         {isMonitorOn && isBooted && !isMultiplayerSetupOpen && (
