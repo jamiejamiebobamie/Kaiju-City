@@ -40,6 +40,8 @@ const fleeFrom = (isEnemyNear: boolean) => {
   for (let k = 0; k < 5; k++) gm.stepPieces();
   const board = gm.gameBoardManager;
   const own = gm.getTeleportRegion(guest.getTileIndex());
+  // (their platform's tiles as they are with the train in: it can go as they teleport, and the platforms join)
+  const ownTiles = new Set(board.walkableTiles.filter((t: any) => gm.getTeleportRegion(t) == own).map((t: any) => `${t.i} ${t.j}`));
   // the host beside the guest, to their right on their platform (or far off along it)
   const g = guest.getTileIndex();
   const spot = isEnemyNear
@@ -49,14 +51,13 @@ const fleeFrom = (isEnemyNear: boolean) => {
   guest.inputHandler.addKey('KeyA'); // (away: to the left, toward the other platforms)
   guest.inputHandler.usePlayerAbility('Digit1', gm.getAccTime());
   for (let k = 0; k < 200 && (guest.isInPortal || guest.shouldTeleport || k < 10); k++) gm.stepPieces();
-  const after = gm.getTeleportRegion(guest.getTileIndex());
-  return { own, after };
+  const end = guest.getTileIndex();
+  const isOnOwn = ownTiles.has(`${end.i} ${end.j}`);
+  return { isOnOwn };
 };
 it("the Teleport flees onto other ground, away from an enemy close by on one's own", () => {
-  const { own, after } = fleeFrom(true);
-  expect(after).not.toBe(own);
+  for (let k = 0; k < 6; k++) expect(fleeFrom(true).isOnOwn).toBe(false);
 });
 it('the Teleport stays on its own ground with no enemy close by', () => {
-  const { own, after } = fleeFrom(false);
-  expect(after).toBe(own);
+  for (let k = 0; k < 6; k++) expect(fleeFrom(false).isOnOwn).toBe(true);
 });
