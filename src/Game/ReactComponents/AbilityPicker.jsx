@@ -778,7 +778,20 @@ const Console = styled.div`
   ${props => props.$isLeaving && css`animation: ${consoleFlyOff} ${FLY_OFF.ms}ms linear forwards;`}
 `;
 
+// the pre-game's screens change on the console in place (Jamie, mp playtest 2): its metal face turns over on its
+// horizontal middle, the new buttons on its far side (half a turn away, half a turn back in)
+export const FACE_FLIP = { ms: 240 };
+const faceOut = keyframes`
+  from { transform: perspective(30cqw) rotateX(0deg); filter: brightness(1); }
+  to { transform: perspective(30cqw) rotateX(90deg); filter: brightness(0.45); }
+`;
+const faceIn = keyframes`
+  from { transform: perspective(30cqw) rotateX(-90deg); filter: brightness(0.45); }
+  to { transform: perspective(30cqw) rotateX(0deg); filter: brightness(1); }
+`;
 const ConsoleFace = styled.div`
+  ${props => props.$flip == "out" && css`animation: ${faceOut} ${FACE_FLIP.ms}ms ease-in forwards; pointer-events: none;`}
+  ${props => props.$flip == "in" && css`animation: ${faceIn} ${FACE_FLIP.ms}ms ease-out both; pointer-events: none;`}
   position: relative;
   height: 100%;
   box-sizing: border-box;
@@ -1396,7 +1409,23 @@ const ReadyPulseRing = styled.span`
   pointer-events: none;
   animation: ${readyPulseOut} 1.8s ease-out infinite;
 `;
-export const PlayConsole = ({ isReady, playLabel, onPlay, onBack, isLeaving = false, backLabel = "Back", isBackDisabled = false, isPulsing = false }) => {
+// 'faceKey': which screen's buttons it has (the pre-game's: avatar, picker, vat); a new one turns the face over to them
+export const PlayConsole = (props) => {
+  const { faceKey = undefined, isLeaving = false } = props;
+  const byKey = useRef({});
+  byKey.current[faceKey] = props;
+  const [shownKey, setShownKey] = useState(faceKey);
+  const [flip, setFlip] = useState(undefined);
+  useEffect(() => {
+    if (faceKey === shownKey) return;
+    setFlip("out");
+    const swap = setTimeout(() => { setShownKey(faceKey); setFlip("in"); }, FACE_FLIP.ms);
+    const done = setTimeout(() => setFlip(undefined), FACE_FLIP.ms * 2);
+    return () => { clearTimeout(swap); clearTimeout(done); };
+  }, [faceKey]);
+  // (the old buttons as they turn away, the new as they turn in)
+  const shown = flip == "out" ? byKey.current[shownKey] || props : props;
+  const { isReady, playLabel, onPlay, onBack, backLabel = "Back", isBackDisabled = false, isPulsing = false } = shown;
   const isCompact = `${playLabel}${onBack ? backLabel : ""}`.length > 14;
   const faceRef = useRef(null);
   const playRef = useRef(null);
@@ -1410,7 +1439,7 @@ export const PlayConsole = ({ isReady, playLabel, onPlay, onBack, isLeaving = fa
         {isLeaving
           ? null
           : null /* (no thrusters: it swings on its hinge now) */}
-        <ConsoleFace ref={faceRef}>
+        <ConsoleFace ref={faceRef} $flip={flip}>
           {[[0.5, 0.5, 20], [null, 0.5, -35], [0.5, null, 60], [null, null, 5]].map(([screwLeft, top, turn], k) => (
             <Screw key={k} $turn={turn} style={{ zIndex: 2, left: screwLeft == null ? undefined : `${screwLeft}cqw`, right: screwLeft == null ? "0.5cqw" : undefined, top: top == null ? undefined : `${top}cqw`, bottom: top == null ? "0.5cqw" : undefined }} />
           ))}
@@ -1489,12 +1518,23 @@ const CrossFade = ({ id, children, restIds = [] }) => {
   screen switches on, its wires slither to the big monitor (the avatar select's and picker's, and the color vat's:
   Jamie, playtest 25, the same set beside both Lab screens).
 */
-export const SideFrame = ({ children, brow = null, isPoweredOff = false, isLeaving = false, overlay = null }) => {
+// 'rebootKey': a new one switches the screen on afresh (its picture opening from a line, CRT's power-on): the
+// pre-game's screens changing in place (Jamie, mp playtest 2)
+export const SideFrame = ({ children, brow = null, isPoweredOff = false, isLeaving = false, overlay = null, rebootKey = undefined }) => {
   const [isOn, setIsOn] = useState(false);
+  const [boot, setBoot] = useState({ key: rebootKey, n: 0 });
   useEffect(() => {
     const timeout = setTimeout(() => setIsOn(true), MINI_TIMING.onAtMs);
     return () => clearTimeout(timeout);
   }, []);
+  const [isRebooting, setIsRebooting] = useState(false);
+  useLayoutEffect(() => {
+    if (rebootKey === boot.key) return;
+    setBoot({ key: rebootKey, n: boot.n + 1 }); // (the screen anew, dead...)
+    setIsRebooting(true);
+    const frame = requestAnimationFrame(() => requestAnimationFrame(() => setIsRebooting(false))); // (...then on)
+    return () => cancelAnimationFrame(frame);
+  }, [rebootKey]);
   return (
     <>
       <Wires delayMs={MINI_TIMING.wiresAtMs} ripFor={isLeaving ? "mini" : undefined} />
@@ -1505,7 +1545,7 @@ export const SideFrame = ({ children, brow = null, isPoweredOff = false, isLeavi
           ? null
           : null /* (no thrusters: it swings on its hinge now) */}
         <MiniScreen>
-          <CrtScreen isOn={isOn && !isPoweredOff}>{children}</CrtScreen>
+          <CrtScreen key={boot.n} isOn={isOn && !isPoweredOff && !isRebooting}>{children}</CrtScreen>
           {overlay}
           <MiniGlass />
         </MiniScreen>
@@ -1515,47 +1555,30 @@ export const SideFrame = ({ children, brow = null, isPoweredOff = false, isLeavi
   );
 };
 
-/*
-  From the avatar select to the picker (Jamie, playtest 26): the side screen's power cuts out, black at once, the last
-  bio left burned into the glass, fading; then it boots up again (the CRT's power-on) with the tamagotchi.
-*/
-const BURN_IN = { ms: 1200 };
-const burnFade = keyframes`
-  0% { opacity: 0.55; }
-  15% { opacity: 0.4; }
-  100% { opacity: 0; }
-`;
-const PowerCut = styled.div`
+// 'screen': the pre-game's (avatar, picker, vat: multiplayer's color, its panel put in here by the vat). A new one: the
+// screen fades to black, then switches on afresh with it (Jamie, mp playtest 2; it was the power cut and burn-in)
+export const SIDE_SWITCH = { fadeMs: 320 };
+const SwitchBlack = styled.div`
   position: absolute;
   inset: 0;
-  z-index: 2;
+  z-index: 3;
   background: #030404;
   pointer-events: none;
-  overflow: hidden;
+  animation: ${crossIn} ${SIDE_SWITCH.fadeMs}ms ease-in both;
 `;
-const BurnIn = styled.div`
-  position: absolute;
-  inset: 0;
-  filter: grayscale(1) sepia(1) hue-rotate(70deg) saturate(1.6) blur(0.06cqw) brightness(0.9);
-  mix-blend-mode: screen;
-  animation: ${burnFade} ${BURN_IN.ms}ms ease-out both;
-`;
-// 'isQuiet': no power cut (back on the picker again after Back: Jamie, playtest 34, it was seen already)
-const useBurnIn = (isPickerShowing, bioOf, isQuiet = false) => {
-  const lastBio = useRef(bioOf);
-  const wasPicker = useRef(isPickerShowing);
-  const [burned, setBurned] = useState(undefined);
-  if (!isPickerShowing && bioOf) lastBio.current = bioOf;
+const useScreenSwitch = screen => {
+  const [shown, setShown] = useState(screen);
+  const [isFading, setIsFading] = useState(false);
   useEffect(() => {
-    if (isPickerShowing && !wasPicker.current && !isQuiet) {
-      setBurned({ avatar: lastBio.current });
-      const timeout = setTimeout(() => setBurned(undefined), BURN_IN.ms);
-      wasPicker.current = isPickerShowing;
-      return () => clearTimeout(timeout);
+    if (screen == shown) {
+      setIsFading(false);
+      return;
     }
-    wasPicker.current = isPickerShowing;
-  }, [isPickerShowing]);
-  return burned;
+    setIsFading(true);
+    const timeout = setTimeout(() => { setShown(screen); setIsFading(false); }, SIDE_SWITCH.fadeMs);
+    return () => clearTimeout(timeout);
+  }, [screen]);
+  return [shown, isFading];
 };
 
 // (the Agent at least this long when the avatar select first shows, whatever's hovered, so he's seen: Jamie, playtest 29)
@@ -1566,7 +1589,8 @@ export const LAB_LIGHTS_DELAY_MS = 2500; // (the CRT's power-on, CRT.onMs: the p
 const TAMA_FIRST_MS = 3000;
 // 'isQuiet': straight to the tamagotchi, no power cut (back after Back); 'isFadingOut': a character just clicked, the
 // screen's content fades before the scene moves on (Jamie, playtest 34)
-export const SideMonitor = ({ isPickerShowing, isPoweredOff = false, isLeaving = false, bioOf: hoveredBio = undefined, isQuiet = false, isFadingOut = false }) => {
+export const SideMonitor = ({ isPickerShowing, screen: givenScreen = undefined, isPoweredOff = false, isLeaving = false, bioOf: hoveredBio = undefined, isQuiet = false, isFadingOut = false }) => {
+  const [screen, isSwitching] = useScreenSwitch(givenScreen || (isPickerShowing ? "picker" : "avatar"));
   const [isAgentHeld, setIsAgentHeld] = useState(true);
   const screenOnAt = useRef(Date.now() + MINI_TIMING.onAtMs); // (when its screen switches on: the Agent starts then)
   const lightsAt = useRef(Date.now() + LAB_LIGHTS_DELAY_MS); // (and not before the Lab's lights: Jamie, playtest 30)
@@ -1575,24 +1599,25 @@ export const SideMonitor = ({ isPickerShowing, isPoweredOff = false, isLeaving =
     return () => clearTimeout(timeout);
   }, []);
   const bioOf = isAgentHeld ? undefined : hoveredBio;
-  const burned = useBurnIn(isPickerShowing, bioOf, isQuiet);
-  // Stompy waits while his screen is cut off or not showing him: he carries on once he can be seen (Jamie, playtest 34)
+  // Stompy waits while his screen is switching or not showing him: he carries on once he can be seen (Jamie, playtest 34)
   useEffect(() => {
-    holdTamagotchi(!isPickerShowing || !!burned || isPoweredOff, "side screen");
+    holdTamagotchi(screen != "picker" || isSwitching || isPoweredOff, "side screen");
     return () => holdTamagotchi(false, "side screen");
-  }, [isPickerShowing, !!burned, isPoweredOff]);
+  }, [screen, isSwitching, isPoweredOff]);
   return (
   <SideFrame
-    isPoweredOff={isPoweredOff || !!burned}
+    isPoweredOff={isPoweredOff}
     isLeaving={isLeaving}
-    overlay={burned && <PowerCut data-burn-in><BurnIn><AvatarBio avatar={burned.avatar} /></BurnIn></PowerCut>}
-    brow={isPickerShowing ? <div data-side-brow style={{ display: "contents" }} /> : ["Feed", "Pet", "Clean up"].map(label => (
+    rebootKey={screen}
+    overlay={isSwitching && <SwitchBlack data-side-switch />}
+    // (the three round buttons on the vat's too, unlit: Jamie, mp playtest 2)
+    brow={screen == "picker" ? <div data-side-brow="picker" style={{ display: "contents" }} /> : ["Feed", "Pet", "Clean up"].map(label => (
       <ButtonSlot key={label}><BrowButtonShape disabled aria-label={label} title={label} /></ButtonSlot>
     ))}
   >
     {/* the avatar select: the candidates' files (Jamie: not the tamagotchi, that's on the picker) */}
     {/* the Agent and the files crossfade too (Jamie, playtest 29) */}
-    {isPickerShowing ? <SideSlot data-side-screen /> : (
+    {screen != "avatar" ? <SideSlot key={screen} data-side-screen={screen} /> : (
       <div style={{ position: "absolute", inset: 0, opacity: isFadingOut ? 0 : 1, transition: "opacity 450ms ease-out" }}>
         <CrossFade id={bioOf || "agent"}><AvatarBio avatar={bioOf} agentDelayMs={Math.max(screenOnAt.current + SCREEN_POWER_ON_MS, lightsAt.current + 300) - Date.now()} /></CrossFade>
       </div> /* (no hold here: straight on to what's next) */
@@ -1643,8 +1668,8 @@ export const AbilityPicker = ({
     let frameId;
     let last = { screen: null, brow: null };
     const find = () => {
-      const screen = gameFrame && gameFrame.querySelector("[data-side-screen]");
-      const brow = gameFrame && gameFrame.querySelector("[data-side-brow]");
+      const screen = gameFrame && gameFrame.querySelector('[data-side-screen="picker"]');
+      const brow = gameFrame && gameFrame.querySelector('[data-side-brow="picker"]');
       if (screen !== last.screen || brow !== last.brow) {
         last = { screen, brow };
         setSide(screen ? { screen, brow } : null);

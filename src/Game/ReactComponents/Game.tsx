@@ -907,6 +907,9 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   // the match's side of it: each player's pick once they press Play, the match's config once started, and the mirror
   const mp = useRef<any>({ sender: new MirrorSender(), link: undefined, self: undefined, other: undefined, config: undefined, isStarted: false, round: 0, color: undefined, isAgainSelf: false, isAgainOther: false });
   const [isMultiplayerVat, setIsMultiplayerVat] = useState(false); // (each player's color, after the picker: Jamie)
+  // (its Play on the console beside the picker's, in place: Jamie, mp playtest 2)
+  const vatActions = useRef<any>(undefined);
+  const [isVatBusy, setIsVatBusy] = useState(false);
   // the host's match setup (the match type, the battleground, the teams' size), sent to the guest
   const [multiplayerSetup, setMultiplayerSetup] = useState<any>(undefined);
   const [multiplayerProgress, setMultiplayerProgress] = useState<any>({}); // (the guest's checklist of the host's choices)
@@ -2229,6 +2232,12 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   // scene; the screen's fade to black runs as they go. (From the Lab, straight back.)
   const playFromConsole = () => {
     if (isFlyingOff) return;
+    // (multiplayer's picker: Next, on to the vat with the side units where they are, their screens changing over.
+    // Jamie, mp playtest 2: they flew off and back)
+    if (multiplayer && !isLabPicker && !mp.current.isLocal && mp.current.color === undefined) {
+      handleClickPlay();
+      return;
+    }
     // (back to the Lab too: the side units fly off first. Jamie, playtest 26)
     if (isLabPicker) {
       flyOffThen(handleClickPlay);
@@ -2279,7 +2288,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
           {isMonitorOn && !isBooted && <MonitorBoot onDone={linked => { if (linked && linked.link) setMultiplayer(linked); setIsBooted(true); }} />}
           {/* the Lab behind them, darkened, lit round the avatars (Jamie) */}
           <MonitorLabBackdrop mode={isChoosingAvatar ? "choice" : "picker"} hovered={hoveredAvatar} focus={isChoosingAvatar ? handOverAvatar : selectedAvatar} />
-          {isMultiplayerSetupOpen ? null : isChoosingAvatar ? (
+          {isMultiplayerSetupOpen || isMultiplayerVat ? null : isChoosingAvatar ? (
             <AvatarsInTheDark style={{ position: "absolute", inset: 0, transformOrigin: "0 0", transition: FOCUS_MOVE, transform: getFocusTransform(handOverAvatar), ...(isBooted && !isBackFromPicker ? {} : { animation: "none" }) }}>
             <AvatarChoice isReady={isMonitorOn} isArcs={!isBackFromPicker} onPick={() => setIsAvatarPicked(true)} onHover={setHoveredAvatar} onHandOver={setHandOverAvatar} onChoose={chooseAvatar} />
             </AvatarsInTheDark>
@@ -2316,21 +2325,30 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
           )}
           {screenFade == 'out' && <ScreenBlack />}
           {isMultiplayerVat && (
-            <IrradiationVat avatar={selectedAvatar} startColor={getAvatarColor(selectedAvatar) || PIECES_INFO[selectedAvatar].color} backLabel="Ready" isReadyMain isDunkReady={!!multiplayerSetup && multiplayerSetup.mode != "coop"}
+            <IrradiationVat avatar={selectedAvatar} startColor={getAvatarColor(selectedAvatar) || PIECES_INFO[selectedAvatar].color} isDunkReady={!!multiplayerSetup && multiplayerSetup.mode != "coop"}
+              actions={vatActions} onBusy={setIsVatBusy}
               onIrradiate={color => { mp.current.color = color; }}
-              onClose={() => { if (mp.current.color === undefined) mp.current.color = null; setIsMultiplayerVat(false); handleClickPlay(); }} />
+              // (the side units fly off from here, as from the picker's Play)
+              onClose={() => flyOffThen(() => { if (mp.current.color === undefined) mp.current.color = null; setIsMultiplayerVat(false); handleClickPlay(); })} />
           )}
         </PlayWindow>
         {isMonitorOn && isBooted && !isMultiplayerSetupOpen && (
           <>
             {/* from the avatar select on, flying in with the console (Jamie) */}
-            <SideMonitor isPickerShowing={!isChoosingAvatar} isPoweredOff={isSideOff} isLeaving={isFlyingOff} isQuiet={isBackFromPicker} isFadingOut={isChoosingAvatar && isAvatarPicked} bioOf={hoveredAvatar || handOverAvatar} /* (the Agent's question unless a tank is hovered; once one's chosen, its file stays: Jamie, playtests 27 and 29) */ />
+            <SideMonitor isPickerShowing={!isChoosingAvatar} screen={isChoosingAvatar ? "avatar" : isMultiplayerVat ? "vat" : "picker"} isPoweredOff={isSideOff} isLeaving={isFlyingOff} isQuiet={isBackFromPicker} isFadingOut={isChoosingAvatar && isAvatarPicked} bioOf={hoveredAvatar || handOverAvatar} /* (the Agent's question unless a tank is hovered; once one's chosen, its file stays: Jamie, playtests 27 and 29) */ />
+            {/* its face turns over to each screen's buttons (Jamie, mp playtest 2): the avatar select's Next alone (a
+                character clicked is the way on), the picker's Back and Play (multiplayer: Next, the vat after it), the
+                vat's Back and Play */}
             <PlayConsole
-              isReady={!isChoosingAvatar && pickedAbilities.length == 3}
-              playLabel={isLabPicker ? "Back to Lab" : "Play"} /* (no "!": Jamie, playtest 28) */
-              onPlay={playFromConsole}
-              onBack={isChoosingAvatar ? () => {} : isLabPicker ? undefined : goBackFromPicker}
-              isBackDisabled={isChoosingAvatar} /* (shown but dead on the avatar select: Quit is the way out. Jamie, playtest 34) */
+              faceKey={isChoosingAvatar ? "avatar" : isMultiplayerVat ? "vat" : "picker"}
+              {...(isChoosingAvatar ? { isReady: false, playLabel: "Next", onPlay: () => {} }
+                : isMultiplayerVat ? { isReady: !isVatBusy && !isFlyingOff, playLabel: "Play", isPulsing: true, onPlay: () => vatActions.current && vatActions.current.play(), onBack: () => setIsMultiplayerVat(false), isBackDisabled: isVatBusy || isFlyingOff }
+                : {
+                  isReady: pickedAbilities.length == 3,
+                  playLabel: isLabPicker ? "Back to Lab" : multiplayer && !mp.current.isLocal ? "Next" : "Play", /* (no "!": Jamie, playtest 28) */
+                  onPlay: playFromConsole,
+                  onBack: isLabPicker ? undefined : goBackFromPicker
+                })}
               isLeaving={isFlyingOff}
             />
           </>

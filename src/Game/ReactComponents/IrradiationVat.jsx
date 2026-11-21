@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { PlayConsole, SideFrame, FLY_OFF } from "./AbilityPicker";
 import styled, { keyframes } from "styled-components";
@@ -284,7 +284,28 @@ const HexInput = styled.input`
 // 'isReadyMain' (multiplayer): Ready is the console's main button, lit and wired, Dunk beside it (Jamie)
 // 'isDunkReady' (multiplayer's matches: Jamie): Ready alone, centred and pulsing; it dunks them (their color as it is,
 // changed or not) and then goes on; no glow on them till they're dunked
-export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose, backLabel = "Back to Lab", isReadyMain = false, isDunkReady = false }) => {
+// 'actions' (multiplayer's, before a match: Jamie, mp playtest 2): the side units stay where they are from the picker,
+// the color on the side monitor's screen as it switches over, the console's Play the vat's (it dunks them and goes on);
+// 'actions.current' is given { play } for it, 'onBusy' told when it can't be pressed. Leaving: 'onClose' at once (the
+// game flies the side units off)
+export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose, backLabel = "Back to Lab", isReadyMain = false, isDunkReady = false, actions = undefined, onBusy = (_isBusy) => {} }) => {
+  const isInPlace = !!actions;
+  const [sideScreen, setSideScreen] = useState(null);
+  useEffect(() => {
+    if (!isInPlace) return;
+    let frameId;
+    let last = null;
+    const find = () => {
+      const screen = document.querySelector('[data-side-screen="vat"]');
+      if (screen !== last) {
+        last = screen;
+        setSideScreen(screen);
+      }
+      frameId = requestAnimationFrame(find);
+    };
+    find();
+    return () => cancelAnimationFrame(frameId);
+  }, []);
   const fieldRef = useRef(null);
   const firstColor = startColor || PIECES_INFO[avatar].color; // whatever color they are now
   const [hue, setHue] = useState(() => hexToHsv(firstColor).hue);
@@ -300,7 +321,8 @@ export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose, backL
   const leave = () => {
     if (isLeaving) return;
     setIsLeaving(true);
-    setTimeout(onClose, Math.max(0, FLY_OFF.ms - 450));
+    if (isInPlace) onClose();
+    else setTimeout(onClose, Math.max(0, FLY_OFF.ms - 450));
   };
 
   const moveSpot = ({ clientX, clientY, buttons }) => {
@@ -317,11 +339,15 @@ export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose, backL
     setColor(hsvToHex(nextHue, spot.saturation, spot.value));
   };
 
+  const [isGoing, setIsGoing] = useState(false);
   const dunkThenGo = () => {
-    if (isBusy || isLeaving) return;
+    if (isBusy || isLeaving || isGoing) return;
+    setIsGoing(true); // (Back off from here on)
     irradiate();
     setTimeout(leave, VAT_LOOK.dunkMs * 2 + VAT_LOOK.holdMs + 600);
   };
+  if (isInPlace) actions.current = { play: dunkThenGo };
+  useEffect(() => { onBusy(isBusy || isLeaving || isGoing); }, [isBusy, isLeaving, isGoing]);
   const irradiate = () => {
     setIsBusy(true);
     setIsDunked(true);
@@ -338,6 +364,24 @@ export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose, backL
     setTimeout(() => setIsPraising(false), VAT_LOOK.dunkMs * 2 + VAT_LOOK.holdMs + VAT_LOOK.praiseMs);
   };
 
+  const colorPanel = (
+      <Panel>
+        <PanelTitle>Color:</PanelTitle>
+        <Picker>
+          <ColorField
+            ref={fieldRef}
+            aria-label="Color"
+            style={{ backgroundColor: hsvToHex(hue, 1, 1) }}
+            onPointerDown={moveSpot}
+            onPointerMove={moveSpot}
+          >
+            <Cursor style={{ left: `${spot.saturation * 100}%`, top: `${(1 - spot.value) * 100}%` }} />
+          </ColorField>
+          <HueSlider aria-label="Hue" type="range" min="0" max="359" value={hue} onChange={e => changeHue(Number(e.target.value))} />
+          <HexInput aria-label="Hex" value={color} onChange={e => /^#[0-9a-fA-F]{0,6}$/.test(e.target.value) && setColor(e.target.value)} />
+        </Picker>
+      </Panel>
+  );
   return createPortal(
     <Page style={{ "--vat-color": color }}>
       <Scene style={{ transform: isPraising ? `translateX(${VAT_LOOK.praisePan})` : "none" }}>
@@ -361,24 +405,9 @@ export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose, backL
       <Heading><ElectricArcs text="Pick Your Color">Pick Your Color</ElectricArcs></Heading>
       </Scene>
       {isPraising && <PraiseSpot><SpeechBalloon name={VAT_PRAISE.name} text={VAT_PRAISE.text} x={0} y={0} isFlipped scale={(document.querySelector("[data-play-screen]") || document.body).clientWidth / VAT_LOOK.praiseBaseWidth * VAT_LOOK.praiseScale} /></PraiseSpot>}
-      {createPortal(<SideUnits>
+      {isInPlace ? (sideScreen && createPortal(colorPanel, sideScreen)) : createPortal(<SideUnits>
         <SideFrame isLeaving={isLeaving}>
-        <Panel>
-        <PanelTitle>Color:</PanelTitle>
-        <Picker>
-          <ColorField
-            ref={fieldRef}
-            aria-label="Color"
-            style={{ backgroundColor: hsvToHex(hue, 1, 1) }}
-            onPointerDown={moveSpot}
-            onPointerMove={moveSpot}
-          >
-            <Cursor style={{ left: `${spot.saturation * 100}%`, top: `${(1 - spot.value) * 100}%` }} />
-          </ColorField>
-          <HueSlider aria-label="Hue" type="range" min="0" max="359" value={hue} onChange={e => changeHue(Number(e.target.value))} />
-          <HexInput aria-label="Hex" value={color} onChange={e => /^#[0-9a-fA-F]{0,6}$/.test(e.target.value) && setColor(e.target.value)} />
-        </Picker>
-        </Panel>
+        {colorPanel}
         </SideFrame>
         {/* Irradiate and Back to Lab on the power picker's console (Jamie, playtest 25) */}
         {isDunkReady
