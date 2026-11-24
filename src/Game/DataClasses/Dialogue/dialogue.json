@@ -5,16 +5,10 @@
       "lines": [
         {
           "speaker": "agent",
-          "text": "Reports of more Kaiju incoming to Kaiju City! Protect the Peninsula!!",
+          "text": "Soldier, there are reports coming in of Kaiju on there way to Kaiju City! Protect the Peninsula!!",
           "isAlarm": true,
           "note": "jamie",
           "id": "radio.peninsula1.0"
-        },
-        {
-          "speaker": "agent",
-          "text": "It's your job to protect this city, so do it!",
-          "note": "jamie",
-          "id": "radio.peninsula1.1"
         }
       ]
     },
@@ -23,7 +17,7 @@
       "lines": [
         {
           "speaker": "agent",
-          "text": "The punk from the station finished re-education. Mentally compliant. Physically, stronger than he should be. The mohawk stays, apparently.",
+          "text": "The punk from the station finished re-education. He's working for us now. The mohawk stays, apparently.",
           "when": {
             "recruit": "punk",
             "choice": "recruit"
@@ -41,13 +35,13 @@
         },
         {
           "speaker": "agent",
-          "text": "Sonar is showing a second wave off the coast. Bigger than the first.",
+          "text": "Sonar is showing a second wave of Kaiju off the coast. Bigger than the first.",
           "isAlarm": true,
           "id": "radio.peninsula2.2"
         },
         {
           "speaker": "agent",
-          "text": "Get back to the Peninsula. Hold the line!",
+          "text": "Protect the peninsula!!",
           "id": "radio.peninsula2.3"
         }
       ]
@@ -57,17 +51,17 @@
       "lines": [
         {
           "speaker": "agent",
-          "text": "Another wave down. You two are holding this city together.",
+          "text": "Another wave down. You guys are holding this city together.",
           "id": "radio.mapRooftop.0"
         },
         {
           "speaker": "teammate",
-          "text": "They are coming faster than they used to.",
+          "text": "They are coming faster than they used to...",
           "id": "radio.mapRooftop.1"
         },
         {
           "speaker": "agent",
-          "text": "Keep it up. I'm seeing good numbers on your {power} power.",
+          "text": "Well, you guys aren't slowing down either. I'm seeing good numbers on your {power} power.",
           "id": "radio.mapRooftop.2"
         },
         {
@@ -91,13 +85,13 @@
         },
         {
           "speaker": "agent",
-          "text": "There have been reports of Kaiju body parts falling onto rooftops in the Cemetary district. Go investigate and try not to let another citizen touch them!",
+          "text": "There have been reports of Kaiju body parts falling onto rooftops in the Cemetery district. Go investigate and try not to let another citizen touch them!",
           "note": "jamie",
           "id": "radio.mapRooftop.4"
         },
         {
           "speaker": "agent",
-          "text": "Make sure you bring your Dispel ability. Something tells me you'll need it.",
+          "text": "Oh! And make sure you bring your Dispel ability. Something tells me you'll need it.",
           "id": "radio.mapRooftop.5",
           "note": "jamie"
         }
@@ -108,12 +102,48 @@
       "lines": [
         {
           "speaker": "agent",
-          "text": "The woman from the rooftop cemetery is through re-education. She still hears voices, so: stable, for her. Physically flawless. We could not get her out of the black.",
+          "text": "The woman from the rooftop cemetery is through re-education. Her powers aren't like any we've seen before.",
           "when": {
             "recruit": "black_female",
             "choice": "recruit"
           },
           "id": "radio.peninsula3.0"
+        },
+        {
+          "speaker": "agent",
+          "text": "Powerful, but they sap her health.",
+          "when": {
+            "recruit": "black_female",
+            "choice": "recruit"
+          },
+          "id": "radio.peninsula3.xmwtk8qax"
+        },
+        {
+          "speaker": "agent",
+          "text": "You might need to babysit her, to keep her alive.",
+          "when": {
+            "recruit": "black_female",
+            "choice": "recruit"
+          },
+          "id": "radio.peninsula3.xmwtk9mur"
+        },
+        {
+          "speaker": "Ghost Girl",
+          "text": "I don't need a babysitter.",
+          "when": {
+            "recruit": "black_female",
+            "choice": "recruit"
+          },
+          "id": "radio.peninsula3.xmwtka4in"
+        },
+        {
+          "speaker": "agent",
+          "text": "Hey! How are you on the line??",
+          "when": {
+            "recruit": "black_female",
+            "choice": "recruit"
+          },
+          "id": "radio.peninsula3.xmwtkay3r"
         },
         {
           "speaker": "agent",
@@ -126,18 +156,13 @@
         },
         {
           "speaker": "agent",
-          "text": "No time to rest. The shipping lanes just went dark.",
+          "text": "We've got Kaiju incoming!",
           "isAlarm": true,
           "id": "radio.peninsula3.2"
         },
         {
-          "speaker": "teammate",
-          "text": "Oh no...",
-          "id": "radio.peninsula3.3"
-        },
-        {
           "speaker": "agent",
-          "text": "It's the biggest group yet... But the Peninsula will not fall today!",
+          "text": "It's the biggest group yet... Get out there and do your thing!",
           "id": "radio.peninsula3.4"
         }
       ]
@@ -147,7 +172,7 @@
       "lines": [
         {
           "speaker": "agent",
-          "text": "The harbor is quiet again. The Mayor sends his thanks.",
+          "text": "The radar is quiet again. The mayor sends his thanks.",
           "id": "radio.mapAquarium.0"
         },
         {
@@ -171,7 +196,7 @@
               "reply": [
                 {
                   "speaker": "agent",
-                  "text": "Yeah, we got our best guys on it. You will meet them soon enough...",
+                  "text": "Yeah, you two! Speaking of which...",
                   "id": "radio.mapAquarium.3.1.0"
                 }
               ]
@@ -181,8 +206,18 @@
         },
         {
           "speaker": "agent",
-          "text": "Something has happened at the Aquarium. Go.",
+          "text": "We've heard that some severed Kaiju parts have crashed into the Aquarium.",
           "id": "radio.mapAquarium.4"
+        },
+        {
+          "speaker": "agent",
+          "text": "Your track record isn't great, but you know the drill.",
+          "id": "radio.mapAquarium.xmwtkiwjd"
+        },
+        {
+          "speaker": "agent",
+          "text": "Get there and make sure no one touches it! Go.",
+          "id": "radio.mapAquarium.xmwtkjb7t"
         }
       ]
     },
@@ -191,12 +226,21 @@
       "lines": [
         {
           "speaker": "agent",
-          "text": "The mermaid is in re-education. Mental state: she is a mermaid. Physically, she's scaling nicely. The tail is a lot.",
+          "text": "The aquarium worker is in re-education. Mentally: she's a mermaid.",
           "when": {
             "recruit": "mermaid",
             "choice": "recruit"
           },
           "id": "radio.peninsula4.0"
+        },
+        {
+          "speaker": "agent",
+          "text": "But the lab techs have never met someone so pleasant. She's a hit!",
+          "when": {
+            "recruit": "mermaid",
+            "choice": "recruit"
+          },
+          "id": "radio.peninsula4.xmwtkmo38"
         },
         {
           "speaker": "agent",
@@ -235,20 +279,14 @@
       "label": "Final battle: radio call, the team alone (no Agent)",
       "lines": [
         {
-          "speaker": "teammate",
-          "text": "No word from the Lab. Nobody's giving orders anymore.",
-          "id": "radio.final.0",
-          "note": "draft"
-        },
-        {
           "speaker": "player",
-          "text": "Then we give them ourselves.",
+          "text": "The agent and his clones are dead. We did it.",
           "id": "radio.final.1",
           "note": "draft"
         },
         {
           "speaker": "teammate",
-          "text": "Look at the radar... that's every Kaiju left in the sea. All of them, coming at once.",
+          "text": "Can't rest yet! Look at the radar... that's every Kaiju left in the sea. All of them, coming at once.",
           "id": "radio.final.2",
           "note": "draft",
           "isAlarm": true
@@ -284,7 +322,7 @@
         },
         {
           "speaker": "teammate",
-          "text": "Then why can I still hear them? They're calling me...",
+          "text": "Then why can I still hear their roars?",
           "id": "peninsula.finalTurn.2",
           "note": "draft"
         },
@@ -296,15 +334,35 @@
         },
         {
           "speaker": "player",
-          "text": "Hey. Look at me. Stay with me.",
+          "text": "Mine are too.",
           "id": "peninsula.finalTurn.4",
           "note": "draft"
         },
         {
           "speaker": "teammate",
-          "text": "Get away from me. Please... I can't stop it.",
+          "text": "Aghgh!! I must destroy!",
           "id": "peninsula.finalTurn.5",
           "note": "draft"
+        },
+        {
+          "speaker": "player",
+          "text": "No stay with me. We're in this together.\n\n(NOTE to Claude: have player turn into Kaiju too with same amount of health as teammate, have first 3 powers stay the same 3, but keys 4-0 should have the rest of the powers added. Teammate turned into Kaiju and lost her mind, player turned into Kaiju with mind intact. His last act as a  defender of the city: take down his teammate.)",
+          "id": "peninsula.finalTurn.xmwtluuwo"
+        },
+        {
+          "speaker": "player",
+          "text": "<After transformation:> I'm a Kaiju, but I'm still in control.",
+          "id": "peninsula.finalTurn.xmwtmze40"
+        },
+        {
+          "speaker": "player",
+          "text": "My teammate has lost {teammate:his} mind. I have to stop {teammate:him}.",
+          "id": "peninsula.finalTurn.xmwtn1vie"
+        },
+        {
+          "speaker": "player",
+          "text": "Forgive me, teammate.",
+          "id": "peninsula.finalTurn.xmwtn312h"
         }
       ]
     },
@@ -319,13 +377,13 @@
         },
         {
           "speaker": "player",
-          "text": "It's quiet. Too quiet, without you here.",
+          "text": "We did it, teammate...",
           "id": "peninsula.finalTurnAlone.1",
           "note": "draft"
         },
         {
           "speaker": "player",
-          "text": "Why can I still hear them? They're calling me...",
+          "text": "Why can I still hear their roars? They're calling me...",
           "id": "peninsula.finalTurnAlone.2",
           "note": "draft"
         },
@@ -393,7 +451,7 @@
         },
         {
           "speaker": "Ghost Girl",
-          "text": "They're so ANGRY. They want me to take it!",
+          "text": "They're so ANGRY. They want me to touch it!",
           "isFlipped": false,
           "id": "rooftop.intro.3"
         }
@@ -415,7 +473,7 @@
         },
         {
           "speaker": "teammate",
-          "text": "Ma'am, put that down!",
+          "text": "Ma'am, don't touch that!",
           "id": "aquarium.intro.2"
         }
       ]
@@ -506,38 +564,41 @@
         },
         {
           "speaker": "teammate",
-          "text": "The Lab only ever lent them to us, using nano-tech.",
-          "id": "sewer1.walkIn.3"
-        },
-        {
-          "speaker": "teammate",
-          "text": "Powers gained by touching Kaiju parts...",
+          "text": "But maybe we can get them back...",
           "id": "sewer1.walkIn.4"
         },
         {
           "speaker": "teammate",
-          "text": "That is how the bystanders we fought got theirs: by touching the fallen Kaiju parts.",
+          "text": "Maybe... we can find some fallen Kaiju parts, and touch them?",
           "id": "sewer1.walkIn.5"
         },
         {
           "speaker": "teammate",
-          "text": "And that's why the Agent's ray didn't take yours.",
+          "text": "Look at them. They're still empowered.  The agent's ray gun didn't work on them.",
           "ifRecruits": true,
           "id": "sewer1.walkIn.6"
         },
         {
-          "speaker": "teammate",
-          "text": "Those are different... Those powers last.",
-          "id": "sewer1.walkIn.7"
+          "speaker": "player",
+          "text": "Yeah, but they're all insane. That much Kaiju radiation... it does something to you.",
+          "ifRecruits": true,
+          "id": "sewer1.walkIn.xmwtl0af0"
+        },
+        {
+          "speaker": "player",
+          "text": "And this is just the effects we've seen. Who knows what else it does.",
+          "ifRecruits": true,
+          "id": "sewer1.walkIn.xmwtl1fye"
         },
         {
           "speaker": "teammate",
-          "text": "If we can find some Kaiju parts and touch them...",
-          "id": "sewer1.walkIn.8"
+          "text": "Yeah, but...",
+          "ifRecruits": true,
+          "id": "sewer1.walkIn.xmwtl2emz"
         },
         {
           "speaker": "teammate",
-          "text": "We could get our powers back, and fight back.",
+          "text": "With powers, we can fight back. Do you really want to leave this city in the hands of the agent?",
           "id": "sewer1.walkIn.9"
         }
       ]
@@ -556,64 +617,89 @@
       "label": "Sewer 2: the Kaiju parts",
       "lines": [
         {
-          "speaker": "player",
+          "speaker": "teammate",
           "text": "Are those... Kaiju parts?",
           "id": "sewer2.walkIn.0"
         },
         {
-          "speaker": "teammate",
-          "text": "The one thing we need, and it was in the next room this whole time.",
+          "speaker": "player",
+          "text": "They are!",
           "id": "sewer2.walkIn.1"
         },
         {
           "speaker": "player",
-          "text": "That is crazy.",
-          "id": "sewer2.walkIn.2"
-        },
-        {
-          "speaker": "teammate",
           "text": "They must be specimens from the Lab.",
           "id": "sewer2.walkIn.3"
         },
         {
-          "speaker": "teammate",
-          "text": "Flushed down the pipes when the brains finished their morbid experiments.",
+          "speaker": "player",
+          "text": "Flushed down the pipes when the scientists finished their morbid experiments.",
           "id": "sewer2.walkIn.4"
         },
         {
-          "speaker": "player",
-          "text": "And now they are all we have left.",
-          "id": "sewer2.walkIn.5"
+          "speaker": "teammate",
+          "text": "So... should we touch them?",
+          "id": "sewer2.walkIn.xmwtl6osx"
         },
         {
-          "speaker": "teammate",
-          "text": "There's no taking this back. Whatever it does to us, it lasts.",
+          "speaker": "player",
+          "text": "There's no taking it back. Whatever it does to us...",
           "id": "sewer2.walkIn.6"
         },
         {
-          "speaker": "player",
-          "text": "I know.",
+          "speaker": "teammate",
+          "text": "I know...",
           "id": "sewer2.walkIn.7"
         },
         {
-          "speaker": "teammate",
-          "text": "I never said it, but... I'm glad it was you out there with me.",
+          "speaker": "player",
+          "text": "I'm glad it was you out there with me.",
           "id": "sewer2.walkIn.8"
         },
         {
-          "speaker": "player",
+          "speaker": "teammate",
           "text": "Me too.",
           "id": "sewer2.walkIn.9"
         },
         {
+          "speaker": "player",
+          "text": "You always had my back.",
+          "id": "sewer2.walkIn.xmwtlbly8"
+        },
+        {
           "speaker": "teammate",
-          "text": "OK... let's do this.",
+          "text": "We were in it together. We ARE in it together.",
+          "id": "sewer2.walkIn.xmwtlcufz"
+        },
+        {
+          "speaker": "player",
+          "text": "Even with this, I guess.",
+          "id": "sewer2.walkIn.xmwtldety"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Yeah...",
+          "id": "sewer2.walkIn.xmwtldqzr"
+        },
+        {
+          "speaker": "player",
+          "text": "Ok, it's settled then.",
+          "id": "sewer2.walkIn.xmwtle0gu"
+        },
+        {
+          "speaker": "teammate",
+          "text": "It is.",
+          "id": "sewer2.walkIn.xmwtleahl"
+        },
+        {
+          "speaker": "player",
+          "text": "Ok! Let's do it.",
           "id": "sewer2.walkIn.10"
         },
         {
           "speaker": "player",
-          "text": "Let's do this.",
-          "id": "sewer2.walkIn.11"
+          "text": "Mr. Agent man, we're coming for you.",
+          "id": "sewer2.walkIn.xmwtlh8g9"
         }
       ]
     },
@@ -622,7 +708,7 @@
       "lines": [
         {
           "speaker": "agent",
-          "text": "Hey, soldiers! Over here.",
+          "text": "Soldier, over here!",
           "isBalloon": true,
           "id": "street.greeting.0"
         }
@@ -633,54 +719,44 @@
       "lines": [
         {
           "speaker": "agent",
-          "text": "Good work out there. You beat them back.",
+          "text": "Good work out there. Though you guys made a mess!",
           "id": "street.talk.0"
         },
         {
           "speaker": "agent",
-          "text": "Careful around those Kaiju parts. They are hazardous.",
+          "text": "Careful around those dismembered Kaiju parts. They are toxic.",
           "id": "street.talk.1"
         },
         {
           "speaker": "agent",
-          "text": "One touch, and a person is changed for good.",
+          "text": "One touch and you're changed for good.",
           "id": "street.talk.2"
         },
         {
           "speaker": "agent",
-          "text": "Word from West Rapid Transit: Bystanders are gathering.",
+          "text": "Speaking of which: Bystanders are gathering at the West Rapid Transit station.",
           "id": "street.talk.3"
         },
         {
           "speaker": "agent",
-          "text": "Get there before someone touches one.",
+          "text": "Get there before someone touches one!",
           "id": "street.talk.4"
         },
         {
           "speaker": "agent",
-          "text": "If you want to change your powers, stop by the Lab.",
+          "text": "Stop by the Lab on the way if you want to change out your abilities.",
           "id": "street.talk.5",
           "note": "draft"
         },
         {
           "speaker": "agent",
-          "text": "They can give you a boost of Kaiju Juice,",
-          "id": "street.talk.6"
-        },
-        {
-          "speaker": "agent",
-          "text": "or change out your teammate.",
-          "id": "street.talk.7"
-        },
-        {
-          "speaker": "agent",
-          "text": "The scientists discovered a new power, too: Teleport.",
+          "text": "The scientists discovered a new one: Teleport.",
           "id": "street.talk.teleport",
           "note": "draft"
         },
         {
           "speaker": "agent",
-          "text": "Pick it up at the Lab before you head to Rapid Transit. Go.",
+          "text": "Could be useful at the Transit station. But be quick!",
           "id": "street.talk.teleportLab",
           "note": "draft"
         }
@@ -704,11 +780,6 @@
           "speaker": "agent",
           "text": "Welcome to the Lab.",
           "id": "labIntro.welcome.0"
-        },
-        {
-          "speaker": "agent",
-          "text": "Have a look around.",
-          "id": "labIntro.welcome.1"
         }
       ]
     },
@@ -722,12 +793,7 @@
         },
         {
           "speaker": "agent",
-          "text": "Nothing to worry about...",
-          "id": "labIntro.nervous.1"
-        },
-        {
-          "speaker": "agent",
-          "text": "Just some R&D. Cryo-chimeric epigenetics.",
+          "text": "Just some R&D into cloning...",
           "id": "labIntro.nervous.2"
         }
       ]
@@ -749,7 +815,7 @@
         },
         {
           "speaker": "teammate",
-          "text": "And choose our powers before we go. Who knows when we'll get the chance again.",
+          "text": "But make sure to choose your powers before we go. Who knows when we'll get the chance to again...",
           "id": "lab.beforeTrap.2",
           "note": "draft"
         }
@@ -760,12 +826,12 @@
       "lines": [
         {
           "speaker": "agent",
-          "text": "You came back here? With no powers?",
+          "text": "You both glow with Kaiju irradiation! How??",
           "id": "lab.showdown.0"
         },
         {
           "speaker": "teammate",
-          "text": "We found the parts you flushed. We touched them. We got our powers back.",
+          "text": "We found the parts you flushed, and touched them.",
           "id": "lab.showdown.1"
         },
         {
@@ -790,6 +856,21 @@
         },
         {
           "speaker": "agent",
+          "text": "Your mind usually goes first, followed soon after by your body. But sometimes, it's reverse...",
+          "id": "lab.showdown.xmwtlkcgj"
+        },
+        {
+          "speaker": "agent",
+          "text": "Poor bastards. Minds of men stuck in the bodies of a Kaiju.",
+          "id": "lab.showdown.xmwtlloox"
+        },
+        {
+          "speaker": "teammate",
+          "text": "What?",
+          "id": "lab.showdown.xmwtlmgwn"
+        },
+        {
+          "speaker": "agent",
           "text": "All these Kaiju... Where did you think they were coming from?",
           "id": "lab.showdown.6"
         },
@@ -800,13 +881,28 @@
         },
         {
           "speaker": "agent",
-          "text": "Every one of them used to be an Agent.",
+          "text": "Every one of them used to be a soldier or a citizen.",
           "id": "lab.showdown.8"
         },
         {
           "speaker": "agent",
           "text": "Failed experiments.",
           "id": "lab.showdown.9"
+        },
+        {
+          "speaker": "agent",
+          "text": "Of course, some of them are just naturally occurring Kaiju, but those are rare... ",
+          "id": "lab.showdown.xmwtlo38h"
+        },
+        {
+          "speaker": "agent",
+          "text": "Welp... time to put you out of your misery before you both transform, or go insane.",
+          "id": "lab.showdown.xmwtlpt2s"
+        },
+        {
+          "speaker": "agent",
+          "text": "Agents assemble!!",
+          "id": "lab.showdown.xmwtlqkm9"
         }
       ]
     },
@@ -850,25 +946,24 @@
         },
         {
           "speaker": "agent",
-          "text": "But those powers were only on loan.",
-          "note": "jamie",
-          "id": "labTrap.trap.1"
-        },
-        {
-          "speaker": "agent",
-          "text": "And we have no more need for you. Meet the new team.",
+          "text": "But there's been a breakthrough and we no longer need your services.",
           "phase": "clones",
           "note": "jamie",
           "id": "labTrap.trap.2"
         },
         {
+          "speaker": "agent",
+          "text": "Meet the new team. Me! The most capable person there is.",
+          "id": "labTrap.trap.xmwtku0fm"
+        },
+        {
           "speaker": "teammate",
-          "text": "Clones... That's what was in the tanks!",
+          "text": "Clones!",
           "id": "labTrap.trap.3"
         },
         {
           "speaker": "agent",
-          "text": "Lab property. We are taking them back.",
+          "text": "For your commendable service, we're granting you an honorable discharge, and a swift death!",
           "note": "jamie",
           "id": "labTrap.trap.4"
         },
@@ -883,7 +978,7 @@
         },
         {
           "speaker": "recruit",
-          "text": "Not mine. I still have mine. Kaiju powers are not theirs to take.",
+          "text": "Huh, I still have mine...",
           "ifRecruits": true,
           "id": "labTrap.trap.7"
         },
@@ -939,21 +1034,21 @@
         {
           "speaker": "Punk Guy",
           "key": "punk",
-          "text": "Want Overgrowth? Take me on, one on one. Win, and it's yours.",
+          "text": "Hey, fool. Want my power? Take me on, one on one. Win, and I'll teach it to you. It's only for the elite.",
           "id": "training.offer.0",
           "note": "draft"
         },
         {
           "speaker": "Ghost Girl",
           "key": "black_female",
-          "text": "My ancestors taught me Haunt. Face me alone, and I'll teach you.",
+          "text": "Leader, I can teach you my power. Face me alone, if you're not afraid.",
           "id": "training.offer.1",
           "note": "draft"
         },
         {
           "speaker": "Aquarium Worker",
           "key": "mermaid",
-          "text": "Charm is more than a pretty smile. Beat me one on one, and I'll show you.",
+          "text": "Hey, beautiful! Charm is more than a pretty smile. Beat me one on one, and I'll show you.",
           "id": "training.offer.2",
           "note": "draft"
         }
@@ -965,21 +1060,21 @@
         {
           "speaker": "Punk Guy",
           "key": "punk",
-          "text": "No holding back!",
+          "text": "You're on my turf now, fool!",
           "id": "training.start.0",
           "note": "draft"
         },
         {
           "speaker": "Ghost Girl",
           "key": "black_female",
-          "text": "Show me what you've got.",
+          "text": "May the ancestors grant you humility on your defeat.",
           "id": "training.start.1",
           "note": "draft"
         },
         {
           "speaker": "Aquarium Worker",
           "key": "mermaid",
-          "text": "Don't go easy on me!",
+          "text": "You'll be another notch in my belt soon enough, precious.",
           "id": "training.start.2",
           "note": "draft"
         }
@@ -1089,7 +1184,7 @@
       "lines": [
         {
           "speaker": "teammate",
-          "text": "Heads-up, teammate. They're coming!",
+          "text": "Heads-up, teammate. Here they come!",
           "isBalloon": true,
           "id": "peninsula.arrival.0"
         }
@@ -1215,7 +1310,7 @@
         },
         {
           "speaker": "teammate",
-          "text": "...or we could recruit {him} onto the crew.",
+          "text": "...or we could recruit {him}, bring {him} onto the crew.",
           "when": {
             "past": "terminate"
           },
