@@ -56,7 +56,7 @@ const NAMES = [
   "Tater"
 ];
 
-// what it says (Jamie): every other line "Pick three abilities", these in turn between; a long one stays up longer
+// what it says (Jamie): every third line "Pick three abilities", these in turn between; a long one stays up longer
 // (Jamie's, some tightened by Claude with his leave: draft)
 const LINES = [
   "Your three powers determine your class.",
@@ -70,10 +70,10 @@ const LINES = [
   "Press Play! when ready."
 ];
 // the order (Jamie): kept for the play (this module), not per Kaiju, so a new one hatched carries on where the last left
-// off; each line once, in order, then at random (never the same twice running). Every other line "Pick three abilities"
+// off; each line once, in order, then at random (never the same twice running). Every third line "Pick three abilities"
 const SPOKEN = { count: 0, said: 0, last: -1 };
 const getNextLine = () => {
-  const isPick = SPOKEN.count % 2 == 0;
+  const isPick = SPOKEN.count % 3 == 0; // (every third: pick, line, line. Jamie, 2026-11-24; was every other)
   SPOKEN.count += 1;
   if (isPick) return "Pick three abilities";
   if (SPOKEN.said < LINES.length) {
@@ -219,7 +219,7 @@ const step = pet => {
     // its first words, first time out or new from its egg: who it is (Jamie), before anything else
     const isHello = !next.hasIntroduced;
     const isGreetingPick = !isHello && next.isGreeting; // (the line straight after the hello: always the pick)
-    next.line = isHello ? `Hi, I am ${MASCOT}!` : isGreetingPick ? "Pick three abilities" : getNextLine(); // (no generation number in it: Jamie, playtest 34; was "Hi, I am ..., your virtual Kaiju!", then "I'm Stompy!"; now "Hi, I am Stompy!": Jamie, 2026-11-19)
+    next.line = isHello ? `Hi, I'm ${MASCOT}!` : isGreetingPick ? "Pick three abilities" : getNextLine(); // (no generation number in it: Jamie, playtest 34; was "Hi, I am ..., your virtual Kaiju!", then "I'm Stompy!"; now "Hi, I am Stompy!": Jamie, 2026-11-19)
     next.hasIntroduced = true;
     // (its hello up twice as long, so it's seen: Jamie, playtest 29)
     next.speakingUntil = now + getSpeakMs(next.line) * (isHello ? 2 : 1);
