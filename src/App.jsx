@@ -20,6 +20,9 @@ const ClassReview = import.meta.env.DEV ? lazy(() => import("./Game/ReactCompone
 // laying out the room behind the Kaiju-Vision by hand (Jamie, 2026-11-24). not part of the built game.
 const isApartmentMockup = import.meta.env.DEV && window.location.pathname == "/apartment";
 const ApartmentMockup = import.meta.env.DEV ? lazy(() => import("./Game/ReactComponents/ApartmentMockup/ApartmentMockup").then(({ ApartmentMockup }) => ({ default: ApartmentMockup }))) : null;
+// the tab icon tool (dev only, Jamie 2026-11-25)
+const isIconTool = import.meta.env.DEV && window.location.pathname == "/icon";
+const IconTool = import.meta.env.DEV ? lazy(() => import("./Game/ReactComponents/IconTool/IconTool").then(({ IconTool }) => ({ default: IconTool }))) : null;
 const DialogueViewer = import.meta.env.DEV ? lazy(() => import("./Game/ReactComponents/Dialogue/DialogueViewer").then(({ DialogueViewer }) => ({ default: DialogueViewer }))) : null;
 
 // the stage's safe area, for everything sized from it (Utils/stage.js: layout phase 1)
@@ -72,6 +75,7 @@ const App = () => {
   if (isDialogueViewer) return <Suspense fallback={null}><DialogueViewer /></Suspense>;
   if (isClassReview) return <Suspense fallback={null}><ClassReview /></Suspense>;
   if (isApartmentMockup) return <Suspense fallback={null}><ApartmentMockup /></Suspense>;
+  if (isIconTool) return <Suspense fallback={null}><IconTool /></Suspense>;
 
   return (
     <div className="App">

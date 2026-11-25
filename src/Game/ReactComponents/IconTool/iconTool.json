@@ -1,0 +1,24 @@
+{
+ "kaiju": {
+  "x": 300,
+  "y": 250,
+  "scale": 1.6,
+  "frame": 5,
+  "isMirrored": true,
+  "outline": 2
+ },
+ "fire": {
+  "dx": 0,
+  "dy": -20.7,
+  "scale": 0.6,
+  "angle": 52,
+  "frame": 3,
+  "glow": 1
+ },
+ "circle": {
+  "x": 600,
+  "y": 420,
+  "r": 330,
+  "inner": 0.68
+ }
+}

@@ -174,3 +174,46 @@ export const apartmentSave = (layoutPath: string, exportDir: string): Plugin => 
     }));
   }
 });
+
+// the tab icon tool (/icon, Jamie 2026-11-25): its settings saved over iconTool.json, and its export written as
+// public/icon-source/kaiju-icon.png (for scripts/makeIcons.py to make the icon set from)
+export const iconToolSave = (settingsPath: string, exportFile: string): Plugin => ({
+  name: 'icon-tool-save',
+  apply: 'serve',
+  handleHotUpdate({ file }) {
+    if (path.normalize(file) == path.normalize(settingsPath)) return [];
+  },
+  configureServer(server) {
+    const readBody = (request, done) => {
+      let body = '';
+      request.on('data', chunk => { body += chunk; });
+      request.on('end', () => done(body));
+    };
+    server.middlewares.use('/__icon-tool/save', (request, response) => readBody(request, body => {
+      try {
+        const settings = JSON.parse(body);
+        if (!settings || !settings.kaiju || !settings.fire || !settings.circle) throw new Error('not the icon tool\'s settings');
+        fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 1)}\n`);
+        response.statusCode = 200;
+        response.end('saved');
+      } catch (error) {
+        response.statusCode = 400;
+        response.end(String(error));
+      }
+    }));
+    server.middlewares.use('/__icon-tool/export', (request, response) => readBody(request, body => {
+      try {
+        const { dataUrl } = JSON.parse(body);
+        const match = /^data:image\/png;base64,(.+)$/.exec(dataUrl || '');
+        if (!match) throw new Error('not a PNG');
+        fs.mkdirSync(path.dirname(exportFile), { recursive: true });
+        fs.writeFileSync(exportFile, Buffer.from(match[1], 'base64'));
+        response.statusCode = 200;
+        response.end(exportFile);
+      } catch (error) {
+        response.statusCode = 400;
+        response.end(String(error));
+      }
+    }));
+  }
+});

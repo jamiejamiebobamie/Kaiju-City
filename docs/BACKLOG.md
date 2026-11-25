@@ -8,7 +8,7 @@ A shared list between Jamie and Claude. Claude reads it at the start of each ses
   - `> Jamie: ...` for Jamie's notes.
   - `> Claude: ...` for Claude's answers.
 - New items can go anywhere. Claude will sort them into place and ask about anything unclear.
-- Once an item is done and agreed, Claude moves it to **Done** at the bottom.
+- Once Jamie marks an item done, Claude moves it to [DONE.md](DONE.md), into its section there (newest at the top).
 
 Last updated: 2026-11-25.
 
@@ -33,10 +33,14 @@ Last updated: 2026-11-25.
    - The roaring right-hand landing Kaiju (facing left, silhouette) with the purple lo-fi fire mid-spew.
    - A tool for it: a static mid-spew Kaiju and fire; rescale and place both; a framing circle Jamie sizes and places; an inner circle where a fade starts, fully clear by the outer circle; export.
    - Then Claude makes the icon set as for SpellCraft (../QuickCast): favicon.ico (16/32/48), favicon-32, apple-touch 180, icon-192, icon-512, a webmanifest, loaded with the first loader.
+   > Claude (2026-11-25): the tool is built: open `localhost:5180/icon` (dev server). Pick Kaiju, Fire or Circle; drag to move, mouse wheel to scale; sliders for everything. Previews at 16, 32, 48 (on a dark tab, a light tab and clear) and 180. **Save** keeps your settings (iconTool.json); **Export 1024 px** downloads the image and writes it to `public/icon-source/kaiju-icon.png`. When you're happy with it, tell me and I'll run `scripts/makeIcons.py` (ready) to make the icon set and add the tags to index.html.
 
 ### LOW (Jamie's order, before merging to master)
 1. Re-enable localStorage saves: one compressed save of all unlocks, maybe one-word codes read on load or on Play.
    > Claude: this is also listed under Shelved (Jamie said to move it there too). Which one?
+   > Jamie: Woops! Sorry, we just want to implement so that it is clean / not saving a bunch of localstorage data to user's comp, and ensure the app is able to read it cleanly. the unlocked content should be done "intelligently" so that it adds to singleplayer/multiplayer experience w/o detracting from it. will need to discuss.
+   > Jamie: please remove this one from "Shelved" section if repeated there.
+   > Claude: done: removed from Shelved. Noted: a small, clean save that the app reads reliably, and unlocks designed to add to single player and multiplayer without taking away from either. We'll discuss the design before building it.
 2. Sound system: 42 proposed effects waiting on Jamie's review. The volume buttons and bars exist for it (`VOLUME_LEVEL` in PlayWindow.jsx).
 3. A controls info modal with an image, for mobile and desktop, replacing the current pop-up.
 4. Make the before-AI / after-AI video and upload it to YouTube.
@@ -51,6 +55,8 @@ Last updated: 2026-11-25.
 7. Remove old files.
 8. Match the window picture's little monitor to the Kaiju-Vision.
    > Claude: not yet placed in Jamie's order.
+   > Jamie: please clairfy above question/request/statement... the main monitor is no longer "Kaiju-Vision" but the item is "8" in the order
+   > Claude: thanks, it's #8. The item is about the small monitor you see through the apartment's window in the landing zoom picture (2-window.png): it should match the game's main monitor. Its original problem (a white casing there, black in the game) is likely already gone: on 2026-11-25 the window's inside was replaced with the relit apartment, whose monitor is dark. What's left is matching the shape, and the main monitor's casing is about to change in the casing ticket (thicker borders, grilles, volume buttons). Suggest: keep #8, and do it once the casing redesign is final. OK?
 
 ### STRETCH
 - Player hand and drink obstacle (desktop only):
@@ -58,6 +64,8 @@ Last updated: 2026-11-25.
   - It only happens while Pause is enabled (fights), and pausing beats it: the sip runs on real time, so it finishes while the game is paused.
   - With a warning before it starts, partial cover, never in the hardest moments, and an off option.
   > Claude: open question: if the player pauses during the warning, does the sip still happen during the pause, or is it skipped?
+  > Jamie: yes, sip / hand movement is not main monitor "game content." It cannot be paused by pausing the game on the main monitor. If game content transitions to an unpausible section (like during cutscene, dialogue, or walking scene)... delay transition(?) until sip is complete (do not show "Paused" or anything, just stall the game until sip no longer blocks screen...) user should not notice due to screen being blocked.
+  > Claude: got it, noted for the build: the sip is apartment content, so pausing never stops it; a sip that starts always finishes. If the game reaches a part that can't pause (a cutscene, dialogue, a walking scene) during a sip, the game quietly holds just before it, with no "Paused" shown, until the mug is down and the screen is clear.
 
 ### SHELVED
 - The trained NPC AI.
@@ -66,7 +74,6 @@ Last updated: 2026-11-25.
 - Editor links.
 - A chunkier monitor stand and border.
 - The ability picker's yellow circuit background.
-- Re-enable localStorage saves (see LOW 1).
 - Refresh the dialogue viewer summaries.
 
 ### Other open lists
@@ -161,4 +168,4 @@ Last updated: 2026-11-25.
 ---
 
 ## Done
-(Items move here once confirmed.)
+Moved to [DONE.md](DONE.md).
