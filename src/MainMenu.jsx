@@ -1,4 +1,5 @@
 import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { getSafeArea, safeW } from "./Utils/stage";
 import styled, { css, keyframes } from "styled-components";
 import { SpeedBlurFilter, slideAway } from "./Components/SlideAway";
 import { getZoomBackMs, ZOOM_BACK, ZoomThrough } from "./Components/ZoomThrough";
@@ -180,7 +181,9 @@ const getIntroStyle = stage => css`
   ${stage < 2 && css`& > div > :first-child > p:nth-child(2)::after { animation: none; opacity: 0; }`}
 `;
 
-const getLogoScale = () => LOGO_SIZE.scale * Math.min(window.innerWidth / LOGO_SIZE.window.width, window.innerHeight / LOGO_SIZE.window.height);
+// (from the stage's safe area, not the window: layout phase 1, 1B. The same at Jamie's window, where the window's
+// height was the smaller share; was the window's width and height)
+const getLogoScale = () => LOGO_SIZE.scale * getSafeArea().height / LOGO_SIZE.window.height;
 
 // the Peninsula behind the logo (LandingScene) zooms with the skyline, about the same spot: its vanishing point
 const getSceneZoom = (isLeaving, isZoomingBack) => isLeaving
@@ -267,12 +270,12 @@ const PressAnyKey = styled.div`
   position: fixed;
   left: calc(100vw / 7);
   right: calc(100vw / 7);
-  top: calc(100dvh * ${PRESS_KEY.topShare}); /* raised for now (was 5/6): lower again once there's more on the page (Jamie) */
+  top: calc(var(--safe-y) + var(--safe-h) * ${PRESS_KEY.topShare}); /* raised for now (was 5/6): lower again once there's more on the page (Jamie). (the safe area's, layout phase 1; was the window's) */
   transform: translateY(-50%);
   z-index: 20;
   display: flex;
   align-items: center;
-  gap: 2.5vw;
+  gap: ${safeW(0.029354)}; /* (2.5% of the window's width at the reference window, from the safe area: layout phase 1) */
   pointer-events: none;
   ${props => props.$isLeaving && css`animation: ${leaveFlash} ${PRESS_KEY.confirmMs}ms linear forwards;`}
 `;
@@ -445,7 +448,7 @@ export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = ()
     <SceneSlide $isLeaving={isLeaving} $isZoomingBack={isLogoZoomingOut} $intro={introStage} style={{ "--logo-scale": logoScale, "--logo-lift": `${LOGO_LIFT}px`, "--joiner-both": `${tune.joiner.both}px`, "--joiner-band": `${tune.joiner.band}px`, "--joiner-glow": `${tune.joiner.glow}px`, "--skyline-y": `${tune.cityscape.y}px`, "--base-joiner-top": `${tune.baseJoiner.top}px`, "--base-joiner-height": `${tune.baseJoiner.height}px`, ...getBaseJoinerShape(tune.baseJoiner), "--base-joiner-solid": `${tune.baseJoiner.solid * 100}%`, "--base-joiner-opacity": tune.baseJoiner.opacity }}><Logo spotlights circuit baseJoiner /></SceneSlide>{/* (the joiner off, to see it without: Jamie, 2026-11-19; <Logo joiner spotlights /> brings it back) */}
     <ZoomThrough isOn={isLeaving} startMs={ZOOM_START_MS} onDone={enterRoom || handleClickGame} />
     {isZoomingBack && <ZoomThrough isOn isReverse startMs={0} onDone={() => setIsZoomingBack(false)} />}
-    <PressAnyKey $isLeaving={isLeaving} style={{ top: `calc(100dvh * ${tune.pressKey.top})`, opacity: isZoomingBack || introStage < 3 ? 0 : undefined, transition: introStage < 4 ? `opacity ${INTRO.pressMs}ms ease-in-out` : "opacity 600ms ease-out" }}>
+    <PressAnyKey $isLeaving={isLeaving} style={{ top: `calc(var(--safe-y) + var(--safe-h) * ${tune.pressKey.top})`, opacity: isZoomingBack || introStage < 3 ? 0 : undefined, transition: introStage < 4 ? `opacity ${INTRO.pressMs}ms ease-in-out` : "opacity 600ms ease-out" }}>
       {pressEffect == "neon" ? <NeonRow isLeaving={isLeaving} /> : <PressKeyRow settings={pressSettings} isLeaving={isLeaving} />}
     </PressAnyKey>
     </ShiftLayer>

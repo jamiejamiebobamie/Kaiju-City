@@ -235,7 +235,7 @@
         },
         {
           "speaker": "agent",
-          "text": "But she's a hit with lab techs! They love her.",
+          "text": "But she's a hit with the lab techs! They love her.",
           "when": {
             "recruit": "mermaid",
             "choice": "recruit"
@@ -1147,7 +1147,7 @@
         {
           "speaker": "Punk Guy",
           "key": "punk",
-          "text": "Overgrowth's yours now. Don't let it go to your head.",
+          "text": "Overgrowth's yours now. But remember: you reap what you sow.",
           "id": "training.won.0",
           "note": "draft"
         },

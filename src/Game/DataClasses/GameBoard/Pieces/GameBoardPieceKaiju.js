@@ -18,6 +18,12 @@ export class GameBoardPieceKaiju extends GameBoardPieceBase {
         this.speedBoost = 0; // on top of 'moveSpeedModifier', from the speed playtest
     }
 
+    // the Kaiju that come from the sea never take a portal or a Teleport's link (Jamie, playtest 40); the player, the
+    // teammate or a recruit turned Kaiju may
+    getIsWormholeBarred() {
+        return !this.isPlayerKaiju && !this.isTeammateKaiju && !this.isRecruitKaiju;
+    }
+
     useAbilities(accTime) {
         if (!this.isOnTiles) return;
         if (this.castEveryMs) return this.useOneAbility(accTime);

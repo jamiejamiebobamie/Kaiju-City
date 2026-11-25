@@ -87,6 +87,9 @@ export class GameBoardManager {
         return this.wormholes;
     }
 
+    // a tile at either end of a portal (a Teleport's, or a boss's): not a level's own stairs or links
+    getIsWormholeTile = ({ i, j }) => this.wormholes.some(({ from, to }) => [from, to].some(end => end.i == i && end.j == j));
+
     // every portal shut at once, links and all (a boss's own teleport: the Rooftop scream, the Mermaid's portal)
     closeWormholes() {
         this.updateWormholes(Infinity);
@@ -569,7 +572,12 @@ export class GameBoardManager {
         const piece = crowdPieceIndex === undefined ? undefined : this.gameManagerProxy.getPiece(crowdPieceIndex);
         const isWithoutLinks = !!piece && !!piece.getIsPortalResting && piece.getIsPortalResting();
         // and keeps to the tiles it may go on (the ghost boss's roof, the Lab's floor for the player's NPCs)
-        const getSteps = this.getPathStepsFrom(startIndex, isWithoutLinks, piece && piece.linkRestMs ? tile => !piece.getIsLinkResting(tile) : undefined);
+        // (a plain Kaiju never takes a portal: Jamie, playtest 40. Its paths go without them)
+        const isWormholeBarred = !!piece && !!piece.getIsWormholeBarred && piece.getIsWormholeBarred();
+        const getIsLinkOpen = piece && (piece.linkRestMs || isWormholeBarred)
+            ? tile => !(piece.linkRestMs && piece.getIsLinkResting(tile)) && !(isWormholeBarred && this.getIsWormholeTile(tile))
+            : undefined;
+        const getSteps = this.getPathStepsFrom(startIndex, isWithoutLinks, getIsLinkOpen);
         const getAllowedSteps = piece && piece.getIsAllowedTile ? tile => getSteps(tile).filter(next => piece.getIsAllowedTile(next)) : getSteps;
         const avoidedPath = findPath({
             start: startIndex,

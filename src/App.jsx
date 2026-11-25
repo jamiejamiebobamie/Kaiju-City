@@ -3,6 +3,7 @@ import { Home } from "./Home";
 import { SplashScreen } from "./Components/SplashScreen";
 import { CloudTransition, CLOUD_TIMING } from "./Components/CloudTransition";
 import { loadAssets } from "./Utils/assetLoader";
+import { watchSafeArea } from "./Utils/stage";
 import "./App.css";
 import "./font-awesome-4.7.0/css/font-awesome.css";
 import "./font-awesome-7.3.1/fa7.css";
@@ -15,7 +16,13 @@ const isDialogueViewer = import.meta.env.DEV && window.location.pathname == "/di
 // picking a class name for each power combo. not part of the built game.
 const isClassReview = import.meta.env.DEV && window.location.pathname == "/classes";
 const ClassReview = import.meta.env.DEV ? lazy(() => import("./Game/ReactComponents/ClassReview/ClassReview").then(({ ClassReview }) => ({ default: ClassReview }))) : null;
+// laying out the room behind the Kaiju-Vision by hand (Jamie, 2026-11-24). not part of the built game.
+const isApartmentMockup = import.meta.env.DEV && window.location.pathname == "/apartment";
+const ApartmentMockup = import.meta.env.DEV ? lazy(() => import("./Game/ReactComponents/ApartmentMockup/ApartmentMockup").then(({ ApartmentMockup }) => ({ default: ApartmentMockup }))) : null;
 const DialogueViewer = import.meta.env.DEV ? lazy(() => import("./Game/ReactComponents/Dialogue/DialogueViewer").then(({ DialogueViewer }) => ({ default: DialogueViewer }))) : null;
+
+// the stage's safe area, for everything sized from it (Utils/stage.js: layout phase 1)
+watchSafeArea();
 
 const SPLASH_FADE_MS = 700;
 const SPLASH_MIN_MS = 1500;
@@ -62,6 +69,7 @@ const App = () => {
   if (isLevelEditor) return <Suspense fallback={null}><LevelEditor /></Suspense>;
   if (isDialogueViewer) return <Suspense fallback={null}><DialogueViewer /></Suspense>;
   if (isClassReview) return <Suspense fallback={null}><ClassReview /></Suspense>;
+  if (isApartmentMockup) return <Suspense fallback={null}><ApartmentMockup /></Suspense>;
 
   return (
     <div className="App">

@@ -10,7 +10,8 @@ const walk = dir => fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry =
   const full = path.join(dir, entry.name);
   return entry.isDirectory() ? walk(full) : isImage(entry.name) && !entry.name.endsWith('~') ? [full] : [];
 });
-const all = walk(root).map(file => '/' + path.relative(root, file).split(path.sep).join('/'));
+// (not the apartment mock-up tool's pictures: dev only, /apartment. Jamie, 2026-11-24)
+const all = walk(root).map(file => '/' + path.relative(root, file).split(path.sep).join('/')).filter(url => !url.startsWith('/apartment-scene/'));
 const isLanding = url => !url.includes('/', 1) // the root's own images
   || url.startsWith('/zoom-scene/') || url.startsWith('/GameUI_Pieces/') || url.startsWith('/levels/portraits/')
   || /^\/levels\/lab-(select|tank-empty)/.test(url) || /^\/spritesheet\/(player|teammate|disc_bubbles)/.test(url);

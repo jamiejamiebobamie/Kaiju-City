@@ -1,0 +1,138 @@
+{
+ "start": {
+  "viewport": {
+   "width": 1920,
+   "height": 1080
+  },
+  "room": {
+   "x": -612.78125,
+   "y": -562.40625,
+   "width": 4035.390625,
+   "height": 2270.453125
+  },
+  "casing": {
+   "x": 451.1875,
+   "y": 22.9375,
+   "width": 1017.59375,
+   "height": 1034.71875
+  },
+  "layers": {
+   "monitor": {
+    "src": "/apartment-scene/ui/start-monitor.png",
+    "x": 404,
+    "y": 0,
+    "width": 1112,
+    "height": 1080
+   }
+  }
+ },
+ "picker": {
+  "viewport": {
+   "width": 1920,
+   "height": 1080
+  },
+  "room": {
+   "x": -823.96875,
+   "y": -562.40625,
+   "width": 4035.390625,
+   "height": 2270.453125
+  },
+  "casing": {
+   "x": 240,
+   "y": 22.9375,
+   "width": 1017.59375,
+   "height": 1034.71875
+  },
+  "layers": {
+   "monitor": {
+    "src": "/apartment-scene/ui/picker-monitor.png",
+    "x": 193,
+    "y": 0,
+    "width": 1112,
+    "height": 1080
+   },
+   "side-monitor": {
+    "src": "/apartment-scene/ui/picker-side-monitor.png",
+    "x": 1105,
+    "y": 13,
+    "width": 806,
+    "height": 749
+   },
+   "console": {
+    "src": "/apartment-scene/ui/picker-console.png",
+    "x": 1105,
+    "y": 748,
+    "width": 774,
+    "height": 305
+   }
+  }
+ },
+ "dialogue": {
+  "viewport": {
+   "width": 1920,
+   "height": 1080
+  },
+  "room": {
+   "x": -823.96875,
+   "y": -562.40625,
+   "width": 4035.390625,
+   "height": 2270.453125
+  },
+  "casing": {
+   "x": 240,
+   "y": 22.9375,
+   "width": 1017.59375,
+   "height": 1034.71875
+  },
+  "layers": {
+   "monitor": {
+    "src": "/apartment-scene/ui/dialogue-monitor.png",
+    "x": 193,
+    "y": 0,
+    "width": 1112,
+    "height": 1080
+   },
+   "dialogue": {
+    "src": "/apartment-scene/ui/dialogue-dialogue.png",
+    "x": 1225,
+    "y": 99,
+    "width": 637,
+    "height": 882
+   }
+  }
+ },
+ "fight": {
+  "viewport": {
+   "width": 1920,
+   "height": 1080
+  },
+  "room": {
+   "x": -823.96875,
+   "y": -562.40625,
+   "width": 4035.390625,
+   "height": 2270.453125
+  },
+  "casing": {
+   "x": 240,
+   "y": 22.9375,
+   "width": 1017.59375,
+   "height": 1034.71875
+  },
+  "layers": {
+   "monitor": {
+    "src": "/apartment-scene/ui/fight-monitor.png",
+    "x": 193,
+    "y": 0,
+    "width": 1112,
+    "height": 1080
+   },
+   "huds": {
+    "src": "/apartment-scene/ui/fight-huds.png",
+    "x": 1257,
+    "y": 100,
+    "width": 651,
+    "height": 579
+   }
+  }
+ }
+}

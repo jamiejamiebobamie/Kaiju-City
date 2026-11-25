@@ -517,9 +517,15 @@ export class GameBoardPieceBase {
         return !!this.linkRests && (this.accTime || 0) < (this.linkRests[`${tile.i} ${tile.j}`] || 0);
     }
 
+    // a portal (a Teleport's, a boss's) is never for this piece (a plain Kaiju: GameBoardPieceKaiju)
+    getIsWormholeBarred() {
+        return false;
+    }
+
     // false: the link didn't take them
     jumpToLinkedTile(linkedTile) {
         if (!this.getIsAllowedTile(linkedTile)) return false;
+        if (this.getIsWormholeBarred() && this.gameManagerProxy.getIsWormholeTile(this.tileIndex)) return false;
         if (this.getIsPortalResting() || this.getIsLinkResting(this.tileIndex)) return false;
         // (one that rests each stairway on its own, the Mermaid, keeps the other one open: with no links at all for a
         // while, she had no way down and waited by the stairs she'd come up. Jamie, playtest 21)
@@ -622,9 +628,22 @@ export class GameBoardPieceBase {
         // the path's first step is through a tile link (the Aquarium's floors): through it, not across the gap to it
         const linkedTile = this.gameManagerProxy.getLinkedTile(this.tileIndex);
         if (!!linkedTile && linkedTile.i == moveToTiles[0].i && linkedTile.j == moveToTiles[0].j) {
-            if (this.getIsPortalResting()) return; // not now: it waits, and goes the long way next time
-            // the link wouldn't take them (resting): no path, so the next one is planned without it
+            // not now: it waits, and goes the long way next time (standing, not walking on the spot at the link: Jamie,
+            // playtest 40, the teammate turned Kaiju at the player's Teleport link)
+            if (this.getIsPortalResting()) {
+                this.setDir('idle');
+                return;
+            }
+            // the link wouldn't take them (resting, or a portal it may not take): no path, so the next one is planned without it
             this.moveToTiles = this.jumpToLinkedTile(linkedTile) ? moveToTiles.slice(1) : [];
+            return;
+        }
+        // a path through a link that has since gone (a Teleport's wormhole, shut or used): its first step isn't beside
+        // them. they stop and plan again, rather than heading off for it over the gap (as getNextDestination)
+        const isHere = moveToTiles[0].i == this.tileIndex.i && moveToTiles[0].j == this.tileIndex.j;
+        if (this.isNpc && !isHere && !this.gameManagerProxy.getAreTilesAdjacent(this.tileIndex, moveToTiles[0])) {
+            this.moveToTiles = [];
+            this.stopMoving();
             return;
         }
         this.moveToLocation = this.gameManagerProxy.getCharXAndYFromTileIndex(moveToTiles[0]) || this.moveToLocation;

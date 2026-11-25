@@ -47,7 +47,7 @@ export const Home = ({ triggerTransition }) => {
 
   const handleClickHome = () => {
     setCurrPage(PAGES.Home)
-    window.history.pushState({}, "Kaiju City", "/home");
+    window.history.pushState({}, "Kaiju City", `/home${window.location.search}`); // (keeps the address's ?settings: the dev trials ?screen= and ?zoom= were lost here)
   };
   const handleClickGame = () => {
     setCurrPage(PAGES.Game)

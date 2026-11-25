@@ -30,3 +30,6 @@ training/.venv/
 training/runs/
 training/models/*-checkpoints/
 __pycache__/
+
+# phase 1 (cqw wrapper): every view before the change, to compare against (not in git)
+.layout-baseline/

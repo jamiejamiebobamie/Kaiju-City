@@ -308,6 +308,50 @@ const GhostForm = styled.div`
 `;
 
 /*
+  The class battle's Kaiju (Jamie, 2026-11-24): the avatar's powers tried out in a holo-sim, a safe virtual fight, so
+  its Kaiju are holograms in Stompy's green (the side monitor's pet, Tamagotchi.jsx's TAMA): see-through, scanlined,
+  flickering, now and then a quick sideways glitch (each piece on its own beat).
+*/
+// (shared: the exploding Kaiju's too, and the Kaiju fire tiles take its color)
+export const HOLOGRAM_FILTER = "grayscale(1) brightness(1.15) sepia(1) hue-rotate(65deg) saturate(2.6) drop-shadow(0 0 2px #3cd43c) drop-shadow(0 0 6px #3cd43c)";
+export const HOLOGRAM_LINES = "repeating-linear-gradient(to bottom, black 0 2px, rgba(0, 0, 0, 0.35) 2px 3px)";
+export const HOLOGRAM = { color: "#80EF80", glow: "#3cd43c", halo: "rgba(60, 212, 60, 0.2)", opacity: 0.72, glitchSeconds: 3.1, room: 60 };
+const holoFlicker = keyframes`
+  0%, 100% { opacity: ${HOLOGRAM.opacity}; transform: none; }
+  18% { opacity: ${HOLOGRAM.opacity - 0.12}; }
+  31% { opacity: ${HOLOGRAM.opacity}; }
+  62% { opacity: ${HOLOGRAM.opacity - 0.06}; }
+  /* the glitch: a jolt sideways, a slant, a drop out, then back */
+  88% { opacity: ${HOLOGRAM.opacity}; transform: none; }
+  89% { opacity: 0.35; transform: translateX(3%) skewX(-10deg); }
+  90% { opacity: 0.85; transform: translateX(-4%) skewX(6deg); }
+  91% { opacity: 0.15; transform: translateX(2%); }
+  92% { opacity: ${HOLOGRAM.opacity}; transform: none; }
+`;
+const Hologram = styled.div`
+  position: absolute;
+  inset: 0;
+  ${props => props.$isOn && css`
+    /* (room round the sprite for its glow: the scanlines' mask cut it off square at the box's edge) */
+    inset: -${HOLOGRAM.room}px;
+    padding: ${HOLOGRAM.room}px;
+    /* the sprite turned to Stompy's green, glowing */
+    filter: ${HOLOGRAM_FILTER};
+    animation: ${holoFlicker} ${HOLOGRAM.glitchSeconds}s steps(1, end) infinite;
+  `}
+`;
+
+// the scanlines, cut through the sprite under the glow (on the glow's own layer they striped the whole glow: a box)
+const HoloLines = styled.div`
+  position: absolute;
+  inset: 0;
+  ${props => props.$isOn && css`
+    -webkit-mask-image: ${HOLOGRAM_LINES};
+    mask-image: ${HOLOGRAM_LINES};
+  `}
+`;
+
+/*
   Walking through a portal: only the body on this side of its edge is drawn. The clip is in the character box's own
   units: the box sits 20 left of and 45 above where the piece stands, scaled by 'pieceScale' (see Wrapper and Character).
 */
@@ -587,6 +631,7 @@ export const GameBoardPieceComponent = ({
   isQuiet = false, // the Recruit or Terminate choice: no shaking, and no numbers
   isSpeaking = false, // their line is up: they jitter as they talk
   isGhostForm = false, // the ghost boss's last phase
+  isHologram = false, // the class battle's Kaiju: a holo-sim's (HOLOGRAM)
   portalMask = undefined, // walking through a portal: { point, behind } in level pixels. the body past that edge isn't drawn
   isOnBoard = true, // not yet on the tiles (a Kaiju still walking in): no numbers
   isRewardPulse = false, // health just won sparring: a red outline pulses round them
@@ -729,7 +774,7 @@ export const GameBoardPieceComponent = ({
         </StatusRow>
       )}
       <Character isDamaged={isDamaged && !isQuiet} isSpeaking={isSpeaking && isShaking} style={portalMask ? { clipPath: getPortalClip(portalMask, charLocation, pieceScale) } : undefined}>
-        {isFalling ? <FallingFrame src="/levels/npcs/agentFalling.png" /> : <RewardPulse $isOn={isRewardPulse}><GhostForm $isGhost={isGhostForm}><SpriteSheet
+        {isFalling ? <FallingFrame src="/levels/npcs/agentFalling.png" /> : <RewardPulse $isOn={isRewardPulse}><Hologram $isOn={isHologram} style={isHologram ? { animationDelay: `${-((pieceIndex * 0.77) % HOLOGRAM.glitchSeconds)}s` } : undefined}><HoloLines $isOn={isHologram} style={isHologram ? { inset: HOLOGRAM.room } : undefined}><GhostForm $isGhost={isGhostForm}><SpriteSheet
           avatar={avatar}
           spriteSheetSrc={spriteSheetSrc}
           isGoingToSpewFire={isGoingToSpewFire} // Kaiju-only
@@ -737,7 +782,7 @@ export const GameBoardPieceComponent = ({
           anim={anim}
           color={color}
           $isOutlined={controlMarker == "outline"}
-        /></GhostForm></RewardPulse>}
+        /></GhostForm></HoloLines></Hologram></RewardPulse>}
       </Character>
     </Wrapper>
   );

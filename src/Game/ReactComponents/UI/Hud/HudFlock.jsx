@@ -87,7 +87,10 @@ export const FLOCK = {
     width: 0.75, shine: 0.16, sag: 5,
     color: "#0e0f10", shineColor: "#3b3d41",
     plug: { width: 1.3, height: 1.1, fill: "#2a2b2e", rim: "#4a4542" },
-    arc: { color: "168, 244, 255", bolts: 2, spread: 2.6, jag: 0.7 }
+    arc: { color: "168, 244, 255", bolts: 2, spread: 2.6, jag: 0.7 },
+    // current running down the plugged-in wire, from the HUD to the monitor (Jamie, playtest 40): now and then at rest,
+    // more often and in more strands the more powers are cast (the HUD's energy, as its jostling)
+    current: { perSecond: 0.25, perSecondPerEnergy: 2.2, runMs: [380, 620], length: 0.16, strands: [1, 3], jag: 0.55 }
   }
 };
 
@@ -240,7 +243,9 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused, deadKeys = [],
 
       // the column's place beside the monitor, and its scale; the casing's sockets, in the column's px
       const column = columnRef.current;
-      const frame = column && column.parentElement;
+      // (past any wrapper with no box of its own, like the mock-up tool's marker)
+      let frame = column && column.parentElement;
+      while (frame && frame.parentElement && getComputedStyle(frame).display == "contents") frame = frame.parentElement;
       const casing = frame && frame.querySelector("[data-tv-casing]");
       let sockets = [];
       let hole; // the casing, in the column's px: the wires go under it (Jamie, playtest 26: the plugs were over the monitor)
@@ -669,6 +674,50 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused, deadKeys = [],
         ctx.fill();
         ctx.stroke();
         ctx.globalAlpha = 1;
+      }
+      // the current: pulses along the wire, each a short jagged arc riding it from the HUD's end to the socket
+      if (!entry.isLeaving && wire.pluggedAt !== undefined) {
+        const { current } = wires;
+        wire.pulses = wire.pulses || [];
+        const perSecond = current.perSecond + current.perSecondPerEnergy * (body.energy || 0);
+        if (wire.nextPulse === undefined) wire.nextPulse = now + (Math.random() * 1000) / perSecond;
+        if (now >= wire.nextPulse) {
+          const energyShare = Math.min(1, (body.energy || 0) / FLOCK.energy.max);
+          wire.pulses.push({ born: now, ms: between(current.runMs), strands: Math.round(current.strands[0] + (current.strands[1] - current.strands[0]) * energyShare * Math.random()) });
+          // (exponential gaps: they come at random, as current would)
+          wire.nextPulse = now + (-Math.log(1 - Math.random()) * 1000) / perSecond;
+        }
+        wire.pulses = wire.pulses.filter(pulse => now - pulse.born < pulse.ms);
+        wire.pulses.forEach(pulse => {
+          const head = (now - pulse.born) / pulse.ms;
+          const tail = Math.max(0, head - current.length);
+          const fade = Math.min(1, (1 - head) / 0.25);
+          for (let strand = 0; strand < Math.max(1, pulse.strands); strand++) {
+            const path = [...Array(7).keys()].map(k => {
+              const t = tail + ((head - tail) * k) / 6;
+              const point = pointAt(t);
+              const next = pointAt(Math.min(1, t + 0.01));
+              const length = Math.hypot(next.x - point.x, next.y - point.y) || 1;
+              const jitter = (Math.random() - 0.5) * current.jag * cqw * (k == 0 || k == 6 ? 0.3 : 1);
+              return { x: point.x - ((next.y - point.y) / length) * jitter, y: point.y + ((next.x - point.x) / length) * jitter };
+            });
+            const line = (color, width) => {
+              ctx.strokeStyle = color;
+              ctx.lineWidth = width;
+              ctx.beginPath();
+              path.forEach(({ x, y }, k) => (k ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+              ctx.stroke();
+            };
+            ctx.save();
+            ctx.globalAlpha = fade;
+            ctx.shadowColor = `rgba(${wires.arc.color}, 0.9)`;
+            ctx.shadowBlur = 0.5 * cqw;
+            line(`rgba(${wires.arc.color}, 0.55)`, 0.3 * cqw);
+            ctx.shadowBlur = 0;
+            line("white", 0.09 * cqw);
+            ctx.restore();
+          }
+        });
       }
       // arcs, as the side monitor's: jagged, a glow and a white core, redrawn each frame
       const isSparking = (!entry.isLeaving && wire.progress > 0.6 && (wire.pluggedAt === undefined || now - wire.pluggedAt < wires.arcsMs))

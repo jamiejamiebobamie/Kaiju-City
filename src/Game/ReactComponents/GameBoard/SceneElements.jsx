@@ -827,7 +827,7 @@ export const SceneElements = ({ level, activePhases, isPaused, onHotspot, isDial
       if (type == "mapLabel") return <MapLabel key={id} $isOver={element.isOver} style={{ left: `${x}px`, top: `${y}px`, zIndex: style.zIndex }}>{element.text}</MapLabel>;
       if (type == "door") {
         // a sign, not a button: the team has to walk there
-        return <DoorElement key={id} as="div" style={{ left: `${x}px`, top: `${y}px`, zIndex: SIGN_Z }}><DoorIcon className="fa fa-sign-out" />{element.label}</DoorElement>;
+        return <DoorElement key={id} as="div" data-exit-sign style={{ left: `${x}px`, top: `${y}px`, zIndex: SIGN_Z }}><DoorIcon className="fa fa-sign-out" />{element.label}</DoorElement>;
       }
       if (type == "speech") return isDialogueLog ? null : <SpeechBubble key={id} element={element} style={style} />;
       if (type == "part") {

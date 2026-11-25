@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import styled from "styled-components";
+import { CAMERA } from "Utils/camera";
 
 /*
   A dead HUD's end (Jamie, 2026-11-16, phase 4): once it has fallen out of shot, a fireball rises into the shot from
@@ -69,7 +70,10 @@ export const HudExplosions = () => {
     const blasts = []; // { born }
     const puffs = [];
     const sparks = [];
-    const onBlast = ({ x, y }) => {
+    const onBlast = ({ x: seenX, y: seenY }) => {
+      // (the canvas moves with the camera: its px are the page's less the camera's offset)
+      const x = seenX - CAMERA.x;
+      const y = seenY - CAMERA.y;
       const born = performance.now();
       blasts.push({ born, x, y });
       for (let k = 0; k < BLAST.puffs; k++) {

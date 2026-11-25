@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useContext } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef, useContext } from "react";
 import { GHOST_BOSS } from 'Game/DataClasses/GhostBoss';
 import { AQUARIUM_FLOOD } from 'Game/DataClasses/AquariumFlood';
 import { GIANT_KAIJU } from 'Game/DataClasses/GiantKaiju';
@@ -12,7 +12,7 @@ import { useSnapshot } from "valtio";
 import { GlobalSettingsContext } from "Home";
 import { GameBoard } from "./GameBoard/GameBoard";
 import { CRT } from "Components/CrtPower";
-import { BezelButton, KaijuCounter, FULL_WINDOW, loadPlayWindow, ObjectiveTicker, PlayWindow, PORTRAIT_WINDOW, savePlayWindow } from "./GameBoard/PlayWindow";
+import { BezelButton, DesignBox, KaijuCounter, FULL_WINDOW, getTrialCameraShift, getTrialViewZoom, loadPlayWindow, ObjectiveTicker, PlayWindow, PORTRAIT_WINDOW, savePlayWindow } from "./GameBoard/PlayWindow";
 import { UI } from "./UI/UI";
 import { RadioCall } from "./RadioCall";
 import { IrradiationVat } from "./IrradiationVat";
@@ -32,11 +32,11 @@ import { holdTamagotchi } from "./Tamagotchi";
 import { FOCUS_MOVE, getFocusTransform, HANDOVER_MS, MonitorLabBackdrop } from "./MonitorLabBackdrop";
 import { getHasBooted, MonitorBoot, resetBoot } from "./MonitorBoot";
 import { ROOM_HANDOFF, RoomBackdrop } from "Components/RoomScene";
+import { CAMERA, setIsShakyCam } from "Utils/camera";
 import { ZOOM_BACK } from "Components/ZoomThrough";
 import { HudExplosions } from "./UI/Hud/HudExplosions";
 import { useKeyPress } from "Utils/utils";
 import { ABILITY_KEY_CODES, GAME_TICK, PIECES_INFO, TILE_STATUSES_AND_ABILITY_DATA } from "Utils/gameState";
-import { FullscreenPage } from "Components/FullscreenPage.jsx";
 import { GameManager, GameResult } from '../DataClasses/GameManager';
 import { getActiveHotspots } from "./GameBoard/SceneElements";
 import { getIsDetourLevel } from "../DataClasses/Objectives";
@@ -74,10 +74,12 @@ const MONITOR_SHIFT = { ms: 950, deadBeatMs: 350, endDeadMs: 700 };
 
 // with nothing beside it (no HUDs, no side screen, no dialogue panel), the monitor stands in the middle of the frame;
 // when something comes in beside it, it eases aside (Jamie, UI epic)
-const CENTER_AFTER_MS = 1500;
+// (5 s: a gap that the game fills again by itself within it, the HUDs back or the panel coming, doesn't center it.
+// Jamie, playtest 40; it was 1.5 s)
+const CENTER_AFTER_MS = 5000;
 const getCenteredWindow = window => {
   const width = window.right - window.left;
-  const left = (1 - width) / 2;
+  const left = (1 - width) / 2 + getTrialCameraShift(false); // (?apartment: moved across as in the layout. dev)
   return { ...window, left, right: left + width };
 };
 
@@ -124,9 +126,10 @@ const GameFrame = styled.div<{ $shift?: 'in' | 'out' | 'fade' }>`
   position: relative;
   aspect-ratio: 16 / 9;
   min-width: 0;
-  width: 100%;
-  max-width: calc(100dvh * 16 / 9);
-  max-height: 100dvh;
+  /* (dev: ?zoom= draws it smaller, the room round it showing more. Jamie, 2026-11-24) */
+  width: ${getTrialViewZoom() * 100}%;
+  max-width: calc(100dvh * 16 / 9 * ${getTrialViewZoom()});
+  max-height: ${getTrialViewZoom() * 100}dvh;
   overflow: hidden;
   container-type: inline-size;
   background: transparent; /* (the room shows round the monitor: Jamie) */
@@ -134,11 +137,9 @@ const GameFrame = styled.div<{ $shift?: 'in' | 'out' | 'fade' }>`
   ${props => props.$shift == 'fade' && css`animation: ${fadeUp} 700ms ease-out both;`}
   ${props => props.$shift == 'in' && css`animation: ${shiftIn} ${MONITOR_SHIFT.ms}ms cubic-bezier(0.2, 0.7, 0.3, 1) both;`}
   ${props => props.$shift == 'out' && css`animation: ${shiftOut} ${MONITOR_SHIFT.ms}ms ease-in forwards;`}
-  @media (orientation: portrait) {
-    aspect-ratio: auto;
-    height: 100dvh;
-    max-width: none;
-  }
+  /* (no portrait rule: it stretched the frame to the window's full height on any window as tall as it is wide, the
+     monitor tall and its contents out of place. Every window gets the 16:9 safe area now, the room round it: layout
+     phase 1, 1B. Phones get their own breakpoints in phase 4) */
 `;
 
 // dev only, and beside the game rather than over it
@@ -203,14 +204,47 @@ const usePausableNotice = (notice, setNotice, ms, isPaused) => {
     };
   }, [key, isPaused]);
 };
+// an unlock card at the right unless it would cover a scene's exit sign ("Back to map"): then in the middle (Jamie,
+// playtest 40). 'centered': the card's style when it moves there
+const EXIT_CLEARANCE_PX = 8;
+const useClearOfExit = (centered: React.CSSProperties) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [isMoved, setIsMoved] = useState(false);
+  useLayoutEffect(() => {
+    // (looked at as it comes, and again a moment on: the exit's sign may come up with the card)
+    const check = () => {
+      const card = ref.current;
+      if (!card) return;
+      const box = card.getBoundingClientRect();
+      const isOver = [...document.querySelectorAll("[data-exit-sign]")].some(sign => {
+        const other = sign.getBoundingClientRect();
+        const pad = EXIT_CLEARANCE_PX;
+        return other.width > 0 && box.left < other.right + pad && box.right > other.left - pad && box.top < other.bottom + pad && box.bottom > other.top - pad;
+      });
+      if (isOver) setIsMoved(true);
+    };
+    check();
+    const timers = [300, 900].map(ms => setTimeout(check, ms));
+    return () => timers.forEach(clearTimeout);
+  }, []);
+  return { ref, style: isMoved ? centered : undefined };
+};
+const ClearUnlockCard = ({ style = undefined, children }) => {
+  const clear = useClearOfExit({ right: "auto", left: "50%", transform: "translateX(-50%)" });
+  return <UnlockCard ref={clear.ref} style={{ ...style, ...clear.style }}>{children}</UnlockCard>;
+};
+const ClearUnlockStack = ({ children }) => {
+  const clear = useClearOfExit({ right: "auto", left: "50%", transform: "translateX(-50%)", alignItems: "center" });
+  return <UnlockStack ref={clear.ref} style={clear.style}>{children}</UnlockStack>;
+};
 const getPausedNoticeStyle = isPaused => isPaused ? { visibility: "hidden" as const, animationPlayState: "paused" } : undefined;
 
 // a notice that comes and goes on its own, in the style of the speech bubbles
+// (at the right, as the other unlock cards: Jamie, playtest 40; in the middle where it'd be over an exit sign)
 const UnlockCard = styled.div`
   position: absolute;
   top: ${NOTICE_TOP};
-  left: 50%;
-  transform: translateX(-50%);
+  right: 4cqw;
   z-index: 2147483646;
   display: flex;
   align-items: center;
@@ -252,9 +286,8 @@ const UnlockPortrait = styled.img`
 `;
 
 // in the play window, sized from it
-const EndScreen = styled.div`
-  position: absolute;
-  inset: 0;
+// (in the screen's design box: today's size on a wider screen. Layout phase 2; it was the whole screen)
+const EndScreen = styled(DesignBox)`
   z-index: 2147483645;
   display: flex;
   flex-direction: column;
@@ -272,7 +305,7 @@ const titleArrive = keyframes`
 // (larger, and on two lines where it breaks well: Jamie, playtest 27)
 const EndTitle = styled.div`
   font-family: gameboy;
-  font-size: min(7.4cqw, 6.1vw);
+  font-size: min(7.4cqw, calc(var(--safe-w) * 0.07163)); /* (6.1vw at the reference window, from the safe area: layout phase 1) */
   line-height: 1.15;
   white-space: pre-line;
   translate: 0 -4.5cqw; /* (a little higher: Jamie, playtest 28. 'translate', so its arrival's transform still runs) */
@@ -289,23 +322,39 @@ const EndTitle = styled.div`
   animation: ${titleArrive} 1.4s ease-out both;
 `;
 
-// the line under the last win's title (Jamie, 2026-11-24: the player turned Kaiju, now the city's only defender)
+// the last win's line ("Unlock code: Kaiju"): at the top of the screen, in the middle, a little down from its edge
+// (Jamie, playtest 40; it was under the title)
 const EndSubtitle = styled.div`
-  margin-top: 2cqw;
-  font-size: 0.32em;
+  position: absolute;
+  top: 4cqw;
+  left: 0;
+  right: 0;
+  font-family: gameboy;
+  font-size: 2.4cqw;
   line-height: 1.3;
-  -webkit-text-stroke: 0;
-  text-transform: none;
+  text-align: center;
+  color: #ff2a4d;
+  text-shadow: 0 0 0.6cqw #ff5c8a, -0.15cqw 0.15cqw 0 black;
+  animation: ${titleArrive} 1.4s ease-out both;
 `;
 
 // a title of more than one word on two lines, split where the two are most even ("Kaiju" over "Terminated")
 // (a long word, "disconnected", fits the monitor: the title's size down to fit its longest line. Jamie)
+// (one line where it fits at no less than END_TITLE_ONE_LINE.minCqw: "Kaiju Terminated", "Target Subdued". Jamie,
+// playtest 40; "You have saved the city!" still breaks)
+const END_TITLE_ONE_LINE = { widthCqw: 86, minCqw: 5, emPerChar: 0.97 }; // (gameboy's letters: 0.97em each, measured)
+const getIsOneLineTitle = (title: string) => !String(title).includes("\n") && String(title).length * END_TITLE_ONE_LINE.emPerChar * END_TITLE_ONE_LINE.minCqw <= END_TITLE_ONE_LINE.widthCqw;
 const getEndTitleFit = (title: string) => {
+  if (getIsOneLineTitle(title)) {
+    const fit = END_TITLE_ONE_LINE.widthCqw / (String(title).length * END_TITLE_ONE_LINE.emPerChar);
+    return fit < 7.4 ? { fontSize: `min(7.4cqw, calc(var(--safe-w) * 0.07163), ${fit.toFixed(2)}cqw)` } : undefined;
+  }
   const longest = Math.max(...String(title).split("\n").map(line => line.length));
-  return longest > 9 ? { fontSize: `min(7.4cqw, 6.1vw, ${(62 / longest).toFixed(2)}cqw)` } : undefined;
+  return longest > 9 ? { fontSize: `min(7.4cqw, calc(var(--safe-w) * 0.07163), ${(62 / longest).toFixed(2)}cqw)` } : undefined;
 };
 const breakTitle = (title: string) => {
   if (String(title).includes("\n")) return title; // (broken where it says: Jamie's "Other player / disconnected")
+  if (getIsOneLineTitle(title)) return title;
   const words = String(title).split(" ");
   if (words.length < 2) return title;
   let best = 1;
@@ -340,7 +389,7 @@ const EndButtons = styled.div`
 const EndButton = styled.button`
   padding: 0.7em 1.6em;
   font-family: gameboy;
-  font-size: min(2cqw, 1.4vw);
+  font-size: min(2cqw, calc(var(--safe-w) * 0.01644)); /* (1.4vw at the reference window: layout phase 1) */
   cursor: pointer;
   color: #fbfbf0;
   background: #5c0013;
@@ -402,6 +451,14 @@ const noticeInOut = keyframes`
   80% { opacity: 1; transform: translateX(-50%) scale(1); }
   100% { opacity: 0; transform: translateX(-50%) scale(0.96); }
 `;
+// an objective's title on one line where it fits at no less than 'minCqw' (its size down to fit the 88% it has; Jamie,
+// playtest 40): "Go to the Aquarium" no longer breaks. Longer ones still wrap, at the usual size
+const NOTICE_ONE_LINE = { widthCqw: 86, minCqw: 2.2, emPerChar: 0.97 };
+const getOneLineNoticeStyle = (text: string, maxCqw = 3.6) => {
+  const fit = NOTICE_ONE_LINE.widthCqw / (String(text).length * NOTICE_ONE_LINE.emPerChar);
+  if (fit < NOTICE_ONE_LINE.minCqw) return undefined;
+  return { whiteSpace: "nowrap" as const, fontSize: `min(${maxCqw}cqw, calc(var(--safe-w) * ${(maxCqw * 0.03523 / 3.6).toFixed(5)}), ${fit.toFixed(2)}cqw)` };
+};
 const ObjectiveNotice = styled.div`
   position: absolute;
   top: 22%;
@@ -410,7 +467,7 @@ const ObjectiveNotice = styled.div`
   z-index: 2147483600;
   pointer-events: none;
   font-family: gameboy;
-  font-size: min(3.6cqw, 3vw);
+  font-size: min(3.6cqw, calc(var(--safe-w) * 0.03523)); /* (3vw at the reference window: layout phase 1) */
   line-height: 1.25;
   text-transform: uppercase;
   text-align: center;
@@ -501,7 +558,7 @@ const SIDE_EXIT_MS = 900;
   black silhouettes at first, come up with it.
 */
 // (more dramatic: Jamie, playtest 31: longer flickers, and each blink floods the room before it drops back to dark)
-const LAB_TUBES = { count: 4, stepMs: 600, flickerMs: 1800, darkest: 0.95, flash: 0.6 };
+const LAB_TUBES = { count: 4, extra: 2, stepMs: 600, flickerMs: 1800, darkest: 0.95, flash: 0.6 };
 // a tube's blinks (shares of its flicker), and where it catches for good: the room's dark follows them
 const TUBE_BLINKS = [[0.10, 0.14], [0.28, 0.31], [0.34, 0.36], [0.50, 0.63]];
 const TUBE_CATCH = 0.66;
@@ -542,7 +599,7 @@ const ROOM_DARK_STOPS = (() => {
 const labDark = keyframes`${ROOM_DARK_STOPS}`;
 const LabDark = styled.div`
   position: absolute;
-  inset: 0;
+  inset: 0 -100%; /* (past the design box, over the Lab picture's extended sides too: layout phase 3, Jamie) */
   z-index: 40;
   pointer-events: none;
   background: black;
@@ -564,8 +621,10 @@ const LabTube = styled.div`
 const LabLightsOn = () => (
   <>
     <LabDark />
-    {[...Array(LAB_TUBES.count).keys()].map(k => (
-      <LabTube key={k} style={{ left: `${(k * 100) / LAB_TUBES.count}%`, width: `${100 / LAB_TUBES.count}%`, animationDelay: `${LAB_LIGHTS_DELAY_MS + k * LAB_TUBES.stepMs}ms` }} />
+    {/* (and LAB_TUBES.extra more each side, past the design box, over the Lab picture's extended sides: the left ones with
+        the first tube, the right ones with the last, so the room's dark still lifts on the same beat. Layout phase 3) */}
+    {[...Array(LAB_TUBES.count + LAB_TUBES.extra * 2).keys()].map(n => n - LAB_TUBES.extra).map(k => (
+      <LabTube key={k} style={{ left: `${(k * 100) / LAB_TUBES.count}%`, width: `${100 / LAB_TUBES.count}%`, animationDelay: `${LAB_LIGHTS_DELAY_MS + Math.min(Math.max(k, 0), LAB_TUBES.count - 1) * LAB_TUBES.stepMs}ms` }} />
     ))}
   </>
 );
@@ -778,7 +837,7 @@ const FinaleCredits = ({ title, subtitle = undefined, onDone }) => {
     const roll = setTimeout(() => setIsRolling(true), CREDITS_TIMING.titleMs + (subtitle && subtitle.length ? FINALE_SUBTITLE_MS : 0));
     return () => clearTimeout(roll);
   }, []);
-  return isRolling ? createPortal(<Credits onDone={onDone} />, document.querySelector("[data-play-screen]") || document.body) : <EndTitle>{title}{(subtitle || []).map(line => <EndSubtitle key={line}>{line}</EndSubtitle>)}</EndTitle>;
+  return isRolling ? createPortal(<Credits onDone={onDone} />, document.querySelector("[data-play-screen]") || document.body) : <>{(subtitle || []).map(line => <EndSubtitle key={line}>{line}</EndSubtitle>)}<EndTitle>{title}</EndTitle></>;
 };
 const FINALE_SUBTITLE_MS = 2500;
 
@@ -875,6 +934,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const [controlMarker, setControlMarker] = useState("outline"); // the outline by default (Jamie, playtest 22)
   const [fallenRecruits, setFallenRecruits] = useState<Array<string>>([]);
   const [isTrainedNpcs, setIsTrainedNpcs] = useState(false); // off by default (Jamie, 2026-11-06). NPCs play by the trained model in public/models in fights with no Kaiju; against a Kaiju they hand back to the rules
+  const [isShakyCam, setIsShakyCamShown] = useState(CAMERA.isShaky); // (dev: the desk-cam bob, Utils/camera)
   const [isDevHidden, setIsDevHidden] = useState(false); // the dev tools tucked away, to see the game as it will ship
   const [npcAggression, setNpcAggression] = useState(DEFAULT_AGGRESSION); // the trained NPCs', 0 careful to 1 reckless
   // the ghost boss's ring, tuned in the dev panel: its size, and the ghosts in each phase's ring (the next ring uses them)
@@ -1024,7 +1084,6 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     return () => clearTimeout(aside);
   }, [isChoosingAvatar, isPlayingGame]);
   useEffect(() => { if (isPlayingGame) setIsSkippingPicker(false); }, [isPlayingGame]);
-  const [fullScreenPageData, setFullScreenPageData] = useState(undefined);
   const [radioLines, setRadioLines] = useState(undefined);
   const [matchEnd, setMatchEnd] = useState(undefined); // the title over the board once a match is decided
   const [recruitChoice, setRecruitChoice] = useState(undefined);
@@ -1203,7 +1262,6 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     if (matchLevel.id == 'labIntro') unlockTool('abilityEditor');
     setIsEditingTiles(false);
     setMatchCount(count => count + 1);
-    setFullScreenPageData(undefined);
     setRadioLines(undefined);
     setMatchEnd(undefined);
     setRecruitChoice(undefined);
@@ -1330,7 +1388,6 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     resetGameUi();
     setPickedAbilities([]);
     setIsPlayingGame(false);
-    setFullScreenPageData(undefined);
   };
 
   const getRadioContext = () => {
@@ -1349,7 +1406,6 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     resetGameUi();
     setCampaignIndex(index);
     setLevelId(sectionLevelId);
-    setFullScreenPageData(undefined);
     setMatchEnd(undefined);
     setRecruitChoice(undefined);
     setFadeCards(undefined);
@@ -1449,11 +1505,8 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     } else if (campaignIndex !== null) {
       showSection(campaignIndex);
     } else {
-      setFullScreenPageData({
-        text: ["Wild Kaiju have appeared!"],
-        buttons: [{ text: "Fight!", onClick: () => startMatch() }],
-        image: { src: './story_images/match_start.png', width: '535px', height: '535px' }
-      });
+      // (straight into the match: the old "Wild Kaiju have appeared!" page is gone. Jamie, playtest 40)
+      startMatch();
     }
     // no clouds (Jamie): the monitor's screen fades to black, then the new scene fades in on it
     setScreenFade('out');
@@ -2276,14 +2329,16 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   // a game starting (from the picker, where the monitor stood aside): it starts aside too, and centers later if
   // nothing comes beside it, rather than jumping to the middle (Jamie, playtest 34)
   useEffect(() => { if (!isPlayingGame) setIsMonitorCentered(false); }, [isPlayingGame]);
+  // (and on each game's start: back from the Lab's power picker, nothing beside it before or after, it stayed aside.
+  // Jamie, playtest 40)
   useEffect(() => {
-    if (isSideContent) {
+    if (isSideContent || !isPlayingGame) {
       setIsMonitorCentered(false);
       return;
     }
     const timeout = setTimeout(() => setIsMonitorCentered(true), CENTER_AFTER_MS);
     return () => clearTimeout(timeout);
-  }, [isSideContent]);
+  }, [isSideContent, isPlayingGame, matchCount]);
   const gameWindow = isMonitorCentered && !isAdjustingWindow ? getCenteredWindow(playWindow) : playWindow;
 
   // the screens before a game (the avatar select and the power picker) are on the Kaiju-Vision monitor (Jamie, 2026-11-14),
@@ -2372,6 +2427,9 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
           {/* multiplayer's match setup: the host's, the guest waiting on it (Jamie) */}
           {isMonitorOn && isBooted && multiplayer && !multiplayerSetup && <MatchSetup isWaiting={multiplayer.link.role == 'guest'} progress={multiplayerProgress} onProgress={progress => mp.current.link && mp.current.link.send({ t: 'setupProgress', progress })} onDone={chooseMultiplayerSetup} />}
           {isMonitorOn && !isBooted && <MonitorBoot startAt={bootStartAt} onDone={linked => { if (linked && linked.link) setMultiplayer(linked); setIsBooted(true); }} />}
+          {/* (the avatar select, the picker and the vat: in the screen's design box, today's size on a wider screen; the
+              Lab picture runs on past it. Layout phase 2) */}
+          <DesignBox>
           {/* the Lab behind them, darkened, lit round the avatars (Jamie) */}
           <MonitorLabBackdrop mode={isChoosingAvatar ? "choice" : "picker"} hovered={hoveredAvatar} focus={isChoosingAvatar ? handOverAvatar : selectedAvatar} />
           {isMultiplayerSetupOpen || isMultiplayerVat ? null : isChoosingAvatar ? (
@@ -2409,7 +2467,6 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
               <EndButton onClick={leaveMultiplayer}>Quit</EndButton>
             </MultiplayerWaiting>
           )}
-          {screenFade == 'out' && <ScreenBlack />}
           {isMultiplayerVat && (
             <IrradiationVat avatar={selectedAvatar} startColor={mp.current.color || getAvatarColor(selectedAvatar) || PIECES_INFO[selectedAvatar].color} isDunkReady={!!multiplayerSetup && multiplayerSetup.mode != "coop"}
               actions={vatActions} onBusy={setIsVatBusy}
@@ -2417,14 +2474,19 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
               // (the side units fly off from here, as from the picker's Play)
               onClose={() => flyOffThen(() => { if (mp.current.color === undefined) mp.current.color = null; mp.current.isColorPicked = true; setIsMultiplayerVat(false); handleClickPlay(); })} />
           )}
+          </DesignBox>
+          {screenFade == 'out' && <ScreenBlack />}
         </PlayWindow>
         {isMonitorOn && isBooted && !isMultiplayerSetupOpen && (
           <>
             {/* from the avatar select on, flying in with the console (Jamie) */}
-            <SideMonitor isPickerShowing={!isChoosingAvatar} screen={isChoosingAvatar ? "avatar" : isMultiplayerVat ? "vat" : "picker"} isPoweredOff={isSideOff} isLeaving={isFlyingOff} isQuiet={isBackFromPicker} isFadingOut={isChoosingAvatar && isAvatarPicked} bioOf={hoveredAvatar || handOverAvatar} /* (the Agent's question unless a tank is hovered; once one's chosen, its file stays: Jamie, playtests 27 and 29) */ />
+            <div data-mock="side-monitor" style={{ display: "contents" }}>{/* (the apartment mock-up tool hides or shows each side element by this: dev) */}
+              <SideMonitor isPickerShowing={!isChoosingAvatar} screen={isChoosingAvatar ? "avatar" : isMultiplayerVat ? "vat" : "picker"} isPoweredOff={isSideOff} isLeaving={isFlyingOff} isQuiet={isBackFromPicker} isFadingOut={isChoosingAvatar && isAvatarPicked} bioOf={hoveredAvatar || handOverAvatar} /* (the Agent's question unless a tank is hovered; once one's chosen, its file stays: Jamie, playtests 27 and 29) */ />
+            </div>
             {/* multiplayer: its face turns over to each screen's buttons (Jamie, mp playtests 2-3): the avatar select's
                 Next alone (a character clicked is the way on), the picker's Back and Next, the vat's Back and Play.
                 Single player: one face, Play and Back throughout, Back on the avatar select to the start menu */}
+            <div data-mock="console" style={{ display: "contents" }}>
             <PlayConsole
               faceKey={!multiplayer ? undefined : isChoosingAvatar ? "avatar" : isMultiplayerVat ? "vat" : "picker"}
               {...(isChoosingAvatar ? (multiplayer ? { isReady: false, playLabel: "Next", onPlay: () => {} } : { isReady: false, playLabel: "Play", onPlay: () => {}, onBack: backToStartMenu, isBackDisabled: isFlyingOff || isAvatarPicked })
@@ -2437,6 +2499,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
                 })}
               isLeaving={isFlyingOff}
             />
+            </div>
           </>
         )}
         {isShowingControls && <ControlsOverlay onClose={closeControls} />}
@@ -2488,18 +2551,15 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
             {isShowingControls && <ControlsOverlay onClose={closeControls} />}
           </GameFrame>
         </GameArea>
-      : fullScreenPageData ?
-        <FullscreenPage
-          text={fullScreenPageData.text}
-          buttons={fullScreenPageData.buttons}
-          image={fullScreenPageData.image}
-        />
-        : !gameManager.current ? (isCoopHostBusy ? <CoopHostBusy playWindow={preGameWindow} /> : null) : (<GameArea style={pullStyle}>
+      : !gameManager.current ? (isCoopHostBusy ? <CoopHostBusy playWindow={preGameWindow} /> : null) : (<GameArea style={pullStyle}>
           <RoomBackdrop />
           <HudExplosions />
           {import.meta.env.DEV && !isDevHidden && (
             <PhaseToggles>
               <button onClick={() => setIsDevHidden(true)}>Hide dev options (F2)</button>
+              <label title="Gentle bobbing, as someone at the desk (Jamie)">
+                <input type="checkbox" checked={isShakyCam} onChange={event => { setIsShakyCam(event.target.checked); setIsShakyCamShown(event.target.checked); event.target.blur(); }} /> Shaky cam
+              </label>
               <a href="/dialogue" target="_blank" rel="noreferrer" style={{ color: "#6dffa0" }}>Dialogue viewer</a>
               <a href="/classes" target="_blank" rel="noreferrer" style={{ color: "#6dffa0" }}>Class review</a>
               <select aria-label="Level" value={level.id} onChange={e => { switchLevel(e.target.value); e.target.blur(); }}>
@@ -2729,14 +2789,14 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
                 const text = coopWait.who == own ? `Waiting for ${own == 'host' ? 'guest' : 'host'}...` : coopWait.isPrompt ? `${own == 'host' ? 'Guest' : 'Host'} is waiting at ${place}` : undefined;
                 return text ? createPortal(<NetNotice>{text}</NetNotice>, document.querySelector("[data-play-screen]") || document.body) : null;
               })()}
-              {objectiveNotice && createPortal(<ObjectiveNotice key={objectiveNotice.key} style={getPausedNoticeStyle(isPaused)}>{objectiveNotice.text}</ObjectiveNotice>, document.querySelector("[data-play-screen]") || document.body)}
-              {takeOverNotice && createPortal(<TakeOverNotice key={takeOverNotice.key} style={getPausedNoticeStyle(isPaused)}>{takeOverNotice.text}</TakeOverNotice>, document.querySelector("[data-play-screen]") || document.body)}
-              {rewardNotice && !rewardNotice.power && createPortal(<RewardNotice key={rewardNotice.key} style={getPausedNoticeStyle(isPaused)}>{rewardNotice.text}</RewardNotice>, document.querySelector("[data-play-screen]") || document.body)}
+              {objectiveNotice && createPortal(<ObjectiveNotice key={objectiveNotice.key} style={{ ...getOneLineNoticeStyle(objectiveNotice.text), ...getPausedNoticeStyle(isPaused) }}>{objectiveNotice.text}</ObjectiveNotice>, document.querySelector("[data-play-screen]") || document.body)}
+              {takeOverNotice && createPortal(<TakeOverNotice key={takeOverNotice.key} style={{ ...getOneLineNoticeStyle(takeOverNotice.text), ...getPausedNoticeStyle(isPaused) }}>{takeOverNotice.text}</TakeOverNotice>, document.querySelector("[data-play-screen]") || document.body)}
+              {rewardNotice && !rewardNotice.power && createPortal(<RewardNotice key={rewardNotice.key} style={{ ...getOneLineNoticeStyle(rewardNotice.text), ...getPausedNoticeStyle(isPaused) }}>{rewardNotice.text}</RewardNotice>, document.querySelector("[data-play-screen]") || document.body)}
               {rewardNotice && rewardNotice.power && (() => {
                 const look = getPowerLook(rewardNotice.power);
-                return <UnlockCard key={rewardNotice.key} style={getPausedNoticeStyle(isPaused)}>{look && <PowerTile style={{ background: look.color }}><i className={`fa ${look.activeIcon}`} /></PowerTile>}{rewardNotice.text}</UnlockCard>;
+                return <ClearUnlockCard key={rewardNotice.key} style={getPausedNoticeStyle(isPaused)}>{look && <PowerTile style={{ background: look.color }}><i className={`fa ${look.activeIcon}`} /></PowerTile>}{rewardNotice.text}</ClearUnlockCard>;
               })()}
-              {unlockMessage && <UnlockStack><UnlockCard style={{ position: "static", transform: "none" }}><UnlockPortrait src={unlockImage} />{unlockMessage}</UnlockCard></UnlockStack>}
+              {unlockMessage && <ClearUnlockStack><UnlockCard style={{ position: "static" }}><UnlockPortrait src={unlockImage} />{unlockMessage}</UnlockCard></ClearUnlockStack>}
               {fadeCards && <FadeToBlack><CardStack>{fadeCards.map(({ label, image, power }, index) => (
                 <Toast key={label} style={{ animationDelay: `${0.4 + index * 0.45}s` }}>
                   {power ? (() => {
@@ -2753,6 +2813,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
             {labScreen == "terminal" && createPortal(<LabTerminal context="lab" files={getTerminalFiles()} onClose={closeTerminal} />, document.querySelector("[data-play-screen]") || document.body)}
             {labScreen == "colors" && <IrradiationVat avatar={selectedAvatar} startColor={getAvatarColor(selectedAvatar) || PIECES_INFO[selectedAvatar].color} onIrradiate={irradiate} onClose={closeLabScreen} />}
             {isShowingControls && <ControlsOverlay onClose={closeControls} />}
+            <div data-mock="dialogue" style={{ display: "contents" }}>
             <DialogueLogPanel
               footer={coopChecks && coopChecks.isWaiting && !recruitScene ? <CoopChecks checks={coopChecks} ownRole={multiplayer ? multiplayer.link.role : 'host'} /> : recruitScene && isMonitorAlways && isRecruitTalkDone && (
                 <>
@@ -2773,6 +2834,8 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
                 if (isClosing && gameManager.current && !level.isWalkingLevel) gameManager.current.holdFor(BREAK_TOTAL_MS);
               }}
             />
+            </div>
+            <div data-mock="huds" style={{ display: "contents" }}>
             {!isEditingTiles && !isLogClosing && <UI
               players={players}
               recruits={recruits}
@@ -2784,6 +2847,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
               isShowingTopBar={!isCutscene && !recruitScene}
               isPaused={isPaused}
             />}
+            </div>
           </GameFrame>
         </GameArea>)
   );

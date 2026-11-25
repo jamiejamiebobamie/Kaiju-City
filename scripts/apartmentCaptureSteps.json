@@ -1,0 +1,90 @@
+[
+{
+"wait": 9000,
+"clickText": "PLAY"
+},
+{
+"wait": 3000,
+"shot": "start-screen"
+},
+{
+"state": "start"
+},
+{
+"clickText": "Single Player"
+},
+{
+"wait": 14000,
+"state": "picker"
+},
+{
+"key": "1",
+"code": "Digit1",
+"vk": 49
+},
+{
+"wait": 400,
+"key": "2",
+"code": "Digit2",
+"vk": 50
+},
+{
+"wait": 400,
+"key": "4",
+"code": "Digit4",
+"vk": 52
+},
+{
+"wait": 800,
+"key": "Enter",
+"code": "Enter",
+"vk": 13
+},
+{
+"wait": 7000,
+"eval": "(() => { const b=[...document.querySelectorAll('button, div')].reverse().find(b=>/^\\s*F\\s*I\\s*G\\s*H\\s*T/i.test(b.textContent) && b.offsetParent); if(!b) return [...document.querySelectorAll('button')].map(b=>b.textContent); b.click(); return 'clicked ' + b.tagName; })()"
+},
+{
+"wait": 9000,
+"key": "F2",
+"code": "F2",
+"vk": 113
+},
+{
+"wait": 800,
+"state": "dialogue"
+},
+{
+"eval": "(() => { window.__adv = setInterval(() => { const b = document.querySelector('[data-log-continue]'); if (b) b.click(); }, 600); return 1; })()"
+},
+{
+"wait": 7000,
+"shot": "h0"
+},
+{
+"wait": 7000,
+"shot": "h1"
+},
+{
+"wait": 7000,
+"shot": "h2"
+},
+{
+"wait": 7000,
+"shot": "h3"
+},
+{
+"wait": 7000,
+"shot": "h4"
+},
+{
+"wait": 7000,
+"shot": "h5"
+},
+{
+"eval": "(() => { clearInterval(window.__adv); return [...document.querySelectorAll('[data-mock=huds] *')].filter(e=>{const b=e.getBoundingClientRect();return b.width>60&&b.height>60}).length; })()"
+},
+{
+"state": "fight"
+}
+]

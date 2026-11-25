@@ -891,9 +891,12 @@ export class GameManager {
         const board = this.gameBoardManager;
         if (!board.linkedTiles || !board.linkedTiles.size) return undefined;
         const tilePx = this.level.grid.colStep * this.level.grid.scale;
+        // (the Aquarium, the player upstairs: not the ground floor's ways, just below them in the picture. Jamie, playtest 40)
+        const isUpstairs = !!this.level.aquariumFlood && !!player.getTileIndex() && this.getIsTopFloor(player.getTileIndex());
         let nearest;
         board.linkedTiles.forEach((_, key) => {
             const [i, j] = key.split(' ').map(Number);
+            if (isUpstairs && !this.getIsTopFloor({ i, j })) return;
             const spot = board.getCharXAndYFromTileIndex({ i, j });
             const tiles = Math.hypot(spot.x - player.charLocation.x, spot.y - player.charLocation.y) / tilePx;
             if (tiles <= CAMERA_WAY.nearTiles && (!nearest || tiles < nearest.tiles)) nearest = { key: `way ${key}`, charLocation: spot, tiles };
@@ -4126,6 +4129,7 @@ export class GameManager {
             getIsInBounds: this.gameBoardManager.getIsInBounds,
             getIsClosedTile: this.gameBoardManager.getIsClosedTile,
             getLinkedTile: this.gameBoardManager.getLinkedTile,
+            getIsWormholeTile: this.gameBoardManager.getIsWormholeTile,
             getCrowdCosts: this.getCrowdCosts,
             getIsOffLimitsTile: (pieceIndex, tileIndex) => {
                 if (!this.catwalkAgent) return false;

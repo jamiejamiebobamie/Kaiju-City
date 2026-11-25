@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { DesignBox } from "./GameBoard/PlayWindow";
 import styled, { keyframes } from "styled-components";
 
 /*
@@ -42,6 +43,10 @@ const Cover = styled.div`
   background: black;
   overflow: hidden;
   animation: ${fadeIn} 1.2s ease-out;
+`;
+// (the roll in the screen's design box: today's size on a wider screen, black round it. Layout phase 2; the Cover was
+// the container, the whole screen)
+const CreditsBox = styled(DesignBox)`
   container-type: inline-size;
 `;
 
@@ -99,6 +104,7 @@ export const Credits = ({ onDone }) => {
   }, []);
   return (
     <Cover>
+      <CreditsBox>
       {!isThanks && (
         <Roll>
           {CREDITS.map(({ heading, lines = [], isTitle = false }) => (
@@ -110,6 +116,7 @@ export const Credits = ({ onDone }) => {
         </Roll>
       )}
       {isThanks && <Thanks>Thanks for playing!</Thanks>}
+      </CreditsBox>
     </Cover>
   );
 };

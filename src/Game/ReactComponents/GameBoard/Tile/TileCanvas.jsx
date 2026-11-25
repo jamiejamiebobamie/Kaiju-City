@@ -344,7 +344,21 @@ const drawSeaIcon = (ctx, name, color, center, radius, lineScale, redraw, { rota
   ctx.restore();
 };
 
-export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamColors = false, fadeSeconds = undefined }) => {
+/*
+  The class battle's Kaiju fire (Jamie, 2026-11-25): a holo-sim's, as its Kaiju are (HOLOGRAM): in the Kaiju's green,
+  shaded with scanlines, flickering a little, each tile on its own (now and then one dims for a moment).
+  (Turned up: hard to see. Jamie; was 0.62 +- 0.25, dropping to 0.15 7% of the time, lines 0.45)
+*/
+const HOLO_FIRE = { color: "#80EF80", lineEvery: 3, lineAlpha: 0.22, flickerMs: 90, dropChance: 0.03, opacity: 0.9, swing: 0.08, dropTo: 0.45 };
+const getHoloFireAlpha = (key, now) => {
+  const step = Math.floor(now / HOLO_FIRE.flickerMs);
+  let hash = step * 2654435761;
+  for (let k = 0; k < key.length; k++) hash = Math.imul(hash ^ key.charCodeAt(k), 2246822519);
+  const random = ((hash >>> 0) % 1000) / 1000;
+  return random < HOLO_FIRE.dropChance ? HOLO_FIRE.dropTo : Math.min(1, HOLO_FIRE.opacity + HOLO_FIRE.swing * Math.sin(now / 170 + key.length * 1.7 + key.charCodeAt(0)));
+};
+
+export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamColors = false, fadeSeconds = undefined, isHologramFire = false }) => {
   const canvasRef = useRef(null);
   const { grid, world, contentOffset } = level;
   const width = world.width - contentOffset.x;
@@ -608,11 +622,12 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
         // only powers that hurt take their side's color; the rest keep their own
         const isHarmful = tile.getTileStatus()?.getDmgAmt() > 0;
         const teamColor = isTeamColors && powerColor && isHarmful && !tile.teleportTileStatus ? gameManager.getStatusTeamColor(tile.cast.casterIndex, tile.teamIndex) : undefined;
-        const statusColor = teamColor || powerColor;
+        const isHoloFire = isHologramFire && tile.getTileStatus()?.getAppliedStatus?.() == "isOnKaijuFire";
+        const statusColor = isHoloFire ? HOLO_FIRE.color : teamColor || powerColor;
         const isSmoke = !!statusColor && tile.cast.isSmoke && !tile.teleportTileStatus;
         const color = isSmoke ? getSmokeColor(tile, statusColor) : statusColor;
         // the icon keeps its power's color on a team-colored tile, so the power can always be told
-        const iconColor = isSmoke ? getSmokeColor(tile, powerColor) : powerColor;
+        const iconColor = isHoloFire ? HOLO_FIRE.color : isSmoke ? getSmokeColor(tile, powerColor) : powerColor;
         if (isSmoke) nextSmokeTiles.set(key, { center: getTileCenter(grid, tile.tileIndex), color });
         const pieceColor = colorLookup[`${tile.tileIndex.i} ${tile.tileIndex.j}`];
         const isHighlighted = TILE_LOOK.isPathShown && tile.getIsHighlighted() && isPlayerUp;
@@ -622,12 +637,26 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
         if (isHighlighted) drawSprite(ctx, getSoftSprite(getHighlightColor(gameManager.getPlayerColor()), TILE_LOOK.highlightTintOpacity), center, pixelRatio);
         else if (pieceColor && !color) drawSprite(ctx, getSoftSprite(pieceColor, TILE_LOOK.pieceTintOpacity), center, pixelRatio);
         if (color) {
+          if (isHoloFire) ctx.globalAlpha = getHoloFireAlpha(key, performance.now());
           if (!isHighlighted) drawSprite(ctx, getStatusSprite(pieceColor || color), center, pixelRatio);
           const icon = { iconClass: tile.getActiveIcon(), rotation: tile.getRotation() };
           if (tile.cast.seaIcon) drawSeaIcon(ctx, tile.cast.seaIcon, tile.cast.seaColor, center, radius, lineScale, draw, getSeaPose(tile.cast.seaIcon, tile.dirs));
           // (a Teleport's tile: its portal only, not the power's old icon too: Jamie, playtest 38)
           else if (!tile.teleportTileStatus) drawIcon(ctx, icon, center, radius, iconColor, lineScale);
           if (icon.iconClass && !tile.teleportTileStatus) nextIconTiles.set(key, { center, icon, color: iconColor });
+          if (isHoloFire) {
+            // its scanlines: dark rows across the tile
+            ctx.save();
+            ctx.beginPath();
+            traceTile(ctx, center, shape);
+            ctx.clip();
+            ctx.globalAlpha = HOLO_FIRE.lineAlpha;
+            ctx.fillStyle = "#000";
+            const step = HOLO_FIRE.lineEvery / zoom;
+            for (let y = center.y - radius; y < center.y + radius; y += step) ctx.fillRect(center.x - radius * 1.2, y, radius * 2.4, step / 3);
+            ctx.restore();
+            ctx.globalAlpha = 1;
+          }
         }
       });
       startFades(smokeTiles, nextSmokeTiles, smokeFades);

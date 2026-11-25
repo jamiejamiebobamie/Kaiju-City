@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { DesignBox } from "./GameBoard/PlayWindow";
 import { createPortal } from "react-dom";
 import { PlayConsole, SideFrame, FLY_OFF } from "./AbilityPicker";
 import styled, { keyframes } from "styled-components";
@@ -99,7 +100,6 @@ const Page = styled.div`
   position: absolute;
   inset: 0;
   z-index: 2147482980;
-  container-type: size;
   border-radius: 1.8cqw;
   overflow: hidden;
   background: black;
@@ -160,13 +160,16 @@ const Cable = styled.div`
   background: linear-gradient(90deg, #1b1c20, #6a6d74, #1b1c20);
 `;
 
+// (sized from the screen, so the whole of them hangs in view, the cable above their head: Jamie, playtest 40. It was
+// twice its sprite's px, which put their head past the screen's top in a smaller window)
+const FIGURE = { shareOfHeight: 0.5, frameHeight: 230 };
 const Figure = styled.div`
   position: absolute;
   left: -76px;
   bottom: -2cqw;
   width: 152px;
   height: 230px;
-  transform: scale(2);
+  transform: scale(var(--figure-scale, 2));
   transform-origin: 50% 100%;
   background-position: 0 -460px;
   background-repeat: no-repeat;
@@ -178,6 +181,12 @@ const Scene = styled.div`
   inset: 0;
   transition: transform 0.7s ease-in-out;
 `;
+// (the vat in the screen's design box: today's size on a wider screen; the room's back wall mirrored out to the sides,
+// a little darker, the vat itself only in the middle. Layout phase 2; the Page was the container, the whole screen)
+const VatBox = styled(DesignBox)`
+  container-type: size;
+`;
+const VAT_SIDES = { brightness: 0.6 };
 
 /*
   On the vat (Jamie, playtest 33): midway between the end of the longest drip (DRIPS: from 71%, 16% long, so 87%) and
@@ -307,6 +316,16 @@ export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose, backL
     return () => cancelAnimationFrame(frameId);
   }, []);
   const fieldRef = useRef(null);
+  // the hanging figure's scale: FIGURE.shareOfHeight of the screen's height
+  const sceneRef = useRef(null);
+  const [figureScale, setFigureScale] = useState(2);
+  useEffect(() => {
+    const scene = sceneRef.current;
+    if (!scene || typeof ResizeObserver == "undefined") return;
+    const observer = new ResizeObserver(() => setFigureScale((FIGURE.shareOfHeight * scene.clientHeight) / FIGURE.frameHeight));
+    observer.observe(scene);
+    return () => observer.disconnect();
+  }, []);
   const firstColor = startColor || PIECES_INFO[avatar].color; // whatever color they are now
   const [hue, setHue] = useState(() => hexToHsv(firstColor).hue);
   const [spot, setSpot] = useState(() => hexToHsv(firstColor));
@@ -385,7 +404,10 @@ export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose, backL
   );
   return createPortal(
     <Page style={{ "--vat-color": color }}>
-      <Scene style={{ transform: isPraising ? `translateX(${VAT_LOOK.praisePan})` : "none" }}>
+      <VatBox data-vat-box>
+      <Scene ref={sceneRef} style={{ transform: isPraising ? `translateX(${VAT_LOOK.praisePan})` : "none", "--figure-scale": figureScale }}>
+      <Layer src="/levels/vat-room.png" style={{ left: "-100%", transform: "scaleX(-1)", filter: `brightness(${VAT_SIDES.brightness})` }} />
+      <Layer src="/levels/vat-room.png" style={{ left: "100%", transform: "scaleX(-1)", filter: `brightness(${VAT_SIDES.brightness})` }} />
       <Layer src="/levels/vat-room.png" />
       <Beams />
       <Glow />
@@ -405,7 +427,8 @@ export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose, backL
       ))}
       <Heading><ElectricArcs text="Pick Your Color">Pick Your Color</ElectricArcs></Heading>
       </Scene>
-      {isPraising && <PraiseSpot><SpeechBalloon name={VAT_PRAISE.name} text={VAT_PRAISE.text} x={0} y={0} isFlipped scale={(document.querySelector("[data-play-screen]") || document.body).clientWidth / VAT_LOOK.praiseBaseWidth * VAT_LOOK.praiseScale} /></PraiseSpot>}
+      {isPraising && <PraiseSpot><SpeechBalloon name={VAT_PRAISE.name} text={VAT_PRAISE.text} x={0} y={0} isFlipped scale={(document.querySelector("[data-vat-box]") || document.querySelector("[data-play-screen]") || document.body).clientWidth / VAT_LOOK.praiseBaseWidth * VAT_LOOK.praiseScale} /></PraiseSpot>}
+      </VatBox>
       {isInPlace ? (sideScreen && createPortal(colorPanel, sideScreen)) : createPortal(<SideUnits>
         <SideFrame isLeaving={isLeaving}>
         {colorPanel}

@@ -60,7 +60,9 @@ export const UI = ({
   const [hudScale, setHudScale] = useState(1);
 
   useEffect(() => {
-    const frame = hudsRef.current.parentElement; // (the game frame: the HUDs scale with it)
+    // (the game frame: the HUDs scale with it; past any wrapper with no box of its own, like the mock-up tool's marker)
+    let frame = hudsRef.current.parentElement;
+    while (frame.parentElement && getComputedStyle(frame).display == "contents") frame = frame.parentElement;
     const observer = new ResizeObserver(() => setHudScale(frame.clientWidth / HUD_DESIGN_WIDTH));
     observer.observe(frame);
     return () => observer.disconnect();

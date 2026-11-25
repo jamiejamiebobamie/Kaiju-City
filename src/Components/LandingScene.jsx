@@ -4,6 +4,7 @@ import { TrafficLights } from "../Game/ReactComponents/GameBoard/TrafficLights";
 import landingTraffic from "./data/landingTraffic.json";
 import { LANDING_TUNE_DEFAULTS } from "./LandingTuner";
 import { Buoy, SeaKaiju } from "./LandingKaiju";
+import { getEdgeFade } from "Utils/stage";
 
 /*
   The landing's scene (Jamie, 2026-11-18): the Lab windows' Peninsula, but seen straight up its middle (one-point
@@ -506,7 +507,7 @@ export const LandingScene = ({ spot, zoom, isBack = false, logoScale = 1, lift =
   }, [logoScale, lift]);
   const scale = LANDING_VIEW.scale * (vanish ? vanish.k : 1);
   const content = (
-    <View style={{ left: -LANDING_VIEW.vanish.x * scale, top: -LANDING_VIEW.vanish.y * scale + (vanish ? vanish.k : 1) * lift, transform: `scale(${scale})` }}>
+    <View style={{ left: -LANDING_VIEW.vanish.x * scale, top: -LANDING_VIEW.vanish.y * scale + (vanish ? vanish.k : 1) * lift, transform: `scale(${scale})`, ...getEdgeFade(0.025) /* (its edges fade to the dark, where a window shows past it: layout phase 1, 1B) */ }}>
       <Stars points={landingTraffic.stars} width={LANDING_VIEW.size.width} height={LANDING_VIEW.size.height} />
       <Surf points={SURF_POINTS} width={LANDING_VIEW.size.width} height={LANDING_VIEW.size.height} />
       <Surf points={landingTraffic.coast} width={LANDING_VIEW.size.width} height={LANDING_VIEW.size.height} pixel rest={COAST.rest} />

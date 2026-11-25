@@ -6,6 +6,7 @@ import { unlockEverything } from "../DataClasses/Avatars";
 import { checkPeerService, getLinkedRoomCode } from "../Multiplayer/peerLink";
 import { MultiplayerLobby } from "../Multiplayer/MultiplayerLobby";
 import { LabTerminal, LAB_TERMINAL } from "./LabTerminal";
+import { DesignBox } from "./GameBoard/PlayWindow";
 
 /*
   The main monitor's boot (Jamie, playtest 29), the first time it comes on in a visit: the game's logo (off the
@@ -317,6 +318,9 @@ export const MonitorBoot = ({ onDone, startAt = undefined }) => {
   return (
     <Screen>
       <MatrixRain />
+      {/* (the logo and the buttons in the screen's design box: today's size on a wider screen, the rain round them. Layout
+          phase 2) */}
+      <DesignBox>
       <Logo src="/Logo.gif" alt="" $isSmall={phase == "mode"} /> {/* (the splash's, moved here) */}
       {phase == "loading" ? (
         <>
@@ -339,6 +343,7 @@ export const MonitorBoot = ({ onDone, startAt = undefined }) => {
           <PlayButton as="button" $isPressed={phase == "pressed"} onClick={() => phase == "start" && setPhase("pressed")}>PLAY</PlayButton>
         </>
       )}
+      </DesignBox>
       {settings && <BlackOut $isLifting={settings == "closing"} />}
       {settings == "open" && <LabTerminal context="landing" onClose={closeSettings} />}
       {/* dev only (Jamie: the dev panel isn't up here): as if the game's beaten and everything's unlocked, so Multiplayer opens */}

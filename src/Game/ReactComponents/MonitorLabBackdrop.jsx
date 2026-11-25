@@ -46,14 +46,21 @@ const Scene = styled.div`
 `;
 
 // the Lab picture, down with the scene (above it, the dark of the room's ceiling)
+// (layout phase 2: as wide as the picture is at the box's height, past the box at the sides, so a wider screen shows
+// more of it; the same as 'cover' on today's screen, which is narrower than the picture. Its far edges fade to the
+// dark, should a screen ever be wider than it)
+const LAB_ASPECT = 1408 / 768;
 const LabPicture = styled.div`
   position: absolute;
-  left: 0;
-  right: 0;
+  left: 50%;
   top: ${SCENE_DROP * 100}%;
   height: 100%;
-  background: url(${LAB.src}) center / cover no-repeat;
+  aspect-ratio: ${LAB_ASPECT};
+  translate: -50% 0;
+  background: url(${LAB.src}) center / 100% 100% no-repeat;
   image-rendering: pixelated;
+  -webkit-mask-image: linear-gradient(to right, transparent, black 3%, black 97%, transparent);
+  mask-image: linear-gradient(to right, transparent, black 3%, black 97%, transparent);
 `;
 
 // a tank's place, empty (the front layer's bubbles)

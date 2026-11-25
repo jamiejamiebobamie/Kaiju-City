@@ -1401,6 +1401,7 @@ const MetalButton = styled.button`
     cursor: default;
     opacity: 0.35;
   }
+  ${props => props.$isLit && css`color: #c8ffb8; text-shadow: 0 0 0.25cqw #3aff3a, 0 0 0.6cqw #2ee02a, 0 0 1cqw #1a9a1a;`}
   ${props => props.$isBacklit && css`animation: ${backlitBlink} 0.9s steps(1) infinite;`}
 `;
 
@@ -1541,17 +1542,20 @@ const FaceSide = ({ isReady, playLabel, onPlay, onBack, backLabel = "Back", isBa
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [isKeyed]);
+  // the button the arrows (or Play's readiness) have picked: its rings pulse, and its words blink with them (Jamie,
+  // playtest 40: Back's too, when it's the one focused; Play stays lit, still, while Back has it)
+  const glowingIndex = isFocusOn ? focusIndex : isReady ? 0 : undefined;
   return (
     <ConsoleFace ref={faceRef}>
       {[[0.5, 0.5, 20], [null, 0.5, -35], [0.5, null, 60], [null, null, 5]].map(([screwLeft, top, turn], k) => (
         <Screw key={k} $turn={turn} style={{ zIndex: 2, left: screwLeft == null ? undefined : `${screwLeft}cqw`, right: screwLeft == null ? "0.5cqw" : undefined, top: top == null ? undefined : `${top}cqw`, bottom: top == null ? "0.5cqw" : undefined }} />
       ))}
       {/* (no ready light: Jamie, playtest 28) */}
-      <EtchedRings faceRef={faceRef} buttonRefs={[playRef, backRef]} glowingIndex={isFocusOn ? focusIndex : isReady ? 0 : undefined} />
-      <MetalButton ref={playRef} style={{ position: "relative", zIndex: 1 }} disabled={!isReady} $isBacklit={isReady} $isCompact={isCompact} $isMain onClick={onPlay}>
+      <EtchedRings faceRef={faceRef} buttonRefs={[playRef, backRef]} glowingIndex={glowingIndex} />
+      <MetalButton ref={playRef} style={{ position: "relative", zIndex: 1 }} disabled={!isReady} $isBacklit={glowingIndex === 0} $isLit={isReady && glowingIndex !== 0} $isCompact={isCompact} $isMain onClick={onPlay}>
         {playLabel}
       </MetalButton>
-      {onBack && <MetalButton ref={backRef} style={{ position: "relative", zIndex: 1 }} disabled={isBackDisabled} $isCompact={isCompact} onClick={onBack}>{backLabel}</MetalButton>}
+      {onBack && <MetalButton ref={backRef} style={{ position: "relative", zIndex: 1 }} disabled={isBackDisabled} $isBacklit={glowingIndex === 1} $isCompact={isCompact} onClick={onBack}>{backLabel}</MetalButton>}
     </ConsoleFace>
   );
 };

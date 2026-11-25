@@ -18,7 +18,7 @@ const LogoWrapper = styled.div`
   width: 700px;
   height: 350px;
 
-  margin-top: -370px;
+  margin-top: calc(var(--safe-h) * -0.505464); /* (370 px at the reference window, from the safe area: layout phase 1; was -370px) */
   /* the landing sets it (Jamie, 2026-11-18: the logo, its skyline and Kaiju larger, sized to the window) */
   transform: scale(var(--logo-scale, 1));
 `;
@@ -206,43 +206,46 @@ const KaijuWrapper = styled.div`
   ${props => props.isSmoke ? "z-index: 9; filter: invert(1) blur(1px) drop-shadow(0px 0px 1px rgb(191, 64, 191)) opacity(.25);" :  "z-index: 8; filter: drop-shadow(0px 0px 1px rgb(191, 64, 191));" }
 
   /* trimmed to when it's in view (Jamie, playtest 22: it was hidden a third of the minute): the same spots where it
-     fades in and out by the buildings and the same walking speed, just no long wait off past them */
-  animation: fadeKaijuWalk linear 40s infinite;
+     fades in and out by the buildings and the same walking speed, just no long wait off past them.
+     (Jamie, playtest 40: on the left it fades out later and in sooner, 25 units farther out, as it does on the right,
+     its whole sprite seen; the cycle 45 s, was 40, so its walking speed is the same) */
+  animation: fadeKaijuWalk linear 45s infinite;
 
   @keyframes fadeKaijuWalk {
     0% {
       opacity: 0;
-      transform: scale(2.7) translate(57.6px, 67px);
+      transform: scale(2.7) translate(32.6px, 67px);
     }
-    6.75% {
+    6% {
       opacity: 1;
     }
-    49.5% {
+    50% {
       opacity: 1;
     }
-    53.25% {
+    53.33% {
       opacity: 0;
       transform: scale(2.7) translate(256px, 67px);
     }
-    54.5% {
+    54.44% {
       opacity: 0;
       transform: scale(-2.7, 2.7) translate(-151.8px, 67px);
     }
-    61.25% {
+    60.44% {
       opacity: 1;
     }
-    95% {
+    95.56% {
       opacity: 1;
     }
-    98.75% {
+    98.89% {
       opacity: 0;
-      transform: scale(-2.7, 2.7) translate(40.8px, 67px);
+      transform: scale(-2.7, 2.7) translate(65.8px, 67px);
     }
     100% {
       opacity: 0;
-      transform: scale(2.7) translate(57.6px, 67px);
+      transform: scale(2.7) translate(32.6px, 67px);
     }
   }
+
   
 `;
 

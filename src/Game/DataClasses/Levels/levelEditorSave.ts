@@ -128,3 +128,49 @@ export const levelEditorSave = (dataDirectory: string): Plugin => ({
     });
   }
 });
+
+// the apartment mock-up tool (/apartment, Jamie 2026-11-24): its layout saved over mockup.json, and its exports written
+// as PNGs into public/apartment-scene/exports (for Jamie to regenerate the room's lighting from)
+const EXPORT_NAME = /^[a-zA-Z0-9_-]{1,60}$/;
+export const apartmentSave = (layoutPath: string, exportDir: string): Plugin => ({
+  name: 'apartment-save',
+  apply: 'serve',
+  handleHotUpdate({ file }) {
+    if (path.normalize(file) == path.normalize(layoutPath)) return [];
+  },
+  configureServer(server) {
+    const readBody = (request, done) => {
+      let body = '';
+      request.on('data', chunk => { body += chunk; });
+      request.on('end', () => done(body));
+    };
+    server.middlewares.use('/__apartment/save', (request, response) => readBody(request, body => {
+      try {
+        const layout = JSON.parse(body);
+        if (!layout || !Array.isArray(layout.layers)) throw new Error('not a mock-up layout');
+        fs.writeFileSync(layoutPath, `${JSON.stringify(layout, null, 1)}\n`);
+        response.statusCode = 200;
+        response.end('saved');
+      } catch (error) {
+        response.statusCode = 400;
+        response.end(String(error));
+      }
+    }));
+    server.middlewares.use('/__apartment/export', (request, response) => readBody(request, body => {
+      try {
+        const { name, dataUrl } = JSON.parse(body);
+        if (!EXPORT_NAME.test(name || '')) throw new Error('a name of letters, numbers, - and _ only');
+        const match = /^data:image\/png;base64,(.+)$/.exec(dataUrl || '');
+        if (!match) throw new Error('not a PNG');
+        fs.mkdirSync(exportDir, { recursive: true });
+        const file = path.join(exportDir, `${name}.png`);
+        fs.writeFileSync(file, Buffer.from(match[1], 'base64'));
+        response.statusCode = 200;
+        response.end(file);
+      } catch (error) {
+        response.statusCode = 400;
+        response.end(String(error));
+      }
+    }));
+  }
+});

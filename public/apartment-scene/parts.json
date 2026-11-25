@@ -1,0 +1,262 @@
+[
+ {
+  "id": "figurines",
+  "label": "Kaiju figurines on the shelf",
+  "source": "02.jpg",
+  "src": "/apartment-scene/parts/figurines.png",
+  "x": 38,
+  "y": 30,
+  "width": 646,
+  "height": 218
+ },
+ {
+  "id": "figurines-lit",
+  "label": "Kaiju figurines, purple lit",
+  "source": "05.jpg",
+  "src": "/apartment-scene/parts/figurines-lit.png",
+  "x": 38,
+  "y": 30,
+  "width": 646,
+  "height": 218
+ },
+ {
+  "id": "neon",
+  "label": "Purple neon tube",
+  "source": "05.jpg",
+  "src": "/apartment-scene/parts/neon.png",
+  "x": 216,
+  "y": 2,
+  "width": 428,
+  "height": 44
+ },
+ {
+  "id": "lamp",
+  "label": "Desk lamp",
+  "source": "02.jpg",
+  "src": "/apartment-scene/parts/lamp.png",
+  "x": 68,
+  "y": 236,
+  "width": 282,
+  "height": 366
+ },
+ {
+  "id": "poster-kaiju",
+  "label": "Kaiju City poster",
+  "source": "02.jpg",
+  "src": "/apartment-scene/parts/poster-kaiju.png",
+  "x": 466,
+  "y": 250,
+  "width": 202,
+  "height": 274
+ },
+ {
+  "id": "bookcase",
+  "label": "Tall bookcase",
+  "source": "02.jpg",
+  "src": "/apartment-scene/parts/bookcase.png",
+  "x": 742,
+  "y": 40,
+  "width": 446,
+  "height": 552
+ },
+ {
+  "id": "wall-shelves",
+  "label": "Wall shelves with books",
+  "source": "05.jpg",
+  "src": "/apartment-scene/parts/wall-shelves.png",
+  "x": 742,
+  "y": 82,
+  "width": 456,
+  "height": 396
+ },
+ {
+  "id": "pinup",
+  "label": "Pin-up poster",
+  "source": "02.jpg",
+  "src": "/apartment-scene/parts/pinup.png",
+  "x": 1216,
+  "y": 150,
+  "width": 149,
+  "height": 314
+ },
+ {
+  "id": "cactus",
+  "label": "Cactus",
+  "source": "02.jpg",
+  "src": "/apartment-scene/parts/cactus.png",
+  "x": 1222,
+  "y": 452,
+  "width": 116,
+  "height": 172
+ },
+ {
+  "id": "can-red",
+  "label": "Red soda can",
+  "source": "02.jpg",
+  "src": "/apartment-scene/parts/can-red.png",
+  "x": 3,
+  "y": 506,
+  "width": 77,
+  "height": 126
+ },
+ {
+  "id": "takeout-closed",
+  "label": "Takeout box, closed",
+  "source": "02.jpg",
+  "src": "/apartment-scene/parts/takeout-closed.png",
+  "x": 2,
+  "y": 618,
+  "width": 190,
+  "height": 116
+ },
+ {
+  "id": "can-lying",
+  "label": "Kaiju Kola can, lying",
+  "source": "02.jpg",
+  "src": "/apartment-scene/parts/can-lying.png",
+  "x": 168,
+  "y": 656,
+  "width": 134,
+  "height": 76
+ },
+ {
+  "id": "can-tall",
+  "label": "Kaiju Kola can, standing",
+  "source": "02.jpg",
+  "src": "/apartment-scene/parts/can-tall.png",
+  "x": 268,
+  "y": 544,
+  "width": 64,
+  "height": 134
+ },
+ {
+  "id": "takeout-open",
+  "label": "Takeout box, open",
+  "source": "02.jpg",
+  "src": "/apartment-scene/parts/takeout-open.png",
+  "x": 328,
+  "y": 562,
+  "width": 222,
+  "height": 152
+ },
+ {
+  "id": "cables",
+  "label": "Tangled cables (desk patch)",
+  "source": "02.jpg",
+  "src": "/apartment-scene/parts/cables.png",
+  "x": 462,
+  "y": 564,
+  "width": 280,
+  "height": 204
+ },
+ {
+  "id": "papers",
+  "label": "Papers",
+  "source": "02.jpg",
+  "src": "/apartment-scene/parts/papers.png",
+  "x": 648,
+  "y": 636,
+  "width": 350,
+  "height": 128
+ },
+ {
+  "id": "chips",
+  "label": "Chip bag and tissue",
+  "source": "02.jpg",
+  "src": "/apartment-scene/parts/chips.png",
+  "x": 782,
+  "y": 556,
+  "width": 190,
+  "height": 88
+ },
+ {
+  "id": "mug-new",
+  "label": "Coffee mug (new art)",
+  "source": "02.jpg",
+  "src": "/apartment-scene/parts/mug-new.png",
+  "x": 990,
+  "y": 596,
+  "width": 112,
+  "height": 118
+ },
+ {
+  "id": "wrapper",
+  "label": "Burger wrapper",
+  "source": "02.jpg",
+  "src": "/apartment-scene/parts/wrapper.png",
+  "x": 1092,
+  "y": 574,
+  "width": 138,
+  "height": 90
+ },
+ {
+  "id": "ashtray",
+  "label": "Ashtray",
+  "source": "02.jpg",
+  "src": "/apartment-scene/parts/ashtray.png",
+  "x": 1116,
+  "y": 668,
+  "width": 152,
+  "height": 84
+ },
+ {
+  "id": "paper-right",
+  "label": "Paper, right",
+  "source": "02.jpg",
+  "src": "/apartment-scene/parts/paper-right.png",
+  "x": 1252,
+  "y": 634,
+  "width": 113,
+  "height": 98
+ },
+ {
+  "id": "cigarette",
+  "label": "Cigarette butt",
+  "source": "02.jpg",
+  "src": "/apartment-scene/parts/cigarette.png",
+  "x": 1270,
+  "y": 726,
+  "width": 54,
+  "height": 32
+ },
+ {
+  "id": "mug",
+  "label": "Coffee mug (now)",
+  "source": "00-current.png",
+  "src": "/apartment-scene/parts/mug.png",
+  "x": 706,
+  "y": 530,
+  "width": 64,
+  "height": 62
+ },
+ {
+  "id": "clock",
+  "label": "Clock (now)",
+  "source": "00-current.png",
+  "src": "/apartment-scene/parts/clock.png",
+  "x": 254,
+  "y": 536,
+  "width": 104,
+  "height": 56
+ },
+ {
+  "id": "wall-shelves-06",
+  "label": "Wall shelves (06, movable)",
+  "source": "06.jpg",
+  "src": "/apartment-scene/parts/wall-shelves-06.png",
+  "x": 746,
+  "y": 78,
+  "width": 452,
+  "height": 396
+ },
+ {
+  "id": "poster-kaiju-06",
+  "label": "Kaiju City poster (06, movable)",
+  "source": "06.jpg",
+  "src": "/apartment-scene/parts/poster-kaiju-06.png",
+  "x": 472,
+  "y": 255,
+  "width": 200,
+  "height": 261
+ }
+]

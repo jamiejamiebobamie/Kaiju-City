@@ -200,6 +200,10 @@ export class GameManagerProxy {
         return this.props.getLinkedTile(tileIndex);
     }
 
+    getIsWormholeTile(tileIndex) {
+        return this.props.getIsWormholeTile ? this.props.getIsWormholeTile(tileIndex) : false;
+    }
+
     getIsInBounds(tileIndex) {
         return this.props.getIsInBounds(tileIndex);
     }

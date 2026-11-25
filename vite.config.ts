@@ -1,12 +1,12 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
-import { classReviewSave, dialogueSave, levelEditorSave, playWindowSave } from './src/Game/DataClasses/Levels/levelEditorSave';
+import { apartmentSave, classReviewSave, dialogueSave, levelEditorSave, playWindowSave } from './src/Game/DataClasses/Levels/levelEditorSave';
 
 const src = fileURLToPath(new URL('./src', import.meta.url));
 
 export default defineConfig({
-  plugins: [react(), levelEditorSave(`${src}/Game/DataClasses/Levels/data`), playWindowSave(`${src}/Game/DataClasses/playWindow.json`), dialogueSave(`${src}/Game/DataClasses/Dialogue/dialogue-polished.json`), classReviewSave(`${src}/Game/DataClasses/classOptions.json`, `${src}/Game/DataClasses/sciFiClasses.ts`)],
+  plugins: [react(), levelEditorSave(`${src}/Game/DataClasses/Levels/data`), playWindowSave(`${src}/Game/DataClasses/playWindow.json`), dialogueSave(`${src}/Game/DataClasses/Dialogue/dialogue-polished.json`), classReviewSave(`${src}/Game/DataClasses/classOptions.json`, `${src}/Game/DataClasses/sciFiClasses.ts`), apartmentSave(`${src}/Game/ReactComponents/ApartmentMockup/mockup.json`, fileURLToPath(new URL('./public/apartment-scene/exports', import.meta.url)))],
   resolve: {
     // the project's absolute imports (eg. 'Game/utils'), also listed in tsconfig.json
     alias: [

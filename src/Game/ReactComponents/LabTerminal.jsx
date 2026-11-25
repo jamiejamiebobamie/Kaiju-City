@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import styled, { css, keyframes } from "styled-components";
-import { ROOM, RoomExtras } from "Components/RoomScene";
+import { OLD_ROOM as ROOM, RoomExtras } from "Components/RoomScene"; // (the Lab desk is built on the old room picture)
 import { enterUnlockCode } from "Game/DataClasses/UnlockCodes";
+import { DesignBox } from "./GameBoard/PlayWindow";
+import { stepScreenLook } from "Utils/camera";
 import { TILE_STATUSES_AND_ABILITY_DATA } from "Utils/gameState";
 
 /*
@@ -51,9 +53,13 @@ const Root = styled.div`
   z-index: 2147483000;
   overflow: hidden;
   background: black;
-  container-type: size;
   pointer-events: auto;
   cursor: default;
+`;
+// (its desk, monitor and words in the screen's design box: today's size on a wider screen, the desk picture running on
+// past it. Layout phase 2; the Root was the container, the whole screen)
+const TerminalBox = styled(DesignBox)`
+  container-type: size;
 `;
 const Scene = styled.div`
   position: absolute;
@@ -73,6 +79,45 @@ const Desk = styled.div`
   left: calc(50cqw - ${(ROOM.monitor.centerX / ROOM_W) * boxWidthCqh}cqh);
   top: calc(50cqh - ${(MONITOR_MIDDLE_Y / ROOM_H) * boxHeightCqh}cqh);
 `;
+/*
+  Looking about the Lab's computer desk (Jamie, playtest 40; from the walking Lab and from Settings on the start screen): as in the apartment, but
+  inside the main monitor's screen. The mouse along the screen's inside edges leans the view that way, as far as the
+  desk picture goes past the screen (less 'edgePx'); and the shaky cam's bob, kept inside that too.
+*/
+const DESK_LOOK = { reach: 0.6, edgePx: 2 }; // (of how far the picture goes past the screen on that side)
+const DeskLook = ({ isOn, children }) => {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!isOn) return;
+    let frameId;
+    const applied = { x: 0, y: 0 };
+    const step = () => {
+      frameId = requestAnimationFrame(step);
+      const element = ref.current;
+      const desk = element && element.firstElementChild;
+      const screen = element && element.closest("[data-lab-terminal]");
+      if (!desk || !screen) return;
+      const view = screen.getBoundingClientRect();
+      const seen = desk.getBoundingClientRect();
+      // (where the desk would be, still)
+      const still = { left: seen.left - applied.x, right: seen.right - applied.x, top: seen.top - applied.y, bottom: seen.bottom - applied.y };
+      const room = {
+        left: Math.max(0, view.left - still.left - DESK_LOOK.edgePx), right: Math.max(0, still.right - view.right - DESK_LOOK.edgePx),
+        up: Math.max(0, view.top - still.top - DESK_LOOK.edgePx), down: Math.max(0, still.bottom - view.bottom - DESK_LOOK.edgePx)
+      };
+      const look = stepScreenLook("labDesk", performance.now(), view);
+      const x = (look.x < 0 ? -look.x * room.left : -look.x * room.right) * DESK_LOOK.reach + look.shake.x;
+      const y = (look.y < 0 ? -look.y * room.up : -look.y * room.down) * DESK_LOOK.reach + look.shake.y;
+      applied.x = Math.max(-room.right, Math.min(room.left, x));
+      applied.y = Math.max(-room.down, Math.min(room.up, y));
+      element.style.transform = `translate(${applied.x.toFixed(2)}px, ${applied.y.toFixed(2)}px)`;
+    };
+    step();
+    return () => cancelAnimationFrame(frameId);
+  }, [isOn]);
+  return <div ref={ref} style={{ position: "absolute", inset: 0 }}>{children}</div>;
+};
+
 // the apartment's things, in the Lab's cold light (a mock-up: Jamie's own Lab desk art can replace it)
 const DeskPicture = styled.div`
   position: absolute;
@@ -708,11 +753,13 @@ export const LabTerminal = ({ context = "lab", files = [], onClose }) => {
 
   return (
     <Root data-lab-terminal onClick={() => !isDone && setShown(total)}>
+      <TerminalBox>
       <Scene $isLeaving={isLeaving}>
+        <DeskLook isOn>
         <Desk>
           <DeskPicture />
           {context == "lab" && <DeskWindow />}
-          <RoomExtras hasClock={context != "lab"} />
+          <RoomExtras hasClock={context != "lab"} room={ROOM} />
           <LabLight />
           <Casing style={at(ROOM.monitor.centerX - LAB_TERMINAL.monitor.width / 2, ROOM.monitor.bottom - LAB_TERMINAL.monitor.height, LAB_TERMINAL.monitor.width, LAB_TERMINAL.monitor.height)}>
             <Glass>
@@ -727,9 +774,11 @@ export const LabTerminal = ({ context = "lab", files = [], onClose }) => {
             <Led />
           </Casing>
         </Desk>
+        </DeskLook>
       </Scene>
       {/* (Settings' codes: once the cards are done, back to the start screen; nothing's left to do there. Jamie, playtest 39) */}
       {cards && <UnlockCards cards={cards} onDone={() => { setCards(undefined); if (context == "landing") leave(); }} />}
+      </TerminalBox>
     </Root>
   );
 };

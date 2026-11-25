@@ -20,6 +20,9 @@ type TileIndex = { i: number; j: number };
 export type LevelLayer = {
   src: string;
   zIndex: number;
+  // a picture beside the level's own, not over all of it: its box in the level picture's px, 'ofWidth' that picture's
+  // width (the Peninsula's bridge carried on past Map.gif's edge: Jamie, playtest 40)
+  box?: { x: number; y: number; width: number; height: number; ofWidth: number };
 };
 
 // art that characters walk behind. a character standing above 'sortY' in the scene is drawn behind it.
@@ -842,7 +845,9 @@ const LEVEL_BUILDERS: Record<string, (file) => LevelConfig> = {
     ...buildLevel(file, 'Peninsula', '#5a8a7a'),
     layers: [
       { src: '/Map.gif', zIndex: -4 },
-      { src: '/landDimmer.png', zIndex: -3 }
+      { src: '/landDimmer.png', zIndex: -3 },
+      // the east bridge on out past the picture's right edge, for the wide shots (scripts/peninsulaBridge.py)
+      { src: '/levels/peninsula-bridge-east.png', zIndex: -4, box: { x: 500, y: -847, width: 1728, height: 981, ofWidth: 500 } }
     ],
     // (the sea round the picture, in its own pixels: a 128 px tile of the 500 px wide Map.gif. Jamie, playtest 32)
     waterTile: { src: '/levels/peninsula-water-tile.gif', size: 128, ofWidth: 500 },

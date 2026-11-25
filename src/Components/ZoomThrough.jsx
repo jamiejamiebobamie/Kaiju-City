@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from "react";
 import styled, { keyframes } from "styled-components";
 import { ROOM, ROOM_HANDOFF, RoomExtras, RoomMonitor } from "./RoomScene";
+import { getTrialViewZoom } from "Game/ReactComponents/GameBoard/PlayWindow";
+import { getSafeArea } from "Utils/stage";
 
 // Leave (Jamie): the way back to the landing is the zoom backwards, quicker; set before the landing shows
 // 'fromView': the room's box (px) as the game page's pull-back left it, the way back blending on from there
@@ -22,15 +24,32 @@ export const ZOOM_THROUGH = {
   pictures: [
     // Jamie's window: the lit four-pane one in the grey tower, middle (about 26 px of 1365 wide)
     { src: "/zoom-scene/1-city.png", target: { x: 727 / 1365, y: 430 / 768 }, span: Math.log(20), ms: 3000 }, // (eases in: longer, was 2200)
-    { src: "/zoom-scene/2-window.png", target: { x: 0.511, y: 0.337 }, span: Math.log(2.87), ms: 1200 }, // the top two panes
-    { src: ROOM.src, target: undefined, span: undefined, ms: 1500 } // to the monitor's spot (worked out for the screen)
+    // the top two panes: just where the room picture is in them (scripts/apartmentWindow.py: its top left at 449, 157,
+    // at 0.348), so the room takes over seamlessly (layout phase 3; was 0.511, 0.337, a little above the old drawing)
+    // 'inner': the next picture's place in this one (its top left, as shares; its size, as a share): while the next
+    // blends in, it's held exactly there, so the two never slide past each other (Jamie, layout phase 3)
+    { src: "/zoom-scene/2-window.png", target: { x: (449 + 1365 * 0.348 / 2) / 1365, y: (157 + 768 * 0.348 / 2) / 768 }, span: Math.log(1 / 0.348), ms: 1200, inner: { x: 449 / 1365, y: 157 / 768, scale: 0.348 } },
+    // to the monitor's spot (worked out for the screen). (Jamie, 2026-11-24: a long, slow, steady push in, to take in the
+    // room: was 1.5 s. The way back keeps its quick 'backMs')
+    { src: ROOM.src, target: undefined, span: undefined, ms: 5500, backMs: 1500 }
   ],
+  // the room's push: in at the window's pace (the first 'catch' of its zoom in the first moments), then a slow, steady
+  // glide that eases to a stop at the monitor
+  roomEase: { catch: 0.4, catchPower: 6, glidePower: 1.6 },
   size: ROOM.size
 };
 
-const getPushMs = () => ZOOM_THROUGH.pictures.reduce((sum, { ms }) => sum + ms, 0);
+// ('isBack': the way back, with each picture's 'backMs' where it has one)
+// the black light's stutters in the push into the room (Jamie, 2026-11-25): when, from the zoom's start (ms into the
+// room's own push, which starts once the city and the window are done)
+const ROOM_FLICKERS_MS = [700, 2400, 4000];
+const getRoomFlickersMs = startMs => {
+  const roomStart = startMs + ZOOM_THROUGH.pictures.slice(0, -1).reduce((sum, { ms }) => sum + ms, 0);
+  return ROOM_FLICKERS_MS.map(ms => roomStart + ms);
+};
+const getPushMs = (isBack = false) => ZOOM_THROUGH.pictures.reduce((sum, { ms, backMs }) => sum + (isBack && backMs ? backMs : ms), 0);
 // the way back's length, and when its city has faded (the landing's skyline zooms back out from there: MainMenu)
-export const getZoomBackMs = () => getPushMs() / ZOOM_BACK.speed;
+export const getZoomBackMs = () => getPushMs(true) / ZOOM_BACK.speed;
 export const getZoomThroughMs = startMs => startMs + getPushMs();
 
 /*
@@ -38,9 +57,12 @@ export const getZoomThroughMs = startMs => startMs + getPushMs();
   standing in its spot. In the pictures' frame (it covers the screen): its zoom, and the picture's point at the middle.
 */
 const getRoomEnd = () => {
+  // (the monitor's height from the stage's safe area, as the game frame's is: layout phase 1; the same at the reference
+  // window. The pictures still cover the whole window)
   const screen = { width: window.innerWidth, height: window.innerHeight };
+  const safeHeight = getSafeArea().height;
   const frameWidth = Math.max(screen.width, screen.height * (ROOM.size.width / ROOM.size.height));
-  const k = (0.8 * screen.height) / ROOM.monitor.height; // screen px for the picture's px
+  const k = (0.8 * getTrialViewZoom() * safeHeight) / ROOM.monitor.height; // screen px for the picture's px (smaller with ?zoom=)
   const zoom = (k * ROOM.size.width) / frameWidth;
   const middle = { x: ROOM.monitor.centerX, y: ROOM.monitor.bottom - ROOM.monitor.height / 2 };
   return { span: Math.log(Math.max(zoom, 1.05)), target: { x: middle.x / ROOM.size.width, y: middle.y / ROOM.size.height } };
@@ -113,7 +135,7 @@ const Puff = styled.div`
     radial-gradient(circle at 72% 62%, #ebe4ff 0 25%, transparent 26%),
     radial-gradient(ellipse 48% 22% at 50% 78%, #c9bde8 0 98%, transparent 100%);
   image-rendering: pixelated;
-  filter: drop-shadow(0 0.6vh 0 rgba(120, 96, 170, 0.45));
+  filter: drop-shadow(0 calc(var(--safe-h) * 0.006) 0 rgba(120, 96, 170, 0.45));
   opacity: 0;
   animation: ${sweep} ${CLOUDS.ms}ms cubic-bezier(0.3, 0, 0.6, 1) forwards;
 `;
@@ -121,7 +143,7 @@ const Puff = styled.div`
 const Clouds = ({ isReverse = false, startMs = CLOUDS.startMs }) => (
   <>
     {CLOUDS.puffs.map(({ side, y, size, delay }, k) => (
-      <Puff key={k} style={{ top: `${y * 100}%`, width: `${size * 2}vh`, "--size": `${size}vh`, "--side": side, animationDelay: `${startMs + delay}ms`, animationDirection: isReverse ? "reverse" : undefined, animationFillMode: isReverse ? "both" : undefined }} />
+      <Puff key={k} style={{ top: `${y * 100}%`, width: `calc(var(--safe-h) * ${size * 2 / 100})`, "--size": `calc(var(--safe-h) * ${size / 100})`, "--side": side, animationDelay: `${startMs + delay}ms`, animationDirection: isReverse ? "reverse" : undefined, animationFillMode: isReverse ? "both" : undefined }} />
     ))}
   </>
 );
@@ -136,8 +158,10 @@ export const ZoomThrough = ({ isOn, startMs, onDone, isReverse = false }) => {
     const fromView = isReverse ? ZOOM_BACK.fromView : undefined;
     ZOOM_BACK.fromView = undefined;
     const room = getRoomEnd();
-    const pictures = ZOOM_THROUGH.pictures.map(picture => picture.span === undefined ? { ...picture, ...room } : picture);
-    const pushMs = getPushMs();
+    const pictures = ZOOM_THROUGH.pictures
+      .map(picture => picture.span === undefined ? { ...picture, ...room } : picture)
+      .map(picture => (isReverse && picture.backMs ? { ...picture, ms: picture.backMs } : picture));
+    const pushMs = getPushMs(isReverse);
     // the zoom (as a log) at a time into the push: each picture's span in its own time, steady; the last eases to a stop
     const getZoomAt = ms => {
       let zoom = 0;
@@ -156,6 +180,10 @@ export const ZoomThrough = ({ isOn, startMs, onDone, isReverse = false }) => {
           const endSlope = Math.max(0.2, Math.min(2.8, ((next.span / next.ms) * own) / span));
           return zoom + span * ((3 - endSlope) * share * share + (endSlope - 2) * share * share * share);
         }
+        if (k == pictures.length - 1 && !isReverse) {
+          const { catch: caught, catchPower, glidePower } = ZOOM_THROUGH.roomEase;
+          return zoom + span * (caught * (1 - Math.pow(1 - share, catchPower)) + (1 - caught) * (1 - Math.pow(1 - share, glidePower)));
+        }
         return zoom + span * (k == pictures.length - 1 ? 1 - Math.pow(1 - share, 2) : share);
       }
       return zoom;
@@ -168,6 +196,7 @@ export const ZoomThrough = ({ isOn, startMs, onDone, isReverse = false }) => {
       const into = isReverse ? Math.max(0, pushMs - elapsed * ZOOM_BACK.speed) : Math.max(0, elapsed - startMs);
       const zoom = getZoomAt(Math.min(into, pushMs));
       let before = 0;
+      let lastView; // (the picture before's, this frame)
       pictures.forEach(({ target, span }, k) => {
         const element = refs.current[k];
         const own = zoom - before; // this picture's own zoom, as a log
@@ -177,6 +206,10 @@ export const ZoomThrough = ({ isOn, startMs, onDone, isReverse = false }) => {
         const share = Math.max(0, Math.min(1, own / span));
         const focus = { x: 0.5 + (target.x - 0.5) * share, y: 0.5 + (target.y - 0.5) * share };
         let view = { x: 0.5 - scale * focus.x, y: 0.5 - scale * focus.y, scale };
+        // (blending in, before it takes over: held where it is in the picture before, if that says where)
+        const inner = k > 0 && pictures[k - 1].inner;
+        if (inner && own < 0 && lastView) view = { x: lastView.x + lastView.scale * inner.x, y: lastView.y + lastView.scale * inner.y, scale: lastView.scale * inner.scale };
+        lastView = view;
         // backwards, the room starts where the game page left it and blends onto the way back's path
         if (fromView && k == pictures.length - 1 && frameRef.current) {
           const frame = frameRef.current.getBoundingClientRect();
@@ -229,7 +262,7 @@ export const ZoomThrough = ({ isOn, startMs, onDone, isReverse = false }) => {
       <Frame ref={frameRef}>
         {ZOOM_THROUGH.pictures.map(({ src }, k) => (
           <Picture key={src} ref={element => { refs.current[k] = element; }} style={{ backgroundImage: `url(${src})` }}>
-            {k == ZOOM_THROUGH.pictures.length - 1 && <><RoomExtras /><RoomMonitor /></>}
+            {k == ZOOM_THROUGH.pictures.length - 1 && <><RoomExtras blackLightBurstsAtMs={isReverse ? [] : getRoomFlickersMs(startMs)} /><RoomMonitor /></>}
           </Picture>
         ))}
       </Frame>

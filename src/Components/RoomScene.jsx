@@ -1,6 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
 import styled, { keyframes } from "styled-components";
 import { TV_LOOK } from "Game/ReactComponents/GameBoard/PlayWindow";
+import { APARTMENT_TRIAL } from "Game/DataClasses/apartmentTrial";
+import { getEdgeFade } from "Utils/stage";
+import { resetCamera, stepCamera } from "Utils/camera";
+
+// how much of the room picture's width and height its edges fade over (where they show: odd-shaped windows)
+const ROOM_EDGE_FADE = 0.025;
 
 /*
   The room (Jamie, 2026-11-16): the apartment the game is played in. The landing's zoom ends in it, and from then on the
@@ -10,16 +16,41 @@ import { TV_LOOK } from "Game/ReactComponents/GameBoard/PlayWindow";
   'monitor': where the casing stands in the picture (its pixels): its middle across, its bottom (the shelf's top), and
   how tall it is there.
 */
-export const ROOM = {
-  src: "/zoom-scene/3-room.png",
+// 'clockDigits', 'steam': where the clock's 12:00 and the coffee's steam go (x, y, width, height); 'hasOwnMonitor': the
+// picture has the monitor and its stand in it (no stand drawn, no stand-in monitor in the zoom); 'blackLight': the
+// purple tube's place (x, y, width, height), for its flicker (BlackLight)
+export const OLD_ROOM = {
+  src: "/zoom-scene/3-room-old.png", // (the Lab computer's desk is still built on it)
   size: { width: 1365, height: 768 },
   // (the clock left of it, the coffee right: Jamie); its bottom above the shelf, on its stand (Jamie: not floating)
   monitor: { centerX: 532, bottom: 548, height: 350, aspect: 0.98 },
   // (chunkier, retro: a thick neck, a swivel collar under the set, a broad heavy foot. Jamie, playtest 29)
   stand: { shelfTop: 582, neckWidth: 78, footWidth: 250, footHeight: 18, collarWidth: 130, collarHeight: 12 },
+  clockDigits: [256, 538, 100, 50],
+  steam: [717, 470, 50, 68],
+  hasOwnMonitor: false,
+  blackLight: undefined,
   settleMs: 900, // from where the zoom ended to the monitor's spot
   brightness: 0.5 // behind the monitor (Jamie: much darker; a CSS filter, so it's easy to change)
 };
+
+/*
+  The new apartment (Jamie, 2026-11-25): laid out in the mock-up tool (/apartment), relit by Jamie, put together from
+  three of the relit pictures (scripts/apartmentComposite.py). Tried with ?apartment (APARTMENT_TRIAL) until it's the
+  game's own.
+*/
+const clockScale = APARTMENT_TRIAL && APARTMENT_TRIAL.clock ? APARTMENT_TRIAL.clock.scale || 1 : 1;
+const NEW_ROOM = APARTMENT_TRIAL && {
+  ...OLD_ROOM,
+  src: "/zoom-scene/3-room.png", // (scripts/apartmentComposite.py's, approved by Jamie)
+  front: "/zoom-scene/3-room-front.png", // what's in front of the monitor (scripts/apartmentFront.py): drawn over it
+  monitor: { aspect: 0.98, ...APARTMENT_TRIAL.monitor },
+  clockDigits: APARTMENT_TRIAL.clock ? [APARTMENT_TRIAL.clock.x + 2 * clockScale, APARTMENT_TRIAL.clock.y + 2 * clockScale, 100 * clockScale, 50 * clockScale] : OLD_ROOM.clockDigits,
+  steam: [794, 493, 62, 120], // (over the relit mug: the pictures made Jamie's stand-in mug a real one, a little lower)
+  hasOwnMonitor: true,
+  blackLight: [893, 26, 400, 30]
+};
+export const ROOM = NEW_ROOM || OLD_ROOM;
 
 // the zoom's last view of the room (its box on the screen, px), for the game page to start from; the real casing's
 // shape (width over height), for the stand-in monitor the zoom shows
@@ -48,25 +79,106 @@ const ClockDigits = styled.div`
   animation: ${blink} 1s steps(1) infinite;
 `;
 
-// the coffee's steam: a few soft pixel wisps rising and swaying, fading out
-const rise = keyframes`
-  0% { transform: translate(0, 0); opacity: 0; }
-  20% { opacity: 0.55; }
-  50% { transform: translate(35%, -45%); }
-  100% { transform: translate(-25%, -100%); opacity: 0; }
-`;
-const Steam = styled.div`
+/*
+  The coffee's steam (Jamie, 2026-11-25: a different steam, as his references: curly wavy lines, 8-bit): thin pixel
+  strands, each a wavy line that rises off the cup, its curls travelling up it, fading in at the cup and out as it
+  climbs; a new one starts as one goes. Drawn on a small canvas (a pixel of it is STEAM.roomPx of the picture's), at a
+  stepped frame rate, so it's as chunky as the picture.
+*/
+const STEAM = {
+  roomPx: 2, // picture px per steam px
+  fps: 12,
+  strands: 3,
+  lifeMs: [2600, 3600], // (each strand's, picked)
+  length: 0.55, // of the box's height
+  rise: 1.25, // box heights over a life
+  wave: { amplitude: [2, 3], perPx: [0.2, 0.26], speed: 0.005 }, // steam px; radians per px; radians per ms
+  color: [238, 234, 226],
+  alpha: 0.85
+};
+const SteamCanvas = styled.canvas`
   position: absolute;
-  span {
-    position: absolute;
-    bottom: 0;
-    width: 22%;
-    height: 22%;
-    background: rgba(240, 236, 228, 0.85);
-    filter: blur(0.5px);
-    animation: ${rise} 2.4s ease-out infinite;
-  }
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0 1px rgba(255, 250, 240, 0.35));
 `;
+const pick = ([min, max]) => min + Math.random() * (max - min);
+const Steam = ({ style, size }) => {
+  const ref = useRef(null);
+  const width = Math.max(4, Math.round(size[0] / STEAM.roomPx));
+  const height = Math.max(4, Math.round(size[1] / STEAM.roomPx));
+  useEffect(() => {
+    const canvas = ref.current;
+    const context = canvas && canvas.getContext("2d");
+    if (!context) return;
+    const image = context.createImageData(width, height);
+    const newStrand = (now, n) => ({
+      bornAt: now,
+      lifeMs: pick(STEAM.lifeMs),
+      x: width * (0.3 + (0.4 * (n + Math.random() * 0.6)) / STEAM.strands),
+      amplitude: pick(STEAM.wave.amplitude),
+      perPx: pick(STEAM.wave.perPx),
+      phase: Math.random() * Math.PI * 2
+    });
+    // (staggered from the start, so they don't all rise together)
+    const start = performance.now();
+    const strands = Array.from({ length: STEAM.strands }, (_, n) => {
+      const strand = newStrand(start, n);
+      strand.bornAt -= (strand.lifeMs * n) / STEAM.strands;
+      return strand;
+    });
+    let frameId;
+    let lastAt = 0;
+    const draw = now => {
+      frameId = requestAnimationFrame(draw);
+      if (now - lastAt < 1000 / STEAM.fps) return;
+      lastAt = now;
+      image.data.fill(0);
+      strands.forEach((strand, n) => {
+        let age = (now - strand.bornAt) / strand.lifeMs;
+        if (age >= 1) {
+          Object.assign(strand, newStrand(now, n));
+          age = 0;
+        }
+        const lifeAlpha = Math.min(1, age / 0.2, (1 - age) / 0.35);
+        // (its bottom leaves the cup as it goes up; its top a length above that)
+        const bottom = height - age * STEAM.rise * height;
+        const top = bottom - STEAM.length * height;
+        // (bottom to top; each row's pixel joined to the row below's, so a steep curl is a line, not a jump)
+        let below;
+        for (let y = Math.min(height, Math.ceil(bottom)) - 1; y >= Math.max(0, Math.floor(top)); y--) {
+          const along = (bottom - y) / (bottom - top); // 0 at its bottom, 1 at its top
+          const heightUp = 1 - y / height;
+          // (the wave grows as it rises: curlier up top)
+          const amplitude = strand.amplitude * (0.5 + heightUp);
+          const x = Math.round(strand.x + amplitude * Math.sin(y * strand.perPx + now * STEAM.wave.speed + strand.phase));
+          const from = below === undefined ? x : x > below ? below + 1 : x < below ? below - 1 : x;
+          below = x;
+          const alpha = STEAM.alpha * lifeAlpha * Math.min(1, along / 0.2, (1 - along) / 0.4) * (1 - heightUp * 0.4);
+          if (alpha <= 0) continue;
+          for (let each = Math.min(from, x); each <= Math.max(from, x); each++) {
+            if (each < 0 || each >= width) continue;
+            const index = (y * width + each) * 4;
+            image.data[index] = STEAM.color[0];
+            image.data[index + 1] = STEAM.color[1];
+            image.data[index + 2] = STEAM.color[2];
+            image.data[index + 3] = Math.max(image.data[index + 3], Math.round(alpha * 255));
+          }
+        }
+      });
+      context.putImageData(image, 0, 0);
+    };
+    frameId = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(frameId);
+  }, [width, height]);
+  return (
+    <div style={{ position: "absolute", ...style }}>
+      <SteamCanvas ref={ref} width={width} height={height} />
+    </div>
+  );
+};
 
 // a spot in the room's picture, as shares of it
 const at = (x, y, width, height) => ({
@@ -89,11 +201,11 @@ const Foot = styled.div`
   position: absolute;
   border-radius: 40% 40% 12% 12% / 70% 70% 30% 30%;
   background: ${STAND_COLOR};
-  box-shadow: inset 0 0.15vh 0 ${TV_LOOK.casingLight}, 0 0.4vh 0.8vh rgba(0, 0, 0, 0.6);
+  box-shadow: inset 0 calc(var(--safe-h) * 0.0015) 0 ${TV_LOOK.casingLight}, 0 calc(var(--safe-h) * 0.004) calc(var(--safe-h) * 0.008) rgba(0, 0, 0, 0.6);
 `;
-export const MonitorStand = () => {
-  const { centerX, bottom } = ROOM.monitor;
-  const { shelfTop, neckWidth, footWidth, footHeight, collarWidth, collarHeight } = ROOM.stand;
+export const MonitorStand = ({ room = ROOM }) => {
+  const { centerX, bottom } = room.monitor;
+  const { shelfTop, neckWidth, footWidth, footHeight, collarWidth, collarHeight } = room.stand;
   return (
     <>
       <Neck style={at(centerX - neckWidth / 2, bottom - 4, neckWidth, shelfTop - footHeight - bottom + 6)} />
@@ -113,7 +225,7 @@ const StandIn = styled.div`
   box-sizing: border-box;
   border-radius: 6% / 6%;
   background: ${TV_LOOK.casing};
-  box-shadow: inset 0 0.25vh 0 ${TV_LOOK.casingLight}, 0 1vh 2.5vh rgba(0, 0, 0, 0.8);
+  box-shadow: inset 0 calc(var(--safe-h) * 0.0025) 0 ${TV_LOOK.casingLight}, 0 calc(var(--safe-h) * 0.01) calc(var(--safe-h) * 0.025) rgba(0, 0, 0, 0.8);
   transition: opacity 500ms ease-out;
   &::before {
     /* the dead screen */
@@ -122,24 +234,81 @@ const StandIn = styled.div`
     inset: 9% 5% 7% 5%;
     border-radius: 3.5%;
     background: radial-gradient(ellipse at 35% 25%, rgba(255, 255, 255, 0.05), transparent 55%), #050606;
-    box-shadow: inset 0 0 2vh rgba(0, 0, 0, 0.9);
+    box-shadow: inset 0 0 calc(var(--safe-h) * 0.02) rgba(0, 0, 0, 0.9);
   }
 `;
 export const RoomMonitor = ({ isShown = true }) => {
+  if (ROOM.hasOwnMonitor) return null; // (the picture's own monitor shows: Jamie liked its shading)
   const { centerX, bottom, height } = ROOM.monitor;
   const width = height * (ROOM_HANDOFF.casingAspect || ROOM.monitor.aspect);
   return <StandIn style={{ ...at(centerX - width / 2, bottom - height, width, height), opacity: isShown ? 1 : 0 }} />;
 };
 
+/*
+  The black light's flicker (Jamie, 2026-11-25): the purple tube goes out for a few short stutters, and the room's purple
+  light with it, as an old tube does. A few times in the landing zoom's push into the room ('burstsAtMs', from when it
+  mounts); in play, now and then (FLICKER.playEveryMs).
+  'burst': off and on, in turn, ms each (it starts off)
+*/
+export const FLICKER = {
+  bursts: [[70, 90, 45, 160, 110], [50, 60, 40, 220, 90, 70, 35], [120, 80, 60]],
+  playEveryMs: [25000, 70000],
+  darkness: 0.5 // how dark the room's purple goes while the tube is out
+};
+const TubeOff = styled.div`
+  position: absolute;
+  border-radius: 45% / 50%;
+  background: linear-gradient(to bottom, #241d2c, #3b3346 45%, #1d1824);
+  box-shadow: 0 0 calc(var(--safe-h) * 0.004) rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+`;
+const RoomDim = styled.div`
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+`;
+export const BlackLight = ({ room = ROOM, burstsAtMs = undefined }) => {
+  const [isOff, setIsOff] = useState(false);
+  useEffect(() => {
+    if (!room.blackLight) return;
+    const timers = [];
+    const burst = startMs => {
+      const steps = FLICKER.bursts[Math.floor(Math.random() * FLICKER.bursts.length)];
+      let t = startMs;
+      steps.forEach((ms, k) => {
+        timers.push(setTimeout(() => setIsOff(k % 2 == 0), t));
+        t += ms;
+      });
+      timers.push(setTimeout(() => setIsOff(false), t));
+    };
+    if (burstsAtMs) burstsAtMs.forEach(burst);
+    else {
+      const [min, max] = FLICKER.playEveryMs;
+      const next = () => timers.push(setTimeout(() => { burst(0); next(); }, min + Math.random() * (max - min)));
+      next();
+    }
+    return () => timers.forEach(clearTimeout);
+  }, []);
+  if (!room.blackLight) return null;
+  const [x, y, width, height] = room.blackLight;
+  const middle = { x: ((x + width / 2) / room.size.width) * 100, y: ((y + height / 2) / room.size.height) * 100 };
+  return (
+    <>
+      <RoomDim style={{ opacity: isOff ? 1 : 0, background: `radial-gradient(ellipse 70% 90% at ${middle.x}% ${middle.y}%, rgba(6, 0, 14, ${FLICKER.darkness}), rgba(6, 0, 14, ${FLICKER.darkness * 0.45}) 70%, rgba(6, 0, 14, ${FLICKER.darkness * 0.2}))` }} />
+      <TubeOff style={{ ...at(x - 2, y - 2, width + 4, height + 4), opacity: isOff ? 1 : 0 }} />
+    </>
+  );
+};
+
 // the room's living things, over its picture (in a box the picture's shape)
-// ('hasClock': false for the Lab's desk, which has none: Jamie, playtest 39)
-export const RoomExtras = ({ hasClock = true }) => (
+// ('hasClock': false for the Lab's desk, which has none: Jamie, playtest 39; 'room': which room's spots: the Lab's desk
+// is the old room's; 'blackLightBurstsAtMs': the zoom's flickers)
+export const RoomExtras = ({ hasClock = true, room = ROOM, blackLightBurstsAtMs = undefined }) => (
   <>
-    <MonitorStand />
-    {hasClock && <ClockDigits style={at(256, 538, 100, 50)} />}
-    <Steam style={at(717, 470, 50, 68)}>
-      {[0, 0.8, 1.6].map((delay, n) => <span key={n} style={{ left: `${20 + n * 22}%`, animationDelay: `${delay}s` }} />)}
-    </Steam>
+    {!room.hasOwnMonitor && <MonitorStand room={room} />}
+    {hasClock && <ClockDigits style={at(...room.clockDigits)} />}
+    <Steam style={at(...room.steam)} size={room.steam.slice(2)} />
+    {room.blackLight && <BlackLight room={room} burstsAtMs={blackLightBurstsAtMs} />}
   </>
 );
 
@@ -154,35 +323,77 @@ const Box = styled.div`
   transition: filter ${ROOM.settleMs}ms ease-out;
 `;
 
+// the front layer: the room picture's things in front of the monitor, over the game frame (it's a stacking context)
+// (6: over the whole monitor, PlayWindow's 5; under the Lab's lights out, 40 and up)
+const FrontBox = styled.div`
+  position: fixed;
+  z-index: 6;
+  aspect-ratio: ${ROOM.size.width} / ${ROOM.size.height};
+  background: 0 0 / 100% 100% no-repeat;
+  image-rendering: pixelated;
+  pointer-events: none;
+`;
+
 const lerp = (a, b, t) => a + (b - a) * t;
 const ease = t => 1 - Math.pow(1 - Math.min(Math.max(t, 0), 1), 3);
 
 // behind the game's monitor: the room, kept placed from the casing (and settling there from the zoom's last view)
 export const RoomBackdrop = () => {
   const ref = useRef(null);
+  const frontRef = useRef(null);
   const [isStandInShown, setIsStandInShown] = useState(!!ROOM_HANDOFF.view);
   useEffect(() => {
     const from = ROOM_HANDOFF.view;
     ROOM_HANDOFF.view = undefined;
+    if (from) resetCamera(); // (from the landing's zoom: the view starts still, in the middle)
     const start = performance.now();
     let frameId;
+    // the camera's offset this game area has now (it moves the whole area: the room, the monitor, all of it)
+    const applied = { x: 0, y: 0 };
     const place = () => {
       const box = ref.current;
       const casing = document.querySelector("[data-tv-casing]");
-      if (box && !ROOM_HANDOFF.isFrozen) {
-        const casingBox = casing && casing.getBoundingClientRect();
+      const area = box && box.parentElement;
+      if (box && area && !ROOM_HANDOFF.isFrozen) {
+        const now = performance.now();
+        // (where the casing would be with the camera still: the room is placed from that)
+        const seen = casing && casing.getBoundingClientRect();
+        const casingBox = seen && { left: seen.left - applied.x, width: seen.width, bottom: seen.bottom - applied.y, height: seen.height };
         if (casingBox && casingBox.height > 0) ROOM_HANDOFF.casingAspect = casingBox.width / casingBox.height;
         let view = casingBox && getRoomViewFor(casingBox);
+        const isSettling = !!from && now - start < ROOM.settleMs;
         if (view && from) {
-          const t = ease((performance.now() - start) / ROOM.settleMs);
+          const t = ease((now - start) / ROOM.settleMs);
           view = { left: lerp(from.left, view.left, t), top: lerp(from.top, view.top, t), width: lerp(from.width, view.width, t) };
         }
         view = view || from;
         if (view) {
-          box.style.left = `${view.left}px`;
-          box.style.top = `${view.top}px`;
+          // the camera: as far as the room picture reaches past the window each way (less its faded edge)
+          const height = (view.width * ROOM.size.height) / ROOM.size.width;
+          const fade = { x: ROOM_EDGE_FADE * view.width, y: ROOM_EDGE_FADE * height };
+          const limits = {
+            x: [Math.min(0, window.innerWidth - (view.left + view.width) + fade.x), Math.max(0, -view.left - fade.x)],
+            y: [Math.min(0, window.innerHeight - (view.top + height) + fade.y), Math.max(0, -view.top - fade.y)]
+          };
+          const areaBox = area.getBoundingClientRect();
+          const origin = { x: areaBox.left - applied.x, y: areaBox.top - applied.y };
+          const camera = stepCamera(now, limits, isSettling, casingBox && { left: casingBox.left, right: casingBox.left + casingBox.width });
+          applied.x = camera.x;
+          applied.y = camera.y;
+          area.style.translate = `${applied.x.toFixed(2)}px ${applied.y.toFixed(2)}px`;
+          // (the room's box is fixed, so it's placed in the moved area's own px: where it's seen, less the area's place)
+          box.style.left = `${view.left - origin.x}px`;
+          box.style.top = `${view.top - origin.y}px`;
           box.style.width = `${view.width}px`;
           box.style.visibility = "visible";
+          const front = frontRef.current;
+          if (front) {
+            front.style.left = box.style.left;
+            front.style.top = box.style.top;
+            front.style.width = box.style.width;
+            front.style.visibility = "visible";
+            front.style.filter = getComputedStyle(box).filter;
+          }
         }
       }
       frameId = requestAnimationFrame(place);
@@ -198,5 +409,12 @@ export const RoomBackdrop = () => {
       clearTimeout(standIn);
     };
   }, []);
-  return <Box ref={ref} data-room-box aria-hidden="true" style={{ visibility: "hidden" }}><RoomExtras /><RoomMonitor isShown={isStandInShown} /></Box>;
+  // (its edges fade to the dark ground, where the window shows past the picture: layout phase 1, 1B)
+  // (and what's in front of the monitor, over the game frame: placed as the room is. Layout phase 3)
+  return (
+    <>
+      <Box ref={ref} data-room-box aria-hidden="true" style={{ visibility: "hidden", ...getEdgeFade(ROOM_EDGE_FADE) }}><RoomExtras /><RoomMonitor isShown={isStandInShown} /></Box>
+      {ROOM.front && <FrontBox ref={frontRef} aria-hidden="true" style={{ visibility: "hidden", backgroundImage: `url(${ROOM.front})` }} />}
+    </>
+  );
 };

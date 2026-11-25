@@ -29,7 +29,10 @@ export const RADAR = {
   blipSeconds: 0.7, // a dot lights up as the sweep passes over it, and fades back over this long
   grainOpacity: 0.16, // the screen's grain
   // the Peninsula goes on out of the shot along each bridge: the bridge's last tile, and the way it runs
-  bridges: [{ tile: { i: 22, j: 6 }, dir: { x: 0.868, y: -0.496 } }, { tile: { i: 4, j: 1 }, dir: { x: -0.868, y: -0.496 } }]
+  bridges: [{ tile: { i: 22, j: 6 }, dir: { x: 0.868, y: -0.496 } }, { tile: { i: 4, j: 1 }, dir: { x: -0.868, y: -0.496 } }],
+  // with the painted radar tiles, the bridges whose painted end shows on the wider screen (Jamie, playtest 40: the right
+  // one, top right): its end opened, its two sides carried on out of the shot the way it runs
+  openBridgeDirs: [{ x: 0.868, y: -0.496 }]
 };
 
 const Canvas = styled.canvas`
@@ -65,11 +68,33 @@ const getOutline = (radarTiles = PENINSULA.radarTiles || []) => {
     ];
     const keys = new Set(walkableTiles.map(({ i, j }) => `${i} ${j}`));
     const land = [...walkableTiles, ...radarTiles.filter(({ i, j }) => !keys.has(`${i} ${j}`))];
-    const edges = getPerimeterEdges(land).map(({ tile, edge }) => {
+    const perimeter = getPerimeterEdges(land);
+    const runs = [];
+    const capped = new Set();
+    RADAR.openBridgeDirs.forEach(dir => {
+      const along = point => point.x * dir.x + point.y * dir.y;
+      const across = point => -point.x * dir.y + point.y * dir.x;
+      const farthest = Math.max(...land.map(tile => along(getTileCenter(grid, tile))));
+      // the end: the tiles within about a tile of the farthest along the bridge
+      const ends = land.filter(tile => along(getTileCenter(grid, tile)) >= farthest - halfWidth * 1.6);
+      const endCorners = ends.flatMap(tile => getCorners(getTileCenter(grid, tile)));
+      // its cap: the end tiles' outer edges facing ahead
+      perimeter.forEach((each, k) => {
+        if (!ends.some(tile => tile.i == each.tile.i && tile.j == each.tile.j)) return;
+        const center = getTileCenter(grid, each.tile);
+        const corners = getCorners(center);
+        const middle = { x: (corners[each.edge].x + corners[(each.edge + 1) % 6].x) / 2, y: (corners[each.edge].y + corners[(each.edge + 1) % 6].y) / 2 };
+        if (along(middle) - along(center) > halfWidth * 0.3) capped.add(k);
+      });
+      // and its two sides, carried on: from its outermost corners either side
+      const side = pick => endCorners.reduce((best, corner) => pick(across(corner), across(best)) ? corner : best);
+      runs.push({ from: side((a, b) => a > b), dir }, { from: side((a, b) => a < b), dir });
+    });
+    const edges = perimeter.filter((_, k) => !capped.has(k)).map(({ tile, edge }) => {
       const corners = getCorners(getTileCenter(grid, tile));
       return [corners[edge], corners[(edge + 1) % 6]];
     });
-    return { edges, runs: [] };
+    return { edges, runs };
   }
   const halfWidth = (grid.colStep * grid.scale * 2) / 3;
   const halfHeight = (grid.rowStep * grid.scale) / 2;

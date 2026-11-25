@@ -6,7 +6,8 @@ import { TrafficLights } from "./TrafficLights";
 import { ExplodingKaiju } from "./Pieces/ExplodingKaijuPiece";
 import { PauseModal } from "./PauseModal";
 import { getIsDialogueLog } from "Game/DataClasses/DialogueLog";
-import { GameBoardPieceComponent } from 'Game/ReactComponents/GameBoard/Pieces/GameBoardPieceComponent'
+import { GameBoardPieceComponent, HOLOGRAM } from 'Game/ReactComponents/GameBoard/Pieces/GameBoardPieceComponent'
+import { SCREEN_DESIGN } from 'Game/ReactComponents/GameBoard/PlayWindow';
 import { getSpeechScreenBox, PagedSpeechBalloon, SpeechBalloon } from 'Game/ReactComponents/GameBoard/SceneElements';
 import { TileCanvas } from 'Game/ReactComponents/GameBoard/Tile/TileCanvas';
 import { SceneElements, getActiveHotspots } from 'Game/ReactComponents/GameBoard/SceneElements';
@@ -792,6 +793,17 @@ const getIsTouchScreen = () => window.matchMedia("(pointer: coarse)").matches;
 // 'viewHexes': seen this many hexes across, following the player (the class battle's: Jamie, playtest 26); 'kaijuFade':
 // { from, to } in tiles from the player: Kaiju farther than 'to' are unseen, nearer than 'from' whole
 const VIEW_LIFT_ROWS = 0.7;
+/*
+  A walking scene's zoom, filling the screen (Jamie, 2026-11-25; layout phase 2): from today's screen shape (the design
+  box's), so a wider screen shows more of the scene at today's size. Only where the scene isn't wide enough to fill the
+  wider screen does it zoom in, so there's never empty space past its edge. (It was the whole screen's width: a wider
+  screen zoomed in.)
+*/
+const getCoverZoom = ({ viewWidth, viewHeight }, world) => {
+  const designWidth = Math.min(viewWidth, viewHeight * SCREEN_DESIGN.aspect);
+  return Math.max(designWidth / world.width, viewHeight / world.height, viewWidth / world.width);
+};
+
 // 'isPreview': the class battle's board (Jamie, playtest 29): no health bars, no status icons, no off-screen markers
 const WATER_REACH_PX = 4000;
 export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade = undefined, isCurtained = false, controlMarker = "outline", speakingLineLength = 0, isSwirling = false, speakingPieceIndex = undefined, choiceFromRef = undefined, isWindowOpen = true, isPaused, gameManager, level, activePhases, isWholeScene, playWindow, isShowingWindowSize, isEditingTiles, isMouseLook, isEnemyZoom, isSlowMotion, isTeamColors, speech, recruitScene, recruitChoice, onChooseRecruit, onHotspot }) => {
@@ -860,7 +872,7 @@ export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade 
   // its first shot (and any wide shot) still shows the whole scene.
   const coverCamera = useMemo(() => {
     const sizes = { ...worldSizes, ...shotView };
-    return new Camera({ ...sizes, zoom: Math.max(shotView.viewWidth / world.width, shotView.viewHeight / world.height) });
+    return new Camera({ ...sizes, zoom: getCoverZoom(shotView, world) });
   }, [level, frame, isWindowOpen, playWindow]);
   const getIsCoverScene = () => level.isWalkingLevel && !level.isMapWalk && !isWindowOpen && !gameManager.getIsWideShot();
 
@@ -881,7 +893,7 @@ export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade 
     const fitZoom = isPeninsulaSized
       ? getFitZoom({ ...shotView, worldWidth: PENINSULA.world.width, worldHeight: PENINSULA.world.height }) * PENINSULA.pieceScale / level.pieceScale
       : getFitZoom(fullFrameSizes);
-    const coverZoom = Math.max(shotView.viewWidth / world.width, shotView.viewHeight / world.height);
+    const coverZoom = getCoverZoom(shotView, world);
     let zoom = (isCover ? coverZoom : fitZoom) * zoomScale;
     const speech = speechRef.current;
     // a shot on two people (the ghost boss's scream) has no words of its own to make room for
@@ -1284,7 +1296,7 @@ export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade 
       zIndex={p.introZIndex ?? p.getZIndex()}
       charLocation={p.charLocation}
       avatar={p.avatar}
-      color={p.isPlain ? "transparent" : p.isCharmed ? CHARM_COLOR : p.color}
+      color={p.isPlain ? "transparent" : isPreview && p.avatar == "kaiju" ? HOLOGRAM.halo : p.isCharmed ? CHARM_COLOR : p.color}
       isVisible={p.isVisible}
       isHealed={p.isHealed}
       isCharmed={p.isCharmed}
@@ -1302,6 +1314,7 @@ export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade 
       isSpeaking={p.pieceIndex === speakingPieceIndex}
       speakingLineLength={speakingLineLength}
       isGhostForm={!!p.isGhostForm}
+      isHologram={isPreview && p.avatar == "kaiju"} // (the class battle's: a holo-sim. Jamie, 2026-11-24)
       portalMask={p.portalMask}
       isOnBoard={p.isOnTiles !== false}
       isRewardPulse={!!p.getIsRewardPulse && p.getIsRewardPulse()}
@@ -1348,7 +1361,7 @@ export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade 
   const deathPiecesComponents = recruitScene ? [] : gameManager.getDeathPieces().map(death => {
     const { key, avatar, charLocation, color, zIndex, body } = death;
     return avatar == 'kaiju' ?
-      <ExplodingKaiju key={key} charLocation={charLocation} color={color} zIndex={zIndex} />
+      <ExplodingKaiju key={key} charLocation={charLocation} color={color} zIndex={zIndex} isHologram={isPreview} />
       : <DeadPlayer key={key} avatar={avatar} pieceScale={pieceScale} charLocation={charLocation} body={body} spriteSheetSrc={death.spriteSheetSrc} color={color} zIndex={zIndex} ghost={death.isGhostForm ? "ghost" : undefined} bodyZ={getBodyZ(body || charLocation)} />;
   });
 
@@ -1360,13 +1373,16 @@ export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade 
     />
   ));
 
-  const levelLayers = level.layers.map(({ src, zIndex }) => (
-    <LevelLayer
-      key={src}
-      src={src}
-      style={{ zIndex, width: `${world.width}px`, height: `${world.height}px`, opacity: isPaused ? 0 : 1 }}
-    />
-  ));
+  const levelLayers = level.layers.map(({ src, zIndex, box }) => {
+    const k = box ? world.width / box.ofWidth : 1;
+    return (
+      <LevelLayer
+        key={src}
+        src={src}
+        style={{ zIndex, ...(box ? { left: `${box.x * k}px`, top: `${box.y * k}px`, width: `${box.width * k}px`, height: `${box.height * k}px` } : { width: `${world.width}px`, height: `${world.height}px` }), opacity: isPaused ? 0 : 1 }}
+      />
+    );
+  });
 
   // the beaten one, lying there (and over the Recruited or Terminated wash, spotlit: SpotlitBody)
   const renderRecruitBody = (isSpotlit = false) => (recruitScene.body.spriteSheetSrc ? (
@@ -1427,7 +1443,7 @@ export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade 
           : <SpeechBalloon name={speech.name} text={speech.text} x={getSpeechX(speech)} y={speech.y} isFlipped={speech.isFlipped} zIndex={2147482000} scale={overlayScale} />)}
         <WorldContent style={{ left: `${contentOffset.x}px`, top: `${contentOffset.y}px` }}>
           {/* canvases are sized from the zoom, which means nothing until the frame has been measured */}
-          {isFrameMeasured && <TileCanvas gameManager={gameManager} level={level} tone={getTileTone(level, activePhases)} isVisible={!isPaused && !isEditingTiles} zoom={closeCamera.zoom} isTeamColors={isTeamColors} />}
+          {isFrameMeasured && <TileCanvas gameManager={gameManager} level={level} tone={getTileTone(level, activePhases)} isVisible={!isPaused && !isEditingTiles} zoom={closeCamera.zoom} isTeamColors={isTeamColors} isHologramFire={isPreview} />}
           {isFrameMeasured && <WakeCanvas gameManager={gameManager} level={level} zoom={closeCamera.zoom} isActive={!!level.flood && activePhases.includes(level.flood.phase)} />}
           {piecesComponents}
           {deathPiecesComponents}

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import styled, { keyframes } from "styled-components";
 import { WIDE_SHOT } from "Game/DataClasses/Camera";
 import SAVED_WINDOW from "Game/DataClasses/playWindow.json";
+import { APARTMENT_TRIAL } from "Game/DataClasses/apartmentTrial";
 import { CrtScreen } from "Components/CrtPower";
 
 /*
@@ -21,14 +22,67 @@ export const FULL_WINDOW = { left: 0, top: 0, right: 1, bottom: 1 };
 // left of the middle: with the HUDs beside it, the two are centered together.
 export const PORTRAIT_WINDOW = { left: 0.157, top: 0.04, right: 0.623, bottom: 0.96 };
 
+/*
+  The screen's design box (Jamie, 2026-11-25; layout phase 2): today's screen shape (the saved playWindow's, on the 16:9
+  frame), at the screen's full height, in its middle. The views that fill the screen (the start screen's logo and buttons,
+  the avatar select, the picker, the color vat, the Lab computer, the end screen, the credits) are laid out in it, so a
+  wider screen (?screen=, the apartment's 1.253) shows them at the same size and place, with more round them: their
+  backgrounds and the playfield fill the whole screen. On today's screen it is the screen exactly.
+  (Not a container: what inside is sized from the game frame (cqw) stays so; what is sized from its box (%, its own
+  container) gets this box.)
+*/
+export const SCREEN_DESIGN = { aspect: ((SAVED_WINDOW.right - SAVED_WINDOW.left) * 16) / ((SAVED_WINDOW.bottom - SAVED_WINDOW.top) * 9) };
+export const DesignBox = styled.div`
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  height: 100%;
+  aspect-ratio: ${SCREEN_DESIGN.aspect};
+  max-width: 100%;
+`;
+
 // a convenience for testing sizes: the game runs the same without it
 // the window as Adjust window last left it, from the repo's own file: hard-coded as soon as it is saved
-export const loadPlayWindow = () => ({ ...SAVED_WINDOW });
+/*
+  Trying another screen shape (Jamie, 2026-11-24; dev only): ?screen=1.253 in the address, the monitor's casing (the
+  screen and its border) that many times as wide as it's tall, for this visit only, never saved. The screen keeps its
+  height and its left edge; the border stays TV_LOOK.casingWidth. (On a 16:9 frame, as the game's is.)
+*/
+export const getTrialScreenShape = () => {
+  const shape = import.meta.env.DEV && typeof window != "undefined" ? Number(new URLSearchParams(window.location.search).get("screen")) : 0;
+  if (shape > 0.3 && shape < 4) return shape;
+  return APARTMENT_TRIAL && APARTMENT_TRIAL.monitor.aspect ? APARTMENT_TRIAL.monitor.aspect : undefined; // (the apartment layout's: layout phase 3)
+};
+// ?apartment: each camera's place across the screen, as a share of the frame's width ('alone': the centered monitor's)
+export const getTrialCameraShift = isSide => {
+  if (!APARTMENT_TRIAL) return 0;
+  const { dx = 0 } = APARTMENT_TRIAL.cameras[isSide ? "side" : "alone"] || {};
+  return dx / 1920;
+};
+// and the whole view zoomed out (Jamie, 2026-11-24; dev only): ?zoom=0.85, the game frame (the monitor, the side elements
+// and all) that much of its size, in the middle of the screen; the room round it follows the casing, so more of it shows
+export const getTrialViewZoom = () => {
+  const zoom = import.meta.env.DEV && typeof window != "undefined" ? Number(new URLSearchParams(window.location.search).get("zoom")) : 0;
+  if (zoom >= 0.3 && zoom <= 1) return zoom;
+  return APARTMENT_TRIAL ? APARTMENT_TRIAL.screenZoom : 1; // (the apartment layout's: layout phase 3)
+};
+const getTrialWindow = (saved, shape) => {
+  const border = (2 * TV_LOOK.casingWidth) / 100; // both sides, as a share of the frame's width
+  const heightInWidths = (saved.bottom - saved.top) * (9 / 16);
+  const width = shape * (heightInWidths + border) - border;
+  // (?apartment: the side elements' camera moved across as in the layout)
+  const left = saved.left + getTrialCameraShift(true);
+  return { ...saved, left, right: Math.min(0.995, left + width) };
+};
+export const loadPlayWindow = () => {
+  const shape = getTrialScreenShape();
+  return shape ? getTrialWindow({ ...SAVED_WINDOW }, shape) : { ...SAVED_WINDOW };
+};
 
 // on the dev server, a moment after the last change, the new shape is written over that file
 let saveTimeout;
 export const savePlayWindow = playWindow => {
-  if (!import.meta.env.DEV) return;
+  if (!import.meta.env.DEV || getTrialScreenShape()) return; // (a trial shape is never saved)
   clearTimeout(saveTimeout);
   saveTimeout = setTimeout(() => {
     fetch("/__play-window/save", { method: "POST", body: JSON.stringify(playWindow) }).catch(() => {

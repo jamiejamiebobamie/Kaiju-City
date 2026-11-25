@@ -1,4 +1,5 @@
 import React from "react";
+import { HOLOGRAM, HOLOGRAM_FILTER, HOLOGRAM_LINES } from "./GameBoardPieceComponent";
 import styled from "styled-components";
 
 const Monster = styled.div`
@@ -102,11 +103,17 @@ const Character = styled.div`
   }
 }
 `;
-export const ExplodingKaiju = ({ zIndex, charLocation, color }) => {
+// 'isHologram': the class battle's (a holo-sim's Kaiju burning up: the same green as the live one, see-through, its
+// scanlines under the glow. Jamie, 2026-11-25)
+export const ExplodingKaiju = ({ zIndex, charLocation, color, isHologram = false }) => {
   return (
     <Monster style={{ left: `${charLocation.x}px`, top: `${charLocation.y}px` }}>
       <Character>
-        <SpriteSheet color={color} />
+        <div style={isHologram ? { filter: HOLOGRAM_FILTER, opacity: HOLOGRAM.opacity } : undefined}>
+          <div style={isHologram ? { WebkitMaskImage: HOLOGRAM_LINES, maskImage: HOLOGRAM_LINES } : undefined}>
+            <SpriteSheet color={color} />
+          </div>
+        </div>
       </Character>
     </Monster>
   );
