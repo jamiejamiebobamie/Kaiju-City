@@ -15,9 +15,12 @@ import { GameBoard } from "./GameBoard/GameBoard";
   'playWindow': the arena's place in the game frame, as fractions of it (the board sizes its view from it).
 */
 // (the board as before the steadicam, so the Kaiju reach the avatar as soon: Jamie, playtest 28; room round it for the camera)
-const PREVIEW_BOARD = { pad: 6 };
+// (more room round it for the wider shot below: Jamie, 2026-11-24; was 6)
+const PREVIEW_BOARD = { pad: 9 };
 // (Kaiju seen whenever they're in the shot, their own rings lit as the avatar's: Jamie, playtest 28)
-const PREVIEW_VIEW = { hexes: 9, hexRings: [1, 0.3] };
+// (Jamie, 2026-11-24: the avatar 2/3 its size, the tiles with it, to show the powers better: 1.5 times the hexes across;
+// was 9)
+const PREVIEW_VIEW = { hexes: 13.5, hexRings: [1, 0.3] };
 
 // 'onCast': told each power the avatar uses (its element), for the class's icons to blink (Jamie, playtest 29)
 export const ClassBattle = ({ powers, avatar, playWindow, onCast = undefined }) => {

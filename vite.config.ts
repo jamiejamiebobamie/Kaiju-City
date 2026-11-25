@@ -6,7 +6,7 @@ import { classReviewSave, dialogueSave, levelEditorSave, playWindowSave } from '
 const src = fileURLToPath(new URL('./src', import.meta.url));
 
 export default defineConfig({
-  plugins: [react(), levelEditorSave(`${src}/Game/DataClasses/Levels/data`), playWindowSave(`${src}/Game/DataClasses/playWindow.json`), dialogueSave(`${src}/Game/DataClasses/Dialogue/dialogue.json`), classReviewSave(`${src}/Game/DataClasses/classOptions.json`, `${src}/Game/DataClasses/sciFiClasses.ts`)],
+  plugins: [react(), levelEditorSave(`${src}/Game/DataClasses/Levels/data`), playWindowSave(`${src}/Game/DataClasses/playWindow.json`), dialogueSave(`${src}/Game/DataClasses/Dialogue/dialogue-polished.json`), classReviewSave(`${src}/Game/DataClasses/classOptions.json`, `${src}/Game/DataClasses/sciFiClasses.ts`)],
   resolve: {
     // the project's absolute imports (eg. 'Game/utils'), also listed in tsconfig.json
     alias: [

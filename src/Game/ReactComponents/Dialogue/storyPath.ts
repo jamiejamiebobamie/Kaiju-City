@@ -26,7 +26,7 @@ export const STORY: Array<StorySection> = [
   { label: 'Sewer 1', scenes: ['sewer1.walkIn', 'sewer1.reveal'] },
   { label: 'Sewer 2', scenes: ['sewer2.walkIn'] },
   { label: 'Lab fight', scenes: ['lab.showdown', 'lab.transformation'] },
-  { label: 'Final battle', scenes: ['radio.final', 'peninsula.finalTurn', 'peninsula.finalTurnAlone'] }, // (the giant's lines, finalBattle.*, are kept for GIANT_KAIJU.isFinalBattle)
+  { label: 'Final battle', scenes: ['radio.final', 'peninsula.finalTurn', 'peninsula.finalTurnRecruits', 'peninsula.finalTurnAfter', 'peninsula.finalTurnAlone'] }, // (the giant's lines, finalBattle.*, are kept for GIANT_KAIJU.isFinalBattle)
   { label: 'Visiting a battleground (any map walk, after its fight)', scenes: ['visit', 'training.offer', 'training.start', 'sparring.offer', 'sparring.start'] }
 ];
 
@@ -143,7 +143,8 @@ export const getSectionItems = (sectionIndex: number, path: StoryPath, scenes: R
       }
       if (line.ifRecruits) {
         items.push({
-          kind: 'branch', key: `${line.id}@recruits`, sceneId, label: 'Only if there are recruits',
+          kind: 'branch', key: `${line.id}@recruits`, sceneId,
+          label: line.recruitCount == 'one' ? 'Only with one recruit' : line.recruitCount == 'many' ? 'Only with two or more recruits' : 'Only if there are recruits',
           versions: [{ label: 'With recruits', items: [toLine(line)] }, { label: 'No recruits', items: [] }],
           taken: getIsAnyRecruited(path, sectionIndex) ? 0 : 1
         });

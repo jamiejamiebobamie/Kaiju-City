@@ -1,0 +1,1603 @@
+{
+  "scenes": {
+    "radio.peninsula1": {
+      "label": "Peninsula 1: radio call",
+      "lines": [
+        {
+          "speaker": "agent",
+          "text": "Soldier, Kaiju are headed for Kaiju City! Protect the Peninsula!!",
+          "isAlarm": true,
+          "note": "jamie",
+          "id": "radio.peninsula1.0"
+        }
+      ]
+    },
+    "radio.peninsula2": {
+      "label": "Peninsula 2: radio call",
+      "lines": [
+        {
+          "speaker": "agent",
+          "text": "The punk from the station finished re-education. He's working for us now. The mohawk stays, apparently.",
+          "when": {
+            "recruit": "punk",
+            "choice": "recruit"
+          },
+          "id": "radio.peninsula2.0"
+        },
+        {
+          "speaker": "agent",
+          "text": "The punk from the station won't be a problem anymore. Cold, but clean.",
+          "when": {
+            "recruit": "punk",
+            "choice": "terminate"
+          },
+          "id": "radio.peninsula2.1"
+        },
+        {
+          "speaker": "agent",
+          "text": "Sonar shows a second wave off the coast. Bigger than the first.",
+          "isAlarm": true,
+          "id": "radio.peninsula2.2"
+        },
+        {
+          "speaker": "agent",
+          "text": "Protect the Peninsula!!",
+          "id": "radio.peninsula2.3"
+        }
+      ]
+    },
+    "radio.mapRooftop": {
+      "label": "Map to Rooftop: radio call",
+      "lines": [
+        {
+          "speaker": "agent",
+          "text": "Another wave down. You two are holding this city together.",
+          "id": "radio.mapRooftop.0"
+        },
+        {
+          "speaker": "teammate",
+          "text": "They're coming faster than they used to...",
+          "id": "radio.mapRooftop.1"
+        },
+        {
+          "speaker": "agent",
+          "text": "Well, you aren't slowing down either. Good use of your {power} power.",
+          "id": "radio.mapRooftop.2"
+        },
+        {
+          "choices": [
+            {
+              "text": "What's the mission?",
+              "reply": []
+            },
+            {
+              "text": "Where are they all coming from?",
+              "reply": [
+                {
+                  "speaker": "agent",
+                  "text": "That's above your pay grade. For now.",
+                  "id": "radio.mapRooftop.3.1.0"
+                }
+              ]
+            }
+          ],
+          "id": "radio.mapRooftop.3"
+        },
+        {
+          "speaker": "agent",
+          "text": "Kaiju parts have been falling onto rooftops in the Cemetery district. Go investigate, and don't let another citizen touch one!",
+          "note": "jamie",
+          "id": "radio.mapRooftop.4"
+        },
+        {
+          "speaker": "agent",
+          "text": "Oh! And make sure you bring your Dispel ability. Something tells me you'll need it.",
+          "id": "radio.mapRooftop.5",
+          "note": "jamie"
+        }
+      ]
+    },
+    "radio.peninsula3": {
+      "label": "Peninsula 3: radio call",
+      "lines": [
+        {
+          "speaker": "agent",
+          "text": "The woman from the rooftop cemetery is through re-education. Her powers are like nothing we've seen.",
+          "when": {
+            "recruit": "black_female",
+            "choice": "recruit"
+          },
+          "id": "radio.peninsula3.0"
+        },
+        {
+          "speaker": "agent",
+          "text": "Powerful, but they drain her health.",
+          "when": {
+            "recruit": "black_female",
+            "choice": "recruit"
+          },
+          "id": "radio.peninsula3.xmwtk8qax"
+        },
+        {
+          "speaker": "agent",
+          "text": "You might need to babysit her, to keep her alive.",
+          "when": {
+            "recruit": "black_female",
+            "choice": "recruit"
+          },
+          "id": "radio.peninsula3.xmwtk9mur"
+        },
+        {
+          "speaker": "Ghost Girl",
+          "text": "I don't need a babysitter.",
+          "when": {
+            "recruit": "black_female",
+            "choice": "recruit"
+          },
+          "id": "radio.peninsula3.xmwtka4in"
+        },
+        {
+          "speaker": "agent",
+          "text": "Hey! How are you on this line??",
+          "when": {
+            "recruit": "black_female",
+            "choice": "recruit"
+          },
+          "id": "radio.peninsula3.xmwtkay3r"
+        },
+        {
+          "speaker": "agent",
+          "text": "The woman from the rooftop cemetery is in the ground. Fitting, for that address.",
+          "when": {
+            "recruit": "black_female",
+            "choice": "terminate"
+          },
+          "id": "radio.peninsula3.1"
+        },
+        {
+          "speaker": "agent",
+          "text": "We've got Kaiju incoming!",
+          "isAlarm": true,
+          "id": "radio.peninsula3.2"
+        },
+        {
+          "speaker": "agent",
+          "text": "The biggest group yet... Get out there and do your thing!",
+          "id": "radio.peninsula3.4"
+        }
+      ]
+    },
+    "radio.mapAquarium": {
+      "label": "Map to Aquarium: radio call",
+      "lines": [
+        {
+          "speaker": "agent",
+          "text": "The radar's quiet again. The mayor sends his thanks.",
+          "id": "radio.mapAquarium.0"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Quiet never lasts around here.",
+          "id": "radio.mapAquarium.1"
+        },
+        {
+          "speaker": "agent",
+          "text": "No, it doesn't. Keep that {power} power charged.",
+          "id": "radio.mapAquarium.2"
+        },
+        {
+          "choices": [
+            {
+              "text": "What's the mission?",
+              "reply": []
+            },
+            {
+              "text": "Is anyone looking into all these Kaiju parts?",
+              "reply": [
+                {
+                  "speaker": "agent",
+                  "text": "Yeah, you two! Speaking of which...",
+                  "id": "radio.mapAquarium.3.1.0"
+                }
+              ]
+            }
+          ],
+          "id": "radio.mapAquarium.3"
+        },
+        {
+          "speaker": "agent",
+          "text": "Reports say severed Kaiju parts crashed into the Aquarium.",
+          "id": "radio.mapAquarium.4"
+        },
+        {
+          "speaker": "agent",
+          "text": "Your track record isn't great, but you know the drill.",
+          "id": "radio.mapAquarium.xmwtkiwjd"
+        },
+        {
+          "speaker": "agent",
+          "text": "Get there and make sure no one touches them! Go.",
+          "id": "radio.mapAquarium.xmwtkjb7t"
+        }
+      ]
+    },
+    "radio.peninsula4": {
+      "label": "Peninsula 4: radio call",
+      "lines": [
+        {
+          "speaker": "agent",
+          "text": "The aquarium worker is in re-education. Mentally, she's a mermaid.",
+          "when": {
+            "recruit": "mermaid",
+            "choice": "recruit"
+          },
+          "id": "radio.peninsula4.0"
+        },
+        {
+          "speaker": "agent",
+          "text": "But she's a hit with lab techs! They love her.",
+          "when": {
+            "recruit": "mermaid",
+            "choice": "recruit"
+          },
+          "id": "radio.peninsula4.xmwtkmo38"
+        },
+        {
+          "speaker": "agent",
+          "text": "The mermaid is off the board. The Aquarium wants to know who's paying for the repairs...",
+          "when": {
+            "recruit": "mermaid",
+            "choice": "terminate"
+          },
+          "id": "radio.peninsula4.1"
+        },
+        {
+          "speaker": "agent",
+          "text": "All units, all units: Kaiju on every approach.",
+          "isAlarm": true,
+          "id": "radio.peninsula4.2"
+        },
+        {
+          "speaker": "agent",
+          "text": "This is everything they've got. Hold the Peninsula, whatever it takes! Kaiju inbound!!!",
+          "id": "radio.peninsula4.3"
+        }
+      ]
+    },
+    "radio.mapLab": {
+      "label": "Map to Lab: radio call",
+      "lines": [
+        {
+          "speaker": "agent",
+          "text": "Soldier, report to the Lab, on the double. The brains have cooked up something special for you.",
+          "note": "jamie",
+          "id": "radio.mapLab.0"
+        }
+      ]
+    },
+    "radio.final": {
+      "label": "Final battle: radio call, the team alone (no Agent)",
+      "lines": [
+        {
+          "speaker": "player",
+          "text": "The Agent and his clones are dead. We did it.",
+          "id": "radio.final.1",
+          "note": "draft"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Not yet! Look at the radar... every Kaiju left in the sea, all coming at once.",
+          "id": "radio.final.2",
+          "note": "draft",
+          "isAlarm": true
+        },
+        {
+          "speaker": "player",
+          "text": "Then this is the last fight. We hold the Peninsula, together.",
+          "id": "radio.final.3",
+          "note": "draft"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Together. I'm not scared, you know. I just feel... strange.",
+          "id": "radio.final.4",
+          "note": "draft"
+        }
+      ]
+    },
+    "peninsula.finalTurn": {
+      "label": "Final battle: after the last Kaiju, the teammate turns",
+      "lines": [
+        {
+          "speaker": "teammate",
+          "text": "That's the last of them... isn't it?",
+          "id": "peninsula.finalTurn.0",
+          "note": "draft"
+        },
+        {
+          "speaker": "player",
+          "text": "That's all of them. We did it. The city's safe.",
+          "id": "peninsula.finalTurn.1",
+          "note": "draft"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Then why can I still hear their roars?",
+          "id": "peninsula.finalTurn.2",
+          "note": "draft"
+        },
+        {
+          "speaker": "teammate",
+          "text": "My hands... they're burning. Something's wrong.",
+          "id": "peninsula.finalTurn.3",
+          "note": "draft"
+        },
+        {
+          "speaker": "player",
+          "text": "Mine are too.",
+          "id": "peninsula.finalTurn.4",
+          "note": "draft"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Aghgh!! Must... destroy!",
+          "id": "peninsula.finalTurn.5",
+          "note": "draft"
+        },
+        {
+          "speaker": "player",
+          "text": "No, stay with me. We're in this together.",
+          "id": "peninsula.finalTurn.xmwtluuwo"
+        }
+      ]
+    },
+    "peninsula.finalTurnRecruits": {
+      "label": "Final battle: each recruit still standing, as they begin to turn with the teammate (by key)",
+      "lines": [
+        {
+          "speaker": "Punk Guy",
+          "key": "punk",
+          "text": "My skull's on fire... Get away from me, fool! I can't hold it!",
+          "id": "peninsula.finalTurnRecruits.0",
+          "note": "draft"
+        },
+        {
+          "speaker": "Ghost Girl",
+          "key": "black_female",
+          "text": "Those aren't my ancestors calling... They're Kaiju!",
+          "id": "peninsula.finalTurnRecruits.1",
+          "note": "draft"
+        },
+        {
+          "speaker": "Aquarium Worker",
+          "key": "mermaid",
+          "text": "My skin... these are real scales! What's happening to me?!",
+          "id": "peninsula.finalTurnRecruits.2",
+          "note": "draft"
+        },
+        {
+          "speaker": "Hazmat Worker",
+          "key": "hazmat",
+          "text": "This suit was supposed to keep it out!",
+          "id": "peninsula.finalTurnRecruits.3",
+          "note": "draft"
+        }
+      ]
+    },
+    "peninsula.finalTurnAfter": {
+      "label": "Final battle: the player turned too, mind intact, before the fight with the teammate",
+      "lines": [
+        {
+          "speaker": "player",
+          "text": "I'm a Kaiju, but I'm still in control.",
+          "id": "peninsula.finalTurnAfter.0"
+        },
+        {
+          "speaker": "player",
+          "text": "My teammate's lost {teammate:his} mind. {teammate:He}'ll destroy the city. I have to stop {teammate:him}.",
+          "id": "peninsula.finalTurnAfter.1"
+        },
+        {
+          "speaker": "player",
+          "text": "Forgive me, teammate.",
+          "id": "peninsula.finalTurnAfter.2"
+        }
+      ]
+    },
+    "peninsula.finalTurnAlone": {
+      "label": "Final battle: after the last Kaiju, with no teammate left, the player turns",
+      "lines": [
+        {
+          "speaker": "player",
+          "text": "That's the last of them...",
+          "id": "peninsula.finalTurnAlone.0",
+          "note": "draft"
+        },
+        {
+          "speaker": "player",
+          "text": "We did it, teammate...",
+          "id": "peninsula.finalTurnAlone.1",
+          "note": "draft"
+        },
+        {
+          "speaker": "player",
+          "text": "Why can I still hear their roars? They're calling me...",
+          "id": "peninsula.finalTurnAlone.2",
+          "note": "draft"
+        },
+        {
+          "speaker": "player",
+          "text": "My hands... they're burning. No... not me too...",
+          "id": "peninsula.finalTurnAlone.3",
+          "note": "draft"
+        }
+      ]
+    },
+    "rapidTransit.intro": {
+      "label": "Subway: Punk Guy finds the eye",
+      "lines": [
+        {
+          "speaker": "Punk Guy",
+          "text": "Ooo... pretty...",
+          "isFlipped": true,
+          "id": "rapidTransit.intro.0"
+        },
+        {
+          "speaker": "teammate",
+          "text": "No, don't touch it!",
+          "id": "rapidTransit.intro.1"
+        },
+        {
+          "speaker": "Punk Guy",
+          "text": "I do what I want!",
+          "id": "rapidTransit.intro.2",
+          "note": "jamie",
+          "isFlipped": true
+        }
+      ]
+    },
+    "rapidTransit.afterTouch": {
+      "label": "Subway: Punk Guy, the eye's power in him",
+      "lines": [
+        {
+          "speaker": "Punk Guy",
+          "text": "Whoa... I'm a superhero now!",
+          "id": "rapidTransit.afterTouch.0",
+          "note": "draft"
+        }
+      ]
+    },
+    "rooftop.intro": {
+      "label": "Rooftop: Ghost Girl at the graves",
+      "lines": [
+        {
+          "speaker": "Ghost Girl",
+          "text": "Is someone there? I can hear them...",
+          "isFlipped": false,
+          "id": "rooftop.intro.0"
+        },
+        {
+          "speaker": "Ghost Girl",
+          "text": "It's my ancestors... calling to me from beyond!",
+          "isFlipped": false,
+          "id": "rooftop.intro.1"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Step away from that!",
+          "id": "rooftop.intro.2"
+        },
+        {
+          "speaker": "Ghost Girl",
+          "text": "They're so ANGRY. They want me to touch it!",
+          "isFlipped": false,
+          "id": "rooftop.intro.3"
+        }
+      ]
+    },
+    "aquarium.intro": {
+      "label": "Aquarium: the worker and the tongue",
+      "lines": [
+        {
+          "speaker": "Aquarium Worker",
+          "text": "I'M A MERMAID!!",
+          "isFlipped": false,
+          "id": "aquarium.intro.0"
+        },
+        {
+          "speaker": "teammate",
+          "text": "She must work here... the Kaiju radiation's scrambled her brain, like the others.",
+          "id": "aquarium.intro.1"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Ma'am, don't touch that!",
+          "id": "aquarium.intro.2"
+        }
+      ]
+    },
+    "aquarium.stopScream": {
+      "label": "Aquarium: brought to zero, her scream shatters the glass",
+      "lines": [
+        {
+          "speaker": "Aquarium Worker",
+          "text": "Stop!!!",
+          "id": "aquarium.stopScream.0",
+          "note": "jamie"
+        }
+      ]
+    },
+    "aquarium.toCreatures": {
+      "label": "Aquarium: up on the walkway, to the sea creatures",
+      "lines": [
+        {
+          "speaker": "Aquarium Worker",
+          "text": "Attack the invaders, my beauties!",
+          "id": "aquarium.toCreatures.0",
+          "note": "jamie"
+        }
+      ]
+    },
+    "rooftop.afterTouch": {
+      "label": "Rooftop: after the touch",
+      "lines": [
+        {
+          "speaker": "Ghost Girl",
+          "text": "I can feel their power flowing through me!",
+          "id": "rooftop.afterTouch.0"
+        }
+      ]
+    },
+    "rooftop.ghostScream": {
+      "label": "Rooftop: brought to zero, before her scream (one line for each phase)",
+      "lines": [
+        {
+          "speaker": "Ghost Girl",
+          "text": "Protect me, ancestors!",
+          "id": "rooftop.ghostScream.0",
+          "note": "jamie"
+        },
+        {
+          "speaker": "Ghost Girl",
+          "text": "Ancestors, rise! Guard your blood!",
+          "id": "rooftop.ghostScream.1",
+          "note": "draft"
+        },
+        {
+          "speaker": "Ghost Girl",
+          "text": "Every soul in this ground... protect me!",
+          "id": "rooftop.ghostScream.2",
+          "note": "draft"
+        }
+      ]
+    },
+    "rooftop.guardian": {
+      "label": "Rooftop: the teammate, the first time one of Ghost Girl's Haunt ghosts is in view (the player has no Dispel)",
+      "lines": [
+        {
+          "speaker": "teammate",
+          "text": "Let's stick together. I'll block her ghosts.",
+          "id": "rooftop.guardian.0",
+          "note": "draft"
+        }
+      ]
+    },
+    "sewer1.walkIn": {
+      "label": "Sewer 1: hiding out",
+      "lines": [
+        {
+          "speaker": "recruit",
+          "text": "Jumping into the sewers was quick thinking.",
+          "id": "sewer1.walkIn.0"
+        },
+        {
+          "speaker": "recruit",
+          "text": "That swanky Agent will never look for us down here.",
+          "id": "sewer1.walkIn.1"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Our powers are gone.",
+          "id": "sewer1.walkIn.2"
+        },
+        {
+          "speaker": "player",
+          "text": "But maybe we can get them back...",
+          "id": "sewer1.walkIn.4"
+        },
+        {
+          "speaker": "teammate",
+          "text": "You mean... touch some fallen Kaiju parts??",
+          "id": "sewer1.walkIn.5"
+        },
+        {
+          "speaker": "player",
+          "text": "Look at them. Still empowered. The Agent's ray gun didn't work on them.",
+          "ifRecruits": true,
+          "recruitCount": "many",
+          "id": "sewer1.walkIn.6"
+        },
+        {
+          "speaker": "player",
+          "text": "{recruit}'s still empowered. The Agent's ray gun didn't work.",
+          "ifRecruits": true,
+          "recruitCount": "one",
+          "id": "sewer1.walkIn.6one"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Are you sure you didn't touch some already??",
+          "ifRecruits": true,
+          "id": "sewer1.walkIn.xmwtl0af0"
+        },
+        {
+          "speaker": "teammate",
+          "text": "That much Kaiju radiation... it does something to you.",
+          "ifRecruits": true,
+          "id": "sewer1.walkIn.xmwtl0af1"
+        },
+        {
+          "speaker": "teammate",
+          "text": "And that's just what we can see. Who knows what else it does.",
+          "ifRecruits": true,
+          "id": "sewer1.walkIn.xmwtl1fye"
+        },
+        {
+          "speaker": "player",
+          "text": "Yeah, but...",
+          "ifRecruits": true,
+          "id": "sewer1.walkIn.xmwtl2emz"
+        },
+        {
+          "speaker": "player",
+          "text": "With powers, we can fight back. Do you really want to leave this city to the Agent?",
+          "id": "sewer1.walkIn.9"
+        }
+      ]
+    },
+    "sewer1.reveal": {
+      "label": "Sewer 1: the glow",
+      "lines": [
+        {
+          "speaker": "recruit",
+          "text": "What's that glow?",
+          "id": "sewer1.reveal.0"
+        }
+      ]
+    },
+    "sewer2.walkIn": {
+      "label": "Sewer 2: the Kaiju parts",
+      "lines": [
+        {
+          "speaker": "teammate",
+          "text": "Are those... Kaiju parts?",
+          "id": "sewer2.walkIn.0"
+        },
+        {
+          "speaker": "player",
+          "text": "They are!",
+          "id": "sewer2.walkIn.1"
+        },
+        {
+          "speaker": "player",
+          "text": "They must be specimens from the Lab.",
+          "id": "sewer2.walkIn.3"
+        },
+        {
+          "speaker": "player",
+          "text": "Flushed down the pipes once the scientists were done with them.",
+          "id": "sewer2.walkIn.4"
+        },
+        {
+          "speaker": "teammate",
+          "text": "So... should we touch them?",
+          "id": "sewer2.walkIn.xmwtl6osx"
+        },
+        {
+          "speaker": "player",
+          "text": "There's no taking it back. Whatever it does to us...",
+          "id": "sewer2.walkIn.6"
+        },
+        {
+          "speaker": "teammate",
+          "text": "I know...",
+          "id": "sewer2.walkIn.7"
+        },
+        {
+          "speaker": "player",
+          "text": "I'm glad it was you out there with me.",
+          "id": "sewer2.walkIn.8"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Me too.",
+          "id": "sewer2.walkIn.9"
+        },
+        {
+          "speaker": "player",
+          "text": "You always had my back.",
+          "id": "sewer2.walkIn.xmwtlbly8"
+        },
+        {
+          "speaker": "teammate",
+          "text": "We were in it together. We *ARE* in it together.",
+          "id": "sewer2.walkIn.xmwtlcufz"
+        },
+        {
+          "speaker": "player",
+          "text": "Even with this, I guess.",
+          "id": "sewer2.walkIn.xmwtldety"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Yeah...",
+          "id": "sewer2.walkIn.xmwtldqzr"
+        },
+        {
+          "speaker": "player",
+          "text": "Okay. It's settled, then.",
+          "id": "sewer2.walkIn.xmwtle0gu"
+        },
+        {
+          "speaker": "teammate",
+          "text": "It is.",
+          "id": "sewer2.walkIn.xmwtleahl"
+        },
+        {
+          "speaker": "player",
+          "text": "Let's do it.",
+          "id": "sewer2.walkIn.10"
+        },
+        {
+          "speaker": "player",
+          "text": "Mr. Agent Man, we're coming for you.",
+          "id": "sewer2.walkIn.xmwtlh8g9"
+        }
+      ]
+    },
+    "street.greeting": {
+      "label": "Street: the Agent calls the team over",
+      "lines": [
+        {
+          "speaker": "agent",
+          "text": "Soldier, over here!",
+          "isBalloon": true,
+          "id": "street.greeting.0"
+        }
+      ]
+    },
+    "street.talk": {
+      "label": "Street: the Agent's briefing",
+      "lines": [
+        {
+          "speaker": "agent",
+          "text": "Good work out there. Though you guys made a mess!",
+          "id": "street.talk.0"
+        },
+        {
+          "speaker": "agent",
+          "text": "Careful around those Kaiju parts. They're toxic.",
+          "id": "street.talk.1"
+        },
+        {
+          "speaker": "agent",
+          "text": "One touch and you're changed for good.",
+          "id": "street.talk.2"
+        },
+        {
+          "speaker": "agent",
+          "text": "Speaking of which: bystanders are gathering at the West Rapid Transit station.",
+          "id": "street.talk.3"
+        },
+        {
+          "speaker": "agent",
+          "text": "Get there before someone touches one!",
+          "id": "street.talk.4"
+        },
+        {
+          "speaker": "agent",
+          "text": "Stop by the Lab on your way if you want to swap your abilities.",
+          "id": "street.talk.5",
+          "note": "draft"
+        },
+        {
+          "speaker": "agent",
+          "text": "The scientists just discovered a new one: Teleport.",
+          "id": "street.talk.teleport",
+          "note": "draft"
+        },
+        {
+          "speaker": "agent",
+          "text": "Could come in handy at the station. But be quick!",
+          "id": "street.talk.teleportLab",
+          "note": "draft"
+        }
+      ]
+    },
+    "street.hazmatJoins": {
+      "label": "The Street: the Hazmat Worker joins the team (stepping on his tile)",
+      "lines": [
+        {
+          "speaker": "Hazmat Worker",
+          "text": "I'm sick of this gig. I'm coming with you.",
+          "id": "street.hazmatJoins.0",
+          "note": "draft"
+        }
+      ]
+    },
+    "labIntro.welcome": {
+      "label": "Lab: welcome",
+      "lines": [
+        {
+          "speaker": "agent",
+          "text": "Welcome to the Lab.",
+          "id": "labIntro.welcome.0"
+        }
+      ]
+    },
+    "labIntro.nervous": {
+      "label": "Lab: the specimen tank",
+      "lines": [
+        {
+          "speaker": "agent",
+          "text": "*nervous* Oh, those?",
+          "id": "labIntro.nervous.0"
+        },
+        {
+          "speaker": "agent",
+          "text": "Just some R&D into cloning... nerd stuff.",
+          "id": "labIntro.nervous.2"
+        }
+      ]
+    },
+    "lab.beforeTrap": {
+      "label": "The Lab, before the trap: the Agent isn't there",
+      "lines": [
+        {
+          "speaker": "teammate",
+          "text": "The Agent's not here...",
+          "id": "lab.beforeTrap.0",
+          "note": "draft"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Let's look around for him.",
+          "id": "lab.beforeTrap.1",
+          "note": "draft"
+        },
+        {
+          "speaker": "teammate",
+          "text": "But choose your powers before we go. Who knows when we'll get another chance...",
+          "id": "lab.beforeTrap.2",
+          "note": "draft"
+        }
+      ]
+    },
+    "lab.showdown": {
+      "label": "Lab fight: the Agent's reveal",
+      "lines": [
+        {
+          "speaker": "agent",
+          "text": "You both glow with Kaiju radiation! How??",
+          "id": "lab.showdown.0"
+        },
+        {
+          "speaker": "teammate",
+          "text": "We found the Kaiju parts you flushed.",
+          "id": "lab.showdown.1"
+        },
+        {
+          "speaker": "agent",
+          "text": "Ha... ha ha...",
+          "id": "lab.showdown.2"
+        },
+        {
+          "speaker": "agent",
+          "text": "HA HA HA HA HA HA HA!",
+          "id": "lab.showdown.3"
+        },
+        {
+          "speaker": "player",
+          "text": "What's so funny?",
+          "id": "lab.showdown.4"
+        },
+        {
+          "speaker": "agent",
+          "text": "Powers from Kaiju parts are inherently unstable, soldier.",
+          "id": "lab.showdown.5"
+        },
+        {
+          "speaker": "agent",
+          "text": "Usually the mind goes first, then the body. But sometimes it's the other way around...",
+          "id": "lab.showdown.xmwtlkcgj"
+        },
+        {
+          "speaker": "agent",
+          "text": "Poor bastards. Human minds, stuck in Kaiju bodies.",
+          "id": "lab.showdown.xmwtlloox"
+        },
+        {
+          "speaker": "teammate",
+          "text": "What?",
+          "id": "lab.showdown.xmwtlmgwn"
+        },
+        {
+          "speaker": "agent",
+          "text": "All these Kaiju... Where did you think they were coming from?",
+          "id": "lab.showdown.6"
+        },
+        {
+          "speaker": "teammate",
+          "text": "No...",
+          "id": "lab.showdown.7"
+        },
+        {
+          "speaker": "agent",
+          "text": "Every one of them was a soldier or a citizen.",
+          "id": "lab.showdown.8"
+        },
+        {
+          "speaker": "agent",
+          "text": "Failed experiments.",
+          "id": "lab.showdown.9"
+        },
+        {
+          "speaker": "agent",
+          "text": "Sure, a few are the natural kind. But those are rare...",
+          "id": "lab.showdown.xmwtlo38h"
+        },
+        {
+          "speaker": "agent",
+          "text": "Welp... time to put you out of your misery, before you turn or lose your minds.",
+          "id": "lab.showdown.xmwtlpt2s"
+        },
+        {
+          "speaker": "agent",
+          "text": "Agents, assemble!!",
+          "id": "lab.showdown.xmwtlqkm9"
+        }
+      ]
+    },
+    "lab.transformation": {
+      "label": "Lab fight: after the clones, the teammate transforms",
+      "lines": [
+        {
+          "speaker": "teammate",
+          "text": "Something's wrong... my hands... they're burning.",
+          "id": "lab.transformation.0",
+          "note": "draft"
+        },
+        {
+          "speaker": "player",
+          "text": "Hey. Hey, look at me. Breathe.",
+          "id": "lab.transformation.1",
+          "note": "draft"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Get away from me! I can't... hold it...",
+          "id": "lab.transformation.2",
+          "note": "draft"
+        },
+        {
+          "speaker": "player",
+          "text": "No... no, no, no.",
+          "id": "lab.transformation.3",
+          "note": "draft"
+        }
+      ]
+    },
+    "labTrap.trap": {
+      "label": "Lab trap: the ray",
+      "lines": [
+        {
+          "speaker": "agent",
+          "text": "You did well, soldier.",
+          "note": "jamie",
+          "id": "labTrap.trap.0"
+        },
+        {
+          "speaker": "agent",
+          "text": "But there's been a breakthrough. We no longer need your services.",
+          "phase": "clones",
+          "note": "jamie",
+          "id": "labTrap.trap.2"
+        },
+        {
+          "speaker": "agent",
+          "text": "Meet the new team: me!",
+          "id": "labTrap.trap.xmwtku0fm"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Clones!",
+          "id": "labTrap.trap.3"
+        },
+        {
+          "speaker": "agent",
+          "text": "For your commendable service, you're granted an honorable discharge... and a swift death!",
+          "note": "jamie",
+          "id": "labTrap.trap.4"
+        },
+        {
+          "ray": true,
+          "id": "labTrap.trap.5"
+        },
+        {
+          "speaker": "player",
+          "text": "Our powers... they're gone!",
+          "id": "labTrap.trap.6"
+        },
+        {
+          "speaker": "recruit",
+          "text": "Huh. I still have mine...",
+          "ifRecruits": true,
+          "id": "labTrap.trap.7"
+        },
+        {
+          "speaker": "agent",
+          "text": "Seize them!",
+          "id": "labTrap.trap.8"
+        }
+      ]
+    },
+    "labTrap.chase": {
+      "label": "Lab trap: the chase",
+      "lines": [
+        {
+          "speaker": "agent",
+          "text": "Get them! Don't let them escape!",
+          "key": "agent",
+          "id": "labTrap.chase.0"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Run! Get to the exit, now!",
+          "key": "teammate",
+          "id": "labTrap.chase.1"
+        },
+        {
+          "speaker": "teammate",
+          "text": "The others will hold them off! Run for the exit!",
+          "key": "teammateWithRecruits",
+          "ifRecruits": true,
+          "recruitCount": "many",
+          "id": "labTrap.chase.2"
+        },
+        {
+          "speaker": "recruit",
+          "text": "I'll hold them off! Run for the exit!",
+          "key": "recruitAlone",
+          "ifRecruits": true,
+          "recruitCount": "one",
+          "id": "labTrap.chase.3"
+        }
+      ]
+    },
+    "visit": {
+      "label": "A battleground revisited",
+      "lines": [
+        {
+          "speaker": "teammate",
+          "text": "Not much to do here...",
+          "id": "visit.0"
+        },
+        {
+          "speaker": "teammate",
+          "text": "...but it could be a good place to train.",
+          "id": "visit.1"
+        }
+      ]
+    },
+    "training.offer": {
+      "label": "A battleground visited again: the recruit offers to train the player in their power (Recruit training)",
+      "lines": [
+        {
+          "speaker": "Punk Guy",
+          "key": "punk",
+          "text": "Hey, fool. Want my power? Beat me one on one and I'll teach it to you. It's only for the elite, y'know, fool?",
+          "id": "training.offer.0",
+          "note": "draft"
+        },
+        {
+          "speaker": "Ghost Girl",
+          "key": "black_female",
+          "text": "I can teach you my power. Face me alone, if you're unafraid.",
+          "id": "training.offer.1",
+          "note": "draft"
+        },
+        {
+          "speaker": "Aquarium Worker",
+          "key": "mermaid",
+          "text": "Hey, beautiful! Charm is more than a pretty smile. Beat me one on one, and I'll show you.",
+          "id": "training.offer.2",
+          "note": "draft"
+        }
+      ]
+    },
+    "training.start": {
+      "label": "Recruit training: the recruit, as the one-on-one fight starts",
+      "lines": [
+        {
+          "speaker": "Punk Guy",
+          "key": "punk",
+          "text": "You're on my turf now, fool!",
+          "id": "training.start.0",
+          "note": "draft"
+        },
+        {
+          "speaker": "Ghost Girl",
+          "key": "black_female",
+          "text": "May your ancestors grant you humility in defeat.",
+          "id": "training.start.1",
+          "note": "draft"
+        },
+        {
+          "speaker": "Aquarium Worker",
+          "key": "mermaid",
+          "text": "You'll be another notch in my belt soon enough, precious.",
+          "id": "training.start.2",
+          "note": "draft"
+        }
+      ]
+    },
+    "training.won": {
+      "label": "Back in the battleground after their training is won: the recruit, on the power the player has now",
+      "lines": [
+        {
+          "speaker": "Punk Guy",
+          "key": "punk",
+          "text": "Overgrowth's yours now. Don't let it go to your head.",
+          "id": "training.won.0",
+          "note": "draft"
+        },
+        {
+          "speaker": "Ghost Girl",
+          "key": "black_female",
+          "text": "Haunt is yours. My ancestors would be proud.",
+          "id": "training.won.1",
+          "note": "draft"
+        },
+        {
+          "speaker": "Aquarium Worker",
+          "key": "mermaid",
+          "text": "Now you can Charm them too. Use it wisely.",
+          "id": "training.won.2",
+          "note": "draft"
+        }
+      ]
+    },
+    "training.labNote": {
+      "label": "After the recruit's word on a power won in training: the teammate on where to use it",
+      "lines": [
+        {
+          "speaker": "teammate",
+          "text": "You can add it to your powers at the Lab, or swap the ones you have.",
+          "id": "training.labNote.0",
+          "note": "draft"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Swing by the Lab when you get a chance. You can add it to your powers there.",
+          "id": "training.labNote.1",
+          "note": "draft"
+        },
+        {
+          "speaker": "teammate",
+          "text": "The Lab can set you up with that one. Swap it in whenever you like.",
+          "id": "training.labNote.2",
+          "note": "draft"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Don't forget, the Lab's where you choose your powers. It's there for you now.",
+          "id": "training.labNote.3",
+          "note": "draft"
+        }
+      ]
+    },
+    "sparring.offer": {
+      "label": "A battleground visited again, its bystander terminated: the teammate offers to spar, for health",
+      "lines": [
+        {
+          "speaker": "teammate",
+          "text": "We could fight each other. Get tougher...",
+          "id": "sparring.offer.0",
+          "note": "jamie"
+        }
+      ]
+    },
+    "sparring.start": {
+      "label": "Sparring: the teammate, as the one-on-one fight starts",
+      "lines": [
+        {
+          "speaker": "teammate",
+          "text": "Don't hold back. I won't.",
+          "id": "sparring.start.0",
+          "note": "draft"
+        }
+      ]
+    },
+    "sparring.again": {
+      "label": "Back in the battleground after sparring is won, with more to win: the teammate",
+      "lines": [
+        {
+          "speaker": "teammate",
+          "text": "Good job. You didn't hold back. Ready to go again whenever you are.",
+          "id": "sparring.again.0",
+          "note": "jamie"
+        }
+      ]
+    },
+    "sparring.goAgain": {
+      "label": "A battleground sparred in before, visited again: the teammate",
+      "lines": [
+        {
+          "speaker": "teammate",
+          "text": "Want to go again?",
+          "id": "sparring.goAgain.0",
+          "note": "jamie"
+        }
+      ]
+    },
+    "peninsula.arrival": {
+      "label": "Peninsula 1: the teammate runs in",
+      "lines": [
+        {
+          "speaker": "teammate",
+          "text": "Heads-up, teammate. Here they come!",
+          "isBalloon": true,
+          "id": "peninsula.arrival.0"
+        }
+      ]
+    },
+    "recruit.choice": {
+      "label": "Every recruit choice: the teammate over the bystander",
+      "lines": [
+        {
+          "speaker": "teammate",
+          "text": "I guess we're going to {last} {him}, like the others?",
+          "when": {
+            "past": "allSame"
+          },
+          "id": "recruit.choice.0"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Recruit {him}, and the crew grows by one...",
+          "when": {
+            "past": "allSame"
+          },
+          "id": "recruit.choice.1"
+        },
+        {
+          "speaker": "teammate",
+          "text": "...or study {his} DNA and take {his} power. That would be fatal for {him}.",
+          "when": {
+            "past": "allSame"
+          },
+          "id": "recruit.choice.2"
+        },
+        {
+          "speaker": "teammate",
+          "text": "I guess we're going to terminate {him}, like the others?",
+          "when": {
+            "past": "allTerminate"
+          },
+          "note": "draft",
+          "id": "recruit.choice.allTerminate.0"
+        },
+        {
+          "speaker": "teammate",
+          "text": "There's no crew to grow... it's just been the two of us.",
+          "when": {
+            "past": "allTerminate"
+          },
+          "note": "draft",
+          "id": "recruit.choice.allTerminate.1"
+        },
+        {
+          "speaker": "teammate",
+          "text": "We could recruit {him}, and start one... or take {his} power, and it would be fatal for {him}.",
+          "when": {
+            "past": "allTerminate"
+          },
+          "note": "draft",
+          "id": "recruit.choice.allTerminate.2"
+        },
+        {
+          "speaker": "teammate",
+          "text": "We have recruited, and we have terminated...",
+          "when": {
+            "past": "mixed"
+          },
+          "id": "recruit.choice.3"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Recruit {him}, and we gain a crew member...",
+          "when": {
+            "past": "mixed"
+          },
+          "id": "recruit.choice.4"
+        },
+        {
+          "speaker": "teammate",
+          "text": "...or terminate {him}, and harvest {his} power.",
+          "when": {
+            "past": "mixed"
+          },
+          "id": "recruit.choice.5"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Another one... The last one joined the crew.",
+          "when": {
+            "past": "recruit"
+          },
+          "id": "recruit.choice.6"
+        },
+        {
+          "speaker": "teammate",
+          "text": "We could recruit {him} too, and grow the team...",
+          "when": {
+            "past": "recruit"
+          },
+          "id": "recruit.choice.7"
+        },
+        {
+          "speaker": "teammate",
+          "text": "...or study {his} DNA and take {his} power. That would be fatal for {him}.",
+          "when": {
+            "past": "recruit"
+          },
+          "id": "recruit.choice.8"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Last time, we took the power for ourselves.",
+          "when": {
+            "past": "terminate"
+          },
+          "id": "recruit.choice.9"
+        },
+        {
+          "speaker": "teammate",
+          "text": "We could study {his} DNA again, and take {his} power. It would be fatal for {him}...",
+          "when": {
+            "past": "terminate"
+          },
+          "id": "recruit.choice.10"
+        },
+        {
+          "speaker": "teammate",
+          "text": "...or we could recruit {him}, bring {him} onto the crew.",
+          "when": {
+            "past": "terminate"
+          },
+          "id": "recruit.choice.11"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Maybe we could recruit {him}...",
+          "when": {
+            "past": "none"
+          },
+          "id": "recruit.choice.12"
+        },
+        {
+          "speaker": "teammate",
+          "text": "...or we could study {his} DNA to get {his} power.",
+          "when": {
+            "past": "none"
+          },
+          "id": "recruit.choice.13"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Though that would be fatal for {him}.",
+          "when": {
+            "past": "none"
+          },
+          "id": "recruit.choice.14"
+        }
+      ]
+    },
+    "labIntro.vatPraise": {
+      "label": "Lab: the color vat",
+      "lines": [
+        {
+          "speaker": "Lab Tech",
+          "text": "Looking good!",
+          "isBalloon": true,
+          "id": "labIntro.vatPraise.0"
+        }
+      ]
+    },
+    "finalBattle.intro": {
+      "label": "Final battle: the giant at the foot of the Peninsula",
+      "lines": [
+        {
+          "speaker": "agent",
+          "text": "Your partner has reached critical mass, soldier. It's headed for the city.",
+          "id": "finalBattle.intro.0",
+          "note": "draft"
+        },
+        {
+          "speaker": "player",
+          "text": "That's not a Kaiju. That's my partner.",
+          "id": "finalBattle.intro.1",
+          "note": "draft"
+        },
+        {
+          "speaker": "player",
+          "text": "Hold on. I'm bringing you back.",
+          "id": "finalBattle.intro.2",
+          "note": "draft"
+        }
+      ]
+    },
+    "finalBattle.voices": {
+      "label": "Final battle: the teammate's voice, from inside the Kaiju, as each wave comes",
+      "lines": [
+        {
+          "speaker": "teammate",
+          "text": "I can hear you... I can't stop walking...",
+          "id": "finalBattle.voices.0",
+          "note": "draft",
+          "key": "wave1"
+        },
+        {
+          "speaker": "teammate",
+          "text": "They're coming for you... because of me...",
+          "id": "finalBattle.voices.1",
+          "note": "draft",
+          "key": "wave2"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Keep going... it's working... I can feel it fading...",
+          "id": "finalBattle.voices.2",
+          "note": "draft",
+          "key": "wave3"
+        }
+      ]
+    },
+    "finalBattle.ray": {
+      "label": "Final battle: the ray gun",
+      "lines": [
+        {
+          "speaker": "player",
+          "text": "This is going to hurt. Hold still.",
+          "id": "finalBattle.ray.0",
+          "note": "draft"
+        }
+      ]
+    },
+    "finalBattle.reunion": {
+      "label": "Final battle: the teammate, back",
+      "lines": [
+        {
+          "speaker": "teammate",
+          "text": "...Did I... hurt anyone?",
+          "id": "finalBattle.reunion.0",
+          "note": "draft"
+        },
+        {
+          "speaker": "player",
+          "text": "You're back. That's all that matters.",
+          "id": "finalBattle.reunion.1",
+          "note": "draft"
+        }
+      ]
+    }
+  },
+  "bios": {
+    "avatars": {
+      "guy": {
+        "file": "Subject 01",
+        "name": "Guy",
+        "lines": [
+          [
+            "Augments",
+            "Spinal relay, reactive plating"
+          ],
+          [
+            "Cyborg",
+            "Rebuildable while a teammate survives"
+          ],
+          [
+            "Status",
+            "Cleared for field trials"
+          ]
+        ],
+        "bio": "Pulled from a collapsed overpass the night the Kaiju first made landfall, more wreck than man. The Lab took what was left. He still takes his coffee black."
+      },
+      "girl": {
+        "file": "Subject 02",
+        "name": "Girl",
+        "lines": [
+          [
+            "Augments",
+            "Neural lattice, grip servos"
+          ],
+          [
+            "Cyborg",
+            "Rebuildable while a teammate survives"
+          ],
+          [
+            "Status",
+            "Cleared for field trials"
+          ]
+        ],
+        "bio": "Kept a whole squad alive through the harbor attack, then took a fall no one walks away from. The Lab rebuilt her from scratch. Her mind now makes the split-second calls that keep her team alive. She hasn't lost anyone yet."
+      }
+    },
+    "recruits": {
+      "hazmat": {
+        "file": "Subject 03",
+        "name": "Hazmat Worker",
+        "lines": [
+          [
+            "Former post",
+            "Street cleanup, Biohazard department"
+          ],
+          [
+            "Powers",
+            "Aegis, Heal, Dispel"
+          ]
+        ],
+        "status": "Active, In field training",
+        "bio": "Hard worker. Punctual. Never noticed the tear in his suit while sweeping up one day. Now he's part of the crew."
+      },
+      "punk": {
+        "file": "Subject 04",
+        "name": "Punk Guy",
+        "lines": [
+          [
+            "Found",
+            "West Rapid Transit station"
+          ],
+          [
+            "Powers",
+            "Overgrowth"
+          ]
+        ],
+        "status": "Active. Re-educated",
+        "bio": "Touched a Kaiju part on a dare. Grew a garden out of the subway platform and a chip on his shoulder to match. Re-education took. The mohawk stays."
+      },
+      "black_female": {
+        "file": "Subject 05",
+        "name": "Ghost Girl",
+        "lines": [
+          [
+            "Found",
+            "Cemetery district rooftops"
+          ],
+          [
+            "Powers",
+            "Haunt"
+          ]
+        ],
+        "status": "Active. Re-educated",
+        "bio": "Says the dead talk to her. Since the Kaiju part, they talk back, with teeth. Her powers are like none on file, and they eat away at her health. A glass cannon with heat-seeking missiles."
+      },
+      "mermaid": {
+        "file": "Subject 06",
+        "name": "Aquarium Worker",
+        "lines": [
+          [
+            "Found",
+            "City Aquarium"
+          ],
+          [
+            "Powers",
+            "Charm"
+          ]
+        ],
+        "status": "Active. Re-educated",
+        "bio": "Gave the dolphin show for six years, until a Kaiju tongue fell into her tank. Mentally, she's a mermaid now. Still a real crowd-pleaser."
+      }
+    }
+  }
+}

@@ -49,6 +49,103 @@ const breakAway = keyframes`
   100% { opacity: 0; }
 `;
 
+// a glitch in its background now and then (Jamie, 2026-11-24): quick, uneven cuts (his Batman Beyond reference), never
+// on the words: slices of the rectangle thrown sideways in a split of color, and its edge doubled, for a blink each
+const GLITCH_SECONDS = 5.3;
+const glitchSlices = keyframes`
+  0% { opacity: 0; transform: translateX(0); clip-path: inset(0 0 100% 0); }
+  61% { opacity: 1; transform: translateX(-1.2cqw); clip-path: inset(22% 0 70% 0); }
+  61.8% { opacity: 1; transform: translateX(0.9cqw); clip-path: inset(58% 0 30% 0); }
+  62.4% { opacity: 1; transform: translateX(-0.5cqw); clip-path: inset(12% 0 84% 0); }
+  63% { opacity: 0; transform: translateX(0); clip-path: inset(0 0 100% 0); }
+  87% { opacity: 1; transform: translateX(1.4cqw); clip-path: inset(74% 0 18% 0); }
+  87.7% { opacity: 1; transform: translateX(-0.7cqw); clip-path: inset(40% 0 52% 0); }
+  88.3% { opacity: 0; transform: translateX(0); clip-path: inset(0 0 100% 0); }
+  100% { opacity: 0; }
+`;
+const glitchEdge = keyframes`
+  0% { opacity: 0; transform: translate(0, 0); }
+  61% { opacity: 1; transform: translate(0.5cqw, -0.2cqw); }
+  62.4% { opacity: 1; transform: translate(-0.4cqw, 0.15cqw); }
+  63% { opacity: 0; transform: translate(0, 0); }
+  87% { opacity: 1; transform: translate(-0.6cqw, 0); }
+  88.3% { opacity: 0; transform: translate(0, 0); }
+  100% { opacity: 0; }
+`;
+
+/*
+  A second glitch (Jamie, playtest 38: Spider-Verse, Jet Set Radio Future): funky and many-colored, at random times, a
+  few quick frames each: the panel's rectangle warps out of square (its corners and an edge jagged), misprinted copies
+  of it in magenta, cyan and yellow slip off register, a patch of halftone dots flashes. Small, behind the words.
+*/
+const POP = { everyMs: [900, 4200], frames: [2, 4], frameMs: [55, 95], warpPct: 2.6, slipCqw: 0.55, colors: ["#ff2fb4", "#21e0ff", "#ffe23d", "#7d5cff"] };
+const pick = ([low, high]) => low + Math.random() * (high - low);
+const jitter = amount => (Math.random() - 0.5) * 2 * amount;
+// the rectangle out of square: each corner nudged, and one edge with a jag cut in
+const getWarp = () => {
+  const w = POP.warpPct;
+  const corners = [[jitter(w), jitter(w)], [100 + jitter(w), jitter(w)], [100 + jitter(w), 100 + jitter(w)], [jitter(w), 100 + jitter(w)]];
+  const edge = Math.floor(Math.random() * 4);
+  const at = 20 + Math.random() * 60;
+  const depth = (1 + Math.random() * 2.5) * (Math.random() < 0.5 ? 1 : -1);
+  const jag = [[at, depth], [at + 3 + Math.random() * 5, 0]];
+  const points = [];
+  corners.forEach((corner, k) => {
+    points.push(corner);
+    if (k != edge) return;
+    jag.forEach(([along, out]) => {
+      // along the edge from this corner to the next
+      const next = corners[(k + 1) % 4];
+      const x = corner[0] + (next[0] - corner[0]) * along / 100, y = corner[1] + (next[1] - corner[1]) * along / 100;
+      points.push(k % 2 == 0 ? [x, y - out] : [x + out, y]);
+    });
+  });
+  return `polygon(${points.map(([x, y]) => `${x.toFixed(1)}% ${y.toFixed(1)}%`).join(", ")})`;
+};
+const PopLayer = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  mix-blend-mode: screen;
+`;
+const PopGlitch = () => {
+  const [frame, setFrame] = useState(null);
+  useEffect(() => {
+    let timeout;
+    const burst = () => {
+      let left = Math.round(pick(POP.frames));
+      const step = () => {
+        if (left-- <= 0) {
+          setFrame(null);
+          timeout = setTimeout(burst, pick(POP.everyMs));
+          return;
+        }
+        const colors = [...POP.colors].sort(() => Math.random() - 0.5).slice(0, 2 + Math.floor(Math.random() * 2));
+        setFrame({
+          copies: colors.map(color => ({ color, clip: getWarp(), x: jitter(POP.slipCqw), y: jitter(POP.slipCqw * 0.5) })),
+          dots: Math.random() < 0.6 ? { left: Math.random() * 70, top: Math.random() * 80, width: 15 + Math.random() * 25, height: 6 + Math.random() * 12, color: colors[0] } : null
+        });
+        timeout = setTimeout(step, pick(POP.frameMs));
+      };
+      step();
+    };
+    timeout = setTimeout(burst, pick(POP.everyMs));
+    return () => clearTimeout(timeout);
+  }, []);
+  if (!frame) return null;
+  return (
+    <>
+      {frame.copies.map(({ color, clip, x, y }, k) => (
+        <PopLayer key={k} style={{ clipPath: clip, transform: `translate(${x}cqw, ${y}cqw)`, background: `linear-gradient(${k * 70}deg, ${color}55, transparent 70%)`, boxShadow: `inset 0 0 0 0.15cqw ${color}` }} />
+      ))}
+      {frame.dots && (
+        <PopLayer style={{ inset: "auto", left: `${frame.dots.left}%`, top: `${frame.dots.top}%`, width: `${frame.dots.width}%`, height: `${frame.dots.height}%`, background: `radial-gradient(circle, ${frame.dots.color} 0 34%, transparent 38%) 0 0 / 0.5cqw 0.5cqw` }} />
+      )}
+    </>
+  );
+};
+
 // (Jamie, playtest 34: further right, so the projector's cone has room to spread; was 6)
 const PANEL_RIGHT_CQW = 3.5;
 const Panel = styled.div`
@@ -71,6 +168,29 @@ const Panel = styled.div`
   animation: ${flicker} ${LOG_LOOK.flickerSeconds}s linear infinite, ${drift} 3s linear infinite,
     ${props => props.$isClosing ? breakAway : buildOut} ${props => props.$isClosing ? 400 : PANEL_MOTION.buildMs}ms ease-out both;
   pointer-events: ${props => props.$isClosing ? "none" : "auto"};
+  /* the glitch: behind the words (the panel's own stacking, under its content) */
+  &::before, &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0;
+    animation-duration: ${GLITCH_SECONDS}s;
+    animation-iteration-count: infinite;
+    animation-timing-function: steps(1, end);
+  }
+  &::before {
+    background: linear-gradient(to right, rgba(255, 60, 190, 0.28), rgba(109, 255, 160, 0.34) 35%, rgba(60, 200, 255, 0.3));
+    animation-name: ${glitchSlices};
+  }
+  &::after {
+    inset: -0.15cqw;
+    border: 0.15cqw solid rgba(255, 60, 190, 0.55);
+    box-shadow: 0.3cqw 0 0 rgba(60, 200, 255, 0.35);
+    animation-name: ${glitchEdge};
+  }
+  ${props => props.$isClosing && css`&::before, &::after { display: none; }`}
 `;
 
 // the frame the panel's own pieces build and break inside of
@@ -604,6 +724,7 @@ export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, ac
     <BuildEffect />
     <HoloConeWrap><HoloCone panelRef={panelRef} /></HoloConeWrap>
     <Panel ref={panelRef} onClick={() => isWaiting && handleContinue()}>
+      <PopGlitch />
       <GreenBar $isTop />
       <Scroll ref={scrollRef} style={{ top: `${headerHeight}px`, paddingTop: "0.8cqw" }} onScroll={({ currentTarget }) => setIsMoreAbove(currentTarget.scrollTop > 2)} onWheel={() => { isFollowing.current = false; }} onTouchMove={() => { isFollowing.current = false; }}>
         {isBuilt && entries.map(({ key, who, name, text, avatar, chain }, index) => {

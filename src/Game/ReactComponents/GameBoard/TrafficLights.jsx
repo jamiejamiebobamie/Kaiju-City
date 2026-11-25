@@ -76,7 +76,7 @@ const GLINT = { seconds: [1.6, 4.2], color: "150, 185, 255", most: 0.55, size: {
 
 // 'near' (the landing, Jamie: the cars nearest the viewer more dramatic): within 'distance' cars go up to 'speed' times
 // as fast and are drawn bigger ('size': TRAFFIC.size's, overridden), and there are more of them ('carEvery' there)
-export const TrafficLights = ({ paths, glints = [], width, height, zIndex, near = undefined }) => {
+export const TrafficLights = ({ paths, glints = [], width, height, zIndex, near = undefined, opacity = 1 }) => {
   const ref = useRef(null);
   useEffect(() => {
     const canvas = ref.current;
@@ -163,5 +163,5 @@ export const TrafficLights = ({ paths, glints = [], width, height, zIndex, near 
     frameId = requestAnimationFrame(run);
     return () => cancelAnimationFrame(frameId);
   }, [paths, glints, width, height, near]);
-  return <canvas ref={ref} width={width} height={height} aria-hidden="true" style={{ position: "absolute", left: 0, top: 0, width, height, zIndex, pointerEvents: "none" }} />;
+  return <canvas ref={ref} width={width} height={height} aria-hidden="true" style={{ position: "absolute", left: 0, top: 0, width, height, zIndex, opacity, pointerEvents: "none" }} />;
 };

@@ -115,15 +115,17 @@ export class Camera {
   // 'enemy' is the closest enemy, if there is one
   // 'isTense': in closer and quicker (CAMERA.tense)
   // 'zoomShare': the zoom as a share of the usual one (the Rooftop's ghost ring: a medium shot, Jamie, playtest 18)
-  lookToward(player: Point, aim: Point, enemy?: Point, isTense = false, zoomShare = 1) {
+  // 'isWay': 'enemy' is a way across (a portal's end, a stairway): looked at as a sea creature is (CAMERA.tense)
+  lookToward(player: Point, aim: Point, enemy?: Point, isTense = false, zoomShare = 1, isWay = false) {
     const reach = Math.min(Math.max(Math.abs(aim.x), Math.abs(aim.y)), 1);
     const easeOut = Math.max((reach - CAMERA.lookZoomStart) / (1 - CAMERA.lookZoomStart), 0);
     const baseZoom = this.baseZoom * zoomShare;
-    const topZoom = baseZoom * (isTense ? CAMERA.tense.zoomIn : 1);
+    const isClose = isTense || (isWay && !!enemy); // (a way across: the sea creature's close, quick look. Jamie, playtest 39)
+    const topZoom = baseZoom * (isClose ? CAMERA.tense.zoomIn : 1);
     const lookZoom = topZoom * (1 - CAMERA.lookZoomOut * easeOut);
-    const enemyZoom = enemy && isTense ? topZoom : enemy ? this.getZoomToShow(player, enemy, topZoom) : baseZoom;
+    const enemyZoom = enemy && isClose ? topZoom : enemy ? this.getZoomToShow(player, enemy, topZoom) : baseZoom;
     const targetZoom = Math.max(Math.min(lookZoom, enemyZoom), this.minZoom);
-    const maxStep = this.zoom * (isTense ? CAMERA.tense.maxZoomStep : CAMERA.maxZoomStep);
+    const maxStep = this.zoom * (isClose ? CAMERA.tense.maxZoomStep : CAMERA.maxZoomStep);
     this.setZoom(this.zoom + Math.max(Math.min(targetZoom - this.zoom, maxStep), -maxStep));
 
     const getLean = (axis: 'x' | 'y', viewSize: number) => {
@@ -131,7 +133,7 @@ export class Camera {
       const lean = aim[axis] * viewSize * CAMERA.lookPan + Math.max(Math.min(toEnemy, viewSize * CAMERA.lookPan), -viewSize * CAMERA.lookPan);
       return Math.max(Math.min(lean, viewSize * CAMERA.maxLean), -viewSize * CAMERA.maxLean);
     };
-    this.follow({ x: player.x + getLean('x', this.viewWidth), y: player.y + getLean('y', this.viewHeight) }, isTense ? CAMERA.tense.edgeMargin : CAMERA.edgeMargin);
+    this.follow({ x: player.x + getLean('x', this.viewWidth), y: player.y + getLean('y', this.viewHeight) }, isClose ? CAMERA.tense.edgeMargin : CAMERA.edgeMargin);
   }
 
   getTransform() {

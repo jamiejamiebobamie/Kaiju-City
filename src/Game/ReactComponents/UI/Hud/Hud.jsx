@@ -250,6 +250,61 @@ const Active = ({ box, keyBox, ability, keyNum, isPaused }) => {
   );
 };
 
+/*
+  The player turned Kaiju at the end (Jamie, 2026-11-24): their powers past the HUD's three, on 4 to 0, in a row under it.
+  Each a socket as the HUD's, its key on it.
+*/
+const ExtraRow = styled.div`
+  position: absolute;
+  left: 0;
+  top: 100%;
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+`;
+const ExtraSocket = styled.div`
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: solid var(--color);
+  background: rgba(10, 16, 28, 0.85);
+  ${props => props.$isPopping && css`animation: ${popTurn} 0.5s linear;`}
+`;
+const ExtraKey = styled.span`
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--color);
+  color: ${HUD_LOOK.keyText};
+  font-weight: bold;
+`;
+const EXTRA_KEYS = ["4", "5", "6", "7", "8", "9", "0"];
+
+const ExtraActive = ({ ability, keyLabel, size, isPaused }) => {
+  const { activeName, cooldownTime, element, color, accTime, isOnCooldown } = ability;
+  const [isPopping, setIsPopping] = useState(false);
+  useEffect(() => {
+    if (!accTime) return;
+    setIsPopping(true);
+    const timeout = setTimeout(() => setIsPopping(false), 500);
+    return () => clearTimeout(timeout);
+  }, [accTime]);
+  const icon = isOnCooldown ? LOADER_ICON : ACTIVE_ICONS[element];
+  return (
+    <ExtraSocket title={activeName} $isPopping={isPopping} style={{ width: `${size}px`, height: `${size}px`, "--color": color, borderWidth: `${Math.max(2, size * HUD_LOOK.activeRing)}px` }}>
+      <ActiveIcon key={accTime || 0} className={`fa ${icon}`} $cooldownMs={isOnCooldown ? cooldownTime : 0} $isPaused={isPaused} style={{ fontSize: `${size * HUD_LOOK.activeIcon}px` }} />
+      <ExtraKey style={{ "--color": color, width: `${size * 0.42}px`, height: `${size * 0.42}px`, fontSize: `${size * 0.3}px` }}>{keyLabel}</ExtraKey>
+    </ExtraSocket>
+  );
+};
+
 // ---- a passive: dim until it has worked, then lit; smoke rising from it the first time ----
 const PassiveSocket = styled(Part)`
   display: flex;
@@ -345,6 +400,13 @@ export const Hud = ({ pd, variant = "player", isPaused, damage = 0, powerDownMs 
           {pd.isRewardPulse && <RewardGlow style={place(plate.portrait, "rewardGlow")} />}
           {pd.isDead && <DeathWords style={place(plate.health, "deathWords")}>{HUD_LOOK.deathWords.text}</DeathWords>}
         </Art>
+        {pd.isControlled && !pd.isDead && abilities.length > plate.actives.length && (
+          <ExtraRow>
+            {abilities.slice(plate.actives.length, plate.actives.length + EXTRA_KEYS.length).map((ability, k) => (
+              <ExtraActive key={k} ability={ability} keyLabel={EXTRA_KEYS[k]} size={plate.actives[0].width * scale * 0.9} isPaused={isPaused} />
+            ))}
+          </ExtraRow>
+        )}
       </Root>
   );
 };

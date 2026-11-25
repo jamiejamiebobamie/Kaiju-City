@@ -4,6 +4,9 @@ import { AQUARIUM_FLOOD } from 'Game/DataClasses/AquariumFlood';
 import { GIANT_KAIJU } from 'Game/DataClasses/GiantKaiju';
 import { Credits, CREDITS_TIMING } from './Credits';
 import { createPortal } from "react-dom";
+import { LabTerminal } from "./LabTerminal";
+import { AVATAR_BIOS, RECRUIT_BIOS } from "./AvatarBio";
+import { BEATEN_CODE } from "../DataClasses/UnlockCodes";
 import styled, { css, keyframes } from "styled-components";
 import { useSnapshot } from "valtio";
 import { GlobalSettingsContext } from "Home";
@@ -13,7 +16,6 @@ import { BezelButton, KaijuCounter, FULL_WINDOW, loadPlayWindow, ObjectiveTicker
 import { UI } from "./UI/UI";
 import { RadioCall } from "./RadioCall";
 import { IrradiationVat } from "./IrradiationVat";
-import { RecruitCalls } from "./RecruitCalls";
 import { AvatarChoice } from "./AvatarChoice";
 import { ControlsOverlay } from "./UI/ControlsOverlay";
 import { NpcModelDriver } from "Game/DataClasses/npcBrain/npcModel";
@@ -45,7 +47,7 @@ import { addUnlock, GAME_BEATEN_UNLOCK, clearRecruitChoices, getBattlegroundUnlo
 updateMapWalkSites(getWonBattlegrounds());
 import { CAMPAIGN_SECTIONS, getIsLastSection, getRecommendedPowers } from '../DataClasses/Campaign';
 import { GameLoop } from '../DataClasses/GameLoop';
-import { applyLevelFile, LAB_TALK_PHASE, LEVEL_FILES, LEVELS, MAP_LABELS, PENINSULA, SPARRING, updateMapWalkSites } from '../DataClasses/Levels/levels';
+import { applyLevelFile, LAB_TALK_HEARD_PHASE, LAB_TALK_PHASE, LEVEL_FILES, LEVELS, MAP_LABELS, PENINSULA, SPARRING, updateMapWalkSites } from '../DataClasses/Levels/levels';
 import { TileEditor } from './Levels/TileEditor';
 import { gameUiStore, publishGameUi, resetGameUi } from '../DataClasses/gameUiStore';
 import { applyChanges, MirrorSender } from '../Multiplayer/mirror';
@@ -285,6 +287,15 @@ const EndTitle = styled.div`
     -0.6cqw 0.6cqw 0 #22000a, -0.72cqw 0.72cqw 0 black, -0.9cqw 0.9cqw 0.6cqw rgba(0, 0, 0, 0.8),
     0 0 2.5cqw #ff0040;
   animation: ${titleArrive} 1.4s ease-out both;
+`;
+
+// the line under the last win's title (Jamie, 2026-11-24: the player turned Kaiju, now the city's only defender)
+const EndSubtitle = styled.div`
+  margin-top: 2cqw;
+  font-size: 0.32em;
+  line-height: 1.3;
+  -webkit-text-stroke: 0;
+  text-transform: none;
 `;
 
 // a title of more than one word on two lines, split where the two are most even ("Kaiju" over "Terminated")
@@ -760,14 +771,16 @@ const RECRUIT_CARDS = {
 };
 
 // after the last win's title holds a while, the credits roll over it
-const FinaleCredits = ({ title, onDone }) => {
+const FinaleCredits = ({ title, subtitle = undefined, onDone }) => {
   const [isRolling, setIsRolling] = useState(false);
   useEffect(() => {
-    const roll = setTimeout(() => setIsRolling(true), CREDITS_TIMING.titleMs);
+    // (a line under it: held longer, to be read)
+    const roll = setTimeout(() => setIsRolling(true), CREDITS_TIMING.titleMs + (subtitle && subtitle.length ? FINALE_SUBTITLE_MS : 0));
     return () => clearTimeout(roll);
   }, []);
-  return isRolling ? createPortal(<Credits onDone={onDone} />, document.querySelector("[data-play-screen]") || document.body) : <EndTitle>{title}</EndTitle>;
+  return isRolling ? createPortal(<Credits onDone={onDone} />, document.querySelector("[data-play-screen]") || document.body) : <EndTitle>{title}{(subtitle || []).map(line => <EndSubtitle key={line}>{line}</EndSubtitle>)}</EndTitle>;
 };
+const FINALE_SUBTITLE_MS = 2500;
 
 // 'handleShiftHome': back to the landing with the view's shift, not the clouds (the end of the game)
 export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = undefined, handleZoomHome = undefined }) => {
@@ -849,7 +862,11 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const [rewardNotice, setRewardNotice] = useState<{ key: number; text: string; power?: string } | undefined>(undefined);
   const rewardText = useRef(undefined); // the reward's title, due once the walk's opening shot is over
   const [sparringTweak, setSparringTweak] = useState({ ...SPARRING }); // the dev panel's copy of SPARRING, to show its values
-  const [isAutoRecruits, setIsAutoRecruits] = useState(true); // dev toggle (Jamie): every recruit in every fight, and walking with the team; no call buttons
+  // every recruit in every fight, and walking with the team. NOTE (Jamie, 2026-11-24): "Recruit Calls" is deprecated and
+  // removed: the round call buttons under the monitor (RecruitCalls.jsx) that brought recruits in one at a time on keys 7 to
+  // 9, shown only with this dev toggle ("Recruits auto-summoned") off. Recruits now always come in on their own
+  // (GameManager's autoRecruits and callRecruit); 7 to 9 are free (the player's Kaiju's powers at the end)
+  const isAutoRecruits = true;
   // dev toggles (Jamie, playtest 18), on for now: the player down, they play on as the next of the team; a recruit who dies
   // in a fight is gone for good (no HUD, not in the next fight)
   const [isTakeOverOnDeath, setIsTakeOverOnDeath] = useState(true);
@@ -1105,6 +1122,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     rewardText.current = pendingRewardText.current;
     pendingRewardText.current = undefined;
     gm.initGame();
+    if (matchLevel.id == 'labIntro' && hasHeardLabTalk.current) gm.setPhase(LAB_TALK_HEARD_PHASE, true);
     if (isCoopGuest) setUpCoop(gm, multiplayerSetup.config, 'guest');
     else if (multiplayerSetup) setUpMultiplayerMatch(gm, multiplayerSetup.config, multiplayerSetup.role);
     if (coopConfig) {
@@ -1287,7 +1305,10 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   // a new playthrough: nothing chosen in the last one carries over (Jamie): who was recruited or terminated, health won
   // times in the walking Lab this playthrough: after the first, the Agent doesn't greet the team again (Jamie, playtest 18)
   const labVisits = useRef(0);
+  // the Agent's nervous answer: once a playthrough (Jamie, 2026-11-24)
+  const hasHeardLabTalk = useRef(false);
   const startNewPlaythrough = () => {
+    hasHeardLabTalk.current = false;
     setRecruitedAvatars([]);
     setTerminatedAvatars([]);
     setTrainingPoints({ player: 0, teammate: 0 });
@@ -1789,7 +1810,9 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     const isDestroyed = !!gameManager.current && gameManager.current.finalTurnState == "destroyed";
     const isFinale = isWon && (level.giantKaiju || (campaignIndex !== null && getIsLastSection(campaignIndex)));
     if (isFinale) addUnlock(GAME_BEATEN_UNLOCK); // (the game beaten: Multiplayer opens on the start screen)
-    if (isFinale) return { title: isDestroyed ? "You turned into a Kaiju and destroyed the city!" : "You saved the city!", buttons: [], isFinale: true };
+    // the unlock code for beating it, for Settings' UNLOCK.EXE (Jamie, 2026-11-24; the "sole defender" line gone: playtest 39)
+    const subtitle = [`Unlock code: ${BEATEN_CODE}`];
+    if (isFinale) return { title: isDestroyed ? "You destroyed the city!" : "You have saved the city!", subtitle, buttons: [], isFinale: true };
     if (campaignIndex === null) {
       return { title, buttons: [{ text: "Play again", onClick: () => fadeOutThen(resetMatch) }, { text: "Quit", onClick: () => leaveByZoom() } /* (the way back out, as the bezel's Leave: Jamie) */] };
     }
@@ -1797,7 +1820,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
       return { title, buttons: [{ text: "Try again", onClick: () => fadeOutThen(() => retrySection(campaignIndex)) }, { text: "Quit", onClick: () => leaveByZoom() } /* (the way back out, as the bezel's Leave: Jamie) */] };
     }
     if (getIsLastSection(campaignIndex)) {
-      return { title: "You saved the city!", buttons: [{ text: "Play again", onClick: () => { setCampaignIndex(0); fadeOutThen(resetMatch); } }, { text: "Quit", onClick: () => leaveByZoom() } /* (the way back out, as the bezel's Leave: Jamie) */] };
+      return { title: "You have saved the city!", buttons: [{ text: "Play again", onClick: () => { setCampaignIndex(0); fadeOutThen(resetMatch); } }, { text: "Quit", onClick: () => leaveByZoom() } /* (the way back out, as the bezel's Leave: Jamie) */] };
     }
     // the first fight to the Street: in on the city, then the map swirls away (Jamie)
     if (campaignIndex === 0) return { title, buttons: [{ text: "Continue", onClick: () => swirlToSection(campaignIndex + 1) }] };
@@ -1861,6 +1884,15 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     if (screen == "agentTalk") {
       gameManager.current.startNewLog(); // a new conversation: the welcome is gone, and the Agent's face and name show again
       gameManager.current.setPhase(LAB_TALK_PHASE, true);
+      gameManager.current.setPhase(LAB_TALK_HEARD_PHASE, true);
+      hasHeardLabTalk.current = true;
+      return;
+    }
+    // the techs' monitor, hacked (Jamie, 2026-11-24): the Lab fades to black on the monitor, then the Lab's computer slides
+    // in from the right, a monitor in the monitor (LabTerminal)
+    if (screen == "monitorHack") {
+      setLeavingFor("terminal");
+      setTimeout(() => setLabScreen("terminal"), SCENE_SLIDE_MS);
       return;
     }
     // the power picker, and back into the Lab with the new powers
@@ -1899,6 +1931,21 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
       setTimeout(() => setIsSlidingBack(false), LAB_SLIDE_MS + 100);
     }, SCENE_FADE.outMs);
   };
+
+  // the Lab's computer slid away (its Quit): the Lab fades back up on the monitor
+  const closeTerminal = () => {
+    setLabScreen(undefined);
+    setIsSlidingBack(true);
+    setLeavingFor(undefined);
+    setTimeout(() => setIsSlidingBack(false), LAB_SLIDE_MS + 100);
+  };
+  // its personnel files: Guy and Girl, then each recruit met this playthrough (recruited, or terminated: deceased)
+  const getTerminalFiles = () => [
+    ...["guy", "girl"].map(avatar => ({ ...AVATAR_BIOS[avatar], avatar })),
+    ...["hazmat", "punk", "black_female", "mermaid"]
+      .filter(avatar => recruitedAvatars.includes(avatar) || terminatedAvatars.includes(avatar) || getCallableRecruits().includes(avatar))
+      .map(avatar => ({ ...RECRUIT_BIOS[avatar], avatar, isDeceased: terminatedAvatars.includes(avatar) || (isPermadeath && fallenRecruits.includes(avatar)) }))
+  ];
 
   const chooseTeam = (player, teammate) => {
     setSelectedAvatar(player);
@@ -2008,6 +2055,8 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
       return;
     }
     if (!gameManager.current || winner !== null || multiplayer) return; // (multiplayer never pauses: Jamie)
+    // (no pause in the walking Lab, nor on a picker or the vat over it, nor before a game: their Esc is their own. Jamie, playtest 39)
+    if (level.isWalkingLevel || labScreen || !isPlayingGame) return;
 
     gameManager.current.togglePauseGame();
     publishGameUi(gameManager.current.getUiState());
@@ -2209,7 +2258,9 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   );
 
   // what stands beside the monitor in a game: the HUDs, the dialogue panel, the Lab's color vat
-  const isHudsShowing = !isEditingTiles && !isLogClosing && !isSideLeaving && (!level.isWalkingLevel || isRewarding) && (!isCutscene || isHudsKept) && !recruitScene && !(matchEnd && matchEnd.isFinale);
+  // (not back up for a training's reward in the battleground: they came back for a moment and flew off again before the
+  // words. Jamie, playtest 39; the card says what was won)
+  const isHudsShowing = !isEditingTiles && !isLogClosing && !isSideLeaving && !level.isWalkingLevel && (!isCutscene || isHudsKept) && !recruitScene && !(matchEnd && matchEnd.isFinale);
   hudsShowingRef.current = isHudsShowing;
   const isLogShowing = !isSideLeaving && labScreen != "colors" && ((isCutscene && !isBalloonScene) || !!recruitScene || isTalking);
   /*
@@ -2544,9 +2595,6 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
                 <input type="checkbox" checked={isTrainedNpcs} onChange={() => setIsTrainedNpcs(!isTrainedNpcs)} /> Trained NPCs
               </label>
               <label>
-                <input type="checkbox" checked={isAutoRecruits} onChange={() => setIsAutoRecruits(!isAutoRecruits)} /> Recruits auto-summoned
-              </label>
-              <label>
                 <input type="checkbox" checked={isTakeOverOnDeath} onChange={() => setIsTakeOverOnDeath(!isTakeOverOnDeath)} /> Take over on death
               </label>
               <label>
@@ -2622,7 +2670,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
           )}
           <GameFrame data-game-frame $shift={monitorShift == 'out' ? 'out' : undefined}>
             <PlayWindow isPoweredOn={isMonitorOn} playWindow={gameWindow} setPlayWindow={updatePlayWindow} isAdjusting={isAdjustingWindow} isOpen={isWindowOpen} isCut={!!recruitScene} isSiren={!!level.kaijuEntry && winner === null && !isPaused} buttons={!isEditingTiles && getBezelButtons({
-              isPauseOff: winner !== null || !!multiplayer,
+              isPauseOff: winner !== null || !!multiplayer || !!level.isWalkingLevel, // (no pause in the walking Lab: Jamie, playtest 39)
               // the objective's display: always there (Jamie), running the objective, or the Kaiju count
               ticker: !isWindowOpen && (gameManager.current && gameManager.current.getMultiplayerScore
                 // (defense: each side's Kaiju, on the casing's display: Jamie)
@@ -2631,7 +2679,8 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
             })}>
               {/* for a Lab screen, the scene slides away inside the monitor, and the screen takes its place there */}
               <SlideClip><SlideAway style={leavingFor
-                ? { transform: `translateX(${leavingFor == "colors" ? -45 : 45}%)`, opacity: 0, transition: isSlidingBack ? "none" : undefined }
+                // (the Lab's computer: a fade to black in place, no slide. Jamie, 2026-11-24)
+                ? { transform: leavingFor == "terminal" ? "none" : `translateX(${leavingFor == "colors" ? -45 : 45}%)`, opacity: 0, transition: isSlidingBack ? "none" : undefined }
                 : isSlidingBack ? { transition: `transform ${LAB_SLIDE_MS}ms ease-out, opacity ${LAB_SLIDE_MS}ms ease-out` } : undefined}>
               <GameBoard
                 isCurtained={!!matchEnd && !!matchEnd.isFinale}
@@ -2665,7 +2714,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
               </SlideAway></SlideClip>
               {matchEnd && (
                 <EndScreen>
-                  {matchEnd.isFinale ? <FinaleCredits title={matchEnd.title} onDone={endWithMonitorOff} /> : <EndTitle style={getEndTitleFit(breakTitle(matchEnd.title))}>{breakTitle(matchEnd.title)}</EndTitle>}
+                  {matchEnd.isFinale ? <FinaleCredits title={matchEnd.title} subtitle={matchEnd.subtitle} onDone={endWithMonitorOff} /> : <EndTitle style={getEndTitleFit(breakTitle(matchEnd.title))}>{breakTitle(matchEnd.title)}</EndTitle>}
                   {(!level.rival || level.isTraining || winner !== GameResult.PlayerWon) && <EndButtons>{matchEnd.buttons.map(({ text, onClick }, index) => <EndButton key={text} data-enter={index == 0 ? "" : undefined} data-choice-key={index == 0 ? 1 : undefined} onClick={onClick}>{text}{index == 0 && <EnterKeyHint />}</EndButton>)}</EndButtons>}
                 </EndScreen>
               )}
@@ -2700,10 +2749,8 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
               {campaignIndex !== null && level.isWalkingLevel && !level.sites && !level.exit && !level.walkIn && !isEditingTiles && (
                 <ContinueButton data-enter data-choice-key={1} onClick={() => showSection(campaignIndex + 1)}>Continue<EnterKeyHint /></ContinueButton>
               )}
-              {!isAutoRecruits && !level.isWalkingLevel && !isEditingTiles && !recruitScene && winner === null && !matchEnd && getCallableRecruits().length > 0 && (
-                <RecruitCalls key={matchCount} recruits={getCallableRecruits()} onCall={avatar => !!gameManager.current && gameManager.current.callRecruit(avatar)} isDisabled={isPaused} />
-              )}
             </PlayWindow>
+            {labScreen == "terminal" && createPortal(<LabTerminal context="lab" files={getTerminalFiles()} onClose={closeTerminal} />, document.querySelector("[data-play-screen]") || document.body)}
             {labScreen == "colors" && <IrradiationVat avatar={selectedAvatar} startColor={getAvatarColor(selectedAvatar) || PIECES_INFO[selectedAvatar].color} onIrradiate={irradiate} onClose={closeLabScreen} />}
             {isShowingControls && <ControlsOverlay onClose={closeControls} />}
             <DialogueLogPanel

@@ -1,38 +1,21 @@
 import React, { useEffect, useState } from "react";
 import styled, { css, keyframes } from "styled-components";
+import DIALOGUE from "Game/DataClasses/Dialogue/dialogueFile";
 
 /*
   The avatar select's side screen (Jamie, 2026-11-16): the two candidates' files, in green, not the tamagotchi (that's
   on the picker). Hovering an avatar opens its file: its dialogue portrait, a few lines about it, and a short bio.
   All of the words are DRAFT (Claude's filler, for Jamie to rewrite): what's known is that both were soldiers the Agent
-  recruited to become super-powered cyborg super soldiers.
+  recruited to become super-powered cyborg super soldiers. (Jamie, 2026-11-24) why they don't die for good: they're
+  cyborgs. While anyone on their team lives through a battle, the two can be rebuilt from the parts that remain.
 */
 const GREEN = "#80EF80";
 
-export const AVATAR_BIOS = {
-  guy: {
-    draft: true,
-    file: "Subject 01",
-    name: "Guy",
-    lines: [
-      ["Former post", "Urban recon, 3rd Response"],
-      ["Augments", "Spinal relay, reactive plating"],
-      ["Status", "Cleared for field trials"]
-    ],
-    bio: "Pulled from a collapsed overpass the night of the first landfall. The Agent signed him before the dust settled. Three surgeries and a new nervous system later, he still takes his coffee black."
-  },
-  girl: {
-    draft: true,
-    file: "Subject 02",
-    name: "Girl",
-    lines: [
-      ["Former post", "Combat medic, harbor unit"],
-      ["Augments", "Neural lattice, grip servos"],
-      ["Status", "Cleared for field trials"]
-    ],
-    bio: "Kept a whole squad alive through the harbor attack with one kit and no backup. The Agent's offer came with a promise: never be outmatched again. Fastest sim times in the program, and she keeps the scores."
-  }
-};
+// the files' words live in dialogue.json ('bios'), so the dialogue viewer can edit them (Jamie, playtest 38).
+// avatars: { file, name, lines: [[label, value]], bio }. recruits: the Lab monitor's personnel files (LabTerminal), for those
+// recruited or terminated this playthrough, with 'status' (DECEASED shown in its place once terminated)
+export const AVATAR_BIOS = DIALOGUE.bios.avatars;
+export const RECRUIT_BIOS = DIALOGUE.bios.recruits;
 
 const Screen = styled.div`
   position: absolute;
@@ -54,16 +37,19 @@ const Header = styled.div`
   opacity: 0.75;
 `;
 
+// the name on the left, the portrait on the right, on one row (Jamie, 2026-11-24)
 const Top = styled.div`
   display: flex;
   gap: 1.1cqw;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: space-between;
 `;
 
 // as the dialogue panel shows them (Jamie): 3:4, from the top of the picture, in its green
+// (smaller, nearer the name's height: Jamie, 2026-11-24; was 6.5cqw)
 const Portrait = styled.div`
   flex: none;
-  width: 6.5cqw;
+  width: 4.2cqw;
   aspect-ratio: 3 / 4;
   border: 0.12cqw solid ${GREEN};
   box-shadow: 0 0 0.5cqw rgba(128, 239, 128, 0.45);
@@ -73,10 +59,12 @@ const Portrait = styled.div`
 `;
 
 const Name = styled.div`
-  font-size: 1.6cqw;
-  margin-bottom: 0.6cqw;
+  font-size: 2cqw; /* (a little bigger: Jamie, 2026-11-24; was 1.6cqw) */
   text-transform: uppercase;
 `;
+
+// the file's lines, under the bio (Jamie, 2026-11-24: they were beside the portrait)
+const Lines = styled.div``;
 
 const Line = styled.div`
   font-size: 0.72cqw;
@@ -379,13 +367,13 @@ export const AvatarBio = ({ avatar, agentDelayMs = 0 }) => {
     <Screen>
       <Header>{file.file}</Header>
       <Top>
+        <Name>{file.name}</Name>
         <Portrait style={{ backgroundImage: `url(/levels/portraits/${avatar}.png)` }} />
-        <div>
-          <Name>{file.name}</Name>
-          {file.lines.map(([label, value]) => <Line key={label}><span>{label}:</span> {value}</Line>)}
-        </div>
       </Top>
       <Bio>{file.bio}</Bio>
+      <Lines>
+        {file.lines.map(([label, value]) => <Line key={label}><span>{label}:</span> {value}</Line>)}
+      </Lines>
     </Screen>
   );
 };

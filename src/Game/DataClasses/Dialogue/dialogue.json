@@ -5,7 +5,7 @@
       "lines": [
         {
           "speaker": "agent",
-          "text": "Soldier, there are reports coming in of Kaiju on there way to Kaiju City! Protect the Peninsula!!",
+          "text": "Soldier, there are reports coming in of Kaiju on their way to Kaiju City! Protect the Peninsula!!",
           "isAlarm": true,
           "note": "jamie",
           "id": "radio.peninsula1.0"
@@ -85,7 +85,7 @@
         },
         {
           "speaker": "agent",
-          "text": "There have been reports of Kaiju body parts falling onto rooftops in the Cemetery district. Go investigate and try not to let another citizen touch them!",
+          "text": "There have been reports of Kaiju parts falling onto rooftops in the Cemetery district. Go investigate and try not to let another citizen touch them!",
           "note": "jamie",
           "id": "radio.mapRooftop.4"
         },
@@ -235,7 +235,7 @@
         },
         {
           "speaker": "agent",
-          "text": "But the lab techs have never met someone so pleasant. She's a hit!",
+          "text": "Lab techs love her.",
           "when": {
             "recruit": "mermaid",
             "choice": "recruit"
@@ -346,23 +346,61 @@
         },
         {
           "speaker": "player",
-          "text": "No stay with me. We're in this together.\n\n(NOTE to Claude: have player turn into Kaiju too with same amount of health as teammate, have first 3 powers stay the same 3, but keys 4-0 should have the rest of the powers added. Teammate turned into Kaiju and lost her mind, player turned into Kaiju with mind intact. His last act as a  defender of the city: take down his teammate.)",
+          "text": "No stay with me. We're in this together.",
           "id": "peninsula.finalTurn.xmwtluuwo"
+        }
+      ]
+    },
+    "peninsula.finalTurnRecruits": {
+      "label": "Final battle: each recruit still standing, as they begin to turn with the teammate (by key)",
+      "lines": [
+        {
+          "speaker": "Punk Guy",
+          "key": "punk",
+          "text": "My skull's on fire... Get away from me, fool! I can't hold it!",
+          "id": "peninsula.finalTurnRecruits.0",
+          "note": "draft"
+        },
+        {
+          "speaker": "Ghost Girl",
+          "key": "black_female",
+          "text": "Those aren't my ancestors calling... They're Kaiju!",
+          "id": "peninsula.finalTurnRecruits.1",
+          "note": "draft"
+        },
+        {
+          "speaker": "Aquarium Worker",
+          "key": "mermaid",
+          "text": "My skin... these are real scales! What's happening to me?!",
+          "id": "peninsula.finalTurnRecruits.2",
+          "note": "draft"
+        },
+        {
+          "speaker": "Hazmat Worker",
+          "key": "hazmat",
+          "text": "This suit was supposed to keep it out!",
+          "id": "peninsula.finalTurnRecruits.3",
+          "note": "draft"
+        }
+      ]
+    },
+    "peninsula.finalTurnAfter": {
+      "label": "Final battle: the player turned too, mind intact, before the fight with the teammate",
+      "lines": [
+        {
+          "speaker": "player",
+          "text": "I'm a Kaiju, but I'm still in control.",
+          "id": "peninsula.finalTurnAfter.0"
         },
         {
           "speaker": "player",
-          "text": "<After transformation:> I'm a Kaiju, but I'm still in control.",
-          "id": "peninsula.finalTurn.xmwtmze40"
-        },
-        {
-          "speaker": "player",
-          "text": "My teammate has lost {teammate:his} mind. I have to stop {teammate:him}.",
-          "id": "peninsula.finalTurn.xmwtn1vie"
+          "text": "My teammate has lost {teammate:his} mind. He is going to destroy the city. I have to stop {teammate:him}.",
+          "id": "peninsula.finalTurnAfter.1"
         },
         {
           "speaker": "player",
           "text": "Forgive me, teammate.",
-          "id": "peninsula.finalTurn.xmwtn312h"
+          "id": "peninsula.finalTurnAfter.2"
         }
       ]
     },
@@ -563,41 +601,59 @@
           "id": "sewer1.walkIn.2"
         },
         {
-          "speaker": "teammate",
-          "text": "But maybe we can get them back...",
+          "speaker": "player",
+          "text": "But, maybe we can get them back...",
           "id": "sewer1.walkIn.4"
         },
         {
           "speaker": "teammate",
-          "text": "Maybe... we can find some fallen Kaiju parts, and touch them?",
+          "text": "You mean... touch some fallen Kaiju parts??",
+          "ifRecruits": true,
+          "recruitCount": "many",
           "id": "sewer1.walkIn.5"
         },
         {
-          "speaker": "teammate",
+          "speaker": "player",
           "text": "Look at them. They're still empowered.  The agent's ray gun didn't work on them.",
           "ifRecruits": true,
+          "recruitCount": "many",
           "id": "sewer1.walkIn.6"
         },
         {
-          "speaker": "player",
-          "text": "Yeah, but they're all insane. That much Kaiju radiation... it does something to you.",
+          "speaker": "teammate",
+          "text": "Are you sure you didn't touch some already??",
           "ifRecruits": true,
+          "recruitCount": "many",
           "id": "sewer1.walkIn.xmwtl0af0"
         },
         {
-          "speaker": "player",
+          "speaker": "teammate",
+          "text": "That much Kaiju radiation... it does something to you.",
+          "ifRecruits": true,
+          "recruitCount": "many",
+          "id": "sewer1.walkIn.xmwtl0af1"
+        },
+        {
+          "speaker": "teammate",
+          "text": "Yeah, but it's gone to {recruit}'s head. That much Kaiju radiation... it does something to you.",
+          "ifRecruits": true,
+          "recruitCount": "one",
+          "id": "sewer1.walkIn.xmwtl0af0one"
+        },
+        {
+          "speaker": "teammate",
           "text": "And this is just the effects we've seen. Who knows what else it does.",
           "ifRecruits": true,
           "id": "sewer1.walkIn.xmwtl1fye"
         },
         {
-          "speaker": "teammate",
+          "speaker": "player",
           "text": "Yeah, but...",
           "ifRecruits": true,
           "id": "sewer1.walkIn.xmwtl2emz"
         },
         {
-          "speaker": "teammate",
+          "speaker": "player",
           "text": "With powers, we can fight back. Do you really want to leave this city in the hands of the agent?",
           "id": "sewer1.walkIn.9"
         }
@@ -633,7 +689,7 @@
         },
         {
           "speaker": "player",
-          "text": "Flushed down the pipes when the scientists finished their morbid experiments.",
+          "text": "Flushed down the pipes when the scientists finished their experiments.",
           "id": "sewer2.walkIn.4"
         },
         {
@@ -668,7 +724,7 @@
         },
         {
           "speaker": "teammate",
-          "text": "We were in it together. We ARE in it together.",
+          "text": "We were in it together. We *ARE* in it together.",
           "id": "sewer2.walkIn.xmwtlcufz"
         },
         {
@@ -693,7 +749,7 @@
         },
         {
           "speaker": "player",
-          "text": "Ok! Let's do it.",
+          "text": "Let's do it.",
           "id": "sewer2.walkIn.10"
         },
         {
@@ -744,7 +800,7 @@
         },
         {
           "speaker": "agent",
-          "text": "Stop by the Lab on the way if you want to change out your abilities.",
+          "text": "Stop by the Lab on your way if you want to change out your abilities.",
           "id": "street.talk.5",
           "note": "draft"
         },
@@ -793,7 +849,7 @@
         },
         {
           "speaker": "agent",
-          "text": "Just some R&D into cloning...",
+          "text": "Just some R&D into cloning... nerd stuff.",
           "id": "labIntro.nervous.2"
         }
       ]
@@ -826,7 +882,7 @@
       "lines": [
         {
           "speaker": "agent",
-          "text": "You both glow with Kaiju irradiation! How??",
+          "text": "You both glow with Kaiju radiation! How??",
           "id": "lab.showdown.0"
         },
         {
@@ -861,7 +917,7 @@
         },
         {
           "speaker": "agent",
-          "text": "Poor bastards. Minds of men stuck in the bodies of a Kaiju.",
+          "text": "Poor bastards. Minds of men stuck in the bodies of Kaiju.",
           "id": "lab.showdown.xmwtlloox"
         },
         {
@@ -973,7 +1029,7 @@
         },
         {
           "speaker": "player",
-          "text": "Our powers... they are gone!",
+          "text": "Our powers... they're gone!",
           "id": "labTrap.trap.6"
         },
         {
@@ -1009,7 +1065,16 @@
           "text": "The others will hold them off! Run for the exit!",
           "key": "teammateWithRecruits",
           "ifRecruits": true,
+          "recruitCount": "many",
           "id": "labTrap.chase.2"
+        },
+        {
+          "speaker": "recruit",
+          "text": "I'll hold them off! Run for the exit!",
+          "key": "recruitAlone",
+          "ifRecruits": true,
+          "recruitCount": "one",
+          "id": "labTrap.chase.3"
         }
       ]
     },
@@ -1041,7 +1106,7 @@
         {
           "speaker": "Ghost Girl",
           "key": "black_female",
-          "text": "Leader, I can teach you my power. Face me alone, if you're not afraid.",
+          "text": "I can teach you my power. Face me alone, if you're unafraid.",
           "id": "training.offer.1",
           "note": "draft"
         },
@@ -1429,6 +1494,114 @@
           "note": "draft"
         }
       ]
+    }
+  },
+  "bios": {
+    "avatars": {
+      "guy": {
+        "file": "Subject 01",
+        "name": "Guy",
+        "lines": [
+          [
+            "Augments",
+            "Spinal relay, reactive plating"
+          ],
+          [
+            "Cyborg",
+            "Rebuildable while a teammate survives"
+          ],
+          [
+            "Status",
+            "Cleared for field trials"
+          ]
+        ],
+        "bio": "Pulled from a collapsed overpass the night the Kaiju first made landfall, more wreck than man. The Lab took what was left. He still takes his coffee black."
+      },
+      "girl": {
+        "file": "Subject 02",
+        "name": "Girl",
+        "lines": [
+          [
+            "Augments",
+            "Neural lattice, grip servos"
+          ],
+          [
+            "Cyborg",
+            "Rebuildable while a teammate survives"
+          ],
+          [
+            "Status",
+            "Cleared for field trials"
+          ]
+        ],
+        "bio": "Kept a whole squad alive through the harbor attack, then took a fall no one walks away from. The Lab rebuilt her body from scratch. Now her cyborg mind is capable of strategic calculus and making split-second decisions that mean life or death for her team. She hasn't lost anybody yet."
+      }
+    },
+    "recruits": {
+      "hazmat": {
+        "file": "Subject 03",
+        "name": "Hazmat Worker",
+        "lines": [
+          [
+            "Former post",
+            "Street cleanup, Biohazard department"
+          ],
+          [
+            "Powers",
+            "Aegis, Heal, Dispel"
+          ]
+        ],
+        "status": "Active, In field training",
+        "bio": "Hard-worker. Punctual. Didn't see the tear in his suit while sweeping one day. Now he's a part of the crew."
+      },
+      "punk": {
+        "file": "Subject 04",
+        "name": "Punk Guy",
+        "lines": [
+          [
+            "Found",
+            "West Rapid Transit station"
+          ],
+          [
+            "Powers",
+            "Overgrowth"
+          ]
+        ],
+        "status": "Active. Re-educated",
+        "bio": "Touched a Kaiju part on a dare. Grew a garden out of the subway platform and a chip on his shoulder to match. Re-education took. The mohawk stays."
+      },
+      "black_female": {
+        "file": "Subject 05",
+        "name": "Ghost Girl",
+        "lines": [
+          [
+            "Found",
+            "Cemetery district rooftops"
+          ],
+          [
+            "Powers",
+            "Haunt"
+          ]
+        ],
+        "status": "Active. Re-educated",
+        "bio": "Says the dead talk to her, and since the Kaiju part, they talk back with teeth. Her powers are like none on file. They also eat away at her health. A glass cannon with heat-seeking missiles."
+      },
+      "mermaid": {
+        "file": "Subject 06",
+        "name": "Aquarium Worker",
+        "lines": [
+          [
+            "Found",
+            "City Aquarium"
+          ],
+          [
+            "Powers",
+            "Charm"
+          ]
+        ],
+        "status": "Active. Re-educated",
+        "bio": "Gave the dolphin show for six years, then a Kaiju's tongue fell into her tank. Mentally: she's a mermaid now, but she also a real crowd-pleaser."
+      }
     }
   }
 }

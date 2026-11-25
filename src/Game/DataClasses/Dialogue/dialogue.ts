@@ -1,4 +1,4 @@
-import DIALOGUE from './dialogue.json';
+import DIALOGUE from './dialogueFile';
 
 /*
   Every line in the game lives in dialogue.json, by scene. The game reads its lines from here; /dialogue edits that file.
@@ -49,7 +49,7 @@ export const getRadioLines = (sceneId: string, context: DialogueContext) => {
 };
 
 // what belongs to the dialogue file itself, not to the scene that plays a line
-const getStageFields = ({ id, speaker, text, note, isBalloon, when, key, ...rest }: any) => rest;
+const getStageFields = ({ id, speaker, text, note, isBalloon, when, key, original, ...rest }: any) => rest; // ('original': the words before Claude's polish)
 
 // a scene's lines as the plain words (a speech element's lines, the visit lines)
 export const getDialogueTexts = (sceneId: string) => getDialogueScene(sceneId).lines.map(({ text }) => text || '');

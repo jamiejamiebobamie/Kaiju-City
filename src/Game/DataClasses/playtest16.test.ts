@@ -49,8 +49,11 @@ describe('playtest 16', () => {
     const level = LEVELS.labIntro;
     const all = getActiveHotspots(level, []);
     expect(all.length).toBeGreaterThanOrEqual(3);
-    const talked = getActiveHotspots(level, ['labTalk']);
-    expect(talked.length).toBe(all.length - 1); // "What is this?" is gone once asked
+    const talked = getActiveHotspots(level, ['labTalk', 'labTalkHeard']);
+    // "What is this?" is gone once asked, and the techs' monitor is key 2 in its place (Jamie, 2026-11-24)
+    expect(talked.length).toBe(all.length);
+    expect(talked[1].id).toBe('techMonitor');
+    expect(getActiveHotspots(level, ['labTalkHeard']).map(({ id }) => id)).toEqual(talked.map(({ id }) => id)); // later visits too
     expect(level.coverPanLeftX).toBe(450);
   });
 

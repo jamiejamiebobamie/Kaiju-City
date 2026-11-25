@@ -25,7 +25,7 @@ describe('sparring with the teammate', () => {
       if (gm.speech && !said.includes(gm.speech.text)) said.push(gm.speech.text);
       gm.stepPieces();
     }
-    expect(said).toContain('We could fight each other. Become tougher...');
+    expect(said).toContain('We could fight each other. Get tougher...');
     expect(gm.getActivePhases()).toContain(TRAINING_PHASE);
     expect(gm.trainingLevelId).toBe(getSparringLevelId('rooftop'));
     // not without the termination

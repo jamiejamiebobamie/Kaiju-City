@@ -31,7 +31,7 @@ export const SETTINGS: Record<string, string> = {
   'Sewer 1': 'A dark, wet sewer under the Lab: brick tunnels, a catwalk over murky water, and a doorway that starts to glow.',
   'Sewer 2': 'A deeper sewer chamber filled with glowing, pulsing Kaiju parts flushed down from the Lab: an eye, a tail, a tooth, viscera, a bone and a claw. Touching them, the team is lost in a blinding white light.',
   'Lab fight': 'The Lab\'s great window room high over the city, with a catwalk above and tanks holding Kaiju silhouettes. The Agent is joined by his clones: one waits up on the catwalk and drops down to the floor. After the fight, the teammate begins to change.',
-  'Final battle': 'Over the radio, only the player and the teammate now. Then the peninsula night map once more, the biggest Kaiju attack of all; and after it, the teammate, changed into a Kaiju with every power, turns on the player. A win shows "You saved the city!" and the credits. If the teammate has already fallen, it is the player who changes, alone, and the ending reads "You turned into a Kaiju and destroyed the city!"',
+  'Final battle': 'Over the radio, only the player and the teammate now. Then the peninsula night map once more, the biggest Kaiju attack of all; and after it, the teammate, changed into a Kaiju with every power, turns on the player. A win shows "You saved the city!" and the credits. If the teammate has already fallen, it is the player who changes, alone, and the ending reads "You destroyed the city!"',
   'Visiting a battleground (any map walk, after its fight)': 'A battleground already won, quiet now, visited from the map; a recruit there may offer training or sparring.'
 };
 

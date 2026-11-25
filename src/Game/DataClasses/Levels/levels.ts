@@ -93,6 +93,7 @@ export type SceneElement = {
   action?: string; // hotspot: what clicking it opens
   labelY?: number; // hotspot: where its label sits, if not just above it
   labelX?: number; // hotspot: its label's middle, if not over its middle
+  caretX?: number; // hotspot: with labelX, where its caret still points (the label moved aside: Jamie, playtest 38)
   rotate?: number; // hotspot: in degrees
   walkSeconds?: number;
   idleSeconds?: number;
@@ -234,6 +235,7 @@ export type LevelConfig = {
     isTeamInPlace?: boolean; // the recruits are already in their places: no one comes in at the door but the player (and teammate, to frontSpots)
     playerSpot?: { x: number; y: number }; // with isTeamInPlace: where the player walks in to, from the door
     talkBeatMs?: number; // a quiet moment once all are in, before the words
+    talkShot?: { point: { x: number; y: number }; zoomScale: number }; // one shot held for the whole talk, in place of one on each speaker
     isWaitingToBePassed?: boolean; // the recruits and teammate only follow once the player has gone past them
     script: Array<{ who: string; text: string }>; // 'who' is 'teammate', 'player', or 'recruit': a recruit, or the player if there are none
     ending?: { spots: Array<{ x: number; y: number }>; phase: string; climaxMs: number }; // the player and teammate walk to these spots, and the phase ends the level
@@ -246,11 +248,11 @@ export type LevelConfig = {
   extras?: Array<{ avatar: string; spot: { x: number; y: number }; facingDir: string }>; // people standing in the scene, drawn as pieces
   trap?: { // the Agent has his say, then his clones chase the player to the door
     // each line, by who says it. 'ray' is the Agent firing his ray. 'ifRecruits': only said with recruits along.
-    script: Array<{ who?: 'agent' | 'teammate' | 'player' | 'recruit'; text?: string; phase?: string; ray?: boolean; ifRecruits?: boolean }>;
+    script: Array<{ who?: 'agent' | 'teammate' | 'player' | 'recruit'; text?: string; phase?: string; ray?: boolean; ifRecruits?: boolean; recruitCount?: 'one' | 'many' }>;
     speechSpot: { x: number; y: number };
     lineUp: { y: number; spacing: number };
     ray: { from: { x: number; y: number }; color: string; ms: number };
-    chaseLines: { agent: string; teammate: string; teammateWithRecruits: string };
+    chaseLines: { agent: string; teammate: string; teammateWithRecruits: string; recruitAlone?: string };
     chasers: { xs: Array<number>; startY: number; landingY: number; moveSpeed: number; abilities: Array<string>; dropFrom?: { y: number; cloneIds: Array<string>; phase: string } };
   };
   hasRecruitFollowers?: boolean; // recruited characters walk with the team
@@ -274,6 +276,7 @@ export type LevelConfig = {
     isSidesOnly?: boolean; // in from the left or the right edge only (the class's battle preview)
     spawnEveryMs?: [number, number]; // a new one every so long, at random in this range (else the game's own)
     maxAtOnce?: number; // at most so many on the board (else the difficulty's)
+    maxSpeed?: number; // their move speed (else the difficulty's)
   };
 };
 
@@ -374,8 +377,10 @@ export const buildBattlePreviewLevel = ({ columns = undefined as number | undefi
       perimeterTiles: edges,
       bounds: { minX: -grid.colStep, maxX: sceneWidth + grid.colStep, minY: rowY(firstJ), maxY: rowY(firstJ + rows - 1) },
       isSidesOnly: true,
-      spawnEveryMs: [5000, 10000],
-      maxAtOnce: 2
+      // (more of them, sooner and quicker: it was slow and sleepy. Jamie, playtest 39; was every 5 to 10 s, 2 at once)
+      spawnEveryMs: [1800, 3600],
+      maxAtOnce: 4,
+      maxSpeed: 3
     }
   };
 };
@@ -500,7 +505,7 @@ const ROOFTOP_SCENE = {
     startFacing: 'up',
     introSortY: 600, // stands in front of the head
     intro: {
-      focus: { x: 733, y: 470 },
+      focus: { x: 733, y: 410 }, // (higher, more of the graves above her in the shot: Jamie, 2026-11-24; was 470)
       zoomScale: 1.5,
       lines: getIntroLines('rooftop.intro'),
       // the touch plays out on the whole Kaiju part, then a beat on her, filled with its power. draft words.
@@ -686,6 +691,8 @@ const SEWER2_WALK_IN = {
   standSpots: [{ x: 1100, y: 520 }, { x: 1040, y: 590 }, { x: 1170, y: 600 }],
   frontSpots: [{ x: 705, y: 560 }, { x: 772, y: 598 }], // the player and teammate step to the front of the group, on the far left, before they talk
   isTeamInPlace: true, // the recruits are already there; only the player and teammate run in, to the front (Jamie)
+  // their talk: one shot, further left and wider than on each speaker, the parts round them in it (Jamie, playtest 38)
+  talkShot: { point: { x: 560, y: 420 }, zoomScale: 1.05 },
   script: getDialogueScript('sewer2.walkIn'),
   ending: { spots: [{ x: 638, y: 523 }, { x: 705, y: 485 }], phase: 'blinding', climaxMs: 8500 } // the climb to the whiteout, in SceneElements
 };
@@ -757,6 +764,9 @@ const KAIJU_GLOW = '#bf40bf';
 const agentClone = (id, x) => ({ ...npc(id, 'agent', x, 170, 95), phase: 'clones' });
 
 export const LAB_TALK_PHASE = 'labTalk';
+// the Agent's nervous answer heard this playthrough (Jamie, 2026-11-24: said once only): "What is this?" gone for good,
+// the techs' monitor open to hack in its place (so it is key 2). set with LAB_TALK_PHASE when asked, alone on later visits
+export const LAB_TALK_HEARD_PHASE = 'labTalkHeard';
 
 const LAB_INTRO_SCENE = {
   // on the back wall at the right, beside the techs' desk: a short reach, so walking right along the floor never takes it
@@ -769,12 +779,17 @@ const LAB_INTRO_SCENE = {
       dialogue: 'labIntro.welcome'
     },
     {
-      id: 'agentNervous', type: 'speech' as const, phase: LAB_TALK_PHASE, x: 720, y: 445, width: 0, height: 0, sortY: ABOVE_CHARACTERS,
+      // 'lookSpot': while it's said, the camera on the middle between the player and the Agent, across (Jamie, 2026-11-24)
+      id: 'agentNervous', type: 'speech' as const, phase: LAB_TALK_PHASE, x: 720, y: 445, width: 0, height: 0, sortY: ABOVE_CHARACTERS, lookSpot: { x: 720, y: 660 },
       lines: getDialogueTexts('labIntro.nervous'),
       dialogue: 'labIntro.nervous'
     },
     { id: 'avatarTank', type: 'hotspot' as const, action: 'powers', label: 'Change powers', labelY: 345, outline: '/levels/lab-outline-avatars.png', x: 62, y: 235, width: 175, height: 440, rotate: -24, sortY: ABOVE_CHARACTERS },
-    { id: 'specimenTank', type: 'hotspot' as const, action: 'agentTalk', label: 'What is this?', labelY: 300, outline: '/levels/lab-outline-specimen.png', x: 290, y: 310, width: 170, height: 300, rotate: -24, sortY: ABOVE_CHARACTERS, hidePhase: LAB_TALK_PHASE },
+    { id: 'specimenTank', type: 'hotspot' as const, action: 'agentTalk', label: 'What is this?', labelY: 300, outline: '/levels/lab-outline-specimen.png', x: 290, y: 310, width: 170, height: 300, rotate: -24, sortY: ABOVE_CHARACTERS, hidePhase: LAB_TALK_HEARD_PHASE },
+    // the techs' desk monitors at the back, after the nervous answer (Jamie). (its label left, off the exit's sign, its
+    // caret still on the desk: Jamie, playtest 38) TODO: the hack itself (the player's monitor
+    // showing a monitor showing a monitor, and story info); for now its click does nothing (Game.tsx, 'monitorHack')
+    { id: 'techMonitor', type: 'hotspot' as const, action: 'monitorHack', label: 'Check Computer', labelY: 455, labelX: 870, caretX: 967, x: 885, y: 485, width: 165, height: 60, sortY: ABOVE_CHARACTERS, phase: LAB_TALK_HEARD_PHASE },
     { id: 'colorTank', type: 'hotspot' as const, action: 'colors', label: 'Choose color', labelY: 330, labelX: 1215, outline: '/levels/lab-outline-colors.png', x: 1225, y: 370, width: 170, height: 340, rotate: 34, sortY: ABOVE_CHARACTERS }, // labelX: in shot, the art ends at the right (Jamie, playtest 19)
     { id: 'exit', type: 'door' as const, phase: EXIT_OPEN_PHASE, x: 1090, y: 530, width: 0, height: 0, sortY: ABOVE_CHARACTERS, label: 'Exit' }
   ]
@@ -858,11 +873,13 @@ const LEVEL_BUILDERS: Record<string, (file) => LevelConfig> = {
     ...buildLevel(file, 'Lab', '#4a8fb0', [], true), ...LAB_INTRO_SCENE, coverPanLeftX: 450, coverPanRightX: 950,
     // the Peninsula through its window too (Jamie, playtest 35): the panes cut from the picture (labIntro-cut.png,
     // labIntro.png kept as it was), the view behind them (scripts/labWindowView.py)
+    // (by day, the walking Peninsula's sections: Jamie, 2026-11-24; night from the Lab before the trap on, below)
     layers: [
-      { src: '/levels/labIntro-window.png', zIndex: -6 },
+      { src: '/levels/labIntro-window-day.png', zIndex: -6 },
       { src: '/levels/labIntro-cut.png', zIndex: -4 }
     ],
-    windowTraffic: { paths: labIntroWindowTraffic.paths, glints: labIntroWindowTraffic.glints, zIndex: -5 } // its cars, between the view and the room
+    // its cars, between the view and the room (by day, their lights faint)
+    windowTraffic: { paths: labIntroWindowTraffic.paths, glints: labIntroWindowTraffic.glints, zIndex: -5, opacity: 0.3 }
   }),
   lab: file => ({
     // the catwalk's front railing, cut from the scene: whoever is up there is behind it (Jamie)
@@ -1016,9 +1033,17 @@ LEVELS.labBeforeTrap = {
   extras: [],
   visitScene: 'lab.beforeTrap',
   visitLines: getDialogueTexts('lab.beforeTrap'),
+  // after the Aquarium: night through the window (Jamie, 2026-11-24), as the trap's and the Lab fight's
+  layers: [
+    { src: '/levels/labIntro-window.png', zIndex: -6 },
+    { src: '/levels/labIntro-cut.png', zIndex: -4 }
+  ],
+  windowTraffic: { paths: labIntroWindowTraffic.paths, glints: labIntroWindowTraffic.glints, zIndex: -5 },
   sceneElements: LEVELS.labIntro.sceneElements.filter(({ id }) => !['agentWelcome', 'agentNervous', 'specimenTank'].includes(id))
     // the Agent's not here: the way out is the way to look for him (Jamie, playtest 24)
     .map(element => element.id == 'exit' ? { ...element, label: 'Search for Agent' } : element)
+    // the Lab's computer open here too, with no talk first (Jamie, playtest 38: else the Aquarium Worker's file is never read)
+    .map(element => element.id == 'techMonitor' ? { ...element, phase: undefined } : element)
 };
 
 LEVELS.labTrap = {
@@ -1036,7 +1061,7 @@ LEVELS.labTrap = {
     speechSpot: { x: 700, y: 365 },
     lineUp: { y: 610, spacing: 80 }, // the team stands in a row in front of the Agent
     // said as the chase starts, while everyone runs. draft words.
-    chaseLines: getKeyedLines('labTrap.chase') as { agent: string; teammate: string; teammateWithRecruits: string },
+    chaseLines: getKeyedLines('labTrap.chase') as { agent: string; teammate: string; teammateWithRecruits: string; recruitAlone?: string },
     ray: { from: { x: 700, y: 440 }, color: '#7dffef', ms: 2200 },
     // they drop from the catwalk (Jamie, playtest 18): three of the clones up there jump down, and those clones are gone
     chasers: { xs: [480, 700, 920], startY: 830, landingY: 640, moveSpeed: 5, abilities: [], dropFrom: { y: 170, cloneIds: ['clone2', 'clone3', 'clone4'], phase: 'clonesDropped' } }

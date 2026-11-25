@@ -59,6 +59,24 @@ describe('walking through a portal', () => {
     expect(player.portalMask).toBeUndefined();
   });
 
+  // (Jamie, playtest 39: charmed, the stairs left them in the wall upstairs, then wouldn't take them down. Not reproduced
+  // here: each way of each stairway, charmed, ends on a tile at its far end)
+  it('charmed, each stairway each way still ends on a tile at its far end, in view', () => {
+    LEVELS.aquarium.tileLinks.forEach(([a, b]) => [[a, b], [b, a]].forEach(([from, to]) => {
+      const { gm, player } = makeAquarium();
+      player.initCharLocation(true, from);
+      player.isCharmed = true;
+      player.charmEndsAt = (gm as any).accTime + 600000;
+      expect(player.jumpToLinkedTile(to)).toBe(true);
+      for (let k = 0; k < 400 && (gm as any).portalWalk; k += 1) gm.stepPieces();
+      for (let k = 0; k < 5; k += 1) gm.stepPieces();
+      expect(getRowsApart(gm, player.getTileIndex(), to)).toBeLessThan(3);
+      expect(gm.gameBoardManager.getIsInBounds(player.getTileIndex())).toBe(true);
+      expect(player.charLocation).toEqual(gm.gameBoardManager.getCharXAndYFromTileIndex(player.getTileIndex()));
+      expect(player.isVisible).toBe(true);
+    }));
+  });
+
   it('an NPC whose path starts through a link takes the link, rather than walking across the gap off the tiles', () => {
     const { gm } = makeAquarium();
     const rival = gm.rivalPiece;

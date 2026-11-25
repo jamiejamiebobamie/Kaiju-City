@@ -215,6 +215,9 @@ export class GameBoardPieceBase {
     movePiece({ accTime, playerInputHandler = undefined }) {
         if (this.isDead) return;
         if (this.isInPortal) return; // between a portal's two ends: nowhere, and no keys move them
+        // the player turned Kaiju: their own body is hidden, and the keys are its Kaiju's (Jamie, playtest 38: the hidden
+        // body took the keys first, and the Kaiju never moved)
+        if (this.kaijuBody) return;
 
         this.accTime = accTime;
         // knocked down by the train: lying where they were thrown until they get up
@@ -996,7 +999,15 @@ export class GameBoardPieceBase {
         this.lifeNumber = (this.lifeNumber || 0) + 1; // (each life's death its own: defense's kills)
         this.lastCasterHitBy = undefined;
         this.lastTouchSide = undefined;
+        // a new life starts clean (Jamie, playtest 38: respawned Kaiju still Spurned before reaching the Peninsula): no
+        // Charm or Spurned, no wading, every power's passive ended (then the modifiers they set are zeroed below)
         this.isCharmed = false;
+        this.charmEndsAt = 0;
+        this.charmedBy = undefined;
+        this.spurnedBy = undefined;
+        this.waterSlowEnds = [];
+        (this.abilities || []).forEach(ability => ability.endAllPassives && ability.endAllPassives(this));
+        (this.abilities || []).forEach(ability => { ability.stacks = 0; });
         this.setTeamIndex(this.homeTeamIndex);
         this.lives = this.maxLives;
         this.isDead = false;

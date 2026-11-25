@@ -1,6 +1,6 @@
 import { it } from 'vitest';
 import fs from 'node:fs';
-import DIALOGUE from 'Game/DataClasses/Dialogue/dialogue.json';
+import DIALOGUE from 'Game/DataClasses/Dialogue/dialogueFile';
 import SUMMARIES from './summaries.json';
 import { getCardStatus, getSummaryCards } from './summaryCards';
 

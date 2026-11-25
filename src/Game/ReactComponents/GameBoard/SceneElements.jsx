@@ -808,10 +808,11 @@ export const SceneElements = ({ level, activePhases, isPaused, onHotspot, isDial
         return (
           <React.Fragment key={id}>
             {/* the outline is under everyone standing in the scene; its label stays over them */}
-            <HotspotOutline src={element.outline} style={{ zIndex: HOTSPOT_OUTLINE_Z }} />
+            {element.outline && <HotspotOutline src={element.outline} style={{ zIndex: HOTSPOT_OUTLINE_Z }} />}
             <HotspotLabel data-scene-button onClick={() => onHotspot(element.action)} style={{ left: `${element.labelX || getLabelX(x + width / 2, element.label, level.world.width)}px`, top: `${element.labelY || y - 14}px`, zIndex: SIGN_Z }}>
               <span><HotspotKey>{getActiveHotspots(level, activePhases).indexOf(element) + 1}</HotspotKey>{element.label}</span>
-              <i className="fa fa-caret-down" />
+              {/* 'caretX': the label moved aside, its caret kept pointing at this spot (Jamie, playtest 38) */}
+              <i className="fa fa-caret-down" style={element.caretX ? { transform: `translateX(${element.caretX - element.labelX}px)` } : undefined} />
             </HotspotLabel>
             <HotspotElement
               data-scene-button

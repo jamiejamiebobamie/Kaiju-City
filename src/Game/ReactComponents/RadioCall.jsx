@@ -77,10 +77,12 @@ export const RadioCall = ({ lines, playerAvatar, teammateAvatar, isResuming, onG
   // the button already said it: the call goes straight on to the answer
   const choose = ({ reply }) => setScript([...script.slice(0, lineIndex), ...reply, ...script.slice(lineIndex + 1)]);
 
-  const getAvatar = speaker => speaker == "agent" ? "agent" : speaker == "teammate" ? teammateAvatar : playerAvatar;
+  // a speaker met by name (eg. "Ghost Girl" on the radio): their own portrait and name (Jamie, playtest 38: it was the player's)
+  const getNamed = speaker => ROSTER.find(({ name }) => name == speaker);
+  const getAvatar = speaker => speaker == "agent" ? "agent" : speaker == "teammate" ? teammateAvatar : getNamed(speaker) ? getNamed(speaker).id : playerAvatar;
   const entries = script.slice(0, lineIndex + 1)
     .filter(({ choices }) => !choices)
-    .map(({ speaker, text }, key) => ({ key, who: speaker == "agent" ? "agent" : speaker, name: speaker == "teammate" ? ((ROSTER.find(({ id }) => id == teammateAvatar) || {}).name || NAMES.teammate) : NAMES[speaker], text, avatar: getAvatar(speaker) }));
+    .map(({ speaker, text }, key) => ({ key, who: speaker == "agent" ? "agent" : speaker, name: speaker == "teammate" ? ((ROSTER.find(({ id }) => id == teammateAvatar) || {}).name || NAMES.teammate) : NAMES[speaker] || (getNamed(speaker) || {}).name, text, avatar: getAvatar(speaker) }));
   const actions = isChoice ? line.choices.map(choice => ({ text: choice.text, onClick: () => choose(choice) }))
     // (no "Change powers" here any more: powers are changed at the Lab. Jamie, playtest 20)
     : isLastLine ? [{ text: "Go!", onClick: onGo, isEnter: true }]

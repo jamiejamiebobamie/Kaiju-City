@@ -3340,7 +3340,11 @@ export const ABILITY_KEY_MAPPINGS = [
   `Digit5`,
   `Digit6`,
 
-  // 7 to 9 call in recruits (see 'RecruitCalls')
+  // 4 to 0: the player's Kaiju's powers, at the end only (Jamie, 2026-11-24). (7 to 9 called in recruits once: Recruit Calls, removed)
+  `Digit7`,
+  `Digit8`,
+  `Digit9`,
+  `Digit0`
 ];
 
 // the number row or the numpad

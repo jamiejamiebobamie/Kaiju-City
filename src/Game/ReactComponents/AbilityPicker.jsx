@@ -2,7 +2,7 @@ import React, { useState, useContext, useEffect, useLayoutEffect, useMemo, useRe
 import { createPortal } from "react-dom";
 import styled, { css, keyframes } from "styled-components";
 import { GlobalSettingsContext } from 'Home';
-import { getSciFiClass } from "../DataClasses/sciFiClasses";
+import { getSciFiClass, SCI_FI_CLASSES } from "../DataClasses/sciFiClasses";
 import { getIsSkillOpen, OUT_OF_PLAY_POWERS } from "../DataClasses/Avatars";
 import { PIECES_INFO } from "Utils/gameState";
 import { getHasTamagotchiIntroduced, holdTamagotchi, markTamagotchiIntroduced, Tamagotchi } from "./Tamagotchi";
@@ -278,6 +278,24 @@ const PendantFlash = styled.span`
   animation: ${pendantFlashKeys} ${PENDANT_FLASH.ms}ms ease-out both;
 `;
 
+// its number key (Jamie, playtest 38), small, at its upper left
+const PendantKey = styled.span`
+  position: absolute;
+  left: ${unit(-14)};
+  top: ${unit(-14)};
+  min-width: ${unit(30)};
+  height: ${unit(30)};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: gameboy;
+  font-size: ${unit(17)};
+  color: ${props => props.$isPicked ? "black" : "#c8ffb8"};
+  background: ${props => props.$isPicked ? props.$color : "#05070a"};
+  border: ${unit(2)} solid ${props => props.$isPicked ? props.$color : "#3a6a34"};
+  border-radius: ${unit(5)};
+  pointer-events: none;
+`;
 const Pendant = styled.button`
   position: absolute;
   pointer-events: auto;
@@ -724,9 +742,41 @@ const WordsRow = styled.div`
     background: linear-gradient(to bottom, #80EF80, rgba(128, 239, 128, 0.35));
   }
 `;
-const ButtonWords = () => (
-  <WordsRow>{SIDE_BUTTON_LABELS.map(label => <div key={label}>{label}</div>)}</WordsRow>
+const ButtonWords = ({ labels = SIDE_BUTTON_LABELS }) => (
+  <WordsRow>{labels.map(label => <div key={label}>{label}</div>)}</WordsRow>
 );
+
+/*
+  Dev only (Jamie, 2026-11-24): every class, one at a time, on the side monitor as a player sees it (its name, its
+  description and its battle), to check each one's layout. The tamagotchi's three buttons: the left goes back, the
+  middle flags the class for an edit (again: unflags it), the right goes on and marks the class seen. Kept in the
+  browser's own storage (not the game's saves, which are off): seen and flagged, by class key.
+*/
+const CLASS_REVIEW_KEY = "kaiju-dev-side-class-review";
+const loadClassReview = () => {
+  try {
+    return { seen: [], flagged: [], ...JSON.parse(window.localStorage.getItem(CLASS_REVIEW_KEY) || "{}") };
+  } catch {
+    return { seen: [], flagged: [] };
+  }
+};
+const saveClassReview = review => {
+  try {
+    window.localStorage.setItem(CLASS_REVIEW_KEY, JSON.stringify(review));
+  } catch { /* (not kept) */ }
+};
+const ReviewStatus = styled.div`
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 3.4cqw;
+  z-index: 3;
+  text-align: center;
+  font: 0.75cqw monospace;
+  color: #9fbfa8;
+  pointer-events: none;
+  span { color: #ff6060; }
+`;
 
 // round, wordless (their words are on the screen, over them: Jamie, playtest 30); the rubber as before
 const BrowButtonShape = styled.button`
@@ -1182,6 +1232,9 @@ const BattleBox = styled.div`
   box-shadow: inset 0 0 0.6cqw rgba(0, 0, 0, 0.8);
 `;
 
+// the class's words: where "Class:" starts, a share of the side screen down (under its icons)
+const CLASS_INFO_TOP = 19;
+
 const Info = styled.div`
   position: absolute;
   inset: 1.4cqw 1.3cqw;
@@ -1191,7 +1244,9 @@ const Info = styled.div`
   /* the class: from a quarter of the way down the screen (Jamie) */
   /* the class: at the top of the screen (Jamie), its battle preview below it */
   /* (its icons at the top now, its words down by the arena: Jamie) */
-  ${props => props.$isClass && css`justify-content: flex-end; padding-bottom: 0.6cqw; bottom: ${(1 - BATTLE.top) * 100}%;`}
+  /* (Jamie, 2026-11-24: from a fixed top, down the column, so "Class:" and the name stay put from class to class and a
+     longer description only reaches further down; was flex-end, which pushed it all up for a second line) */
+  ${props => props.$isClass && css`justify-content: flex-start; top: ${CLASS_INFO_TOP}%; bottom: ${(1 - BATTLE.top) * 100}%;`}
   gap: 1.2cqw;
   font-size: 0.95cqw;
   line-height: 1.5;
@@ -1260,14 +1315,16 @@ const TitleRow = styled.div`
 // the class's three icons: larger, at the top right of the side screen (Jamie; were at the bottom), spaced apart
 // (ending at the screen's middle, centered 11% down: Jamie's lines)
 // right-aligned now, as far in from the right as they were from the left (about 12%: Jamie)
+// (Jamie, 2026-11-24: right-aligned, as far in from the right as "Class:" is from the left; each icon in a box of
+// the same size, so a wide or narrow icon doesn't move the rest from class to class)
 const IconGroup = styled.div`
   position: absolute;
-  right: 12%;
+  right: 1.3cqw;
   top: 11%;
   transform: translateY(-50%);
   display: flex;
   gap: 1.3cqw;
-  i { font-size: 2.6cqw; }
+  i { font-size: 2.6cqw; width: 2.9cqw; height: 2.9cqw; line-height: 2.9cqw; text-align: center; flex: none; }
   /* a thin capsule round them, in "Class:"'s yellow (Jamie, playtest 29) */
   padding: 0.5cqw 1.1cqw;
   border: 0.12cqw solid #ffd24a;
@@ -1275,7 +1332,7 @@ const IconGroup = styled.div`
 `;
 
 const ClassText = styled.div`
-  margin-top: 1cqw; /* more room under the name (Jamie) */
+  margin-top: 0.25cqw; /* (half the room under the name, with the column's gap: Jamie, 2026-11-24; was 1cqw) */
 `;
 
 // a title kept to one line (Jamie): too long for the screen, its words get smaller until it fits
@@ -1449,18 +1506,48 @@ const EtchedRings = ({ faceRef, buttonRefs, glowingIndex = undefined }) => {
 // 'isBackDisabled': shown, but not to be pressed (the color vat's Back to Lab while it dunks: Jamie, playtest 26)
 // (Play's glow is the etched rings' own, as on every screen: Jamie, mp playtest 3, no ellipses pulsing over it)
 // one side of the face: its screws, etched rings and buttons
-const FaceSide = ({ isReady, playLabel, onPlay, onBack, backLabel = "Back", isBackDisabled = false }) => {
+// (Jamie, playtest 38) the keys: the arrows focus one of the face's buttons that can be pressed (its etched rings pulse
+// green), and Enter presses it. Not while typing in a box (the vat's hex), and only on the face in front ('isKeyed')
+const FaceSide = ({ isReady, playLabel, onPlay, onBack, backLabel = "Back", isBackDisabled = false, isKeyed = false }) => {
   const isCompact = `${playLabel}${onBack ? backLabel : ""}`.length > 14;
   const faceRef = useRef(null);
   const playRef = useRef(null);
   const backRef = useRef(null);
+  const [focusIndex, setFocusIndex] = useState(undefined);
+  const buttons = [{ isOn: !!isReady, press: onPlay }, ...(onBack ? [{ isOn: !isBackDisabled, press: onBack }] : [])];
+  const isFocusOn = focusIndex !== undefined && !!buttons[focusIndex] && buttons[focusIndex].isOn;
+  const keysRef = useRef({});
+  keysRef.current = { buttons, focusIndex: isFocusOn ? focusIndex : undefined };
+  useEffect(() => {
+    if (!isKeyed) return;
+    const onKey = event => {
+      if (["INPUT", "TEXTAREA", "SELECT"].includes(event.target.tagName) || event.repeat) return;
+      const { buttons: all, focusIndex: at } = keysRef.current;
+      const open = all.map((button, k) => button.isOn ? k : -1).filter(k => k >= 0);
+      if (event.code.startsWith("Arrow")) {
+        if (!open.length) return;
+        event.preventDefault();
+        const step = ["ArrowLeft", "ArrowUp"].includes(event.code) ? -1 : 1;
+        const from = open.indexOf(at);
+        setFocusIndex(open[from < 0 ? (step > 0 ? 0 : open.length - 1) : (from + step + open.length) % open.length]);
+      } else if (event.code == "Enter" || event.code == "NumpadEnter") {
+        // (the button pulsing green is the one Enter presses, arrows first or not: Play's, when it's ready. Jamie, playtest 39)
+        const pressed = at !== undefined ? at : all[0] && all[0].isOn ? 0 : undefined;
+        if (pressed === undefined) return;
+        event.preventDefault();
+        all[pressed].press();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isKeyed]);
   return (
     <ConsoleFace ref={faceRef}>
       {[[0.5, 0.5, 20], [null, 0.5, -35], [0.5, null, 60], [null, null, 5]].map(([screwLeft, top, turn], k) => (
         <Screw key={k} $turn={turn} style={{ zIndex: 2, left: screwLeft == null ? undefined : `${screwLeft}cqw`, right: screwLeft == null ? "0.5cqw" : undefined, top: top == null ? undefined : `${top}cqw`, bottom: top == null ? "0.5cqw" : undefined }} />
       ))}
       {/* (no ready light: Jamie, playtest 28) */}
-      <EtchedRings faceRef={faceRef} buttonRefs={[playRef, backRef]} glowingIndex={isReady ? 0 : undefined} />
+      <EtchedRings faceRef={faceRef} buttonRefs={[playRef, backRef]} glowingIndex={isFocusOn ? focusIndex : isReady ? 0 : undefined} />
       <MetalButton ref={playRef} style={{ position: "relative", zIndex: 1 }} disabled={!isReady} $isBacklit={isReady} $isCompact={isCompact} $isMain onClick={onPlay}>
         {playLabel}
       </MetalButton>
@@ -1497,7 +1584,7 @@ export const PlayConsole = (props) => {
           <Slab $isTurning={isTurning}>
             <SlabEdge $isTop />
             <SlabEdge />
-            <SlabSide><FaceSide {...front} /></SlabSide>
+            <SlabSide><FaceSide {...front} isKeyed={!isTurning && !isLeaving} /></SlabSide>
             {isTurning && <SlabSide $isBack><FaceSide {...props} /></SlabSide>}
           </Slab>
         </FaceWell>
@@ -1640,7 +1727,8 @@ const TAMA_FIRST_MS = 3000;
 // 'isQuiet': straight to the tamagotchi, no power cut (back after Back); 'isFadingOut': a character just clicked, the
 // screen's content fades before the scene moves on (Jamie, playtest 34)
 export const SideMonitor = ({ isPickerShowing, screen: givenScreen = undefined, isPoweredOff = false, isLeaving = false, bioOf: hoveredBio = undefined, isQuiet = false, isFadingOut = false }) => {
-  const [screen, isSwitching] = useScreenSwitch(givenScreen || (isPickerShowing ? "picker" : "avatar"));
+  const targetScreen = givenScreen || (isPickerShowing ? "picker" : "avatar");
+  const [screen, isSwitching] = useScreenSwitch(targetScreen);
   const [isAgentHeld, setIsAgentHeld] = useState(true);
   const screenOnAt = useRef(Date.now() + MINI_TIMING.onAtMs); // (when its screen switches on: the Agent starts then)
   const lightsAt = useRef(Date.now() + LAB_LIGHTS_DELAY_MS); // (and not before the Lab's lights: Jamie, playtest 30)
@@ -1668,7 +1756,8 @@ export const SideMonitor = ({ isPickerShowing, screen: givenScreen = undefined, 
     {/* the avatar select: the candidates' files (Jamie: not the tamagotchi, that's on the picker) */}
     {/* the Agent and the files crossfade too (Jamie, playtest 29) */}
     {screen != "avatar" ? <SideSlot key={screen} data-side-screen={screen} /> : (
-      <div style={{ position: "absolute", inset: 0, opacity: isFadingOut ? 0 : 1, transition: "opacity 450ms ease-out" }}>
+      // (faded out and staying so while the screen switches on to what's next: the bio flashed back before Stompy. Jamie, playtest 39)
+      <div style={{ position: "absolute", inset: 0, opacity: isFadingOut || targetScreen != "avatar" ? 0 : 1, transition: "opacity 450ms ease-out" }}>
         <CrossFade id={bioOf || "agent"}><AvatarBio avatar={bioOf} agentDelayMs={Math.max(screenOnAt.current + SCREEN_POWER_ON_MS, lightsAt.current + 300) - Date.now()} /></CrossFade>
       </div> /* (no hold here: straight on to what's next) */
     )}
@@ -1697,6 +1786,10 @@ export const AbilityPicker = ({
   // dev: shown or hidden by hand, over whether it's open
   const [devShown, setDevShown] = useState({});
   const [isDevOpen, setIsDevOpen] = useState(false);
+  // dev: the side monitor's class review (CLASS_REVIEW_KEY)
+  const [isClassReview, setIsClassReview] = useState(false);
+  const [classReview, setClassReview] = useState(loadClassReview);
+  const [reviewIndex, setReviewIndex] = useState(0);
   // dev: the avatar's height on the screen (Jamie); kept in LOOK, so the avatar select hands over to the same spot
   const [figureDrop, setFigureDrop] = useState(LOOK.figureDrop);
   const moveFigure = drop => {
@@ -1706,6 +1799,7 @@ export const AbilityPicker = ({
   const powers = useMemo(() => allPowers.filter(({ element }) => devShown[element] ?? getIsSkillOpen(element)), [allPowers, devShown]);
   useEffect(() => setHovered(undefined), [powers.length]);
   const [lockIns, setLockIns] = useState({}); // each power's count of being picked, to play its lock-in again
+  const isPendantsLiveRef = useRef(false); // (for the number keys)
   const anchorRef = useRef(null);
   const [frame, setFrame] = useState(null);
   // the side monitor's screen and border, for the picker's things (SideMonitor)
@@ -1745,6 +1839,11 @@ export const AbilityPicker = ({
     .sort((a, b) => b.degrees - a.degrees)
     .forEach(({ k }, order) => { flashOrder[k] = order; });
 
+  // the number keys (Jamie, playtest 38): 1 at the far bottom left, on round clockwise, 0 for a tenth; each beside its pendant
+  const keyOrder = {};
+  powers.map((power, k) => ({ k, degrees: angles[k] })).sort((a, b) => b.degrees - a.degrees).forEach(({ k }, order) => { keyOrder[k] = order; });
+  const getKeyLabel = k => keyOrder[k] === undefined || keyOrder[k] > 9 ? undefined : String((keyOrder[k] + 1) % 10);
+
   const togglePower = power => {
     const element = power.getElementUppercase();
     const isPicked = pickedAbilities.includes(element);
@@ -1756,6 +1855,61 @@ export const AbilityPicker = ({
   };
 
   // (no keys round the halo: Jamie)
+
+  // dev: the class review's list: every class whose three powers are all in play
+  const reviewKeys = useMemo(() => {
+    const inPlay = allPowers.map(power => power.getElementUppercase());
+    return Object.keys(SCI_FI_CLASSES).filter(key => key.split(",").every(element => inPlay.includes(element)));
+  }, [allPowers]);
+  const showReviewClass = index => {
+    const k = (index + reviewKeys.length) % reviewKeys.length;
+    setReviewIndex(k);
+    setHovered(undefined);
+    const picked = reviewKeys[k].split(",");
+    setPickedAbilities(picked);
+    settingsManager.setSortedPlayerChosenAbilityElementsString(picked);
+  };
+  const updateReview = change => setClassReview(review => {
+    const next = change(review);
+    saveClassReview(next);
+    return next;
+  });
+  const startClassReview = isOn => {
+    setIsClassReview(isOn);
+    if (!isOn) return;
+    // (from the first not yet seen)
+    const firstUnseen = reviewKeys.findIndex(key => !classReview.seen.includes(key));
+    showReviewClass(Math.max(0, firstUnseen));
+  };
+  const onReviewButton = label => {
+    const key = reviewKeys[reviewIndex];
+    if (label == "Feed") showReviewClass(reviewIndex - 1);
+    if (label == "Pet") updateReview(review => ({ ...review, flagged: review.flagged.includes(key) ? review.flagged.filter(other => other != key) : [...review.flagged, key] }));
+    if (label == "Clean up") {
+      updateReview(review => ({ ...review, seen: review.seen.includes(key) ? review.seen : [...review.seen, key] }));
+      showReviewClass(reviewIndex + 1);
+    }
+  };
+
+  const keyed = useRef({});
+  keyed.current = { powers, keyOrder, togglePower };
+  useEffect(() => {
+    const onKey = event => {
+      if (["INPUT", "TEXTAREA", "SELECT"].includes(event.target.tagName) || event.repeat) return;
+      const match = /^(?:Digit|Numpad)(\d)$/.exec(event.code);
+      if (!match) return;
+      const { powers: all, keyOrder: order, togglePower: toggle } = keyed.current;
+      if (!isPendantsLiveRef.current) return;
+      const wanted = (Number(match[1]) + 9) % 10; // 1 is the first, 0 the tenth
+      const k = Object.keys(order).find(index => order[index] == wanted);
+      if (k === undefined || !all[k]) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      toggle(all[k]);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const isReady = pickedAbilities.length == PICK_COUNT;
   const playerClass = isReady ? getSciFiClass(pickedAbilities) : undefined;
@@ -1818,7 +1972,8 @@ export const AbilityPicker = ({
     if (pickedAbilities.length > 0) markTamagotchiIntroduced();
     return getHasTamagotchiIntroduced();
   });
-  const isPendantsLive = wasIntroduced || pendantFlash > 0; // each "Pick three abilities": the unpicked pendants flash in turn // each power's casts in the class battle, by element: its icon blinks on each
+  const isPendantsLive = wasIntroduced || pendantFlash > 0;
+  isPendantsLiveRef.current = isPendantsLive; // each "Pick three abilities": the unpicked pendants flash in turn // each power's casts in the class battle, by element: its icon blinks on each
   const isArenaShowing = !!playerClass;
   useLayoutEffect(() => {
     if (!isArenaShowing) {
@@ -1861,7 +2016,7 @@ export const AbilityPicker = ({
     const timeout = setTimeout(() => setIsTamaHeld(false), MINI_TIMING.onAtMs + TAMA_FIRST_MS);
     return () => clearTimeout(timeout);
   }, []);
-  const isTamaShowing = isTamaHeld || (hovered === undefined && !playerClass);
+  const isTamaShowing = !isClassReview && (isTamaHeld || (hovered === undefined && !playerClass));
   // Stompy waits, his clock and his happiness with it, while he can't be seen (a power's details or the class on the
   // screen instead): Jamie, playtest 35, back from reading to find Stompy Gen 2
   useEffect(() => {
@@ -1890,13 +2045,24 @@ export const AbilityPicker = ({
                 <IconGroup>
                   {pickedPowers.map(({ element, activeIcon, color }) => <Icon key={blinks[element] ? `${element}-${blinks[element]}` : element} $isBlinking={!!blinks[element]} className={`fa ${activeIcon}`} style={{ color }} />)}
                 </IconGroup>
+                {/* dev: the class review's buttons and where it's at */}
+                {isClassReview && (
+                  <>
+                    <ReviewStatus>
+                      {reviewIndex + 1}/{reviewKeys.length} {reviewKeys[reviewIndex]} &middot; seen {classReview.seen.length}
+                      {classReview.seen.includes(reviewKeys[reviewIndex]) ? " (seen)" : ""}
+                      {classReview.flagged.includes(reviewKeys[reviewIndex]) && <span> FLAGGED</span>}
+                    </ReviewStatus>
+                    <ButtonWords labels={["Back", "Flag", "Next"]} />
+                  </>
+                )}
               </ClassLayer>
             )}
     </>
   );
   // the tamagotchi's: off while the class shows
   const sideBrow = ["Feed", "Pet", "Clean up"].map(label => (
-    <ButtonSlot key={label}><BrowButtonShape disabled={!isTamaShowing} aria-label={label} title={label} onClick={() => tamaRef.current && tamaRef.current(label)} /></ButtonSlot>
+    <ButtonSlot key={label}><BrowButtonShape disabled={!isTamaShowing && !isClassReview} aria-label={label} title={label} onClick={() => isClassReview ? onReviewButton(label) : tamaRef.current && tamaRef.current(label)} /></ButtonSlot>
   ));
   const beside = (
     <>
@@ -1907,6 +2073,10 @@ export const AbilityPicker = ({
             <input type="range" min={-300} max={300} step={5} value={figureDrop} onChange={event => moveFigure(Number(event.target.value))} onKeyDown={event => event.stopPropagation()} />
           </label>
           <label><input type="checkbox" checked={isDevOpen} onChange={() => setIsDevOpen(!isDevOpen)} />dev: powers in the halo ({powers.length})</label>
+          <label><input type="checkbox" checked={isClassReview} onChange={() => startClassReview(!isClassReview)} />dev: review classes on the side monitor (seen {classReview.seen.length}/{reviewKeys.length}, flagged {classReview.flagged.length})</label>
+          {isClassReview && classReview.flagged.length > 0 && (
+            <textarea readOnly rows={3} value={classReview.flagged.map(key => `${key}: ${(SCI_FI_CLASSES[key] || [])[0]}`).join("\n")} onKeyDown={event => event.stopPropagation()} title="Flagged for an edit: copy this list" />
+          )}
           {isDevOpen && allPowers.map(({ element, activeName }) => (
             <label key={element}>
               <input type="checkbox" checked={devShown[element] ?? getIsSkillOpen(element)} onChange={event => setDevShown(shown => ({ ...shown, [element]: event.target.checked }))} />
@@ -1998,6 +2168,7 @@ export const AbilityPicker = ({
                 </React.Fragment>
               )}
               <i className={`fa ${power.activeIcon}`} style={{ color: power.color }} />
+              {getKeyLabel(k) && <PendantKey $isPicked={getIsPicked(power)} $color={power.color}>{getKeyLabel(k)}</PendantKey>}
             </Pendant>
           );
         })}

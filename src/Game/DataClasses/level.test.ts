@@ -182,7 +182,7 @@ describe('levels', () => {
   it('scene elements only use phases their level has', () => {
     Object.values(LEVELS).forEach(({ phases, sceneElements }) => {
       const ids = phases.map(({ id }) => id);
-      sceneElements.filter(({ phase }) => phase && !['trainLights', 'exitOpen', 'labTalk'].includes(phase)).forEach(({ phase }) => expect(ids).toContain(phase));
+      sceneElements.filter(({ phase }) => phase && !['trainLights', 'exitOpen', 'labTalk', 'labTalkHeard'].includes(phase)).forEach(({ phase }) => expect(ids).toContain(phase));
     });
   });
 
@@ -869,14 +869,14 @@ describe('the Agents in the Lab', () => {
 
   const dropCount = LEVELS.lab.agentDrops.drops.length;
 
-  it('the Agent who did the talking fights from where he stood, then the rest come in one at a time', () => {
+  // (Jamie, 2026-11-24: two drop from the catwalk in the scene before the fight, seen in the whole Lab)
+  it('the Agent who did the talking fights from where he stood; two drop in the opening scene, then the rest one at a time', () => {
     const { gm } = makeLab();
-    const [speaker] = getAgents(gm);
-    expect(getAgents(gm).length).toBe(1);
+    const [speaker, ...dropped] = getAgents(gm);
+    expect(getAgents(gm).length).toBe(3);
     expect(speaker.isOnTiles).toBe(true);
     expect(speaker.isEntering).toBe(false);
-    run(gm, 20);
-    expect(getAgents(gm).length).toBe(2);
+    expect(dropped.every(agent => agent.charLocation.y > LEVELS.lab.agentDrops.catwalkY)).toBe(true); // down off the catwalk
     run(gm, 400);
     expect(getAgents(gm).length).toBe(1 + dropCount);
   });
@@ -1088,9 +1088,9 @@ describe('cutscenes', () => {
     }
     const { script } = LEVELS.lab.showdown;
     expect(seenLines).toEqual(script.filter(({ who }) => who != 'teammate' || gm.getPieces().length > 1).map(({ text }) => text));
-    expect(script.at(-1).text).toBe('Failed experiments.');
+    expect(script.at(-1).text).toBe('Agents, assemble!!'); // (Jamie's rewrite, 2026-11-24; polished, playtest 38)
     expect(gm.extras.every(({ isVisible }) => !isVisible)).toBe(true);
-    expect(gm.agentsDropped).toBe(0);
+    expect(gm.agentsDropped).toBe(2); // (two seen dropping in the scene's last shot, the whole Lab: Jamie, 2026-11-24)
     expect(gm.accTime).toBe(0);
   });
 
@@ -2070,7 +2070,7 @@ describe('recruits', () => {
 
   it('the Aquarium Worker and Ghost Girl say more before their fights', () => {
     const getText = level => level.rival.intro.lines.map(({ text }) => text).join(' ');
-    expect(getText(LEVELS.aquarium)).toMatch(/must've worked here/);
+    expect(getText(LEVELS.aquarium)).toMatch(/must work here/);
     expect(getText(LEVELS.rooftop)).toMatch(/ancestors/);
     expect(LEVELS.aquarium.rival.intro.lines[0].name).toBe('Aquarium Worker');
   });

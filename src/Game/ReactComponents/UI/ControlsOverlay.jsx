@@ -53,7 +53,6 @@ const PAGES = [
     colors: {
       ...Object.fromEntries([1, 2, 3].map(n => [`Digit${n}`, KEY_COLORS.player])),
       ...Object.fromEntries([4, 5, 6].map(n => [`Digit${n}`, KEY_COLORS.teammate])),
-      ...Object.fromEntries([7, 8, 9].map(n => [`Digit${n}`, KEY_COLORS.recruit])),
       ...Object.fromEntries(["ArrowUp", "ArrowLeft", "ArrowDown", "ArrowRight"].map(code => [code, KEY_COLORS.move]))
     },
     // the keys each hand's fingertips rest on
@@ -65,7 +64,6 @@ const PAGES = [
     lines: [
       { keys: "1 2 3", text: "Your powers", color: KEY_COLORS.player },
       { keys: "4 5 6", text: "Your teammate's powers", color: KEY_COLORS.teammate },
-      { keys: "7 8 9", text: "Call in a recruit", color: KEY_COLORS.recruit },
       { keys: "Arrows", text: "Move", color: KEY_COLORS.move }
     ]
   },
@@ -74,8 +72,7 @@ const PAGES = [
     colors: {
       ...Object.fromEntries(["KeyW", "KeyA", "KeyS", "KeyD"].map(code => [code, KEY_COLORS.move])),
       ...Object.fromEntries([1, 2, 3].map(n => [`Numpad${n}`, KEY_COLORS.player])),
-      ...Object.fromEntries([4, 5, 6].map(n => [`Numpad${n}`, KEY_COLORS.teammate])),
-      ...Object.fromEntries([7, 8, 9].map(n => [`Numpad${n}`, KEY_COLORS.recruit]))
+      ...Object.fromEntries([4, 5, 6].map(n => [`Numpad${n}`, KEY_COLORS.teammate]))
     },
     hands: [
       { side: "left", fingers: [{ x: 11, y: 37 }, "KeyA", "KeyW", "KeyD"], thumb: { x: 45, y: 67 } },
@@ -84,8 +81,7 @@ const PAGES = [
     lines: [
       { keys: "W A S D", text: "Move", color: KEY_COLORS.move },
       { keys: "Numpad 1 2 3", text: "Your powers", color: KEY_COLORS.player },
-      { keys: "Numpad 4 5 6", text: "Your teammate's powers", color: KEY_COLORS.teammate },
-      { keys: "Numpad 7 8 9", text: "Call in a recruit", color: KEY_COLORS.recruit }
+      { keys: "Numpad 4 5 6", text: "Your teammate's powers", color: KEY_COLORS.teammate }
     ]
   }
 ];

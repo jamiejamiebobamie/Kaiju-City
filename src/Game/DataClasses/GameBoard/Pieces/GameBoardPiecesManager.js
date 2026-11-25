@@ -48,7 +48,10 @@ export class GameBoardPiecesManager {
     }
 
     getPlayerTeamUiState() {
-        return this.getTeamPieces(this.getPlayerTeamIndex()).filter(piece => !piece.isRecruit).map(piece => piece.getUiState());
+        // the player turned Kaiju at the end (GameManager.turnPlayerKaijuFighter): their own HUD, with the Kaiju's health and
+        // powers (all ten: the HUD's 1 to 3, and a strip for 4 to 0)
+        return this.getTeamPieces(this.getPlayerTeamIndex()).filter(piece => !piece.isRecruit && !piece.isPlayerKaiju)
+            .map(piece => piece.kaijuBody ? { ...piece.kaijuBody.getUiState(), gender: piece.avatar, color: piece.color } : piece.getUiState());
     }
 
     // is anyone else on this side, on the board and alive?

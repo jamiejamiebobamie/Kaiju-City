@@ -220,9 +220,11 @@ const step = pet => {
     const isHello = !next.hasIntroduced;
     const isGreetingPick = !isHello && next.isGreeting; // (the line straight after the hello: always the pick)
     next.line = isHello ? `Hi, I'm ${MASCOT}!` : isGreetingPick ? "Pick three abilities" : getNextLine(); // (no generation number in it: Jamie, playtest 34; was "Hi, I am ..., your virtual Kaiju!", then "I'm Stompy!"; now "Hi, I am Stompy!": Jamie, 2026-11-19)
+    // (the greeting's pick counts as the pick: two lines next, then the pick again. Jamie, 2026-11-24: it said it twice)
+    if (isGreetingPick) SPOKEN.count = 1;
     next.hasIntroduced = true;
-    // (its hello up twice as long, so it's seen: Jamie, playtest 29)
-    next.speakingUntil = now + getSpeakMs(next.line) * (isHello ? 2 : 1);
+    // (its hello up as long as any line: Jamie, 2026-11-24, half the time; was twice as long, playtest 29)
+    next.speakingUntil = now + getSpeakMs(next.line);
     // (after the hello, "Pick three abilities" straight away: the picker's pendants wait for it. Jamie, playtest 34)
     next.nextSpeakAt = next.speakingUntil + (isHello ? 500 : between(TAMA.speakEveryMs));
     if (isGreetingPick) next.greetingEndsAt = next.speakingUntil;

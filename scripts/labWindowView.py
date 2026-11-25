@@ -7,6 +7,8 @@
 #     TRAFFIC_OUT=src/Game/DataClasses/Levels/data/labWindowTraffic.json python -I scripts/labWindowView.py public/Map.gif public/levels/lab-window.png
 #   the walking Lab:
 #     TRAFFIC_OUT=src/Game/DataClasses/Levels/data/labIntroWindowTraffic.json python -I scripts/labWindowView.py public/Map.gif public/levels/labIntro-window.png HZ=262 NEAR=33 F=260
+#   the walking Lab by day (Jamie, 2026-11-24: in the walking Peninsula's sections; at night from the Lab before the trap):
+#     python -I scripts/labWindowView.py public/Map.gif public/levels/labIntro-window-day.png HZ=262 NEAR=33 F=260 DAY=1
 #   the landing page (Jamie, 2026-11-18): straight up the Peninsula's middle, the logo's own skyline standing at its tip
 #   (so no city drawn), the vanishing point on the logo's zoom spot (MainMenu's LANDING_VIEW places it there):
 #     TRAFFIC_OUT=src/Components/data/landingTraffic.json python -I scripts/labWindowView.py public/Map.gif public/zoom-scene/0-peninsula.png LANDING=1
@@ -25,6 +27,7 @@ VPX = None                        # the vanishing point's column (None: the midd
 CITY = 1                          # the skyline drawn at the tip
 LANDING = 0                       # the landing page's view (its own size, camera, sky and moon: below)
 MOON_X = MOON_Y = MOON_R = None   # the moon's middle and size, if not by the city
+DAY = 0                           # by day: a blue sky and sea, the land in full color, no stars or moon
 for arg in sys.argv[3:]:
     if arg.split('=')[0] == 'LANDING':
         LANDING = int(arg.split('=')[1])
@@ -102,6 +105,9 @@ mp = np.asarray(Image.open(src_path).convert('RGB')).astype(np.float32)
 MH, MW = mp.shape[:2]
 SEA = np.array([3, 8, 16], np.float32)
 SPECK = np.array([8, 23, 42], np.float32)
+if DAY:
+    SEA = np.array([38, 86, 132], np.float32)
+    SPECK = np.array([52, 102, 148], np.float32)
 # land: the lit part, joined up, holes filled, a little coast kept round it
 bright = (mp.sum(axis=2) > 90).astype(np.uint8)
 bright = cv2.morphologyEx(bright, cv2.MORPH_CLOSE, np.ones((7, 7), np.uint8))
@@ -216,6 +222,13 @@ if LANDING:
     SURF &= cv2.dilate(land.astype(np.uint8), np.ones((5, 5), np.uint8)).astype(bool)  # (the coasts only: the map's own
     # moon reflection out at sea is these colours too)
     clean[SURF] = clean[SURF] * 0.3 + np.array([10, 22, 44], np.float32) * 0.7
+if DAY:
+    # the map is drawn by night (dark blocks, glowing streets): by day, grey blocks, pale roads, the parks a fuller green
+    lum = mp.mean(axis=2)
+    parks = (mp[..., 1] > mp[..., 0] + 6) & (mp[..., 1] > 40) & land
+    city = land & ~parks
+    clean[city] = np.array([112, 114, 112], np.float32) + np.clip(lum[city] - 30, 0, 160)[:, None] * np.array([0.75, 0.72, 0.66], np.float32)
+    clean[parks] = np.clip(mp[parks] * np.array([1.2, 1.7, 1.1], np.float32) + np.array([20, 30, 10], np.float32), 0, 255)
 # the green hills raised (Jamie, playtest 36): parkland rises with its distance in from its edges, highest near the base
 green = ((mp[..., 1] > mp[..., 0] + 6) & (mp[..., 1] > 40) & land).astype(np.uint8)
 green = cv2.morphologyEx(green, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
@@ -255,6 +268,8 @@ else:
 
 # ---- past the map: the sea, and the far lands where the bridges go ----
 FAR_LAND = np.array([16, 22, 40], np.float32)   # dark blue, made out faintly against the sky and sea
+if DAY:
+    FAR_LAND = np.array([92, 112, 118], np.float32)  # blue-grey hills in the haze
 def far_land(mx, my):
     # hills to the north-west, where the top bridge leads; a long low shore to the east, where the right one does
     north_west = (my < -70 + 0.25 * (mx - 60)) & (mx < 260) & (my > -2600)
@@ -313,7 +328,10 @@ for s, d in enumerate(steps):
     haze = (1 - np.exp(-d / 1100))
     # (the far lands only a little hazed: hazed fully they matched the sky, and vanished)
     haze = np.where(is_far, haze * 0.25, haze)[:, None]
-    col = col * 0.66 * (1 - haze) + np.array([24, 36, 64]) * haze
+    if DAY:
+        col = col * 1.15 * (1 - haze) + np.array([170, 198, 222]) * haze
+    else:
+        col = col * 0.66 * (1 - haze) + np.array([24, 36, 64]) * haze
     y_top = HZ + row_at(d) - h * height_at(d) if LANDING else HZ + (K - h * F) / d
     top = np.maximum(np.ceil(y_top), 0)
     for x in np.nonzero(top < ybuf)[0]:
@@ -336,8 +354,10 @@ ys = np.arange(H, dtype=np.float32)[:, None]
 t = np.clip(ys / HZ, 0, 1)
 SKY_TOP = np.array([11, 12, 14]) if LANDING else np.array([4, 6, 16])  # (the landing's: its page's own black, #0b0c0e)
 sky = SKY_TOP * (1 - t ** (2.2 if LANDING else 1))[..., None] + np.array([26, 40, 72]) * (t ** (2.2 if LANDING else 1))[..., None]
+if DAY:
+    sky = np.array([74, 134, 204]) * (1 - t)[..., None] + np.array([184, 212, 236]) * t[..., None]
 sky = np.broadcast_to(sky, (H, W, 3)).copy()
-stars = (rng.random((H, W)) < 0.0009) & (ys < HZ * 0.9)
+stars = (rng.random((H, W)) < 0.0009) & (ys < HZ * 0.9) & (not DAY)
 if not LANDING:  # (the landing's twinkle: drawn live by LandingScene's Stars, from 'stars' in the traffic file)
     sky[stars] = [200, 210, 255]
 rows = np.arange(H)[:, None]
@@ -514,7 +534,7 @@ if CITY and base and os.path.exists(SKYLINE):
     height_px = max(2, int(sky_img.height * width / sky_img.width * TIP['tall']))
     sky_img = sky_img.resize((width, height_px), Image.LANCZOS)
     arr = np.asarray(sky_img).astype(np.float32)
-    arr[..., :3] *= 0.8
+    arr[..., :3] *= 1.0 if DAY else 0.8
     img.alpha_composite(Image.fromarray(arr.astype(np.uint8), 'RGBA'), (int(base[0] - width / 2), int(base[1] - height_px)))
     city_right = base[0] + width / 2
 
@@ -532,11 +552,18 @@ crescent = disc & ~bite & in_sky
 halo = np.clip(1 - (np.hypot(xx - cx, yy - cy) - moon_r) / (moon_r * 1.6), 0, 1) * in_sky
 arr = np.asarray(img).astype(np.float32)
 # (the landing's moon is its own layer, placed and sized live: LandingScene's Moon, Jamie's ?tune panel)
-if not LANDING:
+if not LANDING and not DAY:
     arr[..., :3] += (halo ** 2)[..., None] * np.array([38, 44, 70])
 # (the landing's pale yellow: Jamie; the dithered board-map disc tried, and taken back)
-if not LANDING:
+if not LANDING and not DAY:
     arr[crescent, :3] = arr[crescent, :3] * 0.15 + np.array([236, 232, 205]) * 0.85
+# by day, the sun where the moon is (Jamie, playtest 38: so the two views mirror each other): a full disc, a warm glow
+if not LANDING and DAY:
+    sun = disc & in_sky
+    glow = np.clip(1 - (np.hypot(xx - cx, yy - cy) - moon_r) / (moon_r * 2.6), 0, 1) * in_sky
+    arr[..., :3] += (glow ** 2)[..., None] * np.array([70, 58, 22])
+    core = np.clip(1 - np.hypot(xx - cx, yy - cy) / moon_r, 0, 1)
+    arr[sun, :3] = arr[sun, :3] * 0.05 + (np.array([255, 236, 170]) + core[sun][:, None] * np.array([0, 19, 70])) * 0.95
 img = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), 'RGBA')
 if False:  # (the joiner under the city is drawn over the skyline now: scripts/landingJoiner.py, Jamie, round 4)
     # ---- under the city (Jamie): a darkened patch of ground with small jagged roots, like a tree trunk's in the ground

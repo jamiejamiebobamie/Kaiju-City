@@ -141,9 +141,11 @@ export class PlayerInputHandler {
 
     usePlayerAbilityFromIndex(i, accTime) {
         // only 1 to 3, and only for the one the player plays as: no more commanding the teammate with 4 to 6 (Jamie, playtest 18)
-        if (i < 0 || i >= 3) return;
-        // playing on as another of the team (the player down, GameManager.updateTakeOver): 1 to 3 are that one's powers
+        // the player turned Kaiju at the end: all ten, 1 to 9 and 0 (Jamie, 2026-11-24)
         const controlled = this.gameManagerProxy.getControlledPiece();
+        const keyCount = controlled && controlled.isPlayerKaiju ? controlled.abilities.length : 3;
+        if (i < 0 || i >= keyCount) return;
+        // playing on as another of the team (the player down, GameManager.updateTakeOver): 1 to 3 are that one's powers
         if (controlled && controlled.pieceIndex != 0) {
             this.useControlledAbility(controlled, i, accTime);
             return;

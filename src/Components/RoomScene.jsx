@@ -132,10 +132,11 @@ export const RoomMonitor = ({ isShown = true }) => {
 };
 
 // the room's living things, over its picture (in a box the picture's shape)
-export const RoomExtras = () => (
+// ('hasClock': false for the Lab's desk, which has none: Jamie, playtest 39)
+export const RoomExtras = ({ hasClock = true }) => (
   <>
     <MonitorStand />
-    <ClockDigits style={at(256, 538, 100, 50)} />
+    {hasClock && <ClockDigits style={at(256, 538, 100, 50)} />}
     <Steam style={at(717, 470, 50, 68)}>
       {[0, 0.8, 1.6].map((delay, n) => <span key={n} style={{ left: `${20 + n * 22}%`, animationDelay: `${delay}s` }} />)}
     </Steam>

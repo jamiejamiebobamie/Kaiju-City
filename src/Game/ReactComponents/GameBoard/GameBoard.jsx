@@ -252,8 +252,7 @@ const COVER_LOOK = {
 
 // a scene's hotspots (where their labels are) and, once open, its way out
 const getCoverSights = (level, activePhases) => [
-  ...(level.sceneElements || []).filter(({ type, hidePhase }) => type == 'hotspot' && !(hidePhase && activePhases.includes(hidePhase)))
-    .map(({ x, y, width, labelY }) => ({ x: x + width / 2, y: labelY ?? y })),
+  ...getActiveHotspots(level, activePhases).map(({ x, y, width, labelY }) => ({ x: x + width / 2, y: labelY ?? y })),
   ...(level.exit && activePhases.includes(EXIT_OPEN_PHASE) ? [level.exit.spot] : [])
 ];
 
@@ -421,13 +420,23 @@ const SpotlitBody = ({ worldRef, world, children, at, rowPx }) => {
   return (
     <SpotLayer aria-hidden="true">
       <SpotWorld ref={ref} style={{ width: `${world.width}px`, height: `${world.height}px` }}>
-        {/* the cone, narrow up high and as wide as the pool where it lands */}
-        <SpotLight style={{
-          left: at.x - poolW / 2, top: at.y - coneH, width: poolW, height: coneH,
-          clipPath: `polygon(${50 - (SPOT.coneTopRows * rowPx * 50) / poolW}% 0, ${50 + (SPOT.coneTopRows * rowPx * 50) / poolW}% 0, 100% 100%, 0 100%)`,
-          background: `linear-gradient(to bottom, rgba(${SPOT.color}, 0), rgba(${SPOT.color}, 0.16) 70%, rgba(${SPOT.color}, 0.26))`,
-          filter: "blur(2px)", mixBlendMode: "screen"
-        }} />
+        {/* the cone, narrow up high and as wide as the pool where it lands. its bottom the pool's far curve, soft
+            (Jamie, 2026-11-24: it ended in a hard flat line): down to the pool's front edge, masked by the pool's
+            ellipse there, and fading out above it at the sides */}
+        {(() => {
+          const height = coneH + poolH / 2;
+          const topShare = (SPOT.coneTopRows * rowPx * 50) / poolW;
+          const mask = `linear-gradient(to bottom, black ${coneH - poolH * 0.6}px, transparent ${coneH}px), radial-gradient(ellipse ${poolW / 2}px ${poolH / 2}px at 50% ${coneH}px, black 55%, transparent 100%)`;
+          return (
+            <SpotLight style={{
+              left: at.x - poolW / 2, top: at.y - coneH, width: poolW, height,
+              clipPath: `polygon(${50 - topShare}% 0, ${50 + topShare}% 0, 100% 100%, 0 100%)`,
+              background: `linear-gradient(to bottom, rgba(${SPOT.color}, 0), rgba(${SPOT.color}, 0.16) ${70 * coneH / height}%, rgba(${SPOT.color}, 0.26) ${100 * coneH / height}%)`,
+              WebkitMaskImage: mask, maskImage: mask,
+              filter: "blur(2px)", mixBlendMode: "screen"
+            }} />
+          );
+        })()}
         {/* the pool on the ground */}
         <SpotLight style={{
           left: at.x - poolW / 2, top: at.y - poolH / 2, width: poolW, height: poolH, borderRadius: "50%",
@@ -940,6 +949,8 @@ export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade 
     const pickEnemy = makeEnemyFocus();
     let leftPanShare = 0; // the walking scene's pan to its left edge (level.coverPanLeftX), eased in and out
     let rightPanShare = 0; // the same to its right edge (level.coverPanRightX)
+    let talkShare = 0; // the walking scene's look along a talk (getTalkLookSpot), eased in and out
+    let lastTalkSpot;
     const moveCamera = () => {
       const player = gameManager.getFocusPiece();
       if (!player || !worldRef.current) return;
@@ -996,17 +1007,27 @@ export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade 
           };
           center = { x: center.x + (between.x - center.x) * weight, y: center.y + (between.y - center.y) * weight };
         }
+        // a talk the camera looks along (the Agent's nervous answer: Jamie, 2026-11-24): the middle between the player
+        // and the speaker, across, kept as the player moves; no edge pans meanwhile
+        const talkSpot = gameManager.getTalkLookSpot && gameManager.getTalkLookSpot();
+        if (talkSpot) lastTalkSpot = talkSpot;
+        talkShare = Math.min(Math.max(talkShare + (talkSpot ? 1 : -1) * COVER_LOOK.edgePanStep, 0), 1);
+        if (talkShare > 0 && lastTalkSpot) {
+          const spot = getWorldLocation(lastTalkSpot);
+          const eased = talkShare * talkShare * (3 - 2 * talkShare);
+          center = { ...center, x: center.x + ((x + spot.x) / 2 - center.x) * eased };
+        }
         // past a level's 'coverPanLeftX', the view goes all the way to the scene's left edge (Jamie: the Lab's
         // "Change powers" label in view before the player has walked all the way over)
         if (level.coverPanLeftX !== undefined) {
-          const isLeft = x <= level.coverPanLeftX;
+          const isLeft = !talkSpot && x <= level.coverPanLeftX;
           leftPanShare = Math.min(Math.max(leftPanShare + (isLeft ? 1 : -1) * COVER_LOOK.edgePanStep, 0), 1);
           const eased = leftPanShare * leftPanShare * (3 - 2 * leftPanShare);
           center = { ...center, x: center.x + (viewWidth / 2 - center.x) * eased };
         }
         // and to the right edge past 'coverPanRightX' (Jamie, playtest 18: the Lab's "Choose color" label whole)
         if (level.coverPanRightX !== undefined) {
-          const isRight = x >= level.coverPanRightX;
+          const isRight = !talkSpot && x >= level.coverPanRightX;
           rightPanShare = Math.min(Math.max(rightPanShare + (isRight ? 1 : -1) * COVER_LOOK.edgePanStep, 0), 1);
           const eased = rightPanShare * rightPanShare * (3 - 2 * rightPanShare);
           center = { ...center, x: center.x + (world.width - viewWidth / 2 - center.x) * eased };
@@ -1019,7 +1040,10 @@ export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade 
       if (!isWide) {
         // the keys are in charge when the mouse's hover is hidden
         const isLooking = isMouseLook && !!gameManager.getHoveredTileIndex();
-        const closestEnemy = isEnemyZoom ? pickEnemy(player, getEnemyTargets(player, gameManager), nowMs) : undefined;
+        // (a portal's or a stairway's end within 5 tiles first: the camera shows it with the player, so it can be
+        // walked into. Jamie, 2026-11-24)
+        const way = isEnemyZoom && gameManager.getCameraWay ? gameManager.getCameraWay(player) : undefined;
+        const closestEnemy = way || (isEnemyZoom ? pickEnemy(player, getEnemyTargets(player, gameManager), nowMs) : undefined);
         // (the class battle's view, about the avatar's middle rather than its feet: its head was cut off). A steadicam
         // locked on it: dead center every frame, no easing, no leaning (Jamie, playtest 27)
         const lookAt = getWorldLocation(player.charLocation);
@@ -1041,7 +1065,8 @@ export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade 
           isLooking ? mouseAim.current : { x: 0, y: 0 },
           closestEnemy ? getWorldLocation(closestEnemy.charLocation) : undefined,
           !!closestEnemy && !!closestEnemy.isTense, // a sea creature after the player: in tighter and quicker
-          gameManager.getPlayZoomShare ? gameManager.getPlayZoomShare() : 1
+          gameManager.getPlayZoomShare ? gameManager.getPlayZoomShare() : 1,
+          !!way && closestEnemy == way // (a way across: as close as for a sea creature: Jamie, playtest 39)
         );
       }
       worldRef.current.style.transform = (isWide ? wideCamera : closeCamera).getTransform();
@@ -1370,7 +1395,7 @@ export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade 
           <div style={{ position: "absolute", left: -WATER_REACH_PX, top: -WATER_REACH_PX, width: world.width + 2 * WATER_REACH_PX, height: world.height + 2 * WATER_REACH_PX, zIndex: -6, pointerEvents: "none", backgroundImage: `url(${level.waterTile.src})` /* (smoothed as the map is, so zoomed out its specks blur as the map's do: Jamie, playtest 34) */, backgroundSize: `${level.waterTile.size * (world.width / level.waterTile.ofWidth)}px`, backgroundPosition: `${WATER_REACH_PX}px ${WATER_REACH_PX}px`, opacity: isPaused ? 0 : 1 }} />
         )}
         {levelLayers}
-        {level.windowTraffic && <TrafficLights paths={level.windowTraffic.paths} glints={level.windowTraffic.glints} width={world.width} height={world.height} zIndex={level.windowTraffic.zIndex} />}
+        {level.windowTraffic && <TrafficLights paths={level.windowTraffic.paths} glints={level.windowTraffic.glints} width={world.width} height={world.height} zIndex={level.windowTraffic.zIndex} opacity={level.windowTraffic.opacity} />}
         {foregroundLayers}
         <SceneElements level={level} activePhases={activePhases} isPaused={isPaused} onHotspot={onHotspot} isDialogueLog={getIsDialogueLog()} isSettled={!isMain || !!gameManager.isRetry}
           lockedSites={gameManager.isCoopGuest ? (level.sites || []).filter(site => getIsSiteLocked(site, gameManager.coopWaitShown)).map(site => site.icon) : []} />

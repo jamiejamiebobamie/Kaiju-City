@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
 import { TILE_STATUSES_AND_ABILITY_DATA } from "Utils/gameState";
-import DIALOGUE from "Game/DataClasses/Dialogue/dialogue.json";
+import DIALOGUE, { DIALOGUE_FILE_NAME } from "Game/DataClasses/Dialogue/dialogueFile";
 import SUMMARIES from "./summaries.json";
 import { fillSummary, getCardStatus, getPathCards, getSummaryCards } from "./summaryCards";
 import { DEFAULT_PATH, getIsBranchingSection, getSectionItems, RIVALS, STORY } from "./storyPath";
@@ -276,7 +276,96 @@ const Keys = styled.div`
   line-height: 1.7;
 `;
 
+/*
+  The bios (Jamie, playtest 38): Guy's and Girl's files on the avatar select's side screen, and the recruits' personnel
+  files on the Lab's computer. Kept in dialogue.json ('bios') and saved with the lines.
+*/
+const BIO_GROUPS = [
+  ["avatars", "Avatar select's side screen", { guy: "Guy", girl: "Girl" }],
+  ["recruits", "Lab computer: personnel files", { hazmat: "Hazmat Worker", punk: "Punk Guy", black_female: "Ghost Girl", mermaid: "Aquarium Worker" }]
+];
+const BioCard = styled.div`
+  margin: 14px 0;
+  padding: 12px;
+  border: 1px solid ${LOOK.line};
+  border-radius: 6px;
+  background: ${LOOK.panel};
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 6px 10px;
+  align-items: start;
+  & label { color: ${LOOK.dim}; font-size: 12px; padding-top: 5px; }
+  & input, & textarea { width: 100%; box-sizing: border-box; background: ${LOOK.bg}; color: ${LOOK.text}; border: 1px solid ${LOOK.line}; padding: 5px; font: inherit; }
+  & textarea { min-height: 96px; resize: vertical; line-height: 1.45; }
+  & h3 { grid-column: 1 / -1; margin: 0 0 4px; font-size: 14px; color: ${LOOK.accent}; display: flex; gap: 10px; align-items: center; }
+  & img { width: 36px; aspect-ratio: 3 / 4; object-fit: cover; object-position: top; border: 1px solid ${LOOK.line}; }
+`;
+const BioLineRow = styled.div`
+  display: grid;
+  grid-template-columns: 150px 1fr auto;
+  gap: 6px;
+  margin-bottom: 4px;
+  & button { background: ${LOOK.line}; color: ${LOOK.text}; border: 1px solid #30363d; border-radius: 4px; padding: 2px 8px; cursor: pointer; }
+  & button:hover { border-color: #ff6b6b; color: #ff6b6b; }
+`;
+const BioEditor = ({ bios, onEdit }) => (
+  <>
+    {BIO_GROUPS.map(([group, title, names]) => (
+      <section key={group}>
+        <SectionHeader>{title}</SectionHeader>
+        {Object.keys(names).map(id => {
+          const bio = bios[group][id];
+          const set = patch => onEdit(all => { Object.assign(all[group][id], patch); });
+          const setLine = (index, part, value) => onEdit(all => { all[group][id].lines[index][part] = value; });
+          return (
+            <BioCard key={id}>
+              <h3><img src={`/levels/portraits/${id}.png`} alt="" />{names[id]}</h3>
+              <label>File</label><input value={bio.file} onChange={e => set({ file: e.target.value })} />
+              <label>Name</label><input value={bio.name} onChange={e => set({ name: e.target.value })} />
+              <label>Bio</label><textarea value={bio.bio} onChange={e => set({ bio: e.target.value })} />
+              {bio.originalBio !== undefined && <>
+                <label>Your words</label>
+                <div>
+                  <Original>{bio.originalBio}</Original>
+                  <ReviewButtons>
+                    <button data-approve onClick={() => onEdit(all => { delete all[group][id].originalBio; })}>Approve</button>
+                    <button data-revert onClick={() => onEdit(all => { all[group][id].bio = all[group][id].originalBio; delete all[group][id].originalBio; })}>Revert</button>
+                  </ReviewButtons>
+                </div>
+              </>}
+              <label>Info lines</label>
+              <div>
+                {bio.lines.map(([label, value], index) => (
+                  <BioLineRow key={index}>
+                    <input value={label} onChange={e => setLine(index, 0, e.target.value)} placeholder="Label" />
+                    <input value={value} onChange={e => setLine(index, 1, e.target.value)} placeholder="What it says" />
+                    <button title="Remove this line" onClick={() => onEdit(all => { all[group][id].lines.splice(index, 1); })}>×</button>
+                  </BioLineRow>
+                ))}
+                <ButtonRow style={{ marginTop: 2 }}><button onClick={() => onEdit(all => { all[group][id].lines.push(["", ""]); })}>+ Add a line</button></ButtonRow>
+              </div>
+              {"status" in bio && <><label>Status</label><input value={bio.status} onChange={e => set({ status: e.target.value })} /></>}
+            </BioCard>
+          );
+        })}
+      </section>
+    ))}
+  </>
+);
+
 const POWER_NAMES = TILE_STATUSES_AND_ABILITY_DATA.map(({ activeName }) => activeName).filter(Boolean);
+
+const Original = styled.div`
+  margin-top: 3px;
+  padding-left: 8px;
+  border-left: 2px solid ${LOOK.branch};
+  color: ${LOOK.dim};
+  font-size: 12px;
+`;
+const ReviewButtons = styled(ButtonRow)`
+  & button[data-approve] { border-color: ${LOOK.accent}; color: ${LOOK.accent}; }
+  & button[data-revert] { border-color: ${LOOK.branch}; color: ${LOOK.branch}; }
+`;
 
 // a line's look in the script
 // 'isCompact': in a branch's narrow version columns, the speaker sits over the words
@@ -286,6 +375,8 @@ const LineView = ({ item, isSelected, isMatch, onSelect, refFor, isCompact = fal
     <div>
       {item.text}
       {item.tags.map(tag => <Tag key={tag} $color={tag == "Jamie" ? LOOK.accent : tag == "siren" ? "#ff6b6b" : undefined}>{tag}</Tag>)}
+      {/* Claude's polish, awaiting Jamie (playtest 38): the old words under the new */}
+      {item.line && item.line.original !== undefined && <Original>{item.line.original === "" ? "(a new line: Claude added it)" : `was: ${item.line.original}`}</Original>}
     </div>
   </LineRow>
 );
@@ -328,6 +419,13 @@ export const DialogueViewer = () => {
     change(next.scenes);
     return next;
   });
+  // the bios: (bios) => change them in place
+  const editBios = change => setDialogue(current => {
+    const next = structuredClone(current);
+    change(next.bios);
+    return next;
+  });
+  const [isBiosView, setIsBiosView] = useState(false);
   const updateLine = (sceneId, lineId, patch) => editDialogue(all => {
     const found = findLine(all[sceneId].lines, lineId);
     if (!found) return;
@@ -362,7 +460,7 @@ export const DialogueViewer = () => {
       const response = await fetch("/__dialogue/save", { method: "POST", body: JSON.stringify(dialogue) });
       if (!response.ok) throw new Error(await response.text());
       setSavedJson(JSON.stringify(dialogue));
-      setSaveNote("Saved to dialogue.json. Reload the game to hear it.");
+      setSaveNote(`Saved to ${DIALOGUE_FILE_NAME}. Reload the game to hear it.`);
     } catch (error) {
       setSaveNote(`Not saved: ${error.message}`);
     }
@@ -400,7 +498,7 @@ export const DialogueViewer = () => {
         if (isDirty) save();
         return;
       }
-      if (["INPUT", "SELECT", "TEXTAREA"].includes(event.target.tagName)) return;
+      if (["INPUT", "SELECT", "TEXTAREA"].includes(event.target.tagName) || isBiosView) return;
       const branch = getBranchOf(selected);
       const moves = {
         ArrowDown: () => goTo(selectedIndex + 1),
@@ -484,6 +582,11 @@ export const DialogueViewer = () => {
         <strong>Kaiju City dialogue</strong>
         <SaveButton disabled={!isDirty} onClick={save}>{isDirty ? "Save (Ctrl+S)" : "Saved"}</SaveButton>
         {saveNote && <span style={{ color: LOOK.dim, fontSize: 12 }}>{saveNote}</span>}
+        {(() => {
+          // Claude's polish still to approve or revert (Jamie, playtest 38)
+          const count = JSON.stringify(dialogue.scenes).split('"original":').length - 1 + Object.values(dialogue.bios || {}).flatMap(Object.values).filter(bio => bio.originalBio !== undefined).length;
+          return count ? <span style={{ color: LOOK.branch, fontSize: 12 }}>{count} of Claude's edits to review (marked "was:")</span> : null;
+        })()}
         <label>Player <select value={path.avatar} onChange={e => setPath({ ...path, avatar: e.target.value })}><option value="guy">Guy</option><option value="girl">Girl</option></select></label>
         <label>A power <select value={path.powerName} onChange={e => setPath({ ...path, powerName: e.target.value })}>{POWER_NAMES.map(name => <option key={name}>{name}</option>)}</select></label>
         {RIVALS.map(({ id, name }) => (
@@ -502,13 +605,14 @@ export const DialogueViewer = () => {
 
       <Timeline>
         {sections.map(({ label, index, items, isBranching }) => (
-          <TimelineItem key={label} $isCurrent={index == currentSection} $isEmpty={!items.length} onClick={() => goToSection(index)}>
+          <TimelineItem key={label} $isCurrent={!isBiosView && index == currentSection} $isEmpty={!items.length} onClick={() => { setIsBiosView(false); setTimeout(() => goToSection(index)); }}>
             {isBranching ? "◇ " : ""}{label}
           </TimelineItem>
         ))}
+        <TimelineItem $isCurrent={isBiosView} onClick={() => setIsBiosView(true)} style={{ marginTop: 12, borderTop: `1px solid ${LOOK.line}` }}>Bios</TimelineItem>
       </Timeline>
 
-      <Script>
+      {isBiosView ? <Script><BioEditor bios={dialogue.bios} onEdit={editBios} /></Script> : <Script>
         {sections.map(({ label, index, items, scenes: sceneIds }) => (
           <section key={label} ref={element => { sectionRefs.current[index] = element; }}>
             <SectionHeader>{index + 1}. {label}</SectionHeader>
@@ -526,7 +630,7 @@ export const DialogueViewer = () => {
             })}
           </section>
         ))}
-      </Script>
+      </Script>}
 
       <Side>
         <SideTop>
@@ -548,6 +652,16 @@ export const DialogueViewer = () => {
                   <textarea value={line.text || ""} onChange={e => updateLine(sceneId, line.id, { text: e.target.value })} />
                   <ButtonRow>{PRONOUN_WORDS.map(word => <button key={word} onClick={() => updateLine(sceneId, line.id, { text: `${line.text || ""}${word}` })}>{word}</button>)}</ButtonRow>
                 </dd>
+                {line.original !== undefined && <>
+                  <dt>Claude's polish: approve it, or go back to the original</dt>
+                  <dd>
+                    <Original>{line.original === "" ? "(a new line: Claude added it. Revert deletes it)" : line.original}</Original>
+                    <ReviewButtons>
+                      <button data-approve onClick={() => updateLine(sceneId, line.id, { original: undefined })}>Approve</button>
+                      <button data-revert onClick={() => line.original === "" ? deleteLine(sceneId, line.id) : updateLine(sceneId, line.id, { text: line.original, original: undefined })}>Revert</button>
+                    </ReviewButtons>
+                  </dd>
+                </>}
                 <dt>On this path it reads</dt><dd>{selectedLine.text}</dd>
                 {getHasShots(sceneId) && <>
                   <dt>Camera</dt>

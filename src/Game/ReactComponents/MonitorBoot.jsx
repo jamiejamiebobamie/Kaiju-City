@@ -5,6 +5,7 @@ import { getIsGameBeaten } from "../DataClasses/Unlocks";
 import { unlockEverything } from "../DataClasses/Avatars";
 import { checkPeerService, getLinkedRoomCode } from "../Multiplayer/peerLink";
 import { MultiplayerLobby } from "../Multiplayer/MultiplayerLobby";
+import { LabTerminal, LAB_TERMINAL } from "./LabTerminal";
 
 /*
   The main monitor's boot (Jamie, playtest 29), the first time it comes on in a visit: the game's logo (off the
@@ -131,6 +132,12 @@ const Logo = styled.img`
   /* (a brighter, whiter purple edge, so its dark Kaiju at the sides stand out: Jamie, playtest 31; was a deep purple) */
   filter: drop-shadow(0 0 0.25cqw rgba(236, 214, 255, 0.95)) drop-shadow(0 0 1cqw rgba(196, 140, 255, 0.8));
   animation: ${logoIn} 900ms ease-out both;
+  transition: width 500ms ease-in-out, top 500ms ease-in-out;
+  /* the mode's choice: smaller and higher, the three buttons in a column under it (Jamie, 2026-11-24) */
+  ${props => props.$isSmall && css`
+    width: 72%; /* (a bit bigger and lower, filling the space over the buttons: Jamie, playtest 38; was 60%, 30%) */
+    top: 32%;
+  `}
 `;
 const Bar = styled.div`
   position: absolute;
@@ -193,14 +200,18 @@ const PlayButton = styled.div`
 
 // after PLAY, the game's mode (Jamie, 2026-11-18): Single Player, or Multiplayer, closed until the game's been beaten
 // once (Unlocks: GAME_BEATEN_UNLOCK), or while the multiplayer service is down (peerLink: checkPeerService)
+// (a column at the bottom, each as wide as the widest: Jamie, 2026-11-24; was a row)
 const ModeRow = styled.div`
   position: absolute;
   left: 50%;
-  top: 80.7%;
-  transform: translate(-50%, -50%);
+  bottom: 8.5%; /* (a bit higher: Jamie, playtest 38; was 5.5%) */
+  transform: translateX(-50%);
   display: flex;
-  gap: 2cqw;
+  flex-direction: column;
+  gap: 1.2cqw;
   align-items: stretch;
+  width: 50%;
+  & > button { white-space: nowrap; padding: 0.8cqw 1.5cqw; }
 `;
 const ModeButton = styled.button`
   padding: 1cqw 2cqw;
@@ -223,7 +234,7 @@ const ModeButton = styled.button`
 const DevUnlock = styled.button`
   position: absolute;
   left: 50%;
-  top: 92%;
+  top: 1.5%; /* (out of the buttons' way, now at the bottom) */
   transform: translateX(-50%);
   padding: 0.3cqw 0.8cqw;
   font: 0.8cqw monospace;
@@ -241,11 +252,33 @@ const ModeNote = styled.span`
   text-shadow: 0 0 0.3cqw rgba(171, 72, 64, 0.3);
 `;
 
+// Settings (Jamie, 2026-11-24): the screen fades to black, then the Lab's computer slides in from the right (LabTerminal,
+// its start-screen menu: unlock codes and Quit); its Quit slides it back out, and the screen fades back up
+const blackIn = keyframes`from { opacity: 0; } to { opacity: 1; }`;
+const blackOut = keyframes`from { opacity: 1; } to { opacity: 0; }`;
+const BlackOut = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  background: black;
+  animation: ${props => props.$isLifting ? blackOut : blackIn} ${LAB_TERMINAL.fadeMs}ms ease-in-out both;
+`;
+
 // 'onDone': on into the game; with Multiplayer, given the link to the other player (and any messages already come)
 // 'startAt': back from the avatar select (single player's Back): straight to the mode buttons, loaded already
 export const MonitorBoot = ({ onDone, startAt = undefined }) => {
   const [phase, setPhase] = useState(startAt || "loading"); // loading, start, moving, pressed, mode
-  const [, setDevTick] = useState(0); // (dev only: the unlock below re-renders it)
+  const [, setDevTick] = useState(0); // (dev only: the unlock below re-renders it) (and a code entered in Settings)
+  const [settings, setSettings] = useState(undefined); // Settings: 'fading', 'open', then 'closing'
+  const openSettings = () => {
+    setSettings("fading");
+    setTimeout(() => setSettings("open"), LAB_TERMINAL.fadeMs);
+  };
+  const closeSettings = () => {
+    setSettings("closing");
+    setDevTick(k => k + 1); // (a code may have opened Multiplayer)
+    setTimeout(() => setSettings(undefined), LAB_TERMINAL.fadeMs);
+  };
   const isBeaten = getIsGameBeaten();
   // the multiplayer service checked once the game's beaten (Jamie): undefined while asking, then up or down
   const [isServiceUp, setIsServiceUp] = useState(undefined);
@@ -284,7 +317,7 @@ export const MonitorBoot = ({ onDone, startAt = undefined }) => {
   return (
     <Screen>
       <MatrixRain />
-      <Logo src="/Logo.gif" alt="" /> {/* (the splash's, moved here) */}
+      <Logo src="/Logo.gif" alt="" $isSmall={phase == "mode"} /> {/* (the splash's, moved here) */}
       {phase == "loading" ? (
         <>
           <Bar><div style={{ width: `${Math.round(progress * 100)}%` }} /></Bar>
@@ -297,6 +330,7 @@ export const MonitorBoot = ({ onDone, startAt = undefined }) => {
             Multiplayer
             {multiplayerNote && <ModeNote>{multiplayerNote}</ModeNote>}
           </ModeButton>
+          <ModeButton disabled={!!settings} onClick={openSettings}>Settings</ModeButton>
         </ModeRow>
       ) : phase == "lobby" ? (
         <MultiplayerLobby onBack={() => setPhase("mode")} onConnected={(link, messages) => { hasBooted = true; onDone({ link, messages }); }} />
@@ -305,6 +339,8 @@ export const MonitorBoot = ({ onDone, startAt = undefined }) => {
           <PlayButton as="button" $isPressed={phase == "pressed"} onClick={() => phase == "start" && setPhase("pressed")}>PLAY</PlayButton>
         </>
       )}
+      {settings && <BlackOut $isLifting={settings == "closing"} />}
+      {settings == "open" && <LabTerminal context="landing" onClose={closeSettings} />}
       {/* dev only (Jamie: the dev panel isn't up here): as if the game's beaten and everything's unlocked, so Multiplayer opens */}
       {import.meta.env.DEV && phase == "mode" && !isBeaten && (
         <DevUnlock onClick={() => { unlockEverything(['rapidTransit', 'rooftop', 'aquarium']); setDevTick(k => k + 1); }}>Unlock everything (dev)</DevUnlock>

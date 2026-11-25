@@ -625,7 +625,8 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
           if (!isHighlighted) drawSprite(ctx, getStatusSprite(pieceColor || color), center, pixelRatio);
           const icon = { iconClass: tile.getActiveIcon(), rotation: tile.getRotation() };
           if (tile.cast.seaIcon) drawSeaIcon(ctx, tile.cast.seaIcon, tile.cast.seaColor, center, radius, lineScale, draw, getSeaPose(tile.cast.seaIcon, tile.dirs));
-          else drawIcon(ctx, icon, center, radius, iconColor, lineScale);
+          // (a Teleport's tile: its portal only, not the power's old icon too: Jamie, playtest 38)
+          else if (!tile.teleportTileStatus) drawIcon(ctx, icon, center, radius, iconColor, lineScale);
           if (icon.iconClass && !tile.teleportTileStatus) nextIconTiles.set(key, { center, icon, color: iconColor });
         }
       });

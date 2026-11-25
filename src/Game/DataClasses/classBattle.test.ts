@@ -18,12 +18,12 @@ const startPreview = () => {
 };
 
 describe('class battle preview', () => {
-  it('is the Peninsula grid, its Kaiju coming in from the sides only, every 5 to 10 s, two at most', () => {
+  it('is the Peninsula grid, its Kaiju coming in from the sides only, every 1.8 to 3.6 s, four at most', () => {
     const { level } = startPreview();
     expect(level.grid.colStep).toBe(18.9);
     expect(level.grid.rowStep).toBe(21.6);
     expect(level.kaijuEntry.isSidesOnly).toBe(true);
-    expect(level.kaijuEntry.spawnEveryMs).toEqual([5000, 10000]);
+    expect(level.kaijuEntry.spawnEveryMs).toEqual([1800, 3600]); // (Jamie, playtest 39: was 5 to 10 s)
   });
 
   it('runs a minute of fighting: Kaiju come, from the left or right, and the avatar never dies', () => {
@@ -42,7 +42,7 @@ describe('class battle preview', () => {
       });
     }
     expect(gm.kaijuManager.kaijuPieces.length).toBeGreaterThan(0);
-    expect(gm.kaijuManager.kaijuPieces.length).toBeLessThanOrEqual(2);
+    expect(gm.kaijuManager.kaijuPieces.length).toBeLessThanOrEqual(4); // (was 2)
     expect(player.getIsDead()).toBe(false);
   }, 60000);
 });

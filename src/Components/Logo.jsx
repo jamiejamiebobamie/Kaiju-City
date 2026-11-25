@@ -155,17 +155,6 @@ const BEAM_LAYERS = [
   { width: SPOTLIGHT.halo.width * 0.6, foot: "8%", blur: "3px", strength: (SPOTLIGHT.halo.strength + SPOTLIGHT.core.strength) / 2 * 0.8 },
   { width: SPOTLIGHT.core.width, foot: "12%", blur: "1.6px", strength: SPOTLIGHT.core.strength * 0.9 }
 ];
-// the glare where a pair leaves the ground
-const Glare = styled.div`
-  position: absolute;
-  bottom: ${300 - SPOTLIGHT.base - SPOTLIGHT.glare / 2}px;
-  width: ${SPOTLIGHT.glare}px;
-  height: ${SPOTLIGHT.glare}px;
-  margin-left: ${-SPOTLIGHT.glare / 2}px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.95) 0 20%, rgba(${SPOTLIGHT.color}, 0.55) 40%, rgba(${SPOTLIGHT.color}, 0) 70%);
-  animation: ${beamFlicker} 0.9s linear infinite;
-`;
 const Spotlights = () => (
   <SpotlightBox data-spotlights aria-hidden="true">
     {BEAMS.map(({ x, way, lean }, k) => (
@@ -175,7 +164,7 @@ const Spotlights = () => (
         ))}
       </Beam>
     ))}
-    {BEAMS.map(({ x }, k) => <Glare key={k} style={{ left: `${x}px` }} />)}
+    {/* (no glare dots where they start: too bright, they took the eye. Jamie, 2026-11-24) */}
   </SpotlightBox>
 );
 
@@ -613,9 +602,9 @@ export const Logo = ({ joiner = false, spotlights = false, circuit = false, base
   {joiner && <LogoImage src={"/zoom-scene/landing-joiner-glow.png"} alt="" style={{ translate: "0 calc(var(--logo-lift, 0px) * -1 + var(--skyline-y, 0px) + var(--joiner-both, 0px) + var(--joiner-glow, 0px))" }} />}
   {joiner && <LogoImage src={"/zoom-scene/landing-joiner.png"} alt="" style={{ translate: "0 calc(var(--logo-lift, 0px) * -1 + var(--skyline-y, 0px) + var(--joiner-both, 0px) + var(--joiner-band, 0px))" }} />}
   <LogoImage src={"./SVG_logo.svg"} data-landing-logo />
-  {/* (the spotlights behind the base joiner: their bright starts hidden by it: Jamie) */}
-  {spotlights && <Spotlights />}
   {baseJoiner && <BaseJoinerBox data-base-joiner aria-hidden="true" />}
+  {/* (in front of the base joiner now, their bright starts gone: Jamie, 2026-11-24; were behind it) */}
+  {spotlights && <Spotlights />}
   <KaijuWrapper data-walk>
     <SpriteSheet />
     <Breath />

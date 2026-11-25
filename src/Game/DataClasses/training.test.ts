@@ -26,7 +26,7 @@ describe('recruit training', () => {
       if (gm.speech && !said.includes(gm.speech.text)) said.push(gm.speech.text);
       gm.stepPieces();
     }
-    expect(said.some(text => text.includes('Overgrowth'))).toBe(true);
+    expect(said.some(text => text.includes('Beat me one on one'))).toBe(true);
     expect(gm.getActivePhases()).toContain(TRAINING_PHASE);
     // walking to it ends the visit, for the training fight
     const player = gm.getPieces()[0];
@@ -34,6 +34,30 @@ describe('recruit training', () => {
     gm.stepPieces();
     expect(gm.isTrainingChosen).toBe(true);
     expect(gm.getGameResult()).toBe(GameResult.PlayerWon);
+  });
+
+  // (Jamie, playtest 39: Punk Guy terminated, Ghost Girl and the Aquarium Worker recruited; no offer seen on the Rooftop.
+  // With nothing unlocked by hand (F2, the KAIJU code), she offers, and the Subway's teammate offers to spar)
+  it('Punk Guy terminated, Ghost Girl and the Aquarium Worker recruited: Ghost Girl offers on the Rooftop, the teammate spars at the Subway', () => {
+    storage.clear();
+    const settingsManager = new SettingsManager();
+    settingsManager.setSortedPlayerChosenAbilityElementsString(['Fire', 'Ice', 'Metal']);
+    settingsManager.setIsTeammate(true);
+    const recruits = ['black_female', 'mermaid'];
+    const rooftop: any = new GameManager({ level: LEVELS[getVisitLevelId('rooftop')], settingsManager, recruits, autoRecruits: recruits, terminated: ['punk'] });
+    rooftop.initGame();
+    expect(rooftop.getTrainingOffer()?.recruit.avatar).toBe('black_female');
+    const said = [];
+    for (let k = 0; k < 4000 && rooftop.cutscene; k++) {
+      if (rooftop.speech && !said.includes(rooftop.speech.name)) said.push(rooftop.speech.name);
+      rooftop.stepPieces();
+    }
+    expect(said).toContain('Ghost Girl');
+    expect(rooftop.getActivePhases()).toContain(TRAINING_PHASE);
+    const subway: any = new GameManager({ level: LEVELS[getVisitLevelId('rapidTransit')], settingsManager, recruits, autoRecruits: recruits, terminated: ['punk'] });
+    subway.initGame();
+    expect(subway.getSparringOffer()).toBeDefined();
+    storage.clear();
   });
 
   it('no offer without the recruit, or once their power is open', () => {

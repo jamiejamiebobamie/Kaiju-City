@@ -190,8 +190,8 @@ const Heading = styled.div`
   top: ${(LONGEST_DRIP_END + 100) / 2}%;
   left: 0;
   right: 0;
-  transform: translateY(-50%);
-  font-size: 2.3cqw; /* (bigger: Jamie, playtest 34; was 1.6) */
+  transform: translateY(-50%) translateY(-1.2cqw); /* (a little higher: Jamie, playtest 39) */
+  font-size: 2.9cqw; /* (bigger: Jamie, playtests 34 and 39; was 1.6, then 2.3) */
   letter-spacing: 0.15cqw;
   text-align: center;
   color: ${DIRECTIVE_COLOR};
@@ -378,7 +378,8 @@ export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose, backL
             <Cursor style={{ left: `${spot.saturation * 100}%`, top: `${(1 - spot.value) * 100}%` }} />
           </ColorField>
           <HueSlider aria-label="Hue" type="range" min="0" max="359" value={hue} onChange={e => changeHue(Number(e.target.value))} />
-          <HexInput aria-label="Hex" value={color} onChange={e => /^#[0-9a-fA-F]{0,6}$/.test(e.target.value) && setColor(e.target.value)} />
+          <HexInput aria-label="Hex" value={color} onChange={e => /^#[0-9a-fA-F]{0,6}$/.test(e.target.value) && setColor(e.target.value)}
+            onKeyDown={e => { if (e.key == "Escape") { e.stopPropagation(); e.currentTarget.blur(); } }} /* (Esc leaves the box, for the arrow keys' buttons: Jamie, playtest 38) */ />
         </Picker>
       </Panel>
   );

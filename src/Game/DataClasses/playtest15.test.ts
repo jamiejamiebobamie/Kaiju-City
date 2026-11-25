@@ -103,9 +103,10 @@ describe('playtest 15', () => {
     expect(gm.finalTurnState).toBe('fighting');
     const kaiju = gm.teammateKaiju;
     expect(kaiju.isTeammateKaiju).toBe(true);
-    gm.getPieces()[0].isUnhurtable = true; // the Kaiju sometimes downs the player in this time: not what this is about
+    gm.playerKaiju.isUnhurtable = true; // the Kaiju sometimes downs the player in this time: not what this is about
     for (let k = 0; k < 50; k++) gm.stepPieces();
-    expect(gm.getPieces().filter(piece => piece.avatar == 'kaiju' && !piece.isTeammateKaiju).length).toBe(0);
+    // (no waves: only the teammate's, the player's own, and any recruits', Jamie 2026-11-24)
+    expect(gm.getPieces().filter(piece => piece.avatar == 'kaiju' && !piece.isTeammateKaiju && !piece.isPlayerKaiju && !piece.isRecruitKaiju).length).toBe(0);
     expect(gm.getGameResult()).toBe(null);
     gm.accTime += 5000;
     // (all of it, and any extra lives it picked up meanwhile: they took the first hits, and it was left at 1)
