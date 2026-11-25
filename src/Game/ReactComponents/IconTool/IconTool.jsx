@@ -52,7 +52,45 @@ const getKaijuFrames = (sheet, frame) => {
   return { plain, tinted };
 };
 
-// the whole icon scene, at 'size' px for its SCENE units; 'isFeathered': the circle's fade applied
+/*
+  The frame's shape (Jamie, 2026-11-25: try a square too): 'circle', or 'square' with its corners rounded by 'corner'
+  (a share of its half size: 0 square, 1 a circle). Its fade, as the circle's: whole inside the inner shape (the same
+  shape, 'inner' of the size, the same middle), gone by the outer one; for the square, drawn pixel by pixel from the
+  distance to each (a rounded square's distance field), so its corners fade evenly too.
+*/
+const getFrame = circle => ({ shape: circle.shape || "circle", corner: circle.corner == undefined ? 0.25 : circle.corner });
+// a rounded square's signed distance (inside negative): 'half' its half size, 'radius' its corners'
+const roundedSquareDistance = (dx, dy, half, radius) => {
+  const qx = Math.abs(dx) - (half - radius);
+  const qy = Math.abs(dy) - (half - radius);
+  return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - radius;
+};
+const makeSquareFade = (size, cx, cy, half, inner, corner) => {
+  const mask = document.createElement("canvas");
+  mask.width = mask.height = size;
+  const ctx = mask.getContext("2d");
+  const image = ctx.createImageData(size, size);
+  const radius = half * Math.min(1, Math.max(0, corner));
+  const innerHalf = half * Math.min(0.999, Math.max(0, inner));
+  const innerRadius = radius * (innerHalf / half);
+  const [x0, x1] = [Math.max(0, Math.floor(cx - half)), Math.min(size, Math.ceil(cx + half))];
+  const [y0, y1] = [Math.max(0, Math.floor(cy - half)), Math.min(size, Math.ceil(cy + half))];
+  for (let y = y0; y < y1; y++) {
+    for (let x = x0; x < x1; x++) {
+      const dx = x + 0.5 - cx;
+      const dy = y + 0.5 - cy;
+      const outside = roundedSquareDistance(dx, dy, half, radius); // (<= 0 inside the outer)
+      if (outside >= 0) continue;
+      const pastInner = roundedSquareDistance(dx, dy, innerHalf, innerRadius);
+      const alpha = pastInner <= 0 ? 1 : -outside / (pastInner - outside);
+      image.data[(y * size + x) * 4 + 3] = Math.round(255 * alpha);
+    }
+  }
+  ctx.putImageData(image, 0, 0);
+  return mask;
+};
+
+// the whole icon scene, at 'size' px for its SCENE units; 'isFeathered': the frame's fade applied
 const drawScene = (ctx, size, settings, images, isFeathered) => {
   const { kaiju, fire, circle } = settings;
   const k = size / SCENE;
@@ -89,7 +127,12 @@ const drawScene = (ctx, size, settings, images, isFeathered) => {
   ctx.restore();
   ctx.restore();
   // the fade: whole inside the inner circle, gone by the outer one
-  if (isFeathered) {
+  if (isFeathered && getFrame(circle).shape == "square") {
+    ctx.save();
+    ctx.globalCompositeOperation = "destination-in";
+    ctx.drawImage(makeSquareFade(size, circle.x * k, circle.y * k, circle.r * k, circle.inner, getFrame(circle).corner), 0, 0);
+    ctx.restore();
+  } else if (isFeathered) {
     ctx.save();
     ctx.globalCompositeOperation = "destination-in";
     const inner = circle.r * Math.min(0.999, Math.max(0, circle.inner));
@@ -261,15 +304,18 @@ export const IconTool = () => {
     overlay.clearRect(0, 0, stagePx, stagePx);
     overlay.lineWidth = 1.5;
     overlay.setLineDash([]);
+    const { shape, corner } = getFrame(settings.circle);
+    const outline = half => {
+      overlay.beginPath();
+      if (shape == "square") overlay.roundRect(x * k - half, y * k - half, half * 2, half * 2, half * Math.min(1, corner));
+      else overlay.arc(x * k, y * k, half, 0, Math.PI * 2);
+      overlay.stroke();
+    };
     overlay.strokeStyle = picked == "circle" ? "#ffd84a" : "rgba(255, 216, 74, 0.6)";
-    overlay.beginPath();
-    overlay.arc(x * k, y * k, r * k, 0, Math.PI * 2);
-    overlay.stroke();
+    outline(r * k);
     overlay.setLineDash([6, 5]);
     overlay.strokeStyle = "rgba(109, 255, 160, 0.75)";
-    overlay.beginPath();
-    overlay.arc(x * k, y * k, r * inner * k, 0, Math.PI * 2);
-    overlay.stroke();
+    outline(r * inner * k);
     overlay.setLineDash([]);
     overlay.fillStyle = "#ffd84a";
     overlay.fillRect(x * k - 2, y * k - 2, 4, 4);
@@ -357,7 +403,7 @@ export const IconTool = () => {
         <Row>
           Drag moves, wheel scales:
           {["kaiju", "fire", "circle"].map(part => (
-            <button key={part} aria-pressed={picked == part} onClick={() => setPicked(part)}>{part == "kaiju" ? "Kaiju" : part == "fire" ? "Fire" : "Circle"}</button>
+            <button key={part} aria-pressed={picked == part} onClick={() => setPicked(part)}>{part == "kaiju" ? "Kaiju" : part == "fire" ? "Fire" : "Frame"}</button>
           ))}
         </Row>
         <Group>
@@ -381,10 +427,18 @@ export const IconTool = () => {
           <Control label="Glow" value={settings.fire.glow} min={0} max={4} step={0.05} onChange={value => set("fire", "glow", value)} />
         </Group>
         <Group>
-          <legend>Circle</legend>
+          <legend>Frame</legend>
+          <label>Shape</label>
+          <Row>
+            {["circle", "square"].map(shape => (
+              <button key={shape} aria-pressed={getFrame(settings.circle).shape == shape} onClick={() => set("circle", "shape", shape)}>{shape == "circle" ? "Circle" : "Square"}</button>
+            ))}
+          </Row>
+          <span />
+          {getFrame(settings.circle).shape == "square" && <Control label="Corners" value={getFrame(settings.circle).corner} min={0} max={1} step={0.01} onChange={value => set("circle", "corner", value)} />}
           <Control label="X" value={settings.circle.x} min={0} max={SCENE} step={1} onChange={value => set("circle", "x", value)} />
           <Control label="Y" value={settings.circle.y} min={0} max={SCENE} step={1} onChange={value => set("circle", "y", value)} />
-          <Control label="Radius" value={settings.circle.r} min={20} max={SCENE} step={1} onChange={value => set("circle", "r", value)} />
+          <Control label={getFrame(settings.circle).shape == "square" ? "Half size" : "Radius"} value={settings.circle.r} min={20} max={SCENE} step={1} onChange={value => set("circle", "r", value)} />
           <Control label="Fade starts" value={settings.circle.inner} min={0} max={1} step={0.01} onChange={value => set("circle", "inner", value)} />
         </Group>
         <Row>
@@ -405,7 +459,7 @@ export const IconTool = () => {
         </Previews>
         <Row>
           <Swatch style={{ background: "#000" }} title="Home screen (iOS fills clear with black)"><Preview icon={icon} px={180} /></Swatch>
-          <span style={{ maxWidth: 260 }}>Home screen, 180 px (iOS fills the clear parts with black).<br />Outer circle: the icon's edge. Dashed: where the fade starts.</span>
+          <span style={{ maxWidth: 260 }}>Home screen, 180 px (iOS fills the clear parts with black).<br />Outer line: the icon's edge. Dashed: where the fade starts.</span>
         </Row>
       </Panel>
     </Page>

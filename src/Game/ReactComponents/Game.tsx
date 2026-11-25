@@ -134,7 +134,9 @@ const GameFrame = styled.div<{ $shift?: 'in' | 'out' | 'fade' }>`
   width: ${getTrialViewZoom() * 100}%;
   max-width: calc(100dvh * 16 / 9 * ${getTrialViewZoom()});
   max-height: ${getTrialViewZoom() * 100}dvh;
-  overflow: hidden;
+  /* (not clipped: the room goes on past the frame, so its edge was an invisible line the HUDs were cut off at as they
+     bobbed and crashed, and the casing's thicker borders too. Jamie, 2026-11-25; it was 'hidden', from before the room) */
+  overflow: visible;
   container-type: inline-size;
   background: transparent; /* (the room shows round the monitor: Jamie) */
   transition: transform 0.9s ease-in, opacity 0.9s ease-in;

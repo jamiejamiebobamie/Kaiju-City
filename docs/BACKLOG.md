@@ -19,6 +19,7 @@ Last updated: 2026-11-25.
 ### HIGH
 1. Run the combined playtest 39 + 40 checklist (below).
 2. HUD drawing area too small: the HUDs get cut off on the right (and maybe the bottom) when they bob around and when they crash and burn. The right side is worth fixing; the bottom maybe not.
+   > Claude (2026-11-25): fixed, please check. It wasn't the HUDs' own canvas (it has 700 px of room all round) but the game frame: it clipped everything at its edges, a line from before the apartment, now in the middle of the room. The frame no longer clips, so the HUDs can bob and crash past it (right and bottom both), as can the console flying off and anything else crossing it. Checked: the start screen, avatar select, the picker, the console flying off, the HUDs flying in, a fight.
 3. Apartment room: built, waiting on Jamie's playtest.
 
 ### MEDIUM
@@ -45,6 +46,7 @@ Last updated: 2026-11-25.
 3. A controls info modal with an image, for mobile and desktop, replacing the current pop-up.
 4. Make the before-AI / after-AI video and upload it to YouTube.
 5. README:
+   > Claude (2026-11-25): a first draft is in [README-draft.md](README-draft.md), marked TODO where it needs you (links, GIFs, credits for art, fonts and sounds). It also notes there's no LICENSE file in the repo, though the old README links one. When you're happy with it, it replaces README.md.
    - credits and attribution;
    - the project synopsis;
    - the tools built during development and what each solved;
@@ -53,6 +55,7 @@ Last updated: 2026-11-25.
    - images and GIFs.
 6. In-game credits: a final pass after sounds and all game data are in.
 7. Remove old files.
+   > Claude (2026-11-25): the audit is in [OLD-FILES.md](OLD-FILES.md): 7 source files and about 16 MB of images nothing uses (which the loaders preload today). Tick the ones to remove there; nothing's been deleted.
 8. Match the window picture's little monitor to the Kaiju-Vision.
    > Claude: not yet placed in Jamie's order.
    > Jamie: please clairfy above question/request/statement... the main monitor is no longer "Kaiju-Vision" but the item is "8" in the order
