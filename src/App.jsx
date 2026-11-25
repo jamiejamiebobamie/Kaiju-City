@@ -4,6 +4,7 @@ import { SplashScreen } from "./Components/SplashScreen";
 import { CloudTransition, CLOUD_TIMING } from "./Components/CloudTransition";
 import { loadAssets } from "./Utils/assetLoader";
 import { watchSafeArea } from "./Utils/stage";
+import { installEyeCursor } from "./Utils/eyeCursor";
 import "./App.css";
 import "./font-awesome-4.7.0/css/font-awesome.css";
 import "./font-awesome-7.3.1/fa7.css";
@@ -23,6 +24,7 @@ const DialogueViewer = import.meta.env.DEV ? lazy(() => import("./Game/ReactComp
 
 // the stage's safe area, for everything sized from it (Utils/stage.js: layout phase 1)
 watchSafeArea();
+installEyeCursor(); // (the eye over the apartment: Jamie, 2026-11-25)
 
 const SPLASH_FADE_MS = 700;
 const SPLASH_MIN_MS = 1500;

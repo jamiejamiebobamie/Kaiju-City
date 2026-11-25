@@ -313,9 +313,10 @@ const GhostForm = styled.div`
   flickering, now and then a quick sideways glitch (each piece on its own beat).
 */
 // (shared: the exploding Kaiju's too, and the Kaiju fire tiles take its color)
-export const HOLOGRAM_FILTER = "grayscale(1) brightness(1.15) sepia(1) hue-rotate(65deg) saturate(2.6) drop-shadow(0 0 2px #3cd43c) drop-shadow(0 0 6px #3cd43c)";
+// (purple, Jamie 2026-11-25; it was Stompy's green: hue-rotate 65deg, glow #3cd43c)
+export const HOLOGRAM_FILTER = "grayscale(1) brightness(1.15) sepia(1) hue-rotate(235deg) saturate(2.6) drop-shadow(0 0 2px #a74cff) drop-shadow(0 0 6px #a74cff)";
 export const HOLOGRAM_LINES = "repeating-linear-gradient(to bottom, black 0 2px, rgba(0, 0, 0, 0.35) 2px 3px)";
-export const HOLOGRAM = { color: "#80EF80", glow: "#3cd43c", halo: "rgba(60, 212, 60, 0.2)", opacity: 0.72, glitchSeconds: 3.1, room: 60 };
+export const HOLOGRAM = { color: "#c99bff", glow: "#a74cff", halo: "rgba(167, 76, 255, 0.2)", opacity: 0.72, glitchSeconds: 3.1, room: 60 };
 const holoFlicker = keyframes`
   0%, 100% { opacity: ${HOLOGRAM.opacity}; transform: none; }
   18% { opacity: ${HOLOGRAM.opacity - 0.12}; }

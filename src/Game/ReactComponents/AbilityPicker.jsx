@@ -300,11 +300,11 @@ const Pendant = styled.button`
   position: absolute;
   pointer-events: auto;
   transition: opacity 500ms, filter 500ms;
-  /* (not yet: dimmed, grey, no pointer. Jamie, playtest 34) */
+  /* (not yet: dimmed, grey, no pointer. Jamie, playtest 34; "not allowed", as every disabled button: Jamie, 2026-11-25) */
   ${props => props.$isOff && css`
     opacity: 0.35;
     filter: grayscale(0.85) brightness(0.8);
-    cursor: default !important;
+    cursor: not-allowed !important;
   `}
   width: ${unit(LOOK.pendantSize)};
   height: ${unit(LOOK.pendantSize)};

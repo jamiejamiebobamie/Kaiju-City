@@ -349,7 +349,7 @@ const drawSeaIcon = (ctx, name, color, center, radius, lineScale, redraw, { rota
   shaded with scanlines, flickering a little, each tile on its own (now and then one dims for a moment).
   (Turned up: hard to see. Jamie; was 0.62 +- 0.25, dropping to 0.15 7% of the time, lines 0.45)
 */
-const HOLO_FIRE = { color: "#80EF80", lineEvery: 3, lineAlpha: 0.22, flickerMs: 90, dropChance: 0.03, opacity: 0.9, swing: 0.08, dropTo: 0.45 };
+const HOLO_FIRE = { color: "#c99bff", /* (purple, as the hologram Kaiju: Jamie, 2026-11-25) */ lineEvery: 3, lineAlpha: 0.22, flickerMs: 90, dropChance: 0.03, opacity: 0.9, swing: 0.08, dropTo: 0.45 };
 const getHoloFireAlpha = (key, now) => {
   const step = Math.floor(now / HOLO_FIRE.flickerMs);
   let hash = step * 2654435761;

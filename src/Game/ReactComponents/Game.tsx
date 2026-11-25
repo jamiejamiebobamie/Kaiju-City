@@ -55,8 +55,12 @@ import { getLinkedRoomCode } from '../Multiplayer/peerLink';
 import { COOP_VOTE, hideCoopTeammate, placeCoopTeammate, resolveCoopVote, DEFENSE_LEVEL, getBattleground, getMultiplayerKillsToWin, GUEST_PIECE_INDEX, makeTeam, setUpCoop, withMatchTeams, setUpMultiplayerMatch, updateCoopTurnedKaiju, updateGuestTakeOver } from '../Multiplayer/multiplayerMatch';
 import { CoopChecks, CoopVote, MatchSetup, MultiplayerWaiting, NetNotice } from '../Multiplayer/MatchSetup';
 
+// (over the apartment, the pointer is an eye: Utils/eyeCursor. The monitor and the side things beside it, [data-mock],
+// have the usual one: Jamie, 2026-11-25)
 const GameArea = styled.div`
   position: relative;
+  cursor: var(--eye-cursor, default);
+  & [data-mock] { cursor: default; }
   width: 100dvw;
   height: 100dvh;
   display: flex;
@@ -146,6 +150,7 @@ const GameFrame = styled.div<{ $shift?: 'in' | 'out' | 'fade' }>`
 // (pinned over the room at the left, on top: under the room's picture it was hidden in every scene. Jamie, playtest 28)
 const PhaseToggles = styled.div`
   position: fixed;
+  cursor: default;
   left: 0;
   top: 0;
   bottom: 0;

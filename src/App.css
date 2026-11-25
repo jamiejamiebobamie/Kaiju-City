@@ -63,3 +63,17 @@
   flex-direction: column;
   justify-content: center;
 }
+
+/* the eye cursor over the apartment (Utils/eyeCursor; RoomBackdrop sets the attribute while it's up): the whole page,
+   so the window's edges have it too when the camera has panned the game area aside (Jamie, 2026-11-25) */
+:root[data-eye-cursor] body {
+  cursor: var(--eye-cursor, default);
+}
+
+/* a button that can't be pressed now: the "not allowed" pointer, everywhere (the monitor's, the side things', the
+   pickers'); over a style's own cursor for it (Jamie, 2026-11-25) */
+button:disabled,
+button[aria-disabled="true"],
+[role="button"][aria-disabled="true"] {
+  cursor: not-allowed !important;
+}

@@ -250,10 +250,17 @@ export const RoomMonitor = ({ isShown = true }) => {
   mounts); in play, now and then (FLICKER.playEveryMs).
   'burst': off and on, in turn, ms each (it starts off)
 */
+// (Jamie, 2026-11-25: more often and more dramatic, it was too subtle: every 8-20 s, was 25-70; darker, 0.82, was 0.5;
+// longer stutters, and now and then the tube dead for a second or so before it catches)
 export const FLICKER = {
-  bursts: [[70, 90, 45, 160, 110], [50, 60, 40, 220, 90, 70, 35], [120, 80, 60]],
-  playEveryMs: [25000, 70000],
-  darkness: 0.5 // how dark the room's purple goes while the tube is out
+  bursts: [
+    [70, 90, 45, 160, 110, 60, 40],
+    [50, 60, 40, 220, 90, 70, 35, 140, 60],
+    [120, 80, 60, 300, 50],
+    [60, 50, 40, 900, 80, 60, 50, 120, 40] // (out for a beat, then catching)
+  ],
+  playEveryMs: [8000, 20000],
+  darkness: 0.82 // how dark the room's purple goes while the tube is out
 };
 const TubeOff = styled.div`
   position: absolute;
@@ -342,6 +349,12 @@ export const RoomBackdrop = () => {
   const ref = useRef(null);
   const frontRef = useRef(null);
   const [isStandInShown, setIsStandInShown] = useState(!!ROOM_HANDOFF.view);
+  // (the whole page has the eye cursor while the apartment is up: where the camera's pan has moved the game area aside,
+  // at the window's edges, the page shows. Jamie, 2026-11-25)
+  useEffect(() => {
+    document.documentElement.setAttribute("data-eye-cursor", "");
+    return () => document.documentElement.removeAttribute("data-eye-cursor");
+  }, []);
   useEffect(() => {
     const from = ROOM_HANDOFF.view;
     ROOM_HANDOFF.view = undefined;
