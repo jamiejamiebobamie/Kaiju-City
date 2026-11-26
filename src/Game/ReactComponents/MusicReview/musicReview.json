@@ -5,5 +5,13 @@
  "punk": {
   "verdict": "ok",
   "note": ""
+ },
+ "title": {
+  "note": "Not a fan of this... not sure. it feels like it needs to be more dramatic given the logo image",
+  "verdict": "redo"
+ },
+ "menu": {
+  "note": "Should the agent music start playing on show of agent in side monitor? can we try this?\n\nmaybe no music here to highlight the booting-up of the lights and tanks? ",
+  "verdict": "redo"
  }
 }

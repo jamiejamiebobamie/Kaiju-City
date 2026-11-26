@@ -3,7 +3,8 @@ import styled from "styled-components";
 import { AUDIO_LEVEL, setMusicOff, setSfxOff } from "Utils/audio";
 import { getCurrentMusicInfo, MUSIC_REVIEW, MUSIC_STYLE_OVERRIDE, refreshMusicStyle } from "Utils/music";
 import { THEMES } from "Utils/musicThemes";
-import { getRecentSfx, getSoundName, onRecentSfx } from "Utils/sfx";
+import { getRecentSfx, getSoundName, onRecentSfx, playSfx } from "Utils/sfx";
+import { getDifference, getHeardHere, getIsSetHere, getSoundScene, getSoundVolume, onSoundVolumes, setSoundVolume } from "Utils/soundVolumes";
 
 /*
   Dev only (Jamie, 2026-11-26): the sound in the game, to judge it where it plays:
@@ -25,8 +26,10 @@ const Panel = styled.div`
   left: 8px;
   bottom: 8px;
   z-index: 2147483000;
-  width: 300px;
+  width: 340px;
   padding: 8px 10px;
+  max-height: 92vh;
+  overflow-y: auto;
   background: rgba(8, 12, 16, 0.92);
   border: 1px solid #2f6f4f;
   border-radius: 6px;
@@ -60,6 +63,20 @@ const Note = styled.textarea`
   min-height: 32px;
   resize: vertical;
 `;
+const VolumeList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 34vh;
+  overflow-y: auto;
+`;
+const VolumeRow = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 90px 32px 22px;
+  gap: 4px;
+  align-items: center;
+  & input { width: 100%; }
+`;
 const Title = styled.div`
   color: #6dffa0;
 `;
@@ -91,6 +108,55 @@ const Judge = ({ name, id, entry, onSaved }) => {
         ))}
       </Row>
       <Note placeholder="Note for Claude (what to change)" value={note} onChange={event => setNote(event.target.value)} onBlur={() => note != (entry.note || "") && save({ note })} onKeyDown={event => event.stopPropagation()} />
+    </>
+  );
+};
+
+/*
+  Every sound heard in this scene (Jamie, 2026-11-26), a row each: its volume here (0 to 2, 1 as reviewed), saved per
+  scene; a sound effect's ▶ plays it over and over to judge it; ⚠ where its volume here and in another scene differ a
+  lot. A volume set nowhere yet takes the last one set for it anywhere, else 1 (soundVolumes.js).
+*/
+const LOOP_NAMES = { fire: "Burning tiles (loop)", water: "Wet tiles (loop)", electric: "Electrified tiles (loop)", ghost: "Ghost tiles (loop)", wind: "Wind (loop)", city: "City (loop)", traffic: "Street traffic (loop)", aquarium: "Underwater hum (loop)", machinery: "Lab machinery (loop)", vat: "Vat bubbling (loop)", drips: "Sewer drips (loop)", doorGlow: "Door glow (loop)" };
+const getKeyName = key => {
+  const [kind, id] = key.split(":");
+  if (kind == "music") return `♪ ${(THEMES[id] || { name: id }).name}`;
+  if (kind == "loop") return LOOP_NAMES[id] || id;
+  return getSoundName(id);
+};
+const SAMPLE_EVERY_MS = 1800;
+const VolumeRows = () => {
+  const [, setTick] = useState(0);
+  const [sampling, setSampling] = useState(undefined);
+  useEffect(() => onSoundVolumes(() => setTick(tick => tick + 1)), []);
+  useEffect(() => {
+    if (!sampling) return;
+    const id = sampling.split(":")[1];
+    playSfx(id, { minGapMs: 0 });
+    const timer = setInterval(() => playSfx(id, { minGapMs: 0 }), SAMPLE_EVERY_MS);
+    return () => clearInterval(timer);
+  }, [sampling]);
+  const order = { music: 0, loop: 1, sfx: 2 };
+  const keys = getHeardHere().sort((a, b) => order[a.split(":")[0]] - order[b.split(":")[0]] || getKeyName(a).localeCompare(getKeyName(b)));
+  return (
+    <>
+      <Title>Volumes here ({getSoundScene()}): {keys.length ? "" : "nothing heard yet"}</Title>
+      <VolumeList>
+        {keys.map(key => {
+          const volume = getSoundVolume(key);
+          const difference = getDifference(key);
+          return (
+            <VolumeRow key={key} title={difference ? `Differs a lot: ${difference.high[1].toFixed(2)} in ${difference.high[0]}, ${difference.low[1].toFixed(2)} in ${difference.low[0]}` : undefined}>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: getIsSetHere(key) ? "#cfe8d8" : "#8aa" }}>{difference ? "⚠ " : ""}{getKeyName(key)}</span>
+              <input type="range" min={0} max={2} step={0.05} value={volume} onChange={event => setSoundVolume(key, Number(event.target.value))} onKeyDown={event => event.stopPropagation()} />
+              <span>{volume.toFixed(2)}</span>
+              {key.startsWith("sfx:")
+                ? <button data-sfx="none" title="Play it over and over" onClick={() => setSampling(sampling == key ? undefined : key)}>{sampling == key ? "■" : "▶"}</button>
+                : <span />}
+            </VolumeRow>
+          );
+        })}
+      </VolumeList>
     </>
   );
 };
@@ -152,6 +218,7 @@ export const AudioDevPanel = () => {
         }} />
       )}
       {status && <div style={{ color: "#8aa" }}>{status}</div>}
+      <VolumeRows />
     </Panel>
   );
 };

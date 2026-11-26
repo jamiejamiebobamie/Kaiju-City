@@ -8,6 +8,7 @@
 */
 
 import { AUDIO_LEVEL, getAudio, getAudioNodes, setAudioVolume } from "./audio";
+import { getSoundVolume, noteHeard } from "./soundVolumes";
 
 // (the review page's volume: the same as the game's, 0 to 1)
 export const SFX_VOLUME = {
@@ -644,6 +645,7 @@ const noteRecent = id => {
 export const getRecentSfx = () => [...recentSfx];
 export const onRecentSfx = listener => { recentListeners.add(listener); return () => recentListeners.delete(listener); };
 export const getSoundName = id => (SOUNDS.find(sound => sound.id == id) || { name: id }).name;
+export { getReviewedId };
 const lastPlayedAt = {};
 let voices = [];
 export const playSfx = (id, { gain = 1, minGapMs = SFX_LIMITS.minGapMs } = {}) => {
@@ -659,9 +661,12 @@ export const playSfx = (id, { gain = 1, minGapMs = SFX_LIMITS.minGapMs } = {}) =
   lastPlayedAt[id] = now;
   voices.push(now);
   noteRecent(id);
+  // (its volume in this scene, as set in the Sound (dev) panel: soundVolumes.js)
+  const key = `sfx:${getReviewedId(id) || id}`;
+  noteHeard(key);
   try {
     const level = ctx.createGain();
-    level.gain.value = gain;
+    level.gain.value = gain * getSoundVolume(key);
     level.connect(nodes.sfx);
     sound.play(makeKit(ctx, level));
     setTimeout(() => level.disconnect(), 6000);

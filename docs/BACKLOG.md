@@ -36,6 +36,10 @@ Last updated: 2026-11-25 (evening).
    - Then Claude makes the icon set as for SpellCraft (../QuickCast): favicon.ico (16/32/48), favicon-32, apple-touch 180, icon-192, icon-512, a webmanifest, loaded with the first loader.
    > Claude (2026-11-25): the tool is built: open `localhost:5180/icon` (dev server). Pick Kaiju, Fire or Circle; drag to move, mouse wheel to scale; sliders for everything. Previews at 16, 32, 48 (on a dark tab, a light tab and clear) and 180. **Save** keeps your settings (iconTool.json); **Export 1024 px** downloads the image and writes it to `public/icon-source/kaiju-icon.png`. When you're happy with it, tell me and I'll run `scripts/makeIcons.py` (ready) to make the icon set and add the tags to index.html.
    > Claude (2026-11-25): made from your final export: favicon.ico (16, 32, 48), favicon-32.png, apple-touch-icon.png (180), icon-192.png, icon-512.png and site.webmanifest in `public/`, and the tags in index.html. Tick this item when you've seen it in the tab and I'll move it to DONE.md.
+4. The zoom in from the landing, its issues (Jamie, 2026-11-26):
+   - [ ] On the left side of the apartment's slow zoom in, duplicate pictures of the apartment scene show, not lined up with each other.
+   - [ ] From the cityscape to the apartment's outside shot, the site seems to slow down. It may be the effect itself; to check whether it's dropping frames.
+   - [ ] There may be other issues. Claude: remind Jamie to look the whole zoom over for others when this item comes up.
 
 ### LOW (Jamie's order, before merging to master)
 1. Re-enable localStorage saves: one compressed save of all unlocks, maybe one-word codes read on load or on Play.
@@ -98,6 +102,7 @@ Last updated: 2026-11-25 (evening).
      - [ ] In the panel: the theme playing now, with Approve / Redo / Cut and a note; below it a sound you've heard (pick another from the list of recent ones), the same. They save into the same files as /music and /sounds, so I'll see them either way.
      - [ ] **Kaiju fight, redone**: your first take's tune at Punk Guy's tempo (152) with his drums and bass, a stomp in the fills. Its verdict is cleared for you to listen again (/music, or in a Peninsula fight).
      - [ ] The monitor's volume -/+ set the music, the sounds and the loops together, on the start screen, the avatar select, the picker and in every level (checked: 3 steps down took it from 10 to 7 of 16).
+     - [ ] **Volumes per scene** (the Sound (dev) panel's bottom part, "Volumes here"): every sound heard in this scene, a row each (the theme, the loops, the sound effects): a slider 0 to 2 (1 as reviewed), saved for this scene as you move it and heard at once; ▶ on a sound effect plays it over and over (■ stops). A sound you've set in an earlier scene starts at that value in a new scene; one set nowhere at 1. ⚠ (hover for the numbers) marks a sound whose volume differs a lot (2x or more) between scenes; the list is also kept in `src/Game/DataClasses/soundVolumes.json` ("differences"). Scenes: each level (its walk and its fight apart), "start", "menu" and "landing".
 3. A controls info modal with an image, for mobile and desktop, replacing the current pop-up.
 4. Make the before-AI / after-AI video and upload it to YouTube.
 5. README:

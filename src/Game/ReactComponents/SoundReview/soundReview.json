@@ -123,7 +123,8 @@
   "verdict": "ok"
  },
  "passive-lightning": {
-  "verdict": "ok"
+  "verdict": "cut",
+  "note": "one issue I am having with the passives is that they trigger with the active's usage... so two sound effects are playing at the same time: active and passive. can we scrap the passives? (mute in all scenes). leave in code/sound, but maybe stop it from playing allow me to revert this change easily."
  },
  "passive-death": {
   "verdict": "ok"

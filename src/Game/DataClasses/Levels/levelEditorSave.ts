@@ -179,6 +179,8 @@ export const apartmentSave = (layoutPath: string, exportDir: string): Plugin => 
 // over the review's json
 export const soundReviewSave = (reviewPath: string): Plugin => reviewFileSave('sound-review', reviewPath);
 export const musicReviewSave = (reviewPath: string): Plugin => reviewFileSave('music-review', reviewPath);
+// each sound's volume per scene, from the game's Sound (dev) panel (Jamie, 2026-11-26)
+export const soundVolumesSave = (filePath: string): Plugin => reviewFileSave('sound-volumes', filePath);
 const reviewFileSave = (name: string, reviewPath: string): Plugin => ({
   name: `${name}-save`,
   apply: 'serve',

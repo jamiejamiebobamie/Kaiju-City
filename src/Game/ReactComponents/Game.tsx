@@ -36,6 +36,7 @@ import { setMusicDuck, setSfxRoom } from "Utils/audio";
 import { setAmbience, stopAmbience } from "Utils/ambience";
 import { playSfx } from "Utils/sfx";
 import { AudioDevPanel } from "./AudioDevPanel";
+import { setSoundScene } from "Utils/soundVolumes";
 import { ROOM_HANDOFF, RoomBackdrop } from "Components/RoomScene";
 import { CAMERA, setIsShakyCam } from "Utils/camera";
 import { ZOOM_BACK } from "Components/ZoomThrough";
@@ -1144,6 +1145,11 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   // a radio call: the squelch and static under it
   useEffect(() => { if (radioLines && radioLines.length) playSfx("radio-static", { gain: 0.7 }); }, [radioLines]);
   const isMusicDucked = !!isTalking || !!isDialogueWaiting || !!radioLines || !!speech;
+  // the scene each sound's volume is set for (the Sound (dev) panel: Utils/soundVolumes.js): the level, or the start
+  // screen, or the menus (the avatar select, the picker, the vat)
+  useEffect(() => {
+    setSoundScene(isPlayingGame ? String(level.id) : !isBooted || isMultiplayerSetupOpen ? "start" : "menu");
+  }, [isPlayingGame, isBooted, isMultiplayerSetupOpen, level.id]);
   useEffect(() => {
     if (!isPlayingGame) {
       if (!isMonitorOn && !isBooted) return; // (dead, on the way in: the landing's title plays on)

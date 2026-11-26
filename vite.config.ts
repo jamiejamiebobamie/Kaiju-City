@@ -1,12 +1,12 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
-import { apartmentSave, classReviewSave, dialogueSave, iconToolSave, levelEditorSave, playWindowSave, soundReviewSave, musicReviewSave } from './src/Game/DataClasses/Levels/levelEditorSave';
+import { apartmentSave, classReviewSave, dialogueSave, iconToolSave, levelEditorSave, playWindowSave, soundReviewSave, musicReviewSave, soundVolumesSave } from './src/Game/DataClasses/Levels/levelEditorSave';
 
 const src = fileURLToPath(new URL('./src', import.meta.url));
 
 export default defineConfig({
-  plugins: [react(), levelEditorSave(`${src}/Game/DataClasses/Levels/data`), playWindowSave(`${src}/Game/DataClasses/playWindow.json`), dialogueSave(`${src}/Game/DataClasses/Dialogue/dialogue-polished.json`), classReviewSave(`${src}/Game/DataClasses/classOptions.json`, `${src}/Game/DataClasses/sciFiClasses.ts`), apartmentSave(`${src}/Game/ReactComponents/ApartmentMockup/mockup.json`, fileURLToPath(new URL('./public/apartment-scene/exports', import.meta.url))), iconToolSave(`${src}/Game/ReactComponents/IconTool/iconTool.json`, fileURLToPath(new URL('./public/icon-source/kaiju-icon.png', import.meta.url))), soundReviewSave(`${src}/Game/ReactComponents/SoundReview/soundReview.json`), musicReviewSave(`${src}/Game/ReactComponents/MusicReview/musicReview.json`)],
+  plugins: [react(), levelEditorSave(`${src}/Game/DataClasses/Levels/data`), playWindowSave(`${src}/Game/DataClasses/playWindow.json`), dialogueSave(`${src}/Game/DataClasses/Dialogue/dialogue-polished.json`), classReviewSave(`${src}/Game/DataClasses/classOptions.json`, `${src}/Game/DataClasses/sciFiClasses.ts`), apartmentSave(`${src}/Game/ReactComponents/ApartmentMockup/mockup.json`, fileURLToPath(new URL('./public/apartment-scene/exports', import.meta.url))), iconToolSave(`${src}/Game/ReactComponents/IconTool/iconTool.json`, fileURLToPath(new URL('./public/icon-source/kaiju-icon.png', import.meta.url))), soundReviewSave(`${src}/Game/ReactComponents/SoundReview/soundReview.json`), musicReviewSave(`${src}/Game/ReactComponents/MusicReview/musicReview.json`), soundVolumesSave(`${src}/Game/DataClasses/soundVolumes.json`)],
   resolve: {
     // the project's absolute imports (eg. 'Game/utils'), also listed in tsconfig.json
     alias: [

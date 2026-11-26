@@ -5,6 +5,7 @@
 */
 import { getAudio, getAudioNodes } from "./audio";
 import { getNoiseBuffer, playSfxInto } from "./sfx";
+import { getSoundVolume, noteHeard } from "./soundVolumes";
 
 const random = (min, max) => min + Math.random() * (max - min);
 
@@ -120,7 +121,10 @@ export const setAmbience = (levels, source = "scene") => {
   if (!ctx || !nodes) return;
   const now = performance.now();
   Object.keys(LOOPS).forEach(name => {
-    const level = Math.min(1, Math.max(0, ...Object.values(bySource).map(asked => asked[name] || 0)));
+    const asked = Math.min(1, Math.max(0, ...Object.values(bySource).map(levels => levels[name] || 0)));
+    // (its volume in this scene, as set in the Sound (dev) panel: soundVolumes.js)
+    if (asked) noteHeard(`loop:${name}`);
+    const level = asked * getSoundVolume(`loop:${name}`);
     let loop = playing[name];
     if (!level) {
       if (loop && loop.level) {

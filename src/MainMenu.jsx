@@ -21,6 +21,7 @@ import { IrradiationVat } from "./Game/ReactComponents/IrradiationVat";
 import { getAvatarColor, getIsToolOpen, saveAvatarColor } from "./Game/DataClasses/Avatars";
 import { PIECES_INFO } from "Utils/gameState";
 import { playMusic } from "Utils/music";
+import { setSoundScene } from "Utils/soundVolumes";
 
 /*
   The landing screen (Jamie, playtest 21, until the UI epic's mock-ups): the logo, and "[Press any key]" at five sixths
@@ -318,7 +319,7 @@ export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = ()
     return () => clearTimeout(settled);
   }, []);
   // the title theme (Jamie, 2026-11-26): once the page has been clicked or a key pressed (browsers hold sound till then)
-  useEffect(() => { playMusic("title"); }, []);
+  useEffect(() => { setSoundScene("landing"); playMusic("title"); }, []);
   const [toolScreen, setToolScreen] = useState(undefined);
   const [logoScale, setLogoScale] = useState(getLogoScale);
   // the joiner's, the moon's and its reflection's places (?tune: Jamie's panel)

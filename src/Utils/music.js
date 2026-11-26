@@ -11,6 +11,7 @@
 */
 import { AUDIO_LEVEL, getAudio, getAudioNodes, onAudioUnlock } from "./audio";
 import { getNoiseBuffer } from "./sfx";
+import { getSoundVolume, noteHeard, onSoundVolumes } from "./soundVolumes";
 import { THEMES, DRUMS } from "./musicThemes";
 import REVIEW from "../Game/ReactComponents/MusicReview/musicReview.json";
 
@@ -339,7 +340,8 @@ class ThemePlayer {
     this.sectionIndex = 0;
     this.step = 0;
     this.lastMidi = {};
-    this.level = STYLE_LEVELS[style] || 1; // (the two styles about as loud as each other)
+    // (the two styles about as loud as each other; and the theme's volume in this scene, from the Sound (dev) panel)
+    this.level = (STYLE_LEVELS[style] || 1) * getSoundVolume(`music:${id}`);
   }
 
   start(fadeSeconds = 1.2) {
@@ -474,6 +476,7 @@ export const playMusic = (id, options = {}) => {
   if (!player.start(options.fadeSeconds ?? 1.2)) return; // (no sound yet: it starts on the first press, below)
   if (current) current.player.stop(options.fadeSeconds ?? 1.2);
   current = { key, player, options };
+  noteHeard(`music:${id}`);
 };
 export const stopMusic = (fadeSeconds = 1.2) => playMusic(undefined, { fadeSeconds });
 // what's playing: its id, and whether it's the light take or tense (the dev panel's)
@@ -513,6 +516,17 @@ export const renderMusicInto = (id, style, ctx, dest, seconds, options = {}) => 
 
 // for the /music review: one theme, now, in a style; stopped by stopMusic
 export const previewMusic = (id, style, options = {}) => playMusic(id, { ...options, style, fadeSeconds: 0.3 });
+
+// a theme's volume changed in the Sound (dev) panel, or the scene did: the theme playing goes to its level there
+onSoundVolumes(() => {
+  if (!current || !current.player.out || !current.player.ctx) return;
+  const player = current.player;
+  noteHeard(`music:${player.id}`);
+  const level = (STYLE_LEVELS[player.style] || 1) * getSoundVolume(`music:${player.id}`);
+  if (Math.abs(level - player.level) < 0.001) return;
+  player.level = level;
+  player.out.gain.setTargetAtTime(Math.max(level, 0.0001), player.ctx.currentTime, 0.1);
+});
 
 // (dev: what's playing, for scripted checks)
 if (import.meta.env && import.meta.env.DEV && typeof window != "undefined") window.__kaijuMusic = { getCurrentMusic, getWanted: () => wanted && wanted.id, getCurrentMusicInfo: () => getCurrentMusicInfo(), getNodes: () => getAudioNodes(), getLevel: () => AUDIO_LEVEL };

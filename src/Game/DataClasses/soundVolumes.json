@@ -1,0 +1,33 @@
+{
+ "scenes": {
+  "start": {
+   "music:title": 0.45,
+   "sfx:boot-patter": 1.75,
+   "sfx:ui-hover": 2
+  },
+  "menu": {
+   "sfx:crt-on": 1.65,
+   "sfx:lights-tubes": 1.75,
+   "sfx:blip-agent": 1.45,
+   "sfx:tama-sad": 1.4,
+   "sfx:tama-poop": 1.1,
+   "sfx:cast-lightning": 1.6,
+   "sfx:cast-ice": 1.5,
+   "sfx:cast-fire": 1.6
+  }
+ },
+ "last": {
+  "music:title": 0.45,
+  "sfx:boot-patter": 1.75,
+  "sfx:ui-hover": 2,
+  "sfx:crt-on": 1.65,
+  "sfx:lights-tubes": 1.75,
+  "sfx:blip-agent": 1.45,
+  "sfx:tama-sad": 1.4,
+  "sfx:tama-poop": 1.1,
+  "sfx:cast-lightning": 1.6,
+  "sfx:cast-ice": 1.5,
+  "sfx:cast-fire": 1.6
+ },
+ "differences": []
+}
