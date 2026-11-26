@@ -1,3 +1,8 @@
+import { playSfx } from "Utils/sfx";
+
+// each power's cast and passive sounds (Jamie, 2026-11-26: Utils/sfx.js); the player's loudest, everyone else's quieter
+const CAST_SFX = { ice: "cast-ice", fire: "cast-fire", water: "cast-water", wood: "cast-wood", lightning: "cast-lightning", death: "cast-death", bubble: "cast-bubble", metal: "cast-metal", glass: "cast-glass", love: "cast-love", wink: "cast-love", heal: "cast-heal" };
+const getSfxGain = piece => (!piece || !piece.isNpc ? 1 : piece.avatar == "kaiju" ? 0.35 : 0.55);
 
 // the extra wait before an NPC can use an ability again, in milliseconds
 // the passives Clean Slate leaves be: the ones that cost (Lichdom's health, Inclement Weather's speed)
@@ -28,6 +33,8 @@ export class GameBoardPieceAbility {
     }) {
         this.accTime = accTime;
         this.lastCastAt = accTime;
+        const element = this.gameBoardPieceAbilityData.element;
+        if (CAST_SFX[element]) playSfx(CAST_SFX[element], { gain: getSfxGain(piece) });
         const { buffedCastBonus, isPassiveRefreshed, castStack, isCleanSlate } = this.gameBoardPieceAbilityData;
         // cast again while the passive is on, a stacking power builds up, to a cap
         this.stacks = castStack && this.isPassiveApplied ? Math.min((this.stacks || 0) + 1, castStack.maxStacks) : 0;
@@ -60,6 +67,7 @@ export class GameBoardPieceAbility {
             if (!isRefresh && maxPassiveStacks && this.passiveIds.size >= maxPassiveStacks) this.endPassive(piece, Math.min(...this.passiveIds));
             else this.gameBoardPieceAbilityData.togglePassive(piece);
             this.isPassiveApplied = true;
+            if (CAST_SFX[element]) playSfx(`passive-${element == "wink" ? "love" : element}`, { gain: getSfxGain(piece) * 0.8 });
             this.passiveCount += 1;
             const passiveId = this.passiveCount;
             this.passiveIds.add(passiveId);

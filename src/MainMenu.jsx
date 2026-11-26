@@ -20,6 +20,7 @@ import { GlobalSettingsContext } from "Home";
 import { IrradiationVat } from "./Game/ReactComponents/IrradiationVat";
 import { getAvatarColor, getIsToolOpen, saveAvatarColor } from "./Game/DataClasses/Avatars";
 import { PIECES_INFO } from "Utils/gameState";
+import { playMusic } from "Utils/music";
 
 /*
   The landing screen (Jamie, playtest 21, until the UI epic's mock-ups): the logo, and "[Press any key]" at five sixths
@@ -205,6 +206,9 @@ const SceneSlide = styled.div`
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  /* (back from the game: the walking Kaiju held off, unseen, till the skyline has zoomed back out, then its walk from the
+     start, fading in at the left. It isn't in the zoom: it showed at full size over the zoomed-in city. Jamie, 2026-11-25) */
+  & [data-walk] { ${props => props.$isWalkHeld && css`animation: none; opacity: 0;`} }
   /* the title and the Kaiju slide off left in parallax; the skyline zooms into the city (the embers fade) */
   & > div > :first-child { ${props => layerSlide(SLIDE.title, props.$isLeaving)} }
   & img, & [data-spotlights], & [data-base-joiner] { ${props => props.$isLeaving && css`
@@ -313,6 +317,8 @@ export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = ()
     const settled = setTimeout(() => setIsLandingShifting(false), LANDING_SHIFT_MS);
     return () => clearTimeout(settled);
   }, []);
+  // the title theme (Jamie, 2026-11-26): once the page has been clicked or a key pressed (browsers hold sound till then)
+  useEffect(() => { playMusic("title"); }, []);
   const [toolScreen, setToolScreen] = useState(undefined);
   const [logoScale, setLogoScale] = useState(getLogoScale);
   // the joiner's, the moon's and its reflection's places (?tune: Jamie's panel)
@@ -388,6 +394,12 @@ export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = ()
     return isBack;
   });
   const [isLogoZoomingOut] = useState(isZoomingBack); // (the skyline's zoom back out runs on to its end)
+  const [isWalkHeld, setIsWalkHeld] = useState(isZoomingBack);
+  useEffect(() => {
+    if (!isWalkHeld) return;
+    const release = setTimeout(() => setIsWalkHeld(false), getZoomBackMs() - 450 + CITY_ZOOM.ms);
+    return () => clearTimeout(release);
+  }, []);
   const isZoomingBackRef = useRef(isZoomingBack);
   isZoomingBackRef.current = isZoomingBack;
   const isLeavingRef = useRef(false);
@@ -445,7 +457,7 @@ export const MainMenu = ({ handleClickGame, handleClickSettings, playClouds = ()
     <SpeedBlurFilter />
     <LandingScene spot={CITY_ZOOM.spot} zoom={getSceneZoom(isLeaving, isLogoZoomingOut)} isBack={isLogoZoomingOut} logoScale={logoScale} lift={LOGO_LIFT - tune.cityscape.y} tune={tune} event={event} isEventFading={isEventFading} onBuoyFacing={onBuoyFacing} isKaijuFading={isKaijuFading} onKaijuDone={onKaijuDone} onKaijuFire={onKaijuFire} isHidden={!isSceneShown} fadeMs={INTRO.sceneMs} />
     <EmberSlide $isLeaving={isLeaving} style={isLeaving ? undefined : { opacity: event === undefined || isEventFading || !isEmbersOn ? 0 : 1, transition: `opacity ${LANDING_CYCLE.embersMs}ms ease-in-out` }}><Embers /></EmberSlide>
-    <SceneSlide $isLeaving={isLeaving} $isZoomingBack={isLogoZoomingOut} $intro={introStage} style={{ "--logo-scale": logoScale, "--logo-lift": `${LOGO_LIFT}px`, "--joiner-both": `${tune.joiner.both}px`, "--joiner-band": `${tune.joiner.band}px`, "--joiner-glow": `${tune.joiner.glow}px`, "--skyline-y": `${tune.cityscape.y}px`, "--base-joiner-top": `${tune.baseJoiner.top}px`, "--base-joiner-height": `${tune.baseJoiner.height}px`, ...getBaseJoinerShape(tune.baseJoiner), "--base-joiner-solid": `${tune.baseJoiner.solid * 100}%`, "--base-joiner-opacity": tune.baseJoiner.opacity }}><Logo spotlights circuit baseJoiner /></SceneSlide>{/* (the joiner off, to see it without: Jamie, 2026-11-19; <Logo joiner spotlights /> brings it back) */}
+    <SceneSlide $isLeaving={isLeaving} $isZoomingBack={isLogoZoomingOut} $isWalkHeld={isWalkHeld} $intro={introStage} style={{ "--logo-scale": logoScale, "--logo-lift": `${LOGO_LIFT}px`, "--joiner-both": `${tune.joiner.both}px`, "--joiner-band": `${tune.joiner.band}px`, "--joiner-glow": `${tune.joiner.glow}px`, "--skyline-y": `${tune.cityscape.y}px`, "--base-joiner-top": `${tune.baseJoiner.top}px`, "--base-joiner-height": `${tune.baseJoiner.height}px`, ...getBaseJoinerShape(tune.baseJoiner), "--base-joiner-solid": `${tune.baseJoiner.solid * 100}%`, "--base-joiner-opacity": tune.baseJoiner.opacity }}><Logo spotlights circuit baseJoiner /></SceneSlide>{/* (the joiner off, to see it without: Jamie, 2026-11-19; <Logo joiner spotlights /> brings it back) */}
     <ZoomThrough isOn={isLeaving} startMs={ZOOM_START_MS} onDone={enterRoom || handleClickGame} />
     {isZoomingBack && <ZoomThrough isOn isReverse startMs={0} onDone={() => setIsZoomingBack(false)} />}
     <PressAnyKey $isLeaving={isLeaving} style={{ top: `calc(var(--safe-y) + var(--safe-h) * ${tune.pressKey.top})`, opacity: isZoomingBack || introStage < 3 ? 0 : undefined, transition: introStage < 4 ? `opacity ${INTRO.pressMs}ms ease-in-out` : "opacity 600ms ease-out" }}>

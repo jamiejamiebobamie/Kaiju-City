@@ -1,6 +1,7 @@
 import { getWaterSlow } from 'Game/DataClasses/AquariumFlood';
 import { getThrowVec } from 'Game/DataClasses/Ragdoll';
 import { followBrainAction } from 'Game/DataClasses/npcBrain/brain';
+import { playSfx } from 'Utils/sfx';
 
 // an NPC through a portal or a tile link rests from them this long (Jamie)
 export const PORTAL_REST_MS = 5000;
@@ -268,6 +269,7 @@ export class GameBoardPieceBase {
                 } else {
                     this.moveWithEnemy(enemy);
                 }
+                this.keepToLeash();
             } // - - - - - - - - - - - -
 
             this.useAbilities(accTime);
@@ -425,6 +427,9 @@ export class GameBoardPieceBase {
         this.setTileIndex(nextTileIndex);
         this.moveToTiles = tileIndices;
         this.moveToLocation = this.gameManagerProxy.getCharXAndYFromTileIndex(nextTileIndex);
+        // a step (Jamie, 2026-11-26): the player's own, quiet; a Kaiju's stomp, every other tile
+        if (!this.isNpc) playSfx("footsteps-one", { gain: 0.5, minGapMs: 180 });
+        else if (this.avatar == "kaiju" && (this.stepCount = (this.stepCount || 0) + 1) % 2 == 0) playSfx("kaiju-stomp-one", { gain: 0.35, minGapMs: 350 });
     }
 
     applyAvatar({ avatar, color, spriteSheetSrc }) {
@@ -660,7 +665,10 @@ export class GameBoardPieceBase {
         this.isTeleported = !this.isTeleported;
 
         // an NPC's own target, when the game gives it one (Punk Guy, trapped by the train: a clear platform)
-        const pickedTileIndex = this.isNpc ? (this.teleportTarget || this.gameManagerProxy.getSafeTileIndex(this.pieceIndex, true)) : this.moveToTiles[this.moveToTiles.length - 1];
+        let pickedTileIndex = this.isNpc ? (this.teleportTarget || this.gameManagerProxy.getSafeTileIndex(this.pieceIndex, true)) : this.moveToTiles[this.moveToTiles.length - 1];
+        // an ally on a leash lands inside it (Jamie, 2026-11-25: no teleporting off to fight out of sight)
+        const leash = this.isNpc && this.gameManagerProxy.getAllyLeash(this);
+        if (leash && pickedTileIndex && !this.gameManagerProxy.getIsInLeash(leash, pickedTileIndex)) pickedTileIndex = this.gameManagerProxy.getLeashTile(leash, pickedTileIndex);
         this.teleportTarget = undefined;
         const teleportTileIndex = this.getIsAllowedTile(pickedTileIndex) ? pickedTileIndex : undefined;
         if (!teleportTileIndex) this.shouldTeleport = false; // nowhere it may go: the Teleport is spent
@@ -841,6 +849,19 @@ export class GameBoardPieceBase {
             : []);
     }
 
+    // an ally on a leash (GameManager's ALLY_LEASH): outside it, back toward the player; inside, the path stops at its edge
+    keepToLeash() {
+        const leash = this.gameManagerProxy.getAllyLeash(this);
+        if (!leash) return;
+        if (!this.gameManagerProxy.getIsInLeash(leash, this.tileIndex)) {
+            const path = this.gameManagerProxy.getPathFromTileToTile({ fromTile: this.tileIndex, toTile: leash.center.getTileIndex(), pieceIndex: this.pieceIndex }) || [];
+            this.moveToTiles = this.getSpacedPath(path.slice(0, Math.max(path.length - 1, 0)));
+            return;
+        }
+        const out = this.moveToTiles.findIndex(tile => !this.gameManagerProxy.getIsInLeash(leash, tile));
+        if (out >= 0) this.moveToTiles = this.moveToTiles.slice(0, out);
+    }
+
     getReadyAttackReach() {
         if (this.gameManagerProxy.getIsPowersOff(this)) return 0;
         return this.abilities
@@ -867,6 +888,9 @@ export class GameBoardPieceBase {
 
             if (!isHeal && isExtraLives) {
                 remainingDmg = this.decrementExtraLives(dmg);
+                // a hit a passive's extra health took (Wood's Healthy): counted, so its "-1" and shake still show. Jamie,
+                // 2026-11-25: Fire's first hit on the Punk Guy took his bonus point and showed nothing, as if it missed
+                this.absorbedHits = (this.absorbedHits || 0) + (dmg - remainingDmg);
             }
 
             const livesNewVal = this.lives - remainingDmg;
@@ -880,7 +904,8 @@ export class GameBoardPieceBase {
             if (isHeal) {
                 // triggers useEffect to show
                 this.isHealed = !this.isHealed;
-            }
+                playSfx("cast-heal", { gain: this.isNpc ? 0.35 : 0.6, minGapMs: 700 });
+            } else if (dmg > 0) playSfx("hit", { gain: !this.isNpc ? 1 : this.avatar == "kaiju" ? 0.5 : 0.7 }); // (Jamie, 2026-11-26)
 
             const lives = this.lives + this.livesModifier;
 
@@ -941,6 +966,8 @@ export class GameBoardPieceBase {
 
     handleDeath() {
         this.setIsDead(true);
+        playSfx("ko", { gain: this.avatar == "kaiju" ? 0.6 : 1 });
+        playSfx("ragdoll-flop", { gain: 0.8 });
         this.spawnDeathPiece();
         // a Kaiju charmed onto the player's team still counts as a kill
         this.gameManagerProxy.updateScore(this.homeTeamIndex);

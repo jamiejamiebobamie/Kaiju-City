@@ -5,9 +5,9 @@
   "scale": 2.62,
   "frame": 5,
   "isMirrored": true,
-  "outline": 1.5,
+  "outline": 5.9,
   "fillColor": "#910094",
-  "outlineColor": "#910094"
+  "outlineColor": "#ed51f5"
  },
  "fire": {
   "dx": 1.064880912167336,
@@ -33,6 +33,7 @@
  },
  "border": {
   "isOn": true,
-  "width": 4
+  "width": 1.65,
+  "color": "#910094"
  }
 }

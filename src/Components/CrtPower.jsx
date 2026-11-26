@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import styled, { css, keyframes } from "styled-components";
+import { playSfx } from "Utils/sfx";
 
 /*
   A monitor's power (Jamie, 2026-11-14: "sell" the Kaiju-Vision monitor). Before it is first switched on the screen
@@ -107,6 +108,7 @@ export const useCrtPower = isOn => {
   useLayoutEffect(() => {
     if (last.current === isOn) return;
     last.current = isOn;
+    playSfx(isOn ? "crt-on" : "crt-off", { minGapMs: 300 }); // (Jamie, 2026-11-26)
     if (isOn) {
       setState("turningOn");
       const timeout = setTimeout(() => setState("on"), CRT.onMs);

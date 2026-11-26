@@ -23,11 +23,15 @@ import { GIANT_KAIJU, GiantKaiju } from './GiantKaiju';
 import { GameBoardPieceGiant } from './GameBoard/Pieces/GameBoardPieceGiant';
 import { GameBoardPieceKaiju } from './GameBoard/Pieces/GameBoardPieceKaiju';
 import { GameBoardPieceBase } from './GameBoard/Pieces/GameBoardPieceBase';
+import { GameBoardPieceAbility } from './GameBoard/Pieces/GameBoardPieceAbility';
 import { NO_CAST } from './GameBoard/Tile/TileContender';
 import { getAvatarColor } from './Avatars';
 import { getTorsoSpot, startRagdoll, stepRagdoll } from './Ragdoll';
 import { DIALOGUE, getIsClickThrough, getIsDialogueLog } from './DialogueLog';
 import { getIsSpacing } from './SpacingTest';
+import { getMusicCue } from './musicCue';
+import { playSfx } from 'Utils/sfx';
+import { playMusicSting } from 'Utils/music';
 
 export const GameResult = Object.freeze({
     PlayerWon: 0,
@@ -109,6 +113,15 @@ const getDirName = ({ x, y }) => {
 export const CAMERA_WAY = { nearTiles: 5 };
 
 // what else the enemy zoom looks toward (getCameraThreats)
+/*
+  Allies on a leash (Jamie, 2026-11-25), in the recruit battles with one opponent (the Subway, Rooftop and Aquarium
+  fights, training and sparring): the teammate and recruits stay on the player's section, within a radius of the player.
+  The radius runs from 'minTiles' to what's on the player's screen (GameBoard sets it): all of it while the opponent is on
+  screen, so the fighting is seen; shrinking to 'minTiles' by the time they're twice that far, so no ally takes the fight
+  to them off camera. In tiles: a column's width.
+*/
+export const ALLY_LEASH = { minTiles: 5, defaultViewTiles: 10 };
+
 export const CAMERA_THREATS = {
   statuses: ['isGhosted', 'isWooded', 'isCold', 'isCharming', 'isSeaGhost'], // powers that chase their target. not Heal.
   kaijuNearRows: 16, // a Kaiju still walking in counts once it is this close to the player, in tile rows
@@ -467,6 +480,10 @@ export class GameManager {
 
     handleTrainStage = (stage, accTime) => {
         const { walkableTiles } = this.level;
+        // (the sounds: Jamie, 2026-11-26)
+        if (stage == 'warning') playSfx('train-crossing-bell', { gain: 0.8 });
+        if (stage == 'train') playSfx('train-arrival');
+        if (stage == 'clearing') { playSfx('train-brakes', { gain: 0.7 }); playSfx('train-doors', { gain: 0.6 }); }
         this.setPhase('trainLights', stage != 'idle');
         this.setPhase('trainWarning', stage == 'warning'); // only before the train: the title says it is coming
         if (stage == 'warning') this.closeTracks();
@@ -567,6 +584,13 @@ export class GameManager {
         if (mandatoryTeammateGamemodes.includes(gameMode) && this.settingsManager.getIsTeammate() && !this.level.giantKaiju) {
             const teammateAvatar = this.settingsManager.getTeammateAvatar();
             const teammateAbilities = this.settingsManager.getThreeRandomAbilities();
+            // the Subway's fight (Jamie, 2026-11-25): Punk Guy teleports across the tracks, so the teammate brings a Teleport
+            // when the player didn't pick one (in place of their third power, or of whichever isn't the attack)
+            const hasTeleport = list => list.some(ability => ability.gameBoardPieceAbilityData.element == 'glass');
+            if (this.level.rival && this.level.rival.canTeleportAcross && !this.level.isTraining && !hasTeleport(playerAbilities) && !hasTeleport(teammateAbilities)) {
+                const glass = Object.values(this.settingsManager.abilityAndTileStatusData).find(({ element }) => element == 'glass');
+                if (glass) teammateAbilities[2] = new GameBoardPieceAbility({ gameBoardPieceAbilityData: glass });
+            }
 
             // add teammate abilities to input handler to be triggered by keyboard keys
             teammateAbilities.forEach(a => this.playerInputHandler.addPlayerAbilities(a));
@@ -919,8 +943,9 @@ export class GameManager {
             const key = `status ${status.getAppliedStatus()} ${tile.cast.casterIndex} ${tile.cast.seaIcon || ''}`;
             const charLocation = board.getCharXAndYFromTileIndex(tile.tileIndex);
             const distance = Math.hypot(charLocation.x - player.charLocation.x, charLocation.y - player.charLocation.y);
-            // a sea creature after the player: the camera goes in tighter and quicker (Jamie)
-            const isTense = status.getAppliedStatus() == 'isSeaGhost';
+            // a sea creature after the player: the camera goes in tighter and quicker (Jamie). a ghost too (Haunt's, the
+            // ring's): Jamie, 2026-11-25
+            const isTense = ['isSeaGhost', 'isGhosted', 'isPhaseGhost'].includes(status.getAppliedStatus());
             if (!byCast.has(key) || distance < byCast.get(key).distance) byCast.set(key, { key, charLocation, distance, isTense });
         });
         threats.push(...[...byCast.values()].map(({ key, charLocation, isTense }) => ({ key, charLocation, isChasing: true, isTense })));
@@ -930,7 +955,7 @@ export class GameManager {
             this.ghostRing.ghosts.filter(({ state }) => state == 'launched').forEach(ghost => {
                 const getDistance = piece => Math.hypot(piece.charLocation.x - ghost.x, piece.charLocation.y - ghost.y);
                 const chased = team.reduce((closest, piece) => !closest || getDistance(piece) < getDistance(closest) ? piece : closest, undefined);
-                if (chased == player) threats.push({ key: `phaseGhost ${ghost.id}`, charLocation: { x: ghost.x, y: ghost.y }, isChasing: true });
+                if (chased == player) threats.push({ key: `phaseGhost ${ghost.id}`, charLocation: { x: ghost.x, y: ghost.y }, isChasing: true, isTense: true });
             });
         }
         // Kaiju not on the board yet, but near
@@ -1680,6 +1705,7 @@ export class GameManager {
         if (this.isShattered) return false;
         this.isShattered = true;
         this.isShatterPending = true;
+        playSfx('glass-crack');
         const rival = this.rivalPiece;
         rival.lives = 1;
         rival.isUnhurtable = true;
@@ -1703,6 +1729,9 @@ export class GameManager {
     */
     startShatter() {
         this.isShatterPending = false;
+        playSfx('stop-scream');
+        playSfx('turn-tone', { gain: 0.8 }); // (a boss's phase changing: Jamie, 2026-11-26)
+        setTimeout(() => playSfx('glass-shatter'), 900);
         const rival = this.rivalPiece;
         const rowPx = this.getGhostRowPx();
         const { panels, topSpot, screamScene, creaturesScene } = this.level.aquariumFlood;
@@ -1784,6 +1813,7 @@ export class GameManager {
     }
 
     startAquariumFlood() {
+        playSfx('flood');
         const rival = this.rivalPiece;
         const board = this.gameBoardManager;
         rival.walkToTile = undefined;
@@ -1828,6 +1858,7 @@ export class GameManager {
             this.gameBoardManager.updateTileWithAbilityStatus({ accTime: this.accTime, pieceIndex: rival.pieceIndex, appliedStatus: 'isHealing' });
             rival.lives = Math.min(rival.lives + 1, rival.maxLives);
             rival.isHealed = !rival.isHealed;
+            playSfx('mermaid-heal', { gain: 0.8 });
             if (rival.lives >= rival.maxLives) rival.isUnhurtable = false;
         }
         // the water is gone: she comes back down to the hall
@@ -1859,6 +1890,7 @@ export class GameManager {
         const [, dirs] = board.getNumAdjacentTilesInDirectionFromTileToTile({ fromTileIndex: source, toTileIndex: target.getTileIndex() });
         const tile = board.tiles[source.i][source.j];
         if (!tile.getCanApplyStatus(isSeaGhost)) return;
+        playSfx('sea-creature', { gain: 0.5, minGapMs: 400 });
         tile.updateTileStatus({
             updateKey: this.accTime, tileStatus: isSeaGhost, currCount: isSeaGhost.range, dirs: dirs.length ? [dirs[0]] : ['up'],
             teamIndex: rival.teamIndex, targetIndex: target.pieceIndex,
@@ -1932,6 +1964,8 @@ export class GameManager {
     // the keys are off only for this.
     startGhostScream() {
         this.isGhostScreamPending = false;
+        playSfx('rooftop-scream');
+        playSfx('turn-tone', { gain: 0.8 });
         this.isGhostPhase = true; // until the ring is spent
         const rival = this.rivalPiece;
         const { player, teammate, recruits } = this.getGhostTeam();
@@ -2028,6 +2062,7 @@ export class GameManager {
     startGhostRing(count, teammate) {
         const ring = new GhostRing({ center: this.level.ghostBoss.ringCenter, count, rowPx: this.getGhostRowPx(), radiusRows: GHOST_BOSS.ringRadiusRows });
         this.ghostRing = ring;
+        playSfx('ghost-rings');
         // the teammate stays in the ring until it is spent, whatever the player does
         // (only while it plays itself: taken over, the player goes where they like. Jamie, playtest 38)
         if (teammate) teammate.allowedTile = tile => !teammate.isNpc || ring.getIsWellInside(this.gameBoardManager.getCharXAndYFromTileIndex(tile));
@@ -2408,6 +2443,8 @@ export class GameManager {
             upTile: piece.getTileIndex() // off the tracks, where they get up: the body tumbles there as it falls
         };
         this.gameBoardPiecesManager.deathPieces.push(knock);
+        playSfx('hit');
+        playSfx('ragdoll-flop');
         piece.knockedUntil = knock.upAt;
         piece.isVisible = false;
         piece.moveToTiles = [];
@@ -2783,6 +2820,9 @@ export class GameManager {
             ];
         };
 
+        // their line after the touch: the shot on them where they stand once the touch has played out, filled in then (Jamie,
+        // 2026-11-25: it was aimed where they stood before the scoot and the hop back onto a tile, the Punk Guy off-centre)
+        const afterTouchShot = closeShot({ x: rival.charLocation.x, y: rival.charLocation.y });
         this.startCutscene([
             { shot: { isWide: true }, ms: CUTSCENE.wideMs },
             { shot, ms: CUTSCENE.pullInMs },
@@ -2803,10 +2843,12 @@ export class GameManager {
                 // back on a tile, from wherever the hops left them, for the fight
                 if (rival.dollFrom) rival.initCharLocation(true, this.gameBoardManager.getClosestWalkableTileToLocation(rival.charLocation));
                 rival.dollFrom = undefined;
+                const { x, y } = rival.charLocation;
+                afterTouchShot.point = { x, y: y - CUTSCENE.shotHeadRows * rowStep * scale };
             } },
             ...(afterTouch ? [
-                { shot: closeShot({ x: rival.charLocation.x, y: rival.charLocation.y }), ms: CUTSCENE.pullInMs },
-                { shot: closeShot({ x: rival.charLocation.x, y: rival.charLocation.y }), ms: getSpeechMs(afterTouch.text), speech: () => this.getSpeechOver(rival, afterTouch.name, afterTouch.text) }
+                { shot: afterTouchShot, ms: CUTSCENE.pullInMs },
+                { shot: afterTouchShot, ms: getSpeechMs(afterTouch.text), speech: () => this.getSpeechOver(rival, afterTouch.name, afterTouch.text) }
             ] : [])
         ]);
     }
@@ -2863,6 +2905,102 @@ export class GameManager {
         if (!clear.length) return;
         rival.teleportTarget = clear[Math.floor(Math.random() * clear.length)];
         teleport.useAbility({ accTime: this.accTime, piece: rival, registerTimeout: this.gameManagerProxy.registerTimeout, updateTileWithAbilityStatus: this.gameManagerProxy.updateTileWithAbilityStatus });
+    }
+
+    // what GameBoard's play camera shows round the player, in tiles from the middle to the nearer edge
+    setViewTileRadius(tiles) {
+        if (Number.isFinite(tiles) && tiles > 0) this.viewTileRadius = tiles;
+    }
+
+    // ALLY_LEASH: the leash on this ally now ({ center, radius, region, tilePx }), or undefined if there's none
+    getAllyLeash = piece => {
+        const level = this.level;
+        if (!level.rival || level.kaijuEntry || level.agentDrops || level.trap || this.cutscene || this.recruitScene) return undefined;
+        if (!piece || !piece.isNpc || piece.isDead || piece.isCharmed) return undefined;
+        // (off the leash while holding a portal open for the player: updateShadowingTeammate)
+        if ((piece.leashFreeUntil || 0) > this.accTime) return undefined;
+        const playerTeam = this.gameBoardPiecesManager.getPlayerTeamIndex();
+        if (piece.teamIndex != playerTeam) return undefined;
+        const player = this.gameBoardPiecesManager.getPlayerPiece();
+        const rival = this.rivalPiece;
+        if (!player || player == piece || player.isDead || !player.isOnTiles || !rival || rival.isDead || !rival.isOnTiles) return undefined;
+        const tilePx = this.level.grid.colStep * this.level.grid.scale;
+        const most = Math.max(ALLY_LEASH.minTiles, this.viewTileRadius || ALLY_LEASH.defaultViewTiles);
+        const apart = Math.hypot(rival.charLocation.x - player.charLocation.x, rival.charLocation.y - player.charLocation.y) / tilePx;
+        const share = Math.min(Math.max((apart - most) / most, 0), 1); // 0 on screen, 1 at twice that
+        const radius = most - (most - ALLY_LEASH.minTiles) * share;
+        return { center: player, radius, region: this.getTeleportRegion(player.getTileIndex()), tilePx };
+    };
+
+    getIsInLeash = (leash, tile) => {
+        if (!leash || !tile) return true;
+        const spot = this.gameBoardManager.getCharXAndYFromTileIndex(tile);
+        const { x, y } = leash.center.charLocation;
+        return Math.hypot(spot.x - x, spot.y - y) <= leash.radius * leash.tilePx && this.getTeleportRegion(tile) == leash.region;
+    };
+
+    // a tile inside the leash, the nearest to 'tile' (an ally's Teleport landing), not the player's own
+    getLeashTile = (leash, tile) => {
+        const playerTile = leash.center.getTileIndex();
+        const spot = this.gameBoardManager.getCharXAndYFromTileIndex(tile);
+        const inside = this.gameBoardManager.walkableTiles.filter(each => this.getIsInLeash(leash, each) && !(each.i == playerTile.i && each.j == playerTile.j));
+        if (!inside.length) return undefined;
+        const apart = each => { const at = this.gameBoardManager.getCharXAndYFromTileIndex(each); return Math.hypot(at.x - spot.x, at.y - spot.y); };
+        return inside.reduce((best, each) => apart(each) < apart(best) ? each : best);
+    };
+
+    /*
+        The Subway (Jamie, 2026-11-25): the teammate shadows the player across the tracks. With a train in, a teammate on
+        another platform from Punk Guy teleports over when their Teleport's ready: beside the player if the player's there,
+        else near him. (They bring a Teleport here when the player doesn't: addTeammate's powers, initGame.)
+    */
+    updateShadowingTeammate() {
+        const rival = this.rivalPiece;
+        if (!this.level.hasTrainSchedule || !this.level.rival || !this.level.rival.canTeleportAcross || !this.activePhases.has('train') || this.cutscene || this.recruitScene) return;
+        if (!rival || rival.isDead || !rival.isOnTiles) return;
+        const [player, teammate] = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
+        if (!teammate || !teammate.isNpc || teammate.isDead || !teammate.isOnTiles || teammate.shouldTeleport || teammate.isInPortal) return;
+        if (this.getIsPowersOff(teammate)) return;
+        const teleport = teammate.abilities.find(ability => ability.gameBoardPieceAbilityData.element == 'glass');
+        if (!teleport || teleport.getIsOnCooldown(this.accTime, true)) return;
+        // (the player's platform: allies keep to the player's section, ALLY_LEASH. Jamie, 2026-11-25)
+        if (!player || player.isDead || !player.isOnTiles) return;
+        const playerRegion = this.getTeleportRegion(player.getTileIndex());
+        const teammateRegion = this.getTeleportRegion(teammate.getTileIndex());
+        // the player through the portal (or it shut): back on the leash
+        if (teammate.leashFreeUntil && teammateRegion != playerRegion) teammate.hasCrossedForPortal = true;
+        if (teammate.leashFreeUntil && teammateRegion == playerRegion && teammate.hasCrossedForPortal) teammate.leashFreeUntil = teammate.hasCrossedForPortal = 0;
+        if ((teammate.leashFreeUntil || 0) > this.accTime) return;
+        const rivalRegion = this.getTeleportRegion(rival.getTileIndex());
+        /*
+            On the attack (Jamie, 2026-11-25): the player and the teammate on one platform, cut off from Punk Guy by the
+            train. The teammate teleports over beside him, and the wormhole it leaves by the player is the way across for
+            the player to follow. Off the leash while it's open.
+        */
+        if (teammateRegion == playerRegion && rivalRegion != playerRegion && this.getIsApartByTrain()) {
+            const rivalTile = rival.getTileIndex();
+            const from = teammate.getTileIndex();
+            if (this.gameBoardManager.getLinkedTile(from)) return; // (no wormhole from a tile already linked)
+            const over = this.gameBoardManager.walkableTiles.filter(tile => this.getTeleportRegion(tile) == rivalRegion && !this.gameBoardManager.getLinkedTile(tile)
+                && !(tile.i == rivalTile.i && tile.j == rivalTile.j));
+            if (!over.length) return;
+            const beside = over.map(tile => ({ tile, apart: Math.hypot(tile.i - rivalTile.i, tile.j - rivalTile.j) })).sort((a, b) => a.apart - b.apart).slice(0, 4);
+            const { wormholeMs } = this.settingsManager.getAbilityAndTileStatusData().isTeleportTile;
+            teammate.hasCrossedForPortal = 0;
+            teammate.leashFreeUntil = this.accTime + (wormholeMs || 6000);
+            teammate.teleportTarget = beside[Math.floor(Math.random() * beside.length)].tile;
+            teleport.useAbility({ accTime: this.accTime, piece: teammate, registerTimeout: this.gameManagerProxy.registerTimeout, updateTileWithAbilityStatus: this.gameManagerProxy.updateTileWithAbilityStatus });
+            return;
+        }
+        if (teammateRegion == playerRegion) return;
+        const anchor = player.getTileIndex();
+        const there = this.gameBoardManager.walkableTiles.filter(tile => this.getTeleportRegion(tile) == playerRegion && !this.gameBoardManager.getLinkedTile(tile)
+            && !(tile.i == rival.getTileIndex().i && tile.j == rival.getTileIndex().j) && !(tile.i == anchor.i && tile.j == anchor.j));
+        if (!there.length) return;
+        // the closest few to the anchor, one of them
+        const near = there.map(tile => ({ tile, apart: Math.hypot(tile.i - anchor.i, tile.j - anchor.j) })).sort((a, b) => a.apart - b.apart).slice(0, 4);
+        teammate.teleportTarget = near[Math.floor(Math.random() * near.length)].tile;
+        teleport.useAbility({ accTime: this.accTime, piece: teammate, registerTimeout: this.gameManagerProxy.registerTimeout, updateTileWithAbilityStatus: this.gameManagerProxy.updateTileWithAbilityStatus });
     }
 
     /*
@@ -2935,6 +3073,7 @@ export class GameManager {
     startGreeting(isRepeat = false) {
         const { text, speechSpot, repeatMs } = this.level.greeting;
         const speech = { ...this.getAgentSpeech(text, speechSpot), isShout: true }; // a call across the street: a balloon, not the log
+        playSfx('street-greeting');
         this.hasGreeted = true; // from his first call on, the objective is to go and talk to him
         const player = this.gameBoardPiecesManager.getPlayerPiece();
         const { rowStep, scale } = this.level.grid;
@@ -3272,6 +3411,7 @@ export class GameManager {
 
     startTrapScene() {
         const { script, speechSpot, lineUp, ray } = this.level.trap;
+        playSfx('trap-clang');
         this.extras.forEach(extra => { if (extra.avatar == 'agent') extra.color = PIECES_INFO.kaiju.color; }); // the Agent glows purple (Jamie)
         this.lineUpTeam(lineUp);
         const [player, teammate] = this.getPieces();
@@ -3429,6 +3569,7 @@ export class GameManager {
     // the Agents burst in from below, in slow motion at first. the powers are gone, so the only way out is the door.
     // the recruits still have theirs: they stay and hold the Agents off while the player and teammate run.
     startChase = () => {
+        playSfx('escape-siren');
         const { chasers: { xs, startY, landingY, moveSpeed, abilities, dropFrom }, chaseLines } = this.level.trap;
         const team = this.gameBoardPiecesManager.getTeamPieces(this.gameBoardPiecesManager.getPlayerTeamIndex());
         const runners = team.filter(piece => !this.followers.includes(piece));
@@ -3526,6 +3667,7 @@ export class GameManager {
         if (this.level.isWalkingLevel) return;
         if (!this.isSlowMotion) {
             this.isSlowMotion = true;
+            playSfx('last-blow-boom');
             this.baseMoveSpeedScale = this.gameBoardManager.moveSpeedScale;
             if (this.trainSchedule) this.stopTrains();
             this.startOutcomeShot();
@@ -3816,6 +3958,7 @@ export class GameManager {
 
     // 'isStraightDown': down from the catwalk where it stands over 'x', not walking in first
     addAgent({ x = 0, isFromLeft = false, standTile = undefined, kit = undefined, isStraightDown: isDroppedHere = false }) {
+        playMusicSting('agent'); // (an Agent shows: the Sleazy Agent's sting. Jamie, 2026-11-26)
         const { maxLives, moveSpeed, catwalkY, floorY } = this.level.agentDrops;
         const piece = this.gameBoardPiecesManager.addPiece({
             pieceClass: GameBoardPieceAgent,
@@ -3955,6 +4098,7 @@ export class GameManager {
         this.updateTakeOver();
         this.updateGuardianLine();
         this.updateTrappedRival();
+        this.updateShadowingTeammate();
         this.updateApartRival();
         this.updateRoamingRival();
         this.updateQueuedVisitScene();
@@ -4071,7 +4215,8 @@ export class GameManager {
             isRecruitTalkDone: this.getIsRecruitTalkDone(),
             speakingPieceIndex: this.getSpeakingPieceIndex(),
             winner: this.getGameResult(),
-            isPlayerDead: this.getControlledPiece().getIsDead()
+            isPlayerDead: this.getControlledPiece().getIsDead(),
+            ...getMusicCue(this) // (the theme to play: musicId, musicLight, musicIntensity)
         };
     }
 
@@ -4160,6 +4305,9 @@ export class GameManager {
             setHoveredTileIndex: this.gameBoardManager.setHoveredTileIndex,
             getIsPieceInDanger: this.gameBoardManager.getIsPieceInDanger,
             getIsPowersOff: this.getIsPowersOff,
+            getAllyLeash: this.getAllyLeash,
+            getIsInLeash: this.getIsInLeash,
+            getLeashTile: this.getLeashTile,
             getIsTileTakenForSpacing: this.getIsTileTakenForSpacing,
             getIsTeamDamaged: this.gameBoardPiecesManager.getIsTeamDamaged,
             getIsPieceOnTile: this.gameBoardPiecesManager.getIsPieceOnTile,

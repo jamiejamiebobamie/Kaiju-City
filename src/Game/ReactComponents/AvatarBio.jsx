@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import styled, { css, keyframes } from "styled-components";
 import DIALOGUE from "Game/DataClasses/Dialogue/dialogueFile";
+import { playSfx } from "Utils/sfx";
 
 /*
   The avatar select's side screen (Jamie, 2026-11-16): the two candidates' files, in green, not the tamagotchi (that's
@@ -334,7 +335,8 @@ const AgentCall = ({ startDelayMs = 0 }) => {
     if (isQuick) return;
     const at = Math.max(0, startDelayMs);
     const timeouts = [setTimeout(() => setIsStarted(true), at), setTimeout(() => setIsBalloonUp(true), at + AGENT_TIMING.balloonAtMs)];
-    [...AGENT_CALL.line].forEach((_, k) => timeouts.push(setTimeout(() => setTyped(k + 1), at + AGENT_TIMING.balloonAtMs + 250 + k * AGENT_TIMING.typeMs)));
+    // (each letter the Agent's talk blip, but the spaces: Jamie, 2026-11-26)
+    [...AGENT_CALL.line].forEach((char, k) => timeouts.push(setTimeout(() => { setTyped(k + 1); if (k % 2 == 0 && char.trim()) playSfx("blip-agent-one", { gain: 0.6 }); }, at + AGENT_TIMING.balloonAtMs + 250 + k * AGENT_TIMING.typeMs)));
     timeouts.push(setTimeout(finishAgentIntro, at + AGENT_TIMING.balloonAtMs + 250 + AGENT_CALL.line.length * AGENT_TIMING.typeMs));
     return () => timeouts.forEach(clearTimeout);
   }, []);
@@ -358,6 +360,8 @@ const AgentCall = ({ startDelayMs = 0 }) => {
 // 'avatar': the one hovered ("guy" or "girl"), or none
 export const AvatarBio = ({ avatar, agentDelayMs = 0 }) => {
   const file = avatar && AVATAR_BIOS[avatar];
+  // a file opening: the typewriter's patter (Jamie, 2026-11-26)
+  useEffect(() => { if (file) playSfx("bio-type", { gain: 0.6, minGapMs: 300 }); }, [avatar]);
   if (!file) {
     return (
       <AgentCall startDelayMs={agentDelayMs} />

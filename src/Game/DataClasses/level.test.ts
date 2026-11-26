@@ -1419,7 +1419,7 @@ describe('fourth playtest', () => {
       gm.stepPieces();
     }
     // then in close on him for his line once the power is in him
-    expect(seen.length).toBe(5); // (in close on him, and on his face for the words)
+    expect(seen.length).toBe(4); // (then in close on him where he ends up, one shot for the pull-in and his words: Jamie, 2026-11-25)
     expect(seen[0]).toBe(focus);
     expect(seen[1].x).toBeLessThan(focus.x / 2);
     expect(seen[2]).toBe(focus);

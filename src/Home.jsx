@@ -38,6 +38,8 @@ export const Home = ({ triggerTransition }) => {
   const [selectedDifficulty, setSelectedDifficulty] = useState(Difficulty.Hard);
   const [isAvatarChangedOnce, setIsAvatarChangedOnce] = useState(false);
   const [currPage, setCurrPage] = useState(PAGES.Home);
+  // Quit in a game: the game page made anew, its monitor booting to the start screen (Game's quitToStart. Jamie, 2026-11-25)
+  const [gameKey, setGameKey] = useState(0);
   // the landing slides in from the right when the view shifts back to it from the monitor (the end of the game)
   const [isLandingShifting, setIsLandingShifting] = useState(false);
   const handleShiftHome = () => {
@@ -94,6 +96,8 @@ export const Home = ({ triggerTransition }) => {
         />
       ) : currPage == PAGES.Game ? (
         <Game
+          key={gameKey}
+          handleQuitToStart={() => setGameKey(key => key + 1)}
           triggerTransition={triggerTransition}
           handleClickHome={() => triggerTransition(handleClickHome)}
           handleZoomHome={() => { ZOOM_BACK.isPending = true; handleClickHome(); } /* Leave: the zoom backwards (Jamie) */}

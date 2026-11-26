@@ -7,6 +7,7 @@ import { checkPeerService, getLinkedRoomCode } from "../Multiplayer/peerLink";
 import { MultiplayerLobby } from "../Multiplayer/MultiplayerLobby";
 import { LabTerminal, LAB_TERMINAL } from "./LabTerminal";
 import { DesignBox } from "./GameBoard/PlayWindow";
+import { playSfx } from "Utils/sfx";
 
 /*
   The main monitor's boot (Jamie, playtest 29), the first time it comes on in a visit: the game's logo (off the
@@ -60,6 +61,7 @@ const MatrixRain = () => {
     // a cell's digit: fixed for its column and row (a hash), so nothing changes in place
     const glyphAt = (column, row) => RAIN.glyphs[(((column * 73856093) ^ (row * 19349663)) >>> 0) % RAIN.glyphs.length];
     const launchBand = (from, to, top) => {
+      playSfx("boot-tick", { gain: 0.45, minGapMs: 40 }); // (the boot patter: a data tick as each cascade starts. Jamie, 2026-11-26)
       const speed = RAIN.speed[0] + Math.random() * (RAIN.speed[1] - RAIN.speed[0]);
       for (let k = from; k < to; k++) {
         drops[k] = { y: top - Math.random() * cell * 4, speed: speed * (1 + (Math.random() - 0.5) * RAIN.jitter * 2), band: from, bandEnd: to };
@@ -211,7 +213,10 @@ const ModeRow = styled.div`
   flex-direction: column;
   gap: 1.2cqw;
   align-items: stretch;
-  width: 50%;
+  /* (at least half the screen, wider when the longest name needs it: "Single Player" ran past its button's right
+     edge once the casing grew and the screen shrank: Jamie, 2026-11-25) */
+  width: max-content;
+  min-width: 50%;
   & > button { white-space: nowrap; padding: 0.8cqw 1.5cqw; }
 `;
 const ModeButton = styled.button`

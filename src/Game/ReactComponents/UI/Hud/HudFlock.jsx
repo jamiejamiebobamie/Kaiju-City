@@ -3,6 +3,7 @@ import styled from "styled-components";
 import { getSmokeBox, Hud } from "./Hud";
 import { HUD_LOOK, HUD_VARIANTS, PLATES } from "./hudSpec";
 import { triggerHudExplosion } from "./HudExplosions";
+import { playSfx } from "Utils/sfx";
 import { gameUiStore } from "Game/DataClasses/gameUiStore";
 
 /*
@@ -291,6 +292,8 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused, deadKeys = [],
       list.forEach(entry => {
         if (bodies.current.has(entry.key)) return;
         const slot = slots.get(entry.key);
+        // its jets in as it flies in (Jamie, 2026-11-26)
+        setTimeout(() => playSfx("drone-jets-in", { gain: 0.45, minGapMs: 250 }), FLOCK.enter.delayMs + newIndex * FLOCK.enter.staggerMs);
         bodies.current.set(entry.key, {
           x: (slot.x || 0) + FLOCK.enter.from.x, y: (slot.y || 0) + FLOCK.enter.from.y, vx: 0, vy: 0, tilt: -12, vt: 0,
           born: now + FLOCK.enter.delayMs + newIndex++ * FLOCK.enter.staggerMs, seed: Math.random() * 1000,
@@ -317,10 +320,17 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused, deadKeys = [],
         }
         body.energy = Math.max(0, body.energy - FLOCK.energy.decay * dt);
         body.damage = entry.isLeaving ? 0 : getHudDamage(pd);
+        // the sounds (Jamie, 2026-11-26): knocked about by a hit; sputtering once it's struggling; falling, and its fireball
+        const lives = pd ? pd.lives : undefined;
+        if (lives !== undefined && body.lastLives !== undefined && lives < body.lastLives && !entry.isLeaving) playSfx("drone-jostle", { gain: 0.45, minGapMs: 400 });
+        body.lastLives = lives;
+        if (body.damage > 0.6 && !body.isMalfunctionHeard) { body.isMalfunctionHeard = true; playSfx("drone-malfunction", { gain: 0.5 }); }
+        if (body.damage < 0.3) body.isMalfunctionHeard = false;
         let ax;
         let ay;
         if (entry.isDying) {
           // dark first, hanging there; then the drop
+          if (body.diedAt === undefined) playSfx("drone-fall-explode", { gain: 0.6, minGapMs: 200 });
           body.diedAt = body.diedAt ?? now;
           const sinceDeath = now - body.diedAt;
           if (sinceDeath < FLOCK.dying.powerDownMs) {
@@ -344,7 +354,10 @@ export const HudFlock = ({ order, isShowing, scale = 1, isPaused, deadKeys = [],
           }
         } else if (entry.isLeaving) {
           // thrust off, up and to the right
-          if (body.leftAt === undefined) body.leftAt = now + slot.leavingIndex * FLOCK.exit.staggerMs;
+          if (body.leftAt === undefined) {
+            body.leftAt = now + slot.leavingIndex * FLOCK.exit.staggerMs;
+            setTimeout(() => playSfx("drone-jets-out", { gain: 0.45, minGapMs: 200 }), slot.leavingIndex * FLOCK.exit.staggerMs);
+          }
           if (now < body.leftAt) {
             ax = -body.vx * FLOCK.damping;
             ay = -body.vy * FLOCK.damping;

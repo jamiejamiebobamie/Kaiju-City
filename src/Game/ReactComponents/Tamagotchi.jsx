@@ -1,5 +1,6 @@
 import React, { useEffect, useImperativeHandle, useRef, useState } from "react";
 import styled, { css, keyframes } from "styled-components";
+import { playSfx } from "Utils/sfx";
 
 /*
   The side monitor's Kaiju tamagotchi (Jamie, 2026-11-15): a silly mini-game while the player hasn't picked three
@@ -551,6 +552,16 @@ export const Tamagotchi = ({ actRef, onPickThree = undefined }) => {
     }, TAMA.tickMs);
     return () => clearInterval(tick); // off screen: its clock stops, and it waits here as it was
   }, []);
+  // its sounds (Jamie, 2026-11-26): a poop's blip, hearts a happy tune, happiness lost a sad one, speaking a chirp
+  const lastPet = useRef(pet);
+  useEffect(() => {
+    const before = lastPet.current;
+    lastPet.current = pet;
+    if (pet.poops.length > before.poops.length) playSfx("tama-poop", { gain: 0.7 });
+    else if (pet.hearts.length > before.hearts.length) playSfx("tama-happy", { gain: 0.7 });
+    else if (pet.happiness < before.happiness) playSfx("tama-sad", { gain: 0.7 });
+    else if (pet.speakingUntil != before.speakingUntil && pet.clock < pet.speakingUntil) playSfx("tama-chirp", { gain: 0.7 });
+  }, [pet]);
   useImperativeHandle(actRef, () => label => {
     PET = act(PET, label);
     setPet(PET);

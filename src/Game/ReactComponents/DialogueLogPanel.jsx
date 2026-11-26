@@ -1,6 +1,11 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import styled, { css, keyframes } from "styled-components";
 import { DIALOGUE } from "Game/DataClasses/DialogueLog";
+import { playSfx } from "Utils/sfx";
+
+// each speaker's talk blip as their line types out (Jamie, 2026-11-26: Utils/sfx.js "Talk blips")
+const BLIP_VOICES = { guy: "guy", girl: "girl", punk: "punk", black_female: "ghost", mermaid: "mermaid", agent: "agent" };
+const getBlip = avatar => `blip-${BLIP_VOICES[avatar] || "other"}-one`;
 
 /*
   The dialogue log, beside the monitor: a floating green hologram, after Disco Elysium's.
@@ -488,7 +493,7 @@ const Footer = styled.div`
 // 'isRushed': Continue was pressed mid-line: the rest comes in a quick burst (RUSH_STEPS ticks), so it's seen to finish.
 // no longer the newest line: it shows whole at once (Jamie, playtest 19: lines kept typing under the next ones)
 const RUSH_STEPS = 5;
-const TypedText = ({ text, isTyping, isRushed = false, onType, onDone }) => {
+const TypedText = ({ text, isTyping, isRushed = false, onType, onDone, avatar = undefined }) => {
   const [letters, setLetters] = useState(isTyping ? 0 : text.length);
   useEffect(() => {
     if (!isTyping && letters < text.length) setLetters(text.length);
@@ -499,6 +504,8 @@ const TypedText = ({ text, isTyping, isRushed = false, onType, onDone }) => {
       return;
     }
     const step = isRushed ? Math.ceil((text.length - letters) / RUSH_STEPS) : 1;
+    // (a blip every other letter, none on a space or when rushed)
+    if (!isRushed && letters % 2 == 0 && text[letters] && text[letters].trim()) playSfx(getBlip(avatar), { gain: 0.7, minGapMs: 30 });
     const timeoutRef = setTimeout(() => setLetters(Math.min(letters + step, text.length)), DIALOGUE.letterMs);
     return () => clearTimeout(timeoutRef);
   }, [letters, text, isRushed]);
@@ -568,6 +575,7 @@ const HoloCone = ({ panelRef }) => {
   const [shape, setShape] = useState(null);
   useEffect(() => {
     document.documentElement.setAttribute("data-holo-on", "");
+    playSfx("holo-shimmer", { gain: 0.6, minGapMs: 1500 }); // (the hologram coming up: Jamie, 2026-11-26)
     return () => document.documentElement.removeAttribute("data-holo-on");
   }, []);
   useEffect(() => {
@@ -743,7 +751,7 @@ export const DialogueLogPanel = ({ entries, isWaiting, isVisible, onContinue, ac
                 </Speaker>
               )}
               <Words>
-                <TypedText text={text} isTyping={isNewest} isRushed={rushedKey === key} onType={keepAtBottom} onDone={() => setDoneKey(key)} />
+                <TypedText text={text} avatar={avatar} isTyping={isNewest} isRushed={rushedKey === key} onType={keepAtBottom} onDone={() => setDoneKey(key)} />
               </Words>
             </Chunk>
           );

@@ -5,6 +5,7 @@ import { CloudTransition, CLOUD_TIMING } from "./Components/CloudTransition";
 import { loadAssets } from "./Utils/assetLoader";
 import { watchSafeArea } from "./Utils/stage";
 import { installEyeCursor } from "./Utils/eyeCursor";
+import { installUiSounds } from "./Utils/uiSounds";
 import "./App.css";
 import "./font-awesome-4.7.0/css/font-awesome.css";
 import "./font-awesome-7.3.1/fa7.css";
@@ -23,11 +24,19 @@ const ApartmentMockup = import.meta.env.DEV ? lazy(() => import("./Game/ReactCom
 // the tab icon tool (dev only, Jamie 2026-11-25)
 const isIconTool = import.meta.env.DEV && window.location.pathname == "/icon";
 const IconTool = import.meta.env.DEV ? lazy(() => import("./Game/ReactComponents/IconTool/IconTool").then(({ IconTool }) => ({ default: IconTool }))) : null;
+// the sound review: every proposed sound effect to hear and judge (dev only, Jamie 2026-11-25)
+const isSoundReview = import.meta.env.DEV && window.location.pathname == "/sounds";
+const SoundReview = import.meta.env.DEV ? lazy(() => import("./Game/ReactComponents/SoundReview/SoundReview").then(({ SoundReview }) => ({ default: SoundReview }))) : null;
+// the music review: every theme in both styles, to hear and judge (dev only, Jamie 2026-11-26)
+const isMusicReview = import.meta.env.DEV && window.location.pathname == "/music";
+const MusicReview = import.meta.env.DEV ? lazy(() => import("./Game/ReactComponents/MusicReview/MusicReview").then(({ MusicReview }) => ({ default: MusicReview }))) : null;
 const DialogueViewer = import.meta.env.DEV ? lazy(() => import("./Game/ReactComponents/Dialogue/DialogueViewer").then(({ DialogueViewer }) => ({ default: DialogueViewer }))) : null;
 
 // the stage's safe area, for everything sized from it (Utils/stage.js: layout phase 1)
 watchSafeArea();
 installEyeCursor(); // (the eye over the apartment: Jamie, 2026-11-25)
+// every button's hover tick and click (Jamie, 2026-11-26), but on the sound and music reviews (their buttons play sounds)
+if (!isSoundReview && !isMusicReview) installUiSounds();
 
 const SPLASH_FADE_MS = 700;
 const SPLASH_MIN_MS = 1500;
@@ -76,6 +85,8 @@ const App = () => {
   if (isClassReview) return <Suspense fallback={null}><ClassReview /></Suspense>;
   if (isApartmentMockup) return <Suspense fallback={null}><ApartmentMockup /></Suspense>;
   if (isIconTool) return <Suspense fallback={null}><IconTool /></Suspense>;
+  if (isSoundReview) return <Suspense fallback={null}><SoundReview /></Suspense>;
+  if (isMusicReview) return <Suspense fallback={null}><MusicReview /></Suspense>;
 
   return (
     <div className="App">

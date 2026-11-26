@@ -9,6 +9,7 @@ import { getHasTamagotchiIntroduced, holdTamagotchi, markTamagotchiIntroduced, T
 import { AvatarBio } from "./AvatarBio";
 import { ClassBattle } from "./ClassBattle";
 import { CrtScreen, ScaleToFit } from "Components/CrtPower";
+import { playSfx } from "Utils/sfx";
 import { CASING_SHEEN, RUBBER_BUTTON, TV_LOOK } from "./GameBoard/PlayWindow";
 
 /*
@@ -101,7 +102,7 @@ const FadingIn = styled.div`
 // the count of powers picked, "0/3" to "3/3", at the top right (Jamie)
 const PickCount = styled.div`
   position: absolute;
-  left: ${(40 / STAGE.width) * 100}%; /* (on the left now, as far in: Jamie, playtest 32; was on the right) */
+  left: ${(20 / STAGE.width) * 100}%; /* (on the left, a smaller indent: Jamie, 2026-11-25; 40 since playtest 32) */
   top: ${(36 / STAGE.height) * 100}%;
   font-family: gameboy;
   font-size: ${(44 / STAGE.height) * 100}cqh; /* (bigger: Jamie; was 26) */
@@ -742,9 +743,17 @@ const WordsRow = styled.div`
     background: linear-gradient(to bottom, #80EF80, rgba(128, 239, 128, 0.35));
   }
 `;
-const ButtonWords = ({ labels = SIDE_BUTTON_LABELS }) => (
-  <WordsRow>{labels.map(label => <div key={label}>{label}</div>)}</WordsRow>
-);
+const ButtonWords = ({ labels = SIDE_BUTTON_LABELS }) => {
+  // the LCD's words changing: a digital beep (Jamie, 2026-11-26)
+  const key = labels.join("|");
+  const shown = useRef(key);
+  useEffect(() => {
+    if (shown.current == key) return;
+    shown.current = key;
+    playSfx("lcd-beep", { gain: 0.7 });
+  }, [key]);
+  return <WordsRow>{labels.map(label => <div key={label}>{label}</div>)}</WordsRow>;
+};
 
 /*
   Dev only (Jamie, 2026-11-24): every class, one at a time, on the side monitor as a player sees it (its name, its
@@ -1473,10 +1482,6 @@ const EtchedRings = ({ faceRef, buttonRefs, glowingIndex = undefined }) => {
     return { key: `${k}-${share}`, x: box.x - o, y: box.y - o, width: box.width + 2 * o, height: box.height + 2 * o, rx: box.height * ETCH.radius + o };
   });
   const sets = boxes.map(ringsOf);
-  // (in step with the word's blink: where its 0.9 s loop is now, so each ring lights just after the word does)
-  const glowing = glowingIndex !== undefined && buttonRefs[glowingIndex] && buttonRefs[glowingIndex].current;
-  const blink = glowing && glowing.getAnimations ? glowing.getAnimations().find(animation => animation.effect && animation.effect.getTiming && animation.effect.getTiming().duration == 900) : undefined;
-  const phaseSeconds = blink && blink.currentTime != null ? (Number(blink.currentTime) % 900) / 1000 : 0;
   return (
     // (inside the face only, under the casing's lip; the screws go over it)
     <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", overflow: "hidden", borderRadius: "inherit" }} aria-hidden="true">
@@ -1497,7 +1502,7 @@ const EtchedRings = ({ faceRef, buttonRefs, glowingIndex = undefined }) => {
         <g key={key} mask={n == 0 ? undefined : `url(#etch-cut-${k}-${n})`} fill="none">
           <rect x={x} y={y + 1} width={width} height={height} rx={rx} stroke={ETCH.light} strokeWidth="1" />
           <rect x={x} y={y} width={width} height={height} rx={rx} stroke={ETCH.dark} strokeWidth="1" />
-          {k === glowingIndex && <PulseRing x={x} y={y} width={width} height={height} rx={rx} stroke="#5cff4a" strokeWidth="1.3" style={{ animationDelay: `${n * 0.13 - phaseSeconds}s` }} />}
+          {k === glowingIndex && <PulseRing x={x} y={y} width={width} height={height} rx={rx} stroke="#5cff4a" strokeWidth="1.3" style={{ animationDelay: `${n * 0.13}s` }} />}
         </g>
       )))}
     </svg>
@@ -1509,12 +1514,33 @@ const EtchedRings = ({ faceRef, buttonRefs, glowingIndex = undefined }) => {
 // one side of the face: its screws, etched rings and buttons
 // (Jamie, playtest 38) the keys: the arrows focus one of the face's buttons that can be pressed (its etched rings pulse
 // green), and Enter presses it. Not while typing in a box (the vat's hex), and only on the face in front ('isKeyed')
-const FaceSide = ({ isReady, playLabel, onPlay, onBack, backLabel = "Back", isBackDisabled = false, isKeyed = false }) => {
+// 'screenKey': the pre-game screen it's on (the avatar select, the picker): a new one starts with nothing focused, or Play
+// if it's ready (Jamie, 2026-11-25)
+const BLINK_MS = 900; // the words' blink and the rings' pulse: one clock for both, so they keep in step
+const FaceSide = ({ isReady, playLabel, onPlay, onBack, backLabel = "Back", isBackDisabled = false, isKeyed = false, screenKey = undefined }) => {
   const isCompact = `${playLabel}${onBack ? backLabel : ""}`.length > 14;
   const faceRef = useRef(null);
   const playRef = useRef(null);
   const backRef = useRef(null);
   const [focusIndex, setFocusIndex] = useState(undefined);
+  // (a new screen: Back's focus let go, nothing blinking as it comes; Play's if it's ready, the three powers still picked.
+  // Play becoming ready (the third power picked): Play focused, Back let go. Jamie, 2026-11-25)
+  useEffect(() => { setFocusIndex(isReady ? 0 : undefined); }, [screenKey, !!isReady]);
+  // (the words' blink and the rings' pulse on one clock: each started on the same beat, whenever it came on)
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      const face = faceRef.current;
+      const now = document.timeline && document.timeline.currentTime;
+      if (!face || !face.getAnimations || now == null) return;
+      const beat = Math.floor(Number(now) / BLINK_MS) * BLINK_MS;
+      face.getAnimations({ subtree: true }).forEach(animation => {
+        const timing = animation.effect && animation.effect.getTiming && animation.effect.getTiming();
+        if (!timing || timing.duration != BLINK_MS || animation.startTime == null) return;
+        if (Number(animation.startTime) % BLINK_MS != 0) animation.startTime = beat;
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  });
   const buttons = [{ isOn: !!isReady, press: onPlay }, ...(onBack ? [{ isOn: !isBackDisabled, press: onBack }] : [])];
   const isFocusOn = focusIndex !== undefined && !!buttons[focusIndex] && buttons[focusIndex].isOn;
   const keysRef = useRef({});
@@ -1531,11 +1557,13 @@ const FaceSide = ({ isReady, playLabel, onPlay, onBack, backLabel = "Back", isBa
         const step = ["ArrowLeft", "ArrowUp"].includes(event.code) ? -1 : 1;
         const from = open.indexOf(at);
         setFocusIndex(open[from < 0 ? (step > 0 ? 0 : open.length - 1) : (from + step + open.length) % open.length]);
+        playSfx("ui-hover");
       } else if (event.code == "Enter" || event.code == "NumpadEnter") {
         // (the button pulsing green is the one Enter presses, arrows first or not: Play's, when it's ready. Jamie, playtest 39)
         const pressed = at !== undefined ? at : all[0] && all[0].isOn ? 0 : undefined;
         if (pressed === undefined) return;
         event.preventDefault();
+        playSfx(pressed == 0 ? "play-confirm" : "side-button"); // (the sounds a click on them makes: data-sfx)
         all[pressed].press();
       }
     };
@@ -1552,10 +1580,10 @@ const FaceSide = ({ isReady, playLabel, onPlay, onBack, backLabel = "Back", isBa
       ))}
       {/* (no ready light: Jamie, playtest 28) */}
       <EtchedRings faceRef={faceRef} buttonRefs={[playRef, backRef]} glowingIndex={glowingIndex} />
-      <MetalButton ref={playRef} style={{ position: "relative", zIndex: 1 }} disabled={!isReady} $isBacklit={glowingIndex === 0} $isLit={isReady && glowingIndex !== 0} $isCompact={isCompact} $isMain onClick={onPlay}>
+      <MetalButton ref={playRef} style={{ position: "relative", zIndex: 1 }} disabled={!isReady} $isBacklit={glowingIndex === 0} $isLit={isReady && glowingIndex !== 0} $isCompact={isCompact} $isMain onClick={onPlay} data-sfx="play-confirm">
         {playLabel}
       </MetalButton>
-      {onBack && <MetalButton ref={backRef} style={{ position: "relative", zIndex: 1 }} disabled={isBackDisabled} $isBacklit={glowingIndex === 1} $isCompact={isCompact} onClick={onBack}>{backLabel}</MetalButton>}
+      {onBack && <MetalButton ref={backRef} style={{ position: "relative", zIndex: 1 }} disabled={isBackDisabled} $isBacklit={glowingIndex === 1} $isCompact={isCompact} onClick={onBack} data-sfx="side-button">{backLabel}</MetalButton>}
     </ConsoleFace>
   );
 };
@@ -1576,6 +1604,8 @@ export const PlayConsole = (props) => {
     return () => clearTimeout(done);
   }, [faceKey]);
   const front = isTurning ? byKey.current[shownKey] || props : props;
+  // the side units fly off (Play!): a whoosh (Jamie, 2026-11-26)
+  useEffect(() => { if (isLeaving) playSfx("side-fly-off"); }, [isLeaving]);
   return (
     <>
       <Wires delayMs={MINI_TIMING.riseDelayMs + MINI_TIMING.flyMs - 250} wires={CONSOLE_WIRES} ripFor={isLeaving ? "console" : undefined} />
@@ -1854,6 +1884,12 @@ export const AbilityPicker = ({
     if (!isPicked && pickedAbilities.length >= PICK_COUNT) return;
     const picked = (isPicked ? pickedAbilities.filter(other => other != element) : [...pickedAbilities, element]).sort((a, b) => a.localeCompare(b));
     if (!isPicked) setLockIns(counts => ({ ...counts, [element]: (counts[element] || 0) + 1 }));
+    // (the sounds, Jamie 2026-11-26: the lock-in clunk; the third, the combo's ding, then its class's sting)
+    playSfx(isPicked ? "ui-click" : "lock-in");
+    if (!isPicked && picked.length == PICK_COUNT) {
+      setTimeout(() => playSfx("combo-ding"), 150);
+      setTimeout(() => playSfx("class-sting"), 650);
+    }
     setPickedAbilities(picked);
     settingsManager.setSortedPlayerChosenAbilityElementsString(picked);
   };
@@ -2066,7 +2102,7 @@ export const AbilityPicker = ({
   );
   // the tamagotchi's: off while the class shows
   const sideBrow = ["Feed", "Pet", "Clean up"].map(label => (
-    <ButtonSlot key={label}><BrowButtonShape disabled={!isTamaShowing && !isClassReview} aria-label={label} title={label} onClick={() => isClassReview ? onReviewButton(label) : tamaRef.current && tamaRef.current(label)} /></ButtonSlot>
+    <ButtonSlot key={label}><BrowButtonShape data-sfx="side-button" disabled={!isTamaShowing && !isClassReview} aria-label={label} title={label} onClick={() => isClassReview ? onReviewButton(label) : tamaRef.current && tamaRef.current(label)} /></ButtonSlot>
   ));
   const beside = (
     <>

@@ -857,6 +857,14 @@ export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade 
       })
     });
   }, [level, frame, isWholeScene, playWindow, viewHexes]);
+  // what the play camera shows round the player, in tiles to the nearer edge: the allies' leash at its widest
+  // (GameManager's ALLY_LEASH. Jamie, 2026-11-25)
+  useEffect(() => {
+    if (!gameManager || !gameManager.setViewTileRadius || !closeCamera.zoom) return;
+    const across = windowWidth / closeCamera.zoom / 2 / (grid.colStep * grid.scale);
+    const down = windowHeight / closeCamera.zoom / 2 / (grid.colStep * grid.scale); // (the leash counts in column widths)
+    gameManager.setViewTileRadius(Math.min(across, down));
+  }, [gameManager, closeCamera]);
 
   // the window opens up to the whole frame for wide shots, unless the monitor always stays: then every shot is framed inside it
   const shotView = isWindowOpen ? { viewWidth: frame.width, viewHeight: frame.height } : { viewWidth: windowWidth, viewHeight: windowHeight };
@@ -1307,7 +1315,7 @@ export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade 
       pieceScale={pieceScale * (p.perspectiveScale || 1)}
       spriteSheetSrc={p.spriteSheetSrc}
       lives={Math.max(p.lives + Math.min(p.livesModifier || 0, 0), 0)}
-      hitLives={p.lives} // the health that hits and heals change: the numbers and the shake follow this, not a passive's // a passive that costs health (Haunt's Lichdom) shows on the bar: at none, they are down
+      hitLives={p.lives - (p.absorbedHits || 0)} // (less each hit a passive's extra health took: those show too) the health that hits and heals change: the numbers and the shake follow this, not a passive's // a passive that costs health (Haunt's Lichdom) shows on the bar: at none, they are down
       isGoingToSpewFire={p.isGoingToSpewFire}
       isShowHealthBarOnComponent={!isPreview && p.isShowHealthBarOnComponent}
       isQuiet={!!recruitScene}

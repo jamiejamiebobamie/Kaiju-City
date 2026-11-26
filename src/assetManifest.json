@@ -1,10 +1,12 @@
 {
  "landing": [
+  "/apple-touch-icon.png",
   "/Background_Wires.png",
   "/circuit-board.png",
   "/Day_Cloud.png",
   "/dead_player.png",
   "/dead_teammate.png",
+  "/favicon-32.png",
   "/GameUI_Pieces/GameArea_Background.png",
   "/GameUI_Pieces/GameArea_Overlay.png",
   "/GameUI_Pieces/HolographGrid1.png",
@@ -26,6 +28,8 @@
   "/GameUI_Pieces/TeammateArea_Background.png",
   "/GameUI_Pieces/TeammateArea_Overlay.png",
   "/GreenGraph.png",
+  "/icon-192.png",
+  "/icon-512.png",
   "/landDimmer.png",
   "/levels/lab-select.png",
   "/levels/lab-tank-empty.png",

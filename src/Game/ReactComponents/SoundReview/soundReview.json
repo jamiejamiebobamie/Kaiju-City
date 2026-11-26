@@ -1,0 +1,285 @@
+{
+ "boot-patter": {
+  "verdict": "ok"
+ },
+ "crt-on": {
+  "verdict": "ok"
+ },
+ "crt-off": {
+  "verdict": "ok"
+ },
+ "ui-hover": {
+  "verdict": "ok"
+ },
+ "ui-click": {
+  "verdict": "ok"
+ },
+ "side-button": {
+  "verdict": "ok"
+ },
+ "lcd-beep": {
+  "verdict": "ok"
+ },
+ "bio-type": {
+  "verdict": "ok"
+ },
+ "tama-chirp": {
+  "verdict": "ok"
+ },
+ "tama-poop": {
+  "verdict": "ok"
+ },
+ "tama-happy": {
+  "verdict": "ok"
+ },
+ "tama-sad": {
+  "verdict": "ok"
+ },
+ "lock-in": {
+  "verdict": "ok"
+ },
+ "combo-ding": {
+  "verdict": "ok"
+ },
+ "class-sting": {
+  "verdict": "ok"
+ },
+ "play-confirm": {
+  "verdict": "ok"
+ },
+ "side-fly-off": {
+  "verdict": "ok"
+ },
+ "drone-jets-in": {
+  "verdict": "ok"
+ },
+ "drone-jets-out": {
+  "verdict": "ok"
+ },
+ "drone-jostle": {
+  "verdict": "ok"
+ },
+ "drone-malfunction": {
+  "verdict": "ok"
+ },
+ "drone-fall-explode": {
+  "verdict": "ok"
+ },
+ "lights-tubes": {
+  "verdict": "ok"
+ },
+ "holo-shimmer": {
+  "verdict": "ok"
+ },
+ "footsteps": {
+  "verdict": "ok"
+ },
+ "kaiju-stomp": {
+  "verdict": "ok"
+ },
+ "cast-ice": {
+  "verdict": "ok"
+ },
+ "cast-fire": {
+  "verdict": "ok"
+ },
+ "cast-water": {
+  "verdict": "ok"
+ },
+ "cast-wood": {
+  "verdict": "ok"
+ },
+ "cast-lightning": {
+  "verdict": "ok"
+ },
+ "cast-death": {
+  "verdict": "ok"
+ },
+ "cast-bubble": {
+  "verdict": "ok"
+ },
+ "cast-metal": {
+  "verdict": "ok"
+ },
+ "cast-glass": {
+  "verdict": "ok"
+ },
+ "cast-love": {
+  "verdict": "ok"
+ },
+ "cast-heal": {
+  "verdict": "ok"
+ },
+ "passive-ice": {
+  "verdict": "ok"
+ },
+ "passive-fire": {
+  "verdict": "ok"
+ },
+ "passive-water": {
+  "verdict": "ok"
+ },
+ "passive-wood": {
+  "verdict": "ok"
+ },
+ "passive-lightning": {
+  "verdict": "ok"
+ },
+ "passive-death": {
+  "verdict": "ok"
+ },
+ "passive-bubble": {
+  "verdict": "ok"
+ },
+ "passive-metal": {
+  "verdict": "ok"
+ },
+ "passive-glass": {
+  "verdict": "ok"
+ },
+ "passive-love": {
+  "verdict": "ok"
+ },
+ "hit": {
+  "verdict": "ok"
+ },
+ "ko": {
+  "verdict": "ok"
+ },
+ "ragdoll-flop": {
+  "verdict": "ok"
+ },
+ "last-blow-boom": {
+  "verdict": "ok"
+ },
+ "tile-fire": {
+  "verdict": "ok"
+ },
+ "tile-water": {
+  "verdict": "ok"
+ },
+ "tile-electric": {
+  "verdict": "ok"
+ },
+ "tile-ghost": {
+  "verdict": "ok"
+ },
+ "unlock-ding": {
+  "verdict": "ok"
+ },
+ "unlock-ding-new": {
+  "verdict": "cut",
+  "note": "Jamie 2026-11-26: the original ding is the one liked"
+ },
+ "turn-tone": {
+  "verdict": "ok"
+ },
+ "objective": {
+  "verdict": "ok"
+ },
+ "win": {
+  "verdict": "ok"
+ },
+ "lose": {
+  "verdict": "ok"
+ },
+ "permadeath-retry": {
+  "verdict": "ok"
+ },
+ "blip-guy": {
+  "verdict": "ok"
+ },
+ "blip-girl": {
+  "verdict": "ok"
+ },
+ "blip-punk": {
+  "verdict": "ok"
+ },
+ "blip-ghost": {
+  "verdict": "ok"
+ },
+ "blip-mermaid": {
+  "verdict": "ok"
+ },
+ "blip-agent": {
+  "verdict": "ok"
+ },
+ "radio-static": {
+  "verdict": "ok"
+ },
+ "peninsula-city": {
+  "verdict": "ok"
+ },
+ "street-traffic": {
+  "verdict": "ok"
+ },
+ "street-greeting": {
+  "verdict": "ok"
+ },
+ "train-crossing-bell": {
+  "verdict": "ok"
+ },
+ "train-arrival": {
+  "verdict": "ok"
+ },
+ "train-brakes": {
+  "verdict": "ok"
+ },
+ "train-doors": {
+  "verdict": "ok"
+ },
+ "subway-echo": {
+  "verdict": "ok"
+ },
+ "rooftop-wind": {
+  "verdict": "ok"
+ },
+ "rooftop-scream": {
+  "verdict": "ok"
+ },
+ "ghost-rings": {
+  "verdict": "ok"
+ },
+ "aquarium-hum": {
+  "verdict": "ok"
+ },
+ "glass-crack": {
+  "verdict": "ok"
+ },
+ "glass-shatter": {
+  "verdict": "ok"
+ },
+ "flood": {
+  "verdict": "ok"
+ },
+ "stop-scream": {
+  "verdict": "ok"
+ },
+ "sea-creature": {
+  "verdict": "ok"
+ },
+ "mermaid-heal": {
+  "verdict": "ok"
+ },
+ "lab-machinery": {
+  "verdict": "ok"
+ },
+ "vat-bubbling": {
+  "verdict": "ok"
+ },
+ "vat-dip-scream": {
+  "verdict": "ok"
+ },
+ "trap-clang": {
+  "verdict": "ok"
+ },
+ "escape-siren": {
+  "verdict": "ok"
+ },
+ "sewer-drips": {
+  "verdict": "ok"
+ },
+ "door-glow": {
+  "verdict": "ok"
+ }
+}

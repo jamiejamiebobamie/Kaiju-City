@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import styled, { css, keyframes } from "styled-components";
 import { OLD_ROOM as ROOM, RoomExtras } from "Components/RoomScene"; // (the Lab desk is built on the old room picture)
 import { enterUnlockCode } from "Game/DataClasses/UnlockCodes";
@@ -30,7 +30,10 @@ export const LAB_TERMINAL = {
   planPassword: "password", // MASTPLAN's (Jamie, 2026-11-24); caps or not
   scrollLines: 3, // Up and Down: this many lines a press
   // the unlock cards (Jamie, 2026-11-24): in batches as many as fit down the screen, one after another, held, faded
-  cards: { heightCqh: 6.4, gapCqh: 1.4, staggerMs: 220, holdMs: 2600, fadeMs: 500 }
+  // (sized as the game's own unlock card, in the frame's cqw: their cqh was the browser window's, so a full batch was
+  // squeezed small. Batches as many as fit the screen, measured. Jamie, 2026-11-25)
+  cards: { heightCqw: 4.6, gapCqw: 0.8,
+    staggerMs: 220, holdMs: 2600, fadeMs: 500 }
 };
 
 const TEXT = "#c8c8c8";
@@ -54,7 +57,8 @@ const Root = styled.div`
   overflow: hidden;
   background: black;
   pointer-events: auto;
-  cursor: default;
+  /* (the eye over the Lab's desk, the plain pointer over its screen: Glass. Jamie, 2026-11-25) */
+  cursor: var(--eye-cursor, default);
 `;
 // (its desk, monitor and words in the screen's design box: today's size on a wider screen, the desk picture running on
 // past it. Layout phase 2; the Root was the container, the whole screen)
@@ -135,6 +139,8 @@ const DeskPicture = styled.div`
 */
 export const LAB_DESK_WINDOW = {
   src: "/levels/labIntro-window-day.png",
+  // (at night, as the walking Lab before the trap, and from Settings: Jamie, 2026-11-25)
+  nightSrc: "/levels/labIntro-window.png",
   sillTop: 430, sillHeight: 34, deskTop: 584,
   view: { top: 130, height: 330 },
   mug: { x: 708, y: 532, width: 58, height: 56 }
@@ -142,7 +148,6 @@ export const LAB_DESK_WINDOW = {
 const DeskView = styled.div`
   position: absolute;
   overflow: hidden;
-  background-image: url(${LAB_DESK_WINDOW.src});
   background-repeat: no-repeat;
   image-rendering: pixelated;
   filter: saturate(0.9) brightness(0.92);
@@ -166,12 +171,12 @@ const DeskMug = styled.div`
 `;
 // the window, the sill, the wall strip and the mug, over the room's picture (all in its pixels)
 const DAY_SIZE = { width: 1408, height: 768 }; // (the day picture's)
-const DeskWindow = () => {
+const DeskWindow = ({ isNight = false }) => {
   const { sillTop, sillHeight, deskTop, view, mug } = LAB_DESK_WINDOW;
   const scale = sillTop / view.height; // the day picture's pixels, in the room's
   return (
     <>
-      <DeskView style={{ ...at(0, 0, ROOM_W, sillTop), backgroundSize: `${(DAY_SIZE.width * scale / ROOM_W) * 100}% auto`, backgroundPosition: `50% ${(view.top * scale / (DAY_SIZE.height * scale - sillTop)) * 100}%` }} />
+      <DeskView style={{ ...at(0, 0, ROOM_W, sillTop), backgroundImage: `url(${isNight ? LAB_DESK_WINDOW.nightSrc : LAB_DESK_WINDOW.src})`, backgroundSize: `${(DAY_SIZE.width * scale / ROOM_W) * 100}% auto`, backgroundPosition: `50% ${(view.top * scale / (DAY_SIZE.height * scale - sillTop)) * 100}%` }} />
       <DeskWall style={at(0, sillTop + sillHeight, ROOM_W, deskTop - sillTop - sillHeight)} />
       <DeskSill style={at(0, sillTop, ROOM_W, sillHeight)} />
       <DeskMug style={{ ...at(mug.x, mug.y, mug.width, mug.height), backgroundSize: `${(ROOM_W / mug.width) * 100}% ${(ROOM_H / mug.height) * 100}%`, backgroundPosition: `${(mug.x / (ROOM_W - mug.width)) * 100}% ${(mug.y / (ROOM_H - mug.height)) * 100}%` }} />
@@ -212,6 +217,7 @@ const Glass = styled.div`
   background: #030303;
   box-shadow: inset 0 0 2cqw rgba(0, 0, 0, 1), 0 0 0 0.35cqw #8e8977;
   overflow: hidden;
+  cursor: default;
   &::after {
     /* scanlines and the glass's sheen */
     content: "";
@@ -380,7 +386,7 @@ const MASTER_PLAN = [
 // DRAFT (Jamie, 2026-11-24): something silly
 const VACATION = [
   {
-    file: "BEACH.BMP",
+    file: "BEACH.TXT",
     art: [
       "    \\  |  /             ~   ~",
       "  -- (  ) --       ~  ~",
@@ -393,7 +399,7 @@ const VACATION = [
     caption: "Me. The beach. Zero Kaiju. (They're all at the city. Ha!)"
   },
   {
-    file: "SELFIE.BMP",
+    file: "SELFIE.TXT",
     art: [
       "    .---.      .---.",
       "   ( o_o )    ( -_o )",
@@ -404,7 +410,7 @@ const VACATION = [
     caption: "Me and me. Clone #2 blinked. Recycle him."
   },
   {
-    file: "SKI.BMP",
+    file: "SKI.TXT",
     art: [
       "          /\\",
       "         /  \\     /\\",
@@ -417,7 +423,7 @@ const VACATION = [
     caption: "Paid for by the city's Kaiju Relief Fund."
   },
   {
-    file: "MAYOR.BMP",
+    file: "MAYOR.TXT",
     art: [
       "   ______________________",
       "  | PAY TO: THE AGENT    |",
@@ -462,10 +468,13 @@ const getFileLines = (file, index, count) => [
   { text: `File ${index + 1} of ${count}.`, isDim: true }
 ];
 
+// (his own ASCII art, signed in the corner as ASCII artists do; .TXT files, TYPEd, not pictures. Jamie, 2026-11-25)
+const ART_SIGNATURE = "-A. '84";
 const getPhotoLines = (photo, index) => [
-  `C:\\AGENT\\VACATION> VIEW ${photo.file}`,
+  `C:\\AGENT\\VACATION> TYPE ${photo.file}`,
   "",
   ...photo.art.map(text => ({ text, isBright: true })),
+  { text: ART_SIGNATURE.padStart(Math.max(...photo.art.map(text => text.length))), isDim: true },
   "",
   photo.caption,
   "",
@@ -481,7 +490,7 @@ const getLegend = (view, context) => ({
   codes: "Type a code  ENTER  ESC back",
   planLock: "Type  ENTER  ESC back",
   plan: "\u2191\u2193 scroll  ESC back",
-  photos: "\u2190\u2192 photos  \u2191\u2193 scroll  ESC back",
+  photos: "\u2190\u2192 files  \u2191\u2193 scroll  ESC back", // (not "photos": the Agent's ASCII art. Jamie, 2026-11-25)
   bios: "\u2190\u2192 files  \u2191\u2193 scroll  ESC back"
 })[view];
 
@@ -492,20 +501,21 @@ const cardIn = keyframes`
 `;
 const CardColumn = styled.div`
   position: absolute;
-  inset: 3cqh 0;
+  inset: 3% 0;
   z-index: 3;
   display: flex;
   flex-direction: column;
   align-items: flex-end; /* (right-aligned on the monitor: Jamie, playtest 39) */
   justify-content: center;
-  padding-right: 3cqw;
-  gap: ${LAB_TERMINAL.cards.gapCqh}cqh;
+  padding-right: 2cqw; /* (a smaller indent: Jamie, 2026-11-25; was 3cqw) */
+  gap: ${LAB_TERMINAL.cards.gapCqw}cqw;
   pointer-events: none;
   transition: opacity ${LAB_TERMINAL.cards.fadeMs}ms ease-in;
 `;
 const Card = styled.div`
   box-sizing: border-box;
-  height: ${LAB_TERMINAL.cards.heightCqh}cqh;
+  height: ${LAB_TERMINAL.cards.heightCqw}cqw;
+  flex: none; /* (never squeezed by a full batch) */
   display: flex;
   align-items: center;
   gap: 1cqw;
@@ -545,15 +555,29 @@ const CardFace = ({ card }) => {
   }
   return card.image ? <CardPortrait src={card.image} alt="" /> : null;
 };
-const BATCH_SIZE = Math.max(1, Math.floor(94 / (LAB_TERMINAL.cards.heightCqh + LAB_TERMINAL.cards.gapCqh)));
 // batch after batch, each card in after the last, all held, faded, then the next; 'onDone' after the last
 const UnlockCards = ({ cards, onDone }) => {
   const [batch, setBatch] = useState(0);
   const [isFading, setIsFading] = useState(false);
+  const [batchSize, setBatchSize] = useState(0); // (as many as fit the column's height: measured once it's laid out)
+  const columnRef = useRef(null);
+  useLayoutEffect(() => {
+    const column = columnRef.current;
+    if (!column) return;
+    const probe = document.createElement("div");
+    probe.style.cssText = "position:absolute;width:100cqw;height:0;visibility:hidden";
+    column.appendChild(probe);
+    const pxPerCqw = probe.getBoundingClientRect().width / 100;
+    probe.remove();
+    const { heightCqw, gapCqw } = LAB_TERMINAL.cards;
+    const room = column.clientHeight - parseFloat(getComputedStyle(column).paddingTop) - parseFloat(getComputedStyle(column).paddingBottom);
+    setBatchSize(Math.max(1, Math.floor((room + gapCqw * pxPerCqw) / ((heightCqw + gapCqw) * pxPerCqw))));
+  }, []);
   const batches = [];
-  for (let k = 0; k < cards.length; k += BATCH_SIZE) batches.push(cards.slice(k, k + BATCH_SIZE));
+  if (batchSize) for (let k = 0; k < cards.length; k += batchSize) batches.push(cards.slice(k, k + batchSize));
   const shown = batches[batch] || [];
   useEffect(() => {
+    if (!batchSize) return;
     const { staggerMs, holdMs, fadeMs } = LAB_TERMINAL.cards;
     const fadeAt = shown.length * staggerMs + holdMs;
     setIsFading(false);
@@ -563,9 +587,9 @@ const UnlockCards = ({ cards, onDone }) => {
       clearTimeout(fade);
       clearTimeout(next);
     };
-  }, [batch]);
+  }, [batch, batchSize]);
   return (
-    <CardColumn key={batch} style={{ opacity: isFading ? 0 : 1 }}>
+    <CardColumn key={batch} ref={columnRef} style={{ opacity: isFading ? 0 : 1 }}>
       {shown.map((card, k) => (
         <Card key={card.id} style={{ animationDelay: `${k * LAB_TERMINAL.cards.staggerMs}ms` }}>
           <CardFace card={card} />
@@ -577,7 +601,8 @@ const UnlockCards = ({ cards, onDone }) => {
 };
 
 // 'context': "lab" or "landing"; 'files': the personnel files (the Lab's); 'onClose': once it has slid away
-export const LabTerminal = ({ context = "lab", files = [], onClose }) => {
+// 'isNight': the Peninsula behind it by night (the walking Lab before the trap; Settings always)
+export const LabTerminal = ({ context = "lab", files = [], onClose, isNight = context != "lab" }) => {
   const [view, setView] = useState("menu"); // menu, codes, planLock, plan, photos, bios
   const [isPlanOpen, setIsPlanOpen] = useState(false); // its password given (while the terminal's up)
   const [picked, setPicked] = useState(0);
@@ -758,8 +783,9 @@ export const LabTerminal = ({ context = "lab", files = [], onClose }) => {
         <DeskLook isOn>
         <Desk>
           <DeskPicture />
-          {context == "lab" && <DeskWindow />}
-          <RoomExtras hasClock={context != "lab"} room={ROOM} />
+          {/* (Settings' too, as the walking Lab's, not the old room's wall and clock: Jamie, 2026-11-25) */}
+          <DeskWindow isNight={isNight} />
+          <RoomExtras hasClock={false} room={ROOM} />
           <LabLight />
           <Casing style={at(ROOM.monitor.centerX - LAB_TERMINAL.monitor.width / 2, ROOM.monitor.bottom - LAB_TERMINAL.monitor.height, LAB_TERMINAL.monitor.width, LAB_TERMINAL.monitor.height)}>
             <Glass>
@@ -770,7 +796,7 @@ export const LabTerminal = ({ context = "lab", files = [], onClose }) => {
               {getLegend(view, context) && <Legend>{getLegend(view, context)}</Legend>}
             </Glass>
             <Badge>LAB-TERM 84</Badge>
-            {context == "lab" && <PostIt aria-hidden="true"><span>password</span></PostIt>}
+            {/* (no post-it: the plan's password is the player's to guess, an easter egg. Jamie, 2026-11-25) */}
             <Led />
           </Casing>
         </Desk>

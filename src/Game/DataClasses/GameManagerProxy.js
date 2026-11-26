@@ -37,6 +37,19 @@ export class GameManagerProxy {
         return !!this.props.getIsPowersOff && this.props.getIsPowersOff(piece);
     }
 
+    // allies on a leash in the one-opponent recruit battles (GameManager's ALLY_LEASH)
+    getAllyLeash(piece) {
+        return this.props.getAllyLeash ? this.props.getAllyLeash(piece) : undefined;
+    }
+
+    getIsInLeash(leash, tile) {
+        return this.props.getIsInLeash ? this.props.getIsInLeash(leash, tile) : true;
+    }
+
+    getLeashTile(leash, tile) {
+        return this.props.getLeashTile ? this.props.getLeashTile(leash, tile) : tile;
+    }
+
     // someone else stands on the tile, and NPCs keep their distance here (SpacingTest.ts)
     getIsTileTakenForSpacing(pieceIndex, tile) {
         return !!this.props.getIsTileTakenForSpacing && this.props.getIsTileTakenForSpacing(pieceIndex, tile);

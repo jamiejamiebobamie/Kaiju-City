@@ -8,6 +8,8 @@ import { SpeechBalloon } from "Game/ReactComponents/GameBoard/SceneElements";
 import { getDialogueLine } from "Game/DataClasses/Dialogue/dialogue";
 import { DIRECTIVE_COLOR, directivePulse } from "./AvatarChoice";
 import { ElectricArcs } from "./ElectricArcs";
+import { playSfx } from "Utils/sfx";
+import { setAmbience } from "Utils/ambience";
 
 // what the Lab Tech says as the color takes (Dialogue/dialogue.json)
 const VAT_PRAISE = getDialogueLine('labIntro.vatPraise');
@@ -199,8 +201,8 @@ const Heading = styled.div`
   top: ${(LONGEST_DRIP_END + 100) / 2}%;
   left: 0;
   right: 0;
-  transform: translateY(-50%) translateY(-1.2cqw); /* (a little higher: Jamie, playtest 39) */
-  font-size: 2.9cqw; /* (bigger: Jamie, playtests 34 and 39; was 1.6, then 2.3) */
+  transform: translateY(-50%) translateY(-2.6cqw); /* (higher: Jamie, playtest 39, and 2026-11-25; was -1.2cqw) */
+  font-size: 3.5cqw; /* (bigger: Jamie, playtests 34 and 39, and 2026-11-25; was 1.6, then 2.3, then 2.9) */
   letter-spacing: 0.15cqw;
   text-align: center;
   color: ${DIRECTIVE_COLOR};
@@ -367,7 +369,13 @@ export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose, backL
   };
   if (isInPlace) actions.current = { play: dunkThenGo };
   useEffect(() => { onBusy(isBusy || isLeaving || isGoing); }, [isBusy, isLeaving, isGoing]);
+  // the vat bubbling while it's up, and the scream on the dip (Jamie, 2026-11-26)
+  useEffect(() => {
+    const timer = setInterval(() => setAmbience({ vat: 0.7 }, "vat"), 120);
+    return () => { clearInterval(timer); setAmbience({}, "vat"); };
+  }, []);
   const irradiate = () => {
+    playSfx("vat-dip-scream");
     setIsBusy(true);
     setIsDunked(true);
     setIsPraising(false);

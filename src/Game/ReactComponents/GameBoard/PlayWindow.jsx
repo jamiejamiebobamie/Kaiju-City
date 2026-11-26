@@ -4,6 +4,7 @@ import { WIDE_SHOT } from "Game/DataClasses/Camera";
 import SAVED_WINDOW from "Game/DataClasses/playWindow.json";
 import { APARTMENT_TRIAL } from "Game/DataClasses/apartmentTrial";
 import { CrtScreen } from "Components/CrtPower";
+import { setAudioVolume } from "Utils/audio";
 
 /*
   A dev tool for trying out smaller play areas: the part of the game frame the board fills.
@@ -542,6 +543,7 @@ export const VOLUME_LEVEL = { value: 10, steps: 16, shownMs: 2200 };
 const volumeListeners = new Set();
 const stepVolume = by => {
   VOLUME_LEVEL.value = Math.max(0, Math.min(VOLUME_LEVEL.steps, VOLUME_LEVEL.value + by));
+  setAudioVolume(VOLUME_LEVEL.value / VOLUME_LEVEL.steps); // (the sound effects', the music's and the loops' volume: Utils/audio)
   volumeListeners.forEach(listener => listener());
 };
 const VolumeControls = () => (
@@ -831,6 +833,8 @@ export const PlayWindow = ({ playWindow, setPlayWindow, isAdjusting, isOpen, isC
       top: `${top * 100}%`,
       width: `${(right - left) * 100}%`,
       height: `${(bottom - top) * 100}%`,
+      // (the screen's share of the frame's width, for what's sized to the screen in the frame's cqw: the notices. Jamie, 2026-11-25)
+      "--screen-share": right - left,
       borderRadius: `${TV_LOOK.screenRadius}cqw`,
       transition: isAdjusting || isCut ? "none" : `left ${WIDE_SHOT.pullMs}ms ease-in-out, top ${WIDE_SHOT.pullMs}ms ease-in-out, width ${WIDE_SHOT.pullMs}ms ease-in-out, height ${WIDE_SHOT.pullMs}ms ease-in-out`
     }}>

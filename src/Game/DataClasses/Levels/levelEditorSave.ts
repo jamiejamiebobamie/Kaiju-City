@@ -175,6 +175,36 @@ export const apartmentSave = (layoutPath: string, exportDir: string): Plugin => 
   }
 });
 
+// the sound review (/sounds, Jamie 2026-11-25) and the music review (/music, 2026-11-26): each verdict and note, saved
+// over the review's json
+export const soundReviewSave = (reviewPath: string): Plugin => reviewFileSave('sound-review', reviewPath);
+export const musicReviewSave = (reviewPath: string): Plugin => reviewFileSave('music-review', reviewPath);
+const reviewFileSave = (name: string, reviewPath: string): Plugin => ({
+  name: `${name}-save`,
+  apply: 'serve',
+  handleHotUpdate({ file }) {
+    if (path.normalize(file) == path.normalize(reviewPath)) return [];
+  },
+  configureServer(server) {
+    server.middlewares.use(`/__${name}/save`, (request, response) => {
+      let body = '';
+      request.on('data', chunk => { body += chunk; });
+      request.on('end', () => {
+        try {
+          const review = JSON.parse(body);
+          if (!review || typeof review != 'object' || Array.isArray(review)) throw new Error('not the sound review');
+          fs.writeFileSync(reviewPath, `${JSON.stringify(review, null, 1)}\n`);
+          response.statusCode = 200;
+          response.end('saved');
+        } catch (error) {
+          response.statusCode = 400;
+          response.end(String(error));
+        }
+      });
+    });
+  }
+});
+
 // the tab icon tool (/icon, Jamie 2026-11-25): its settings saved over iconTool.json, and its export written as
 // public/icon-source/kaiju-icon.png (for scripts/makeIcons.py to make the icon set from)
 export const iconToolSave = (settingsPath: string, exportFile: string): Plugin => ({

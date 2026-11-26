@@ -31,7 +31,9 @@ export const ZOOM_THROUGH = {
     { src: "/zoom-scene/2-window.png", target: { x: (449 + 1365 * 0.348 / 2) / 1365, y: (157 + 768 * 0.348 / 2) / 768 }, span: Math.log(1 / 0.348), ms: 1200, inner: { x: 449 / 1365, y: 157 / 768, scale: 0.348 } },
     // to the monitor's spot (worked out for the screen). (Jamie, 2026-11-24: a long, slow, steady push in, to take in the
     // room: was 1.5 s. The way back keeps its quick 'backMs')
-    { src: ROOM.src, target: undefined, span: undefined, ms: 5500, backMs: 1500 }
+    // (the way back from the game too: the whole push backwards, ~5 s, on the room's picture with its own monitor, not the
+    // live one. Jamie, 2026-11-25; was a quick 'backMs' of 1500, sped up)
+    { src: ROOM.src, target: undefined, span: undefined, ms: 5500, backMs: 5500 * 1.7, isBackAsIn: true }
   ],
   // the room's push: in at the window's pace (the first 'catch' of its zoom in the first moments), then a slow, steady
   // glide that eases to a stop at the monitor
@@ -180,7 +182,7 @@ export const ZoomThrough = ({ isOn, startMs, onDone, isReverse = false }) => {
           const endSlope = Math.max(0.2, Math.min(2.8, ((next.span / next.ms) * own) / span));
           return zoom + span * ((3 - endSlope) * share * share + (endSlope - 2) * share * share * share);
         }
-        if (k == pictures.length - 1 && !isReverse) {
+        if (k == pictures.length - 1 && (!isReverse || pictures[k].isBackAsIn)) {
           const { catch: caught, catchPower, glidePower } = ZOOM_THROUGH.roomEase;
           return zoom + span * (caught * (1 - Math.pow(1 - share, catchPower)) + (1 - caught) * (1 - Math.pow(1 - share, glidePower)));
         }

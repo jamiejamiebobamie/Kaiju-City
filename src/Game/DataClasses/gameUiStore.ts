@@ -30,7 +30,11 @@ export const gameUiStore = proxy({
   isDialogueWaiting: false,
   isTalking: false, // talk outside of a cutscene is going on
   isRecruitTalkDone: false,
-  speakingPieceIndex: undefined
+  speakingPieceIndex: undefined,
+  // the theme the scene calls for (musicCue.js): its id, the light take, the tense layer
+  musicId: undefined as string | undefined,
+  musicLight: false,
+  musicIntensity: 0
 });
 
 // writes only the values that changed, so valtio only notifies the components that care
