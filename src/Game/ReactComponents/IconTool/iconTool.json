@@ -1,25 +1,38 @@
 {
  "kaiju": {
-  "x": 322.61636623460254,
-  "y": 291.24171350102506,
-  "scale": 2.115384615384613,
+  "x": 253.43660645901718,
+  "y": 304.54543147734137,
+  "scale": 2.62,
   "frame": 5,
   "isMirrored": true,
-  "outline": 2
+  "outline": 1.5,
+  "fillColor": "#910094",
+  "outlineColor": "#910094"
  },
  "fire": {
-  "dx": -0.5,
-  "dy": -26,
-  "scale": 0.4,
-  "angle": 55,
+  "dx": 1.064880912167336,
+  "dy": -25.5879612816018,
+  "scale": 0.5,
+  "angle": 46,
   "frame": 3,
-  "glow": 1
+  "glow": 0.5,
+  "detail": 0.21,
+  "flatColor": "#ef36f2"
  },
  "circle": {
   "x": 600,
   "y": 420,
-  "r": 213,
+  "r": 330,
   "inner": 1,
-  "shape": "square"
+  "shape": "square",
+  "corner": 0.34
+ },
+ "background": {
+  "isOn": true,
+  "color": "#15161a"
+ },
+ "border": {
+  "isOn": true,
+  "width": 4
  }
 }

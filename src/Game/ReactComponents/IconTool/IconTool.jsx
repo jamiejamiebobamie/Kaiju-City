@@ -33,8 +33,29 @@ const loadImage = src => new Promise((resolve, reject) => {
   image.src = src;
 });
 
-// one frame of the Kaiju, and the same in its outline's color (for the outline drawn round it)
-const getKaijuFrames = (sheet, frame) => {
+/*
+  (Jamie, 2026-11-25) the Kaiju's colors: its outline's ('outlineColor'; the frame's border takes it too, so the two still
+  join in one line) and its body's ('fillColor': empty for the sprite's own black); the fire's detail: 1 the sprite's
+  own flames, 0 one flat color ('flatColor'), between, the flat color under the sprite's flames showing through.
+*/
+const OUTLINE_HEX = "#bf40bf"; // (SEA_KAIJU.outline, rgb(191, 64, 191))
+const getKaijuLook = kaiju => ({ outlineColor: kaiju.outlineColor || OUTLINE_HEX, fillColor: kaiju.fillColor || "" });
+const getFireLook = fire => ({ detail: fire.detail == undefined ? 1 : fire.detail, flatColor: fire.flatColor || "#e9b8ff" });
+// a picture's shape, all in one color
+const getTinted = (source, color) => {
+  const canvas = document.createElement("canvas");
+  canvas.width = source.width;
+  canvas.height = source.height;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(source, 0, 0);
+  ctx.globalCompositeOperation = "source-in";
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  return canvas;
+};
+
+// one frame of the Kaiju (its body in 'fillColor', if set), and the same in its outline's color (drawn round it)
+const getKaijuFrames = (sheet, frame, outlineColor = OUTLINE_HEX, fillColor = "") => {
   const make = () => {
     const canvas = document.createElement("canvas");
     canvas.width = KAIJU_FRAME.width;
@@ -43,13 +64,7 @@ const getKaijuFrames = (sheet, frame) => {
   };
   const plain = make();
   plain.getContext("2d").drawImage(sheet, frame * KAIJU_FRAME.width, 0, KAIJU_FRAME.width, KAIJU_FRAME.height, 0, 0, KAIJU_FRAME.width, KAIJU_FRAME.height);
-  const tinted = make();
-  const ctx = tinted.getContext("2d");
-  ctx.drawImage(plain, 0, 0);
-  ctx.globalCompositeOperation = "source-in";
-  ctx.fillStyle = SEA_KAIJU.outline;
-  ctx.fillRect(0, 0, tinted.width, tinted.height);
-  return { plain, tinted };
+  return { plain: fillColor ? getTinted(plain, fillColor) : plain, tinted: getTinted(plain, outlineColor) };
 };
 
 /*
@@ -91,12 +106,41 @@ const makeSquareFade = (size, cx, cy, half, inner, corner) => {
 };
 
 // the whole icon scene, at 'size' px for its SCENE units; 'isFeathered': the frame's fade applied
+/*
+  (Jamie, 2026-11-25) a background color filling the frame, and a border round the frame's edge in the Kaiju's outline
+  purple, as thick as its outline is drawn ('width' times that). Both go under the Kaiju: where its body runs out past
+  the frame's edge (the bottom right corner), its black covers the border there, and its own outline meets the border
+  where its edge crosses the frame's, so they join in one line.
+*/
+const getBackground = settings => ({ isOn: false, color: "#ffffff", ...(settings.background || {}) });
+const getBorder = settings => ({ isOn: false, width: 1, ...(settings.border || {}) });
+// the frame's shape as a path, 'half' its half size (scene units)
+const frameShapePath = (ctx, circle, half) => {
+  const { shape, corner } = getFrame(circle);
+  ctx.beginPath();
+  if (shape == "square") ctx.roundRect(circle.x - half, circle.y - half, half * 2, half * 2, Math.max(0, half - (circle.r - circle.r * Math.min(1, corner))));
+  else ctx.arc(circle.x, circle.y, half, 0, Math.PI * 2);
+};
 const drawScene = (ctx, size, settings, images, isFeathered) => {
   const { kaiju, fire, circle } = settings;
   const k = size / SCENE;
   ctx.clearRect(0, 0, size, size);
   ctx.save();
   ctx.scale(k, k);
+  const background = getBackground(settings);
+  if (background.isOn) {
+    frameShapePath(ctx, circle, circle.r);
+    ctx.fillStyle = background.color;
+    ctx.fill();
+  }
+  const border = getBorder(settings);
+  if (border.isOn) {
+    const width = kaiju.outline * kaiju.scale * border.width; // (as thick as the Kaiju's outline, in scene units)
+    frameShapePath(ctx, circle, circle.r - width / 2); // (its outer edge on the frame's)
+    ctx.lineWidth = width;
+    ctx.strokeStyle = border.color || getKaijuLook(kaiju).outlineColor; // (the Kaiju's outline's, unless set: Jamie, 2026-11-25)
+    ctx.stroke();
+  }
   ctx.translate(kaiju.x, kaiju.y);
   ctx.scale(kaiju.scale, kaiju.scale);
   if (kaiju.isMirrored) {
@@ -118,12 +162,25 @@ const drawScene = (ctx, size, settings, images, isFeathered) => {
   ctx.save();
   ctx.translate(mouthX + fire.dx, mouthY + fire.dy);
   ctx.rotate((fire.angle * Math.PI) / 180);
-  ctx.globalCompositeOperation = "lighter";
+  // (added light, as on the landing's dark sea; over a background color drawn as it is: added light vanishes on white)
+  ctx.globalCompositeOperation = background.isOn ? "source-over" : "lighter";
   if (fire.glow > 0) {
     ctx.shadowColor = SEA_KAIJU.fireGlow;
     ctx.shadowBlur = 8 * fire.glow * kaiju.scale * k;
   }
-  ctx.drawImage(images.fire, fire.frame * FIRE_FRAME.width, 0, FIRE_FRAME.width, FIRE_FRAME.height, -fireWidth / 2, -fireHeight, fireWidth, fireHeight);
+  // its detail: the flat color, and the sprite's flames over it as much as 'detail'
+  const { detail, flatColor } = getFireLook(fire);
+  const flames = document.createElement("canvas");
+  flames.width = FIRE_FRAME.width;
+  flames.height = FIRE_FRAME.height;
+  flames.getContext("2d").drawImage(images.fire, fire.frame * FIRE_FRAME.width, 0, FIRE_FRAME.width, FIRE_FRAME.height, 0, 0, FIRE_FRAME.width, FIRE_FRAME.height);
+  if (detail < 1) ctx.drawImage(getTinted(flames, flatColor), -fireWidth / 2, -fireHeight, fireWidth, fireHeight);
+  if (detail > 0) {
+    ctx.globalAlpha = detail;
+    ctx.shadowBlur = detail < 1 ? 0 : ctx.shadowBlur; // (the glow once, not twice)
+    ctx.drawImage(flames, -fireWidth / 2, -fireHeight, fireWidth, fireHeight);
+    ctx.globalAlpha = 1;
+  }
   ctx.restore();
   ctx.restore();
   // the fade: whole inside the inner circle, gone by the outer one
@@ -235,6 +292,25 @@ const Control = ({ label, value, min, max, step, onChange }) => (
   </>
 );
 
+// a color: the picker, an eye dropper (where the browser has one) and its hex; 'onReset': back to a default, if given
+const ColorField = ({ value, onChange, onReset = undefined, resetLabel = "Default" }) => (
+  <Row>
+    <input type="color" value={value || "#000000"} onChange={event => onChange(event.target.value)} />
+    {typeof window != "undefined" && "EyeDropper" in window && (
+      <button onClick={async () => {
+        try {
+          const { sRGBHex } = await new window.EyeDropper().open();
+          onChange(sRGBHex);
+        } catch {
+          // (Esc: no color picked)
+        }
+      }}>Eye dropper</button>
+    )}
+    <code>{value || "the sprite's"}</code>
+    {onReset && <button onClick={onReset}>{resetLabel}</button>}
+  </Row>
+);
+
 // one preview: the icon at 'px', and beside it the same blown up (to see its pixels)
 const Preview = ({ icon, px, zoom = 0 }) => {
   const ref = useRef(null);
@@ -276,8 +352,9 @@ export const IconTool = () => {
   }, []);
   useEffect(() => {
     if (!sheets) return;
-    setImages({ kaiju: getKaijuFrames(sheets.kaiju, settings.kaiju.frame), fire: sheets.fire });
-  }, [sheets, settings.kaiju.frame]);
+    const look = getKaijuLook(settings.kaiju);
+    setImages({ kaiju: getKaijuFrames(sheets.kaiju, settings.kaiju.frame, look.outlineColor, look.fillColor), fire: sheets.fire });
+  }, [sheets, settings.kaiju.frame, settings.kaiju.outlineColor, settings.kaiju.fillColor]);
 
   const set = (part, key, value) => setSettings(now => ({ ...now, [part]: { ...now[part], [key]: value } }));
 
@@ -413,6 +490,12 @@ export const IconTool = () => {
           <Control label="Y" value={settings.kaiju.y} min={-1200} max={1200} step={1} onChange={value => set("kaiju", "y", value)} />
           <Control label="Frame" value={settings.kaiju.frame} min={0} max={KAIJU_FRAME.count - 1} step={1} onChange={value => set("kaiju", "frame", value)} />
           <Control label="Outline" value={settings.kaiju.outline} min={0} max={8} step={0.1} onChange={value => set("kaiju", "outline", value)} />
+          <label>Outline color</label>
+          <ColorField value={getKaijuLook(settings.kaiju).outlineColor} onChange={value => set("kaiju", "outlineColor", value)} onReset={() => set("kaiju", "outlineColor", OUTLINE_HEX)} resetLabel="Landing's purple" />
+          <span />
+          <label>Body color</label>
+          <ColorField value={getKaijuLook(settings.kaiju).fillColor} onChange={value => set("kaiju", "fillColor", value)} onReset={() => set("kaiju", "fillColor", "")} resetLabel="Sprite's own" />
+          <span />
           <label>Faces left</label>
           <input type="checkbox" checked={settings.kaiju.isMirrored} onChange={event => set("kaiju", "isMirrored", event.target.checked)} />
           <span />
@@ -425,6 +508,30 @@ export const IconTool = () => {
           <Control label="Off mouth Y" value={settings.fire.dy} min={-300} max={300} step={0.5} onChange={value => set("fire", "dy", value)} />
           <Control label="Frame" value={settings.fire.frame} min={0} max={FIRE_FRAME.count - 1} step={1} onChange={value => set("fire", "frame", value)} />
           <Control label="Glow" value={settings.fire.glow} min={0} max={4} step={0.05} onChange={value => set("fire", "glow", value)} />
+          <Control label="Detail" value={getFireLook(settings.fire).detail} min={0} max={1} step={0.01} onChange={value => set("fire", "detail", value)} />
+          <label>Flat color</label>
+          <ColorField value={getFireLook(settings.fire).flatColor} onChange={value => set("fire", "flatColor", value)} />
+          <span />
+        </Group>
+        <Group>
+          <legend>Background and border</legend>
+          <label>Background</label>
+          <Row>
+            <input type="checkbox" checked={getBackground(settings).isOn} onChange={event => setSettings(now => ({ ...now, background: { ...getBackground(now), isOn: event.target.checked } }))} />
+            <ColorField value={getBackground(settings).color} onChange={value => setSettings(now => ({ ...now, background: { ...getBackground(now), isOn: true, color: value } }))} />
+          </Row>
+          <span />
+          <label>Border</label>
+          <input type="checkbox" checked={getBorder(settings).isOn} onChange={event => setSettings(now => ({ ...now, border: { ...getBorder(now), isOn: event.target.checked } }))} />
+          <span />
+          {getBorder(settings).isOn && (
+            <>
+              <label>Border color</label>
+              <ColorField value={getBorder(settings).color || getKaijuLook(settings.kaiju).outlineColor} onChange={value => setSettings(now => ({ ...now, border: { ...getBorder(now), color: value } }))} onReset={() => setSettings(now => ({ ...now, border: { ...getBorder(now), color: "" } }))} resetLabel="Same as the Kaiju's outline" />
+              <span />
+            </>
+          )}
+          {getBorder(settings).isOn && <Control label="Border width" value={getBorder(settings).width} min={0.25} max={4} step={0.05} onChange={value => setSettings(now => ({ ...now, border: { ...getBorder(now), width: value } }))} />}
         </Group>
         <Group>
           <legend>Frame</legend>
@@ -447,12 +554,12 @@ export const IconTool = () => {
           <button onClick={exportIcon}>Export {EXPORT_PX} px</button>
           <span>{status}</span>
         </Row>
-        <div>Previews (each beside it blown up, to see its pixels):</div>
+        <div>Previews, at their real sizes (16, 32, 48):</div>
         <Previews>
           {[["Dark tab", "#202124"], ["Light tab", "#f1f3f4"], ["Clear", "repeating-conic-gradient(#555 0% 25%, #888 0% 50%) 0 0 / 8px 8px"]].map(([name, background]) => (
             <Swatch key={name} style={{ background }} title={name}>
-              <Preview icon={icon} px={16} zoom={4} />
-              <Preview icon={icon} px={32} zoom={2} />
+              <Preview icon={icon} px={16} />
+              <Preview icon={icon} px={32} />
               <Preview icon={icon} px={48} />
             </Swatch>
           ))}
