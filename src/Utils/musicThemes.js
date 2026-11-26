@@ -119,10 +119,10 @@ export const THEMES = {
   },
   kaijuFight: {
     name: "Kaiju fight", group: "Battles",
-    context: "Big and stompy, heavy bass. The Peninsula's fights against the Kaiju from the sea, the Peninsula multiplayer ground and the defense mode.",
-    bpm: 112,
+    context: "Big and stompy: the first take's tune, at Punk Guy's tempo with his driving drums and bass (Jamie's redo, 2026-11-26), a stomp in its fills. The Peninsula's fights against the Kaiju from the sea, the Peninsula multiplayer ground and the defense mode.",
+    bpm: 152,
     chords: "E5 | E5 | E5 | F5 | E5 | E5 | C5 | B5",
-    bass: "stomp", harmony: "chug", drums: ["stomp", "stomp", "stomp", "stompFill"],
+    bass: "octave8", harmony: "chug", drums: ["punk", "punk", "punk", "stompFill", "punk", "punk", "punk", "punkFill"],
     melody: "E4:4 .:2 E4:2 G4:4 F#4:4 | E4:4 B3:4 .:8 | E4:4 .:2 E4:2 G4:2 A4:2 B4:4 | C5:6 B4:2 A4:4 F4:4 | E5:4 .:2 E5:2 G5:4 F#5:4 | E5:4 B4:4 .:8 | C5:4 E5:4 G5:4 E5:4 | D#5:4 F#5:4 B5:8",
     voices: { chip: { lead: "pulse50" } }
   },

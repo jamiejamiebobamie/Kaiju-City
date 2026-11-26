@@ -35,6 +35,7 @@ import { playMusic, setMusicIntensity, stopMusic } from "Utils/music";
 import { setMusicDuck, setSfxRoom } from "Utils/audio";
 import { setAmbience, stopAmbience } from "Utils/ambience";
 import { playSfx } from "Utils/sfx";
+import { AudioDevPanel } from "./AudioDevPanel";
 import { ROOM_HANDOFF, RoomBackdrop } from "Components/RoomScene";
 import { CAMERA, setIsShakyCam } from "Utils/camera";
 import { ZOOM_BACK } from "Components/ZoomThrough";
@@ -2615,6 +2616,8 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     </GameArea>
   );
 
+  // dev (Jamie, 2026-11-26): the sound's switches, and its verdicts, on every screen of the game
+  const audioDevPanel = import.meta.env.DEV && !isDevHidden ? <AudioDevPanel /> : null;
   const screen = (
     isPreGame ?
       <>
@@ -2960,5 +2963,5 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
         </GameArea>)
   );
 
-  return <>{screen}{sceneFades}{devShowButton}</>;
+  return <>{screen}{sceneFades}{devShowButton}{audioDevPanel}</>;
 };

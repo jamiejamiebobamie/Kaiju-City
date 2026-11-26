@@ -623,6 +623,27 @@ export const playSfxInto = (id, ctx, dest) => BY_ID[id].play(makeKit(ctx, dest))
   more than MAX_VOICES at once.
 */
 const SFX_LIMITS = { minGapMs: 45, maxVoices: 14, voiceMs: 1500 };
+
+// the reviewed sounds heard lately, newest first (the dev panel's, to approve or redo one in the game: Jamie, 2026-11-26);
+// a single take counts as the sound it was taken from
+const REVIEWED_IDS = new Set(SOUNDS.map(sound => sound.id));
+const getReviewedId = id => REVIEWED_IDS.has(id) ? id : ({ "footsteps-one": "footsteps", "kaiju-stomp-one": "kaiju-stomp", "boot-tick": "boot-patter", "bio-tick": "bio-type", "car-pass": "street-traffic" })[id]
+  || (/^blip-(guy|girl|punk|ghost|mermaid|agent)-one$/.test(id) ? id.replace(/-one$/, "") : undefined);
+const recentSfx = [];
+const recentListeners = new Set();
+const noteRecent = id => {
+  const reviewedId = getReviewedId(id);
+  if (!reviewedId) return;
+  const at = recentSfx.indexOf(reviewedId);
+  if (at == 0) return;
+  if (at > 0) recentSfx.splice(at, 1);
+  recentSfx.unshift(reviewedId);
+  recentSfx.length = Math.min(recentSfx.length, 12);
+  recentListeners.forEach(listener => listener());
+};
+export const getRecentSfx = () => [...recentSfx];
+export const onRecentSfx = listener => { recentListeners.add(listener); return () => recentListeners.delete(listener); };
+export const getSoundName = id => (SOUNDS.find(sound => sound.id == id) || { name: id }).name;
 const lastPlayedAt = {};
 let voices = [];
 export const playSfx = (id, { gain = 1, minGapMs = SFX_LIMITS.minGapMs } = {}) => {
@@ -637,6 +658,7 @@ export const playSfx = (id, { gain = 1, minGapMs = SFX_LIMITS.minGapMs } = {}) =
   if (voices.length >= SFX_LIMITS.maxVoices) return;
   lastPlayedAt[id] = now;
   voices.push(now);
+  noteRecent(id);
   try {
     const level = ctx.createGain();
     level.gain.value = gain;

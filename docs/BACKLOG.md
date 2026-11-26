@@ -92,6 +92,12 @@ Last updated: 2026-11-25 (evening).
      - [ ] Levels: the Subway's bell, train, brakes and doors, and its echo on every sound; Rooftop wind, Ghost Girl's scream and the rings; Aquarium hum, the glass crack, "Stop!!!", the shatter, the flood, sea creatures, the Mermaid's heal; Lab machines and the vat's bubbling, the trap clang, the escape siren, the vat-dip scream; Sewers drips (with echo) and the door's glow; the Street's cars and the Agent's call; the Peninsula's city.
      - [ ] Tiles: fire, water, electric and ghost tiles add their loops, louder the more tiles have them.
      - [ ] Boss phase changes (Ghost Girl's scream, the Mermaid's "Stop!!!") also play the "turn change" tone.
+   > Jamie (2026-11-26): a dev option for 8-bit or not; dev toggles for music and sound effects; approve or redo music and sounds in the game with a comment box; redo the Kaiju fight; the volume controls hooked up.
+   - Built 2026-11-26 (later), to check tomorrow:
+     - [ ] **Sound (dev) panel**, bottom left on every game screen (hidden with the other dev options, F2; "hide" folds it): Music and Sound effects switches (the second takes the loops too); Style: each theme's /music pick, all 8-bit, or all not 8-bit (the theme playing switches over at once).
+     - [ ] In the panel: the theme playing now, with Approve / Redo / Cut and a note; below it a sound you've heard (pick another from the list of recent ones), the same. They save into the same files as /music and /sounds, so I'll see them either way.
+     - [ ] **Kaiju fight, redone**: your first take's tune at Punk Guy's tempo (152) with his drums and bass, a stomp in the fills. Its verdict is cleared for you to listen again (/music, or in a Peninsula fight).
+     - [ ] The monitor's volume -/+ set the music, the sounds and the loops together, on the start screen, the avatar select, the picker and in every level (checked: 3 steps down took it from 10 to 7 of 16).
 3. A controls info modal with an image, for mobile and desktop, replacing the current pop-up.
 4. Make the before-AI / after-AI video and upload it to YouTube.
 5. README:

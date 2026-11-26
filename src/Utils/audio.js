@@ -11,7 +11,7 @@
   the first press makes the context (unlockAudio, from the listeners below).
 */
 
-export const AUDIO_LEVEL = { volume: 10 / 16, music: 0.55, sfx: 1, ambience: 0.6 };
+export const AUDIO_LEVEL = { volume: 10 / 16, music: 0.55, sfx: 1, ambience: 0.6, isMusicOff: false, isSfxOff: false };
 
 let ctx;
 let nodes;
@@ -30,16 +30,16 @@ export const getAudio = () => {
     const master = ctx.createGain();
     master.gain.value = AUDIO_LEVEL.volume;
     master.connect(limiter).connect(ctx.destination);
-    const makeBus = level => {
+    const makeBus = (level, isOff) => {
       const bus = ctx.createGain();
-      bus.gain.value = level;
+      bus.gain.value = isOff ? 0 : level;
       bus.connect(master);
       return bus;
     };
     const musicDuck = ctx.createGain();
-    const music = makeBus(AUDIO_LEVEL.music);
+    const music = makeBus(AUDIO_LEVEL.music, AUDIO_LEVEL.isMusicOff);
     musicDuck.connect(music);
-    nodes = { master, sfx: makeBus(AUDIO_LEVEL.sfx), sfxRoom: undefined, music: musicDuck, musicLevel: music, ambience: makeBus(AUDIO_LEVEL.ambience) };
+    nodes = { master, sfx: makeBus(AUDIO_LEVEL.sfx, AUDIO_LEVEL.isSfxOff), sfxRoom: undefined, music: musicDuck, musicLevel: music, ambience: makeBus(AUDIO_LEVEL.ambience, AUDIO_LEVEL.isSfxOff) };
   }
   if (ctx.state == "suspended") ctx.resume();
   return ctx;
@@ -50,6 +50,18 @@ export const getAudioNodes = () => (getAudio() ? nodes : undefined);
 export const setAudioVolume = share => {
   AUDIO_LEVEL.volume = Math.max(0, Math.min(1, share));
   if (ctx && nodes) nodes.master.gain.setTargetAtTime(AUDIO_LEVEL.volume, ctx.currentTime, 0.05);
+};
+
+// dev (Jamie, 2026-11-26): the music off, or the sound effects (and the loops under the scene) off
+export const setMusicOff = isOff => {
+  AUDIO_LEVEL.isMusicOff = isOff;
+  if (ctx && nodes) nodes.musicLevel.gain.setTargetAtTime(isOff ? 0 : AUDIO_LEVEL.music, ctx.currentTime, 0.05);
+};
+export const setSfxOff = isOff => {
+  AUDIO_LEVEL.isSfxOff = isOff;
+  if (!ctx || !nodes) return;
+  nodes.sfx.gain.setTargetAtTime(isOff ? 0 : AUDIO_LEVEL.sfx, ctx.currentTime, 0.05);
+  nodes.ambience.gain.setTargetAtTime(isOff ? 0 : AUDIO_LEVEL.ambience, ctx.currentTime, 0.05);
 };
 
 // the music quieter (under dialogue, a sting, a scene's words) or back

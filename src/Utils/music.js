@@ -9,13 +9,17 @@
   the flood); { isLight: true } is a lighter take (training and sparring: no chords, fewer drums); playMusicSting(id)
   plays a theme's opening bars over the music, turned down under it (an Agent showing).
 */
-import { getAudio, getAudioNodes, onAudioUnlock } from "./audio";
+import { AUDIO_LEVEL, getAudio, getAudioNodes, onAudioUnlock } from "./audio";
 import { getNoiseBuffer } from "./sfx";
 import { THEMES, DRUMS } from "./musicThemes";
 import REVIEW from "../Game/ReactComponents/MusicReview/musicReview.json";
 
 export const MUSIC_STYLES = ["chip", "synth"];
-export const getThemeStyle = id => (REVIEW[id] && REVIEW[id].style) || "chip";
+// Jamie's verdicts, notes and picked styles (the dev panel adds to them in the game: MusicReview's save)
+export const MUSIC_REVIEW = { ...REVIEW };
+// dev (Jamie, 2026-11-26): every theme in one style, to hear it in the game: 'chip', 'synth', or undefined (each its pick)
+export const MUSIC_STYLE_OVERRIDE = { value: undefined };
+export const getThemeStyle = id => MUSIC_STYLE_OVERRIDE.value || (MUSIC_REVIEW[id] && MUSIC_REVIEW[id].style) || "chip";
 
 // - - - notes and chords - - -
 
@@ -469,9 +473,17 @@ export const playMusic = (id, options = {}) => {
   const player = new ThemePlayer(id, options);
   if (!player.start(options.fadeSeconds ?? 1.2)) return; // (no sound yet: it starts on the first press, below)
   if (current) current.player.stop(options.fadeSeconds ?? 1.2);
-  current = { key, player };
+  current = { key, player, options };
 };
 export const stopMusic = (fadeSeconds = 1.2) => playMusic(undefined, { fadeSeconds });
+// what's playing: its id, and whether it's the light take or tense (the dev panel's)
+export const getCurrentMusicInfo = () => current && { id: current.player.id, style: current.player.style, isLight: current.player.isLight, intensity: current.player.intensity };
+// the style override changed, or a theme's picked style: the theme playing goes over to it (a quick crossfade)
+export const refreshMusicStyle = () => {
+  if (!current) return;
+  const { player, options } = current;
+  playMusic(player.id, { ...options, style: undefined, intensity: player.intensity, fadeSeconds: 0.4 });
+};
 export const getCurrentMusic = () => (current ? current.player.id : undefined);
 
 // the tense layer: 0 calm, 1 tense (the ghost rings, the flood, the door near)
@@ -503,7 +515,7 @@ export const renderMusicInto = (id, style, ctx, dest, seconds, options = {}) => 
 export const previewMusic = (id, style, options = {}) => playMusic(id, { ...options, style, fadeSeconds: 0.3 });
 
 // (dev: what's playing, for scripted checks)
-if (import.meta.env && import.meta.env.DEV && typeof window != "undefined") window.__kaijuMusic = { getCurrentMusic, getWanted: () => wanted && wanted.id };
+if (import.meta.env && import.meta.env.DEV && typeof window != "undefined") window.__kaijuMusic = { getCurrentMusic, getWanted: () => wanted && wanted.id, getCurrentMusicInfo: () => getCurrentMusicInfo(), getNodes: () => getAudioNodes(), getLevel: () => AUDIO_LEVEL };
 
 onAudioUnlock(() => {
   if (wanted && !current) playMusic(wanted.id, wanted.options);

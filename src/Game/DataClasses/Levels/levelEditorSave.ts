@@ -186,6 +186,11 @@ const reviewFileSave = (name: string, reviewPath: string): Plugin => ({
     if (path.normalize(file) == path.normalize(reviewPath)) return [];
   },
   configureServer(server) {
+    // (the game's dev panel reads it first, then saves it with its change: the review page may have changed it since)
+    server.middlewares.use(`/__${name}/load`, (_request, response) => {
+      response.setHeader('Content-Type', 'application/json');
+      response.end(fs.existsSync(reviewPath) ? fs.readFileSync(reviewPath, 'utf8') : '{}');
+    });
     server.middlewares.use(`/__${name}/save`, (request, response) => {
       let body = '';
       request.on('data', chunk => { body += chunk; });
