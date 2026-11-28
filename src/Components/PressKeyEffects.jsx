@@ -1,5 +1,9 @@
 import React, { useMemo, useState } from "react";
 import styled, { css, keyframes } from "styled-components";
+import { getIsTouchLayout } from "Utils/device";
+
+// (a touch screen has no keys: "Tap to start" there. Mobile step 4)
+export const getPromptText = () => getIsTouchLayout() ? "Tap to start" : "Press any key";
 
 /*
   "[Press any key]" on the landing, and its effects (Jamie, 2026-11-15), after arcade attract screens ("insert coin",
@@ -78,7 +82,7 @@ const Bracket = styled.span`
   line-height: 0;
 `;
 
-export const KeyWords = () => <><Bracket>[</Bracket>Press any key<Bracket>]</Bracket></>;
+export const KeyWords = () => <><Bracket>[</Bracket>{getPromptText()}<Bracket>]</Bracket></>;
 
 // pressed (Jamie): the ghosts hold where they are and fade out quickly, and don't come back while the words go white
 const Trails = styled.span`
@@ -216,7 +220,7 @@ const ChaseBar = styled(KeyLine)`
   ${props => props.$anim && !props.$isStill && css`animation: ${props.$anim.frames} ${props.$anim.rest};`}
 `;
 
-const CHASE_TEXT = "Press any key";
+const CHASE_TEXT = getPromptText();
 
 /*
   4. Zoom echo: copies of the words zoom out from them and fade, one after another, as if the title rushes at the
@@ -307,7 +311,7 @@ const NeonBar = styled.div`
   }
 `;
 export const NeonRow = ({ isLeaving }) => {
-  const text = "Press any key";
+  const text = getPromptText();
   const lastMs = (text.length + 1) * NEON.stepMs;
   return (
     <>

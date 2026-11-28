@@ -178,7 +178,13 @@ Jamie will playtest when all four steps are built. Everything that needs checkin
    - **Menu**: no Controls button on touch. **Built.**
    - **Avatar select to the picker** (desktop too, Jamie: yes): the labels' flash 0.9 s (was 1.5), the slide 0.6 s (was 1.1), so the picker comes up by 1.5 s. **Built.**
 3. Placement tool and per-device tuning (**built**, checks below): four presets by screen size, not by brand (Jamie, 2026-11-28: yes): small phone (landscape height under ~380 px), standard phone (~380–415), large phone (~416–460), tablet (600+), each checked against the devices people actually use today; playWindow.json gets a section per preset. The iPhone SE's 16:9 gets a look of its own.
-4. Polish (tap to start, performance, the final fight's extra powers, anything left).
+4. Polish (tap to start, performance, the final fight's extra powers, anything left). **Built** (checks below).
+
+### Step 4, built: please check
+- [ ] **"[Tap to start]"** on the landing on a touch screen (was "[Press any key]"); a tap starts it.
+- [ ] **The final fight's Kaiju**: all ten powers on touch: the usual three, and the other seven as a row of smaller buttons across the top right. Is the row fine, or should they sit differently (an arc round the three, a column down the right edge)? Place HUD's "Extra powers" moves and sizes the row.
+- Performance: done in mobile playtest 1's fixes (the tile icons, one draw a frame, the idle explosion canvas, the lighter glass). Test it on `npm run phone` (the built game), which skips React's slow development mode.
+- Known, left as they are: on a phone the avatar select and the picker leave thin dark bands at their sides (their scene is drawn for a 16:9 screen; a phone is wider); cutscenes' whole-scene shots leave black at the sides for the same reason. Say if either bothers you on the phone.
 
 ### Step 3, built: please check
 - [ ] **The four sizes**: small phone (short side under 380 px: the 360 Androids, iPhone mini/SE/X at 375), standard phone (380-410: iPhone 12-17, most Androids at 384-393), large phone (411-599: iPhone XR/11 at 414, the most common phone screen; Plus/Air/Pro Max at 420-440; big Androids at 412), tablet (600 up: iPads). From StatCounter's mid-2026 figures (414x896, 360x800, 390x844, 393x873, 384x832 and 375x812 lead) and this year's iPhone sizes. The menu's **Size** picks one by hand to see it on any screen ("Auto" goes by the screen).
