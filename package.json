@@ -9,6 +9,7 @@
     "prebuild": "node scripts/assetManifest.mjs",
     "build": "vite build",
     "preview": "vite preview",
+    "phone": "npm run build && vite preview --host",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",

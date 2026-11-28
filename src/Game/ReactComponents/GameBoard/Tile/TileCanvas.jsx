@@ -287,6 +287,27 @@ const drawIcon = (ctx, { iconClass, rotation }, center, radius, color, lineScale
   ctx.restore();
 };
 
+/*
+  An icon with its glow and outline, drawn once per power and color and then copied onto each frame (Jamie, mobile
+  playtest 1: the game slowed with many statuses on an iPhone. A canvas blur per icon per frame was the cost there).
+  Only once the icon font has loaded, so a blank icon is never kept.
+*/
+const makeIconSprite = (iconClass, color, radius, lineScale, pixelRatio) => {
+  const pad = (TILE_LOOK.iconGlow * 2 + TILE_LOOK.iconOutlineWidth) * lineScale;
+  const size = radius * 2.6 + pad * 2; // (room for the second heart beside the first)
+  const sprite = document.createElement("canvas");
+  sprite.width = sprite.height = Math.ceil(size * pixelRatio);
+  const ctx = sprite.getContext("2d");
+  ctx.scale(pixelRatio, pixelRatio);
+  drawIcon(ctx, { iconClass, rotation: 0 }, { x: size / 2, y: size / 2 }, radius, color, lineScale);
+  return { sprite, size };
+};
+let isIconFontReady = false;
+const getIsIconFontReady = () => {
+  isIconFontReady = isIconFontReady || !document.fonts || document.fonts.check("20px FontAwesome");
+  return isIconFontReady;
+};
+
 const getLineScale = grid => getHexRadius(grid) / TILE_LOOK.baseHexRadius;
 
 // the Aquarium's sea creatures: Game Icons' sea shapes (public/icons/sea, CC BY 3.0), each in its own color
@@ -388,6 +409,19 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
       rimOpacity: TILE_LOOK.statusRimOpacity,
       backingOpacity: TILE_LOOK.statusBackingOpacity
     });
+    const iconSprites = {};
+    const drawIconSprite = (icon, center, color) => {
+      if (!icon.iconClass) return;
+      if (!getIsIconFontReady()) return drawIcon(ctx, icon, center, radius, color, lineScale);
+      const key = `${icon.iconClass} ${color}`;
+      iconSprites[key] = iconSprites[key] || makeIconSprite(icon.iconClass, color, radius, lineScale, pixelRatio);
+      const { sprite, size } = iconSprites[key];
+      ctx.save();
+      ctx.translate(center.x, center.y);
+      if (icon.rotation) ctx.rotate((icon.rotation * Math.PI) / 180);
+      ctx.drawImage(sprite, -size / 2, -size / 2, size, size);
+      ctx.restore();
+    };
     const getSoftSprite = (color, tintOpacity) => getSprite(`soft ${color}`, {
       tint: color,
       tintOpacity,
@@ -542,6 +576,12 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
     const smokeFades = new Map();
     const iconGhosts = new Map();
     let fadeFrame = undefined;
+    const requestDraw = () => {
+      if (fadeFrame === undefined) fadeFrame = requestAnimationFrame(() => {
+        fadeFrame = undefined;
+        draw();
+      });
+    };
     const drawFades = () => {
       const nowMs = performance.now();
       const getOpacity = (fades, key, startMs, fadeMs) => {
@@ -559,14 +599,11 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
         const opacity = getOpacity(iconGhosts, key, startMs, TILE_LOOK.iconGhostMs);
         if (opacity <= 0) return;
         ctx.globalAlpha = opacity * TILE_LOOK.iconGhostOpacity;
-        drawIcon(ctx, icon, center, radius, color, lineScale);
+        drawIconSprite(icon, center, color);
       });
       ctx.globalAlpha = 1;
       // the fades are quicker than the game's ticks, so they draw on their own frames while they last
-      if ((smokeFades.size || iconGhosts.size) && fadeFrame === undefined) fadeFrame = requestAnimationFrame(() => {
-        fadeFrame = undefined;
-        draw();
-      });
+      if (smokeFades.size || iconGhosts.size) requestDraw();
     };
 
     // what is gone since last time starts to fade
@@ -642,7 +679,7 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
           const icon = { iconClass: tile.getActiveIcon(), rotation: tile.getRotation() };
           if (tile.cast.seaIcon) drawSeaIcon(ctx, tile.cast.seaIcon, tile.cast.seaColor, center, radius, lineScale, draw, getSeaPose(tile.cast.seaIcon, tile.dirs));
           // (a Teleport's tile: its portal only, not the power's old icon too: Jamie, playtest 38)
-          else if (!tile.teleportTileStatus) drawIcon(ctx, icon, center, radius, iconColor, lineScale);
+          else if (!tile.teleportTileStatus) drawIconSprite(icon, center, iconColor);
           if (icon.iconClass && !tile.teleportTileStatus) nextIconTiles.set(key, { center, icon, color: iconColor });
           if (isHoloFire) {
             // its scanlines: dark rows across the tile
@@ -679,7 +716,7 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
         drawSprite(ctx, getStatusSprite(isTeamColors && gameManager.getEnemyLeaderColor ? gameManager.getEnemyLeaderColor() : TILE_LOOK.phaseGhostColor), center, pixelRatio);
         // the next to launch shakes
         const shake = isShaking ? (Math.random() - 0.5) * TILE_LOOK.phaseGhostShake : 0;
-        drawIcon(ctx, { iconClass: "fa-snapchat-ghost", rotation: rotation + shake * 12 }, { x: center.x + shake, y: center.y }, radius, TILE_LOOK.phaseGhostColor, lineScale);
+        drawIconSprite({ iconClass: "fa-snapchat-ghost", rotation: rotation + shake * 12 }, { x: center.x + shake, y: center.y }, TILE_LOOK.phaseGhostColor);
       });
       ctx.globalAlpha = 1;
 
@@ -712,8 +749,13 @@ export const TileCanvas = ({ gameManager, level, tone, isVisible, zoom, isTeamCo
 
     draw();
     let isCancelled = false;
-    document.fonts.load("20px FontAwesome").then(() => !isCancelled && draw());
-    const unsubscribe = gameManager.subscribeToBoard(draw);
+    document.fonts.load("20px FontAwesome").then(() => {
+      if (isCancelled) return;
+      Object.keys(iconSprites).forEach(key => delete iconSprites[key]);
+      draw();
+    });
+    // one draw a frame at most, however many changes and fades ask for one (the fades used to draw a second time)
+    const unsubscribe = gameManager.subscribeToBoard(requestDraw);
     return () => {
       isCancelled = true;
       if (fadeFrame !== undefined) cancelAnimationFrame(fadeFrame);

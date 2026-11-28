@@ -5,6 +5,7 @@ import { getIsGameBeaten } from "../DataClasses/Unlocks";
 import { unlockEverything } from "../DataClasses/Avatars";
 import { checkPeerService, getLinkedRoomCode } from "../Multiplayer/peerLink";
 import { MultiplayerLobby } from "../Multiplayer/MultiplayerLobby";
+import { getDeviceKind, TOUCH_INTRO } from "Utils/device";
 import { LabTerminal, LAB_TERMINAL } from "./LabTerminal";
 import { DesignBox } from "./GameBoard/PlayWindow";
 import { playSfx } from "Utils/sfx";
@@ -372,8 +373,15 @@ const BlackOut = styled.div`
 
 // 'onDone': on into the game; with Multiplayer, given the link to the other player (and any messages already come)
 // 'startAt': back from the avatar select (single player's Back): straight to the mode buttons, loaded already
-export const MonitorBoot = ({ onDone, startAt = undefined }) => {
+// 'isAutoPlay': PLAY presses itself after a beat (the touch intro: TOUCH_INTRO)
+export const MonitorBoot = ({ onDone, startAt = undefined, isAutoPlay = false }) => {
   const [phase, setPhase] = useState(startAt || "loading"); // loading, start, moving, pressed, mode
+  // (the touch intro: PLAY pressed by itself, its click heard)
+  useEffect(() => {
+    if (!isAutoPlay || phase != "start") return;
+    const timeout = setTimeout(() => { playSfx("ui-click"); setPhase("pressed"); }, TOUCH_INTRO.playAfterMs);
+    return () => clearTimeout(timeout);
+  }, [isAutoPlay, phase]);
   const [, setDevTick] = useState(0); // (dev only: the unlock below re-renders it) (and a code entered in Settings)
   const [settings, setSettings] = useState(undefined); // Settings: 'fading', 'open', then 'closing'
   const openSettings = () => {
@@ -410,7 +418,10 @@ export const MonitorBoot = ({ onDone, startAt = undefined }) => {
   // (Jamie, playtest 31: no pretend cursor: the player clicks Play themselves, with the normal arrow)
   useEffect(() => {
     // (opened from a host's link: past the mode, straight to joining them. Jamie)
-    const steps = { pressed: [getLinkedRoomCode() ? "lobby" : "mode", BOOT.clickHoldMs] }[phase];
+    // (a phone: no mode screen at all, straight on to single player: no multiplayer yet, and Settings there is only for
+    // unlocks. An iPad keeps it. Jamie, 2026-11-28)
+    const afterPlay = getDeviceKind() == "phone" ? "done" : getLinkedRoomCode() ? "lobby" : "mode";
+    const steps = { pressed: [afterPlay, BOOT.clickHoldMs] }[phase];
     if (!steps) return;
     const timeout = setTimeout(() => {
       if (steps[0] == "done") {

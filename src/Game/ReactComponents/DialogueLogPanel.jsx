@@ -153,12 +153,14 @@ const PopGlitch = () => {
 
 // (Jamie, playtest 34: further right, so the projector's cone has room to spread; was 6)
 const PANEL_RIGHT_CQW = 3.5;
+// (its place can be set from outside: the touch layout's, on the right of a phone's screen, sets --log-top, --log-bottom,
+// --log-right and --log-width, and --log-cone: none, with no projector there. Jamie, 2026-11-28)
 const Panel = styled.div`
   position: absolute;
-  top: 6cqw;
-  bottom: 6cqw;
-  right: ${PANEL_RIGHT_CQW}cqw;
-  width: 27cqw;
+  top: var(--log-top, 6cqw);
+  bottom: var(--log-bottom, 6cqw);
+  right: var(--log-right, ${PANEL_RIGHT_CQW}cqw);
+  width: var(--log-width, 27cqw);
   z-index: 2147483640;
   display: flex;
   flex-direction: column;
@@ -201,10 +203,10 @@ const Panel = styled.div`
 // the frame the panel's own pieces build and break inside of
 const Frame = styled.div`
   position: absolute;
-  top: 6cqw;
-  bottom: 6cqw;
-  right: ${PANEL_RIGHT_CQW}cqw;
-  width: 27cqw;
+  top: var(--log-top, 6cqw);
+  bottom: var(--log-bottom, 6cqw);
+  right: var(--log-right, ${PANEL_RIGHT_CQW}cqw);
+  width: var(--log-width, 27cqw);
   z-index: 2147483641;
   pointer-events: none;
 `;
@@ -434,14 +436,15 @@ const Portrait = styled.div`
   }
 `;
 
+// ('--log-text': bigger on a touch screen, about twice: Jamie, mobile playtest 1. Game.tsx's TOUCH_FRAME_STYLE)
 const Name = styled.div`
-  font-size: ${props => props.$isLarge ? 1.6 : 1.15}cqw;
+  font-size: calc(${props => props.$isLarge ? 1.6 : 1.15}cqw * var(--log-text, 1));
   text-transform: uppercase;
   text-shadow: 0 0 0.3cqw black, 0 0 0.5cqw currentColor;
 `;
 
 const Words = styled.div`
-  font-size: 1.25cqw;
+  font-size: calc(1.25cqw * var(--log-text, 1));
   line-height: 1.55;
 `;
 
@@ -450,10 +453,11 @@ const ContinueBar = styled.button`
   justify-content: space-between;
   align-items: center;
   gap: 1cqw;
-  margin: 0.6cqw 1.4cqw 0;
-  padding: 0.55cqw 1cqw;
+  /* (a touch screen's: the panel's whole width at its foot, and taller: Jamie, mobile playtest 1) */
+  margin: var(--log-button-margin, 0.6cqw 1.4cqw 0);
+  padding: calc(0.55cqw * var(--log-button, 1)) calc(1cqw * var(--log-button-side, 1));
   font-family: gameboy;
-  font-size: 1.1cqw;
+  font-size: calc(1.1cqw * var(--log-button, 1));
   letter-spacing: 0.15cqw;
   text-align: left;
   color: #04140b;
@@ -465,7 +469,7 @@ const ContinueBar = styled.button`
     background: #a8ffc6;
   }
   &:last-child {
-    margin-bottom: 1.2cqw;
+    margin-bottom: var(--log-button-last, 1.2cqw);
   }
 `;
 
@@ -479,15 +483,17 @@ const Bracket = styled.span`
 `;
 const EnterKey = () => <><Bracket>[</Bracket>ENTER<Bracket>]</Bracket></>;
 
+// (none on a touch screen: no keys to press. Jamie, mobile playtest 1: "[ENTER]" was cut off)
 const KeyNumber = styled.span`
   color: #c24f00;
+  display: var(--log-key-display, inline);
 `;
 
 const Footer = styled.div`
   display: flex;
   flex-direction: column;
   gap: 0.6cqw;
-  padding: 0.6cqw 1.4cqw 1.2cqw;
+  padding: var(--log-footer-padding, 0.6cqw 1.4cqw 1.2cqw);
 `;
 
 // 'isRushed': Continue was pressed mid-line: the rest comes in a quick burst (RUSH_STEPS ticks), so it's seen to finish.
@@ -539,6 +545,7 @@ const holoFlicker = keyframes`
   84% { opacity: 1; }
 `;
 const HoloConeWrap = styled.div`
+  display: var(--log-cone, block);
   position: absolute;
   inset: 0;
   z-index: 2147483639;

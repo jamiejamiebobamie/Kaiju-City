@@ -10,12 +10,12 @@ import { HUD_LAYERS, HUD_LOOK, HUD_VARIANTS, PLATES } from "./hudSpec";
 */
 
 // each power's icons: as cast (active), waiting (its cooldown's loader)
-const ACTIVE_ICONS = {
+export const ACTIVE_ICONS = {
   wink: "fa-two-hearts", love: "fa-plus", glass: "fa-ravelry", fire: "fa-free-code-camp", water: "fa-tint", wood: "fa-leaf",
   lightning: "fa-bolt", death: "fa-snapchat-ghost", bubble: "fa-question-circle-o", metal: "fa-shield", ice: "fa-snowflake-o",
   kaijuFire: "fa-free-code-camp"
 };
-const LOADER_ICON = "fa-spinner";
+export const LOADER_ICON = "fa-spinner";
 
 // a part's box, in the art's pixels, and its layer
 const place = (box, layer) => ({ left: `${box.x}px`, top: `${box.y}px`, width: `${box.width}px`, height: `${box.height}px`, zIndex: HUD_LAYERS[layer] });

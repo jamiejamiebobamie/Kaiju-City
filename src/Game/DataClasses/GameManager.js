@@ -2785,12 +2785,17 @@ export class GameManager {
             teammate.initCharLocation(true, getTile(CUTSCENE.arrivalTeammateSpot));
             teammate.isVisible = false; // off-shot until the camera has pulled in
             teammate.isTileHidden = true;
-            const { x, y } = teammate.charLocation;
             const { rowStep, scale } = this.level.grid;
             const heldShot = { ...closeShot, panMs: undefined };
+            // (over where they stopped, as they speak: spacing can put them a tile from their spot, and the balloon pointed
+            // at the player. Jamie, mobile playtest 1)
+            const getArrivalSpeech = () => {
+                const { x, y } = teammate.charLocation;
+                return { name: this.getTeammateName(), text: ARRIVAL_LINE, x, y: y - CUTSCENE.recruitSpeechRows * rowStep * scale, isShout: true, speakerIndex: teammate.pieceIndex };
+            };
             steps.push(
                 { shot: heldShot, arrivals: [{ piece: teammate, startTile: getTile(CUTSCENE.arrivalTeammateStart) }] },
-                { shot: heldShot, ms: getSpeechMs(ARRIVAL_LINE), speech: { name: this.getTeammateName(), text: ARRIVAL_LINE, x, y: y - CUTSCENE.recruitSpeechRows * rowStep * scale, isShout: true, speakerIndex: teammate.pieceIndex } }
+                { shot: heldShot, ms: getSpeechMs(ARRIVAL_LINE), speech: getArrivalSpeech }
             );
         }
         this.startCutscene(steps, { keepsHuds: true });

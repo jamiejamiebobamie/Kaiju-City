@@ -115,6 +115,32 @@ export const onAudioUnlock = listener => {
 };
 export const getIsAudioUnlocked = () => isUnlocked;
 
+/*
+  iPhone and iPad (Jamie, mobile playtest 1: no music until another site had played some):
+  - web sound there is "ambient" by default, so the ring/silent switch mutes it. Asked for as "playback" (Safari 17+),
+    and, for older ones, a silent <audio> loop playing, which does the same.
+  - a touch's start isn't always taken as the press that lets sound play: each later tap or click tries again while the
+    context is still held.
+*/
+const SILENT_WAV = "data:audio/wav;base64,UklGRkQDAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YSADAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA=="; // (a tenth of a second of silence)
+let silentLoop;
+const keepPlaybackSession = () => {
+  try {
+    if (navigator.audioSession) navigator.audioSession.type = "playback";
+  } catch { /* (not there) */ }
+  const isApple = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform == "MacIntel" && navigator.maxTouchPoints > 1);
+  if (!isApple || navigator.audioSession || silentLoop) return;
+  silentLoop = new Audio(SILENT_WAV);
+  silentLoop.loop = true;
+  silentLoop.setAttribute("playsinline", "");
+  silentLoop.play().catch(() => { silentLoop = undefined; }); // (tried again on the next tap)
+};
+const wakeAudio = () => {
+  unlockAudio();
+  keepPlaybackSession();
+  if (ctx && ctx.state != "running") ctx.resume().catch(() => {});
+};
+
 if (typeof window != "undefined" && typeof window.addEventListener == "function") {
-  ["pointerdown", "keydown", "touchstart"].forEach(type => window.addEventListener(type, unlockAudio, { capture: true, passive: true }));
+  ["pointerdown", "keydown", "touchstart", "touchend", "pointerup", "click"].forEach(type => window.addEventListener(type, wakeAudio, { capture: true, passive: true }));
 }

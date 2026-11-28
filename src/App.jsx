@@ -6,6 +6,8 @@ import { loadAssets } from "./Utils/assetLoader";
 import { watchSafeArea } from "./Utils/stage";
 import { installEyeCursor } from "./Utils/eyeCursor";
 import { installUiSounds } from "./Utils/uiSounds";
+import { useDevice } from "./Utils/device";
+import { RotatePrompt } from "./Game/ReactComponents/Touch/TouchHud";
 import "./App.css";
 import "./font-awesome-4.7.0/css/font-awesome.css";
 import "./font-awesome-7.3.1/fa7.css";
@@ -45,6 +47,7 @@ const App = () => {
   const [shouldPlayAnim, setShouldPlayAnim] = useState(false);
   const [isFirstLoad, setIsFirstLoad] = useState(true);
   const isTransitioning = useRef(false);
+  const device = useDevice();
 
   // show splash screen for 5 seconds on first load of site; then its words and logo fade out and the landing fades in
   // (Jamie, 2026-11-16: no clouds here, they're in the landing's zoom now)
@@ -89,9 +92,11 @@ const App = () => {
   if (isMusicReview) return <Suspense fallback={null}><MusicReview /></Suspense>;
 
   return (
-    <div className="App">
+    <div className="App" data-touch={device.isTouch ? "" : undefined}>
       <CloudTransition isPlaying={shouldPlayAnim} />
       {appContent}
+      {/* (a phone plays sideways only: Jamie, 2026-11-28) */}
+      {device.kind == "phone" && device.isPortrait && <RotatePrompt />}
     </div>
   );
 };

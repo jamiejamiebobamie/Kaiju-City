@@ -2,6 +2,7 @@ import React, { useState, useEffect, createContext } from "react";
 import { MainMenu } from "./MainMenu";
 import { ZOOM_BACK } from "./Components/ZoomThrough";
 import { Game } from "./Game/ReactComponents/Game";
+import { TOUCH_INTRO } from "./Utils/device";
 import { Settings } from "./Settings/Settings";
 import { SettingsManager } from "./Game/DataClasses/SettingsManager";
 import { loadTeamAvatars } from "./Game/DataClasses/Avatars";
@@ -107,7 +108,7 @@ export const Home = ({ triggerTransition }) => {
         <MainMenu
           handleClickGame={() => triggerTransition(handleClickGame)}
           playClouds={() => triggerTransition()}
-          enterRoom={handleClickGame /* the zoom ends in the room, the monitor in its spot: no clouds (Jamie) */}
+          enterRoom={() => { TOUCH_INTRO.isPending = true; handleClickGame(); } /* the zoom ends in the room, the monitor in its spot: no clouds (Jamie); on touch, the intro (TOUCH_INTRO) */}
           handleClickSettings={() => triggerTransition(handleClickSettings)}
         />
       )}

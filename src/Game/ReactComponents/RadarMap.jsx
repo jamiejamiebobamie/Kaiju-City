@@ -45,10 +45,21 @@ const Canvas = styled.canvas`
 `;
 
 // where the Peninsula sits on a radar screen this size: its scale, and its top left corner
-export const getRadarPlacement = (width, height) => {
+// 'isLandCentered': across, the land in the middle rather than the whole map (a touch screen's narrower window beside the
+// dialogue: Jamie, mobile playtest 1, "Peninsula centered in shot")
+let landMiddleX;
+const getLandMiddleX = () => {
+  if (landMiddleX === undefined) {
+    const xs = PENINSULA.walkableTiles.map(tile => getTileCenter(PENINSULA.grid, tile).x);
+    landMiddleX = xs.length ? (Math.min(...xs) + Math.max(...xs)) / 2 : PENINSULA.world.width / 2;
+  }
+  return landMiddleX;
+};
+export const getRadarPlacement = (width, height, isLandCentered = false) => {
   const { width: mapWidth, height: mapHeight } = PENINSULA.world;
   const scale = (height * RADAR.mapShare) / mapHeight;
-  return { scale, left: width / 2 - (mapWidth * scale) / 2, top: height / 2 - (mapHeight * scale) / 2 };
+  const middleX = isLandCentered ? getLandMiddleX() : mapWidth / 2;
+  return { scale, left: width / 2 - middleX * scale, top: height / 2 - (mapHeight * scale) / 2 };
 };
 
 /*
@@ -167,7 +178,7 @@ const makeGrain = () => {
 
 // 'dotCount': Kaiju in the coming fight. 'alarmAtMs': when the siren began (no dots before it, or without one)
 // 'radarTiles': the land beyond the map as it is being painted (Edit tiles); else the Peninsula's own
-export const RadarMap = ({ dotCount = 0, alarmAtMs = undefined, radarTiles = undefined, className = undefined }) => {
+export const RadarMap = ({ dotCount = 0, alarmAtMs = undefined, radarTiles = undefined, className = undefined, isLandCentered = false }) => {
   const canvasRef = useRef(null);
   const alarmRef = useRef(alarmAtMs);
   alarmRef.current = alarmAtMs;
@@ -193,7 +204,7 @@ export const RadarMap = ({ dotCount = 0, alarmAtMs = undefined, radarTiles = und
       }
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
       ctx.clearRect(0, 0, width, height);
-      const { scale, left, top } = getRadarPlacement(width, height);
+      const { scale, left, top } = getRadarPlacement(width, height, isLandCentered);
       const toScreen = ({ x, y }) => ({ x: left + x * scale, y: top + y * scale });
       const lab = toScreen(LAB_SPOT);
       const reach = Math.hypot(width, height);

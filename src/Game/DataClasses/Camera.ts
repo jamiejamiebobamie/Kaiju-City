@@ -1,4 +1,5 @@
 type CameraProps = {
+  isTouch?: boolean; // (CAMERA.touch)
   viewWidth: number; // the visible box, in screen pixels
   viewHeight: number;
   worldWidth: number; // the whole level, in world pixels
@@ -20,12 +21,19 @@ export const CAMERA = {
   enemyViewMargin: 0.14, // room kept around the player and the enemy, as a fraction of the view
   edgeMargin: 0.42, // how close to the edge of the view a piece gets before the view pans, as a fraction of the view
   minMouseTilePx: 20, // with a mouse, zoom in until tiles are at least this wide
-  minTouchTilePx: 50, // on touch screens, zoom in until tiles are at least this wide
+  minTouchTilePx: 30, // on touch screens, zoom in until tiles are at least this wide (Jamie, mobile playtest 1: too tight; was 50)
   panTransitionMs: 200, // smooths the pan between game ticks
   // tense (a sea creature after the player, Jamie): in closer than the usual zoom, the zoom changing quicker, and the
   // view keeping the player near its middle, so it pans with them sooner
   // (Jamie: further in still) it stays in close, not easing out to fit the creature in: it only leans its way
-  tense: { zoomIn: 1.6, maxZoomStep: 0.07, edgeMargin: 0.47 }
+  tense: { zoomIn: 1.6, maxZoomStep: 0.07, edgeMargin: 0.47 },
+  /*
+    On a touch screen (Jamie, mobile playtest 1): the player kept near the middle as much as it can be, while the Kaiju
+    still shows; a little above the middle, clear of the stick and the buttons along the bottom ('lift': the view's
+    share); more room round the player and the enemy ('enemyViewMargin'), less lean toward the enemy ('leanShare'), and
+    the zoom changing more slowly ('maxZoomStep'), so it doesn't bump about as the Kaiju come and go.
+  */
+  touch: { edgeMargin: 0.47, enemyViewMargin: 0.24, leanShare: 0.45, lift: 0.1, maxZoomStep: 0.012 }
 };
 
 // the camera pulling out to show the whole scene at a key moment
@@ -57,8 +65,10 @@ export class Camera {
   private viewHeight: number;
   private worldWidth: number;
   private worldHeight: number;
+  private isTouch: boolean;
 
-  constructor({ viewWidth, viewHeight, worldWidth, worldHeight, zoom }: CameraProps) {
+  constructor({ viewWidth, viewHeight, worldWidth, worldHeight, zoom, isTouch = false }: CameraProps) {
+    this.isTouch = isTouch;
     this.baseZoom = zoom;
     // the level always fills the view: no easing out past its edges
     this.minZoom = Math.min(zoom, Math.max(viewWidth / worldWidth, viewHeight / worldHeight));
@@ -103,7 +113,7 @@ export class Camera {
 
   // the zoom that fits the player and the enemy in the view, as far as the camera will go
   private getZoomToShow(player: Point, enemy: Point, maxZoom = this.baseZoom) {
-    const usedView = 1 - CAMERA.enemyViewMargin * 2;
+    const usedView = 1 - (this.isTouch ? CAMERA.touch.enemyViewMargin : CAMERA.enemyViewMargin) * 2;
     const zoom = Math.min(
       (this.viewPxWidth * usedView) / Math.max(Math.abs(enemy.x - player.x), 1),
       (this.viewPxHeight * usedView) / Math.max(Math.abs(enemy.y - player.y), 1)
@@ -125,15 +135,18 @@ export class Camera {
     const lookZoom = topZoom * (1 - CAMERA.lookZoomOut * easeOut);
     const enemyZoom = enemy && isClose ? topZoom : enemy ? this.getZoomToShow(player, enemy, topZoom) : baseZoom;
     const targetZoom = Math.max(Math.min(lookZoom, enemyZoom), this.minZoom);
-    const maxStep = this.zoom * (isClose ? CAMERA.tense.maxZoomStep : CAMERA.maxZoomStep);
+    const maxStep = this.zoom * (isClose ? CAMERA.tense.maxZoomStep : this.isTouch ? CAMERA.touch.maxZoomStep : CAMERA.maxZoomStep);
     this.setZoom(this.zoom + Math.max(Math.min(targetZoom - this.zoom, maxStep), -maxStep));
 
     const getLean = (axis: 'x' | 'y', viewSize: number) => {
       const toEnemy = enemy ? (enemy[axis] - player[axis]) / 2 : 0;
       const lean = aim[axis] * viewSize * CAMERA.lookPan + Math.max(Math.min(toEnemy, viewSize * CAMERA.lookPan), -viewSize * CAMERA.lookPan);
-      return Math.max(Math.min(lean, viewSize * CAMERA.maxLean), -viewSize * CAMERA.maxLean);
+      const share = this.isTouch ? CAMERA.touch.leanShare : 1;
+      return Math.max(Math.min(lean * share, viewSize * CAMERA.maxLean), -viewSize * CAMERA.maxLean);
     };
-    this.follow({ x: player.x + getLean('x', this.viewWidth), y: player.y + getLean('y', this.viewHeight) }, isClose ? CAMERA.tense.edgeMargin : CAMERA.edgeMargin);
+    const lift = this.isTouch ? CAMERA.touch.lift * this.viewHeight : 0; // (the view a little below the player: they sit higher)
+    const margin = isClose ? CAMERA.tense.edgeMargin : this.isTouch ? CAMERA.touch.edgeMargin : CAMERA.edgeMargin;
+    this.follow({ x: player.x + getLean('x', this.viewWidth), y: player.y + lift + getLean('y', this.viewHeight) }, margin);
   }
 
   getTransform() {

@@ -9,9 +9,17 @@ export type AssetSet = 'landing' | 'game';
 const loaded: Record<AssetSet, boolean> = { landing: false, game: false };
 const pending: Partial<Record<AssetSet, Promise<void>>> = {};
 
+// the sprite sheets, decoded and kept so (Jamie, mobile playtest 1: the Street's avatars blurry at first on an iPhone,
+// which decodes a picture the first time it's shown). Only these: the level pictures are too big to keep decoded on a phone
+const keptSheets: Array<HTMLImageElement> = [];
 const loadImage = (url: string) => new Promise<void>(resolve => {
   const image = new Image();
-  image.onload = () => resolve();
+  const isSheet = url.startsWith('/spritesheet/') && !url.includes('/_ORIGINALS/');
+  image.onload = () => {
+    if (!isSheet || !image.decode) return resolve();
+    keptSheets.push(image);
+    image.decode().then(() => resolve(), () => resolve());
+  };
   image.onerror = () => resolve(); // (a missing image mustn't hold the game up)
   image.src = url;
 });

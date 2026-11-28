@@ -94,7 +94,8 @@ const STEAM = {
   rise: 1.25, // box heights over a life
   wave: { amplitude: [2, 3], perPx: [0.2, 0.26], speed: 0.005 }, // steam px; radians per px; radians per ms
   color: [238, 234, 226],
-  alpha: 0.85
+  alpha: 0.85,
+  topFade: 0.35 // the top of the box it's drawn in, as its share: the steam fades out over it, no hard cut (Jamie, 2026-11-28)
 };
 const SteamCanvas = styled.canvas`
   position: absolute;
@@ -156,7 +157,8 @@ const Steam = ({ style, size }) => {
           const x = Math.round(strand.x + amplitude * Math.sin(y * strand.perPx + now * STEAM.wave.speed + strand.phase));
           const from = below === undefined ? x : x > below ? below + 1 : x < below ? below - 1 : x;
           below = x;
-          const alpha = STEAM.alpha * lifeAlpha * Math.min(1, along / 0.2, (1 - along) / 0.4) * (1 - heightUp * 0.4);
+          const topFade = Math.min(1, y / (height * STEAM.topFade));
+          const alpha = STEAM.alpha * lifeAlpha * Math.min(1, along / 0.2, (1 - along) / 0.4) * (1 - heightUp * 0.4) * topFade * topFade;
           if (alpha <= 0) continue;
           for (let each = Math.min(from, x); each <= Math.max(from, x); each++) {
             if (each < 0 || each >= width) continue;

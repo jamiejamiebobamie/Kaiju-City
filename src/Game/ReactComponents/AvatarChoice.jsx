@@ -17,10 +17,10 @@ import { SCENE_DROP, SCENE_DROP_MORE, setFigurePlace } from "./MonitorLabBackdro
   holds for the whole campaign.
 */
 const CHOICE = {
-  lockInMs: 1500, // the labels' flash, before the slide
+  lockInMs: 900, // the labels' flash, before the slide (the picker going by 1.5 s: Jamie, 2026-11-28; was 1500 and 1100)
   doodadFadeInMs: 120, // the doodads' fade in on hover
   doodadFadeOutMs: 250, // and out, on hover out and on a pick
-  slideMs: 1100,
+  slideMs: 600,
   colors: { guy: "#55AAff", girl: "#fa8072" },
   textColor: "#e25cff"
 };

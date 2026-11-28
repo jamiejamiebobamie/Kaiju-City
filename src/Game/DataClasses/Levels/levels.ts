@@ -62,6 +62,7 @@ export type SceneElement = {
   type: 'image' | 'sprite' | 'pulse' | 'light' | 'sequence' | 'part' | 'moth' | 'whiteout' | 'npc' | 'speech' | 'walker' | 'door' | 'hotspot' | 'mapLabel';
   x: number;
   y: number;
+  touchY?: number; // (a door's sign: where it shows on a touch screen, clear of the joystick)
   width: number;
   height: number;
   phase?: string;
@@ -745,7 +746,8 @@ const STREET_SCENE = {
     hazmatSweeper('hazmat1', 'hazmatBroomLeft', 740, 600),
     hazmatSweeper('hazmat3', 'hazmatBroomRight', 1005, 372),
     // the claw's goo covers about x 785 to 1160, y 380 to 575, and the eye's x 1035 to 1165, y 280 to 375
-    { id: 'exit', type: 'door' as const, phase: EXIT_OPEN_PHASE, x: 135, y: 660, width: 0, height: 0, sortY: ABOVE_CHARACTERS, label: 'Go To Peninsula' },
+    // ('touchY': on a touch screen, raised clear of the joystick: Jamie, mobile playtest 1)
+    { id: 'exit', type: 'door' as const, phase: EXIT_OPEN_PHASE, x: 135, y: 660, touchY: 455, width: 0, height: 0, sortY: ABOVE_CHARACTERS, label: 'Go To Peninsula' },
     {
       id: 'agentSpeech', type: 'speech' as const, x: 335, y: 372, width: 0, height: 0, sortY: ABOVE_CHARACTERS,
       lines: STREET_LINES,

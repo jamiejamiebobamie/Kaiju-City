@@ -31,6 +31,8 @@ import { CASING_SHEEN, RUBBER_BUTTON, TV_LOOK } from "./GameBoard/PlayWindow";
 const PICK_COUNT = 3;
 
 const STAGE = { width: 1000, height: 1000 };
+// the pendants on a touch screen, this much bigger (mobile step 2: Jamie, too small to tap beside the Agent's panel)
+const TOUCH_PENDANT_SCALE = 1.7;
 const LOOK = {
   figureHeight: 400, // the avatar, head to feet (Jamie's, 2026-11-15; was 270, then 540; the halo kept its size)
   figureDrop: -50, // the avatar moved down from the halo's middle (negative: up), in stage units; the dev panel's slider
@@ -252,7 +254,7 @@ const PENDANT_LOOKS = {
     border-color: #e9f3ec;
     background: radial-gradient(circle at 40% 35%, #222a25, #070908 70%);
     box-shadow: 0 0 ${unit(10)} rgba(255, 255, 255, 0.35);
-    transform: translate(-50%, -50%) scale(1.08);
+    transform: translate(-50%, -50%) scale(calc(1.08 * var(--pendant-scale, 1)));
     i { opacity: 1; }
   `
 };
@@ -310,7 +312,8 @@ const Pendant = styled.button`
   width: ${unit(LOOK.pendantSize)};
   height: ${unit(LOOK.pendantSize)};
   padding: 0;
-  transform: translate(-50%, -50%);
+  /* ('--pendant-scale': bigger on a touch screen, to tap: mobile step 2) */
+  transform: translate(-50%, -50%) scale(var(--pendant-scale, 1));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1808,7 +1811,8 @@ export const AbilityPicker = ({
   onBack = undefined,
   isTeammate = undefined, // (no longer shown: there's always a teammate now)
   setIsTeammate = undefined,
-  recommended = [] // the powers suggested for the fight ahead (Jamie, playtest 34): "Recommended" on their details
+  recommended = [], // the powers suggested for the fight ahead (Jamie, playtest 34): "Recommended" on their details
+  isTouch = false // a touch screen's (mobile step 2): no side monitor, so no Stompy: the pendants are live at once
 }) => {
   const { settingsManager, selectedAvatar } = useContext(GlobalSettingsContext);
   const [hovered, setHovered] = useState(undefined); // the index of the hovered (or key-chosen) pendant
@@ -2012,7 +2016,7 @@ export const AbilityPicker = ({
     if (pickedAbilities.length > 0) markTamagotchiIntroduced();
     return getHasTamagotchiIntroduced();
   });
-  const isPendantsLive = wasIntroduced || pendantFlash > 0;
+  const isPendantsLive = isTouch || wasIntroduced || pendantFlash > 0;
   isPendantsLiveRef.current = isPendantsLive; // each "Pick three abilities": the unpicked pendants flash in turn // each power's casts in the class battle, by element: its icon blinks on each
   const isArenaShowing = !!playerClass;
   useLayoutEffect(() => {
@@ -2131,7 +2135,7 @@ export const AbilityPicker = ({
   return (
     <>
     <ScaleToFit width={STAGE.width} height={STAGE.height}>
-      <Stage>
+      <Stage style={isTouch ? { "--pendant-scale": TOUCH_PENDANT_SCALE } : undefined}>
         <span ref={anchorRef} />
         <FadingIn>
         <Board viewBox={`0 0 ${STAGE.width} ${STAGE.height}`} preserveAspectRatio="none" aria-hidden="true">
@@ -2208,7 +2212,7 @@ export const AbilityPicker = ({
                 </React.Fragment>
               )}
               <i className={`fa ${power.activeIcon}`} style={{ color: power.color }} />
-              {getKeyLabel(k) && <PendantKey $isPicked={getIsPicked(power)} $color={power.color}>{getKeyLabel(k)}</PendantKey>}
+              {getKeyLabel(k) && !isTouch && <PendantKey $isPicked={getIsPicked(power)} $color={power.color}>{getKeyLabel(k)}</PendantKey>}
             </Pendant>
           );
         })}

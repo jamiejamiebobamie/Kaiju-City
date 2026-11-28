@@ -541,7 +541,7 @@ const VolumeIcon = () => (
 */
 export const VOLUME_LEVEL = { value: 10, steps: 16, shownMs: 2200 };
 const volumeListeners = new Set();
-const stepVolume = by => {
+export const stepVolume = by => {
   VOLUME_LEVEL.value = Math.max(0, Math.min(VOLUME_LEVEL.steps, VOLUME_LEVEL.value + by));
   setAudioVolume(VOLUME_LEVEL.value / VOLUME_LEVEL.steps); // (the sound effects', the music's and the loops' volume: Utils/audio)
   volumeListeners.forEach(listener => listener());
@@ -816,9 +816,12 @@ const getHandleSpot = fraction => `calc(${fraction * 100}% - ${fraction * WINDOW
 // 'isSiren': the red alarm glow around the screen, for a Kaiju fight
 // 'isPoweredOn' (Jamie, 2026-11-14): off, the screen is dead glass; switched on or off, the picture opens or closes like an
 // old TV's. 'isClipped': the picture kept inside the glass (the screens before the game: they slide about in it)
-export const PlayWindow = ({ playWindow, setPlayWindow, isAdjusting, isOpen, isCut = false, buttons = null, isSiren = false, isPoweredOn = true, isClipped = false, hasGlare = false, children }) => {
+// 'isBare' (the touch layout, Jamie 2026-11-28): no casing, glass or bezel round it, its own shape kept (the dialogue panel
+// pushes it over)
+export const PlayWindow = ({ playWindow, setPlayWindow, isAdjusting, isOpen, isBare = false, isCut = false, buttons = null, isSiren = false, isPoweredOn = true, isClipped = false, hasGlare = false, children }) => {
   const windowRef = useRef(null);
   const { left, top, right, bottom } = isOpen ? FULL_WINDOW : playWindow;
+  const isCased = !isOpen && !isBare;
 
   const dragHandle = ({ clientX, clientY, buttons }, { edges }) => {
     if (!buttons) return;
@@ -835,14 +838,14 @@ export const PlayWindow = ({ playWindow, setPlayWindow, isAdjusting, isOpen, isC
       height: `${(bottom - top) * 100}%`,
       // (the screen's share of the frame's width, for what's sized to the screen in the frame's cqw: the notices. Jamie, 2026-11-25)
       "--screen-share": right - left,
-      borderRadius: `${TV_LOOK.screenRadius}cqw`,
+      borderRadius: isBare ? 0 : `${TV_LOOK.screenRadius}cqw`,
       transition: isAdjusting || isCut ? "none" : `left ${WIDE_SHOT.pullMs}ms ease-in-out, top ${WIDE_SHOT.pullMs}ms ease-in-out, width ${WIDE_SHOT.pullMs}ms ease-in-out, height ${WIDE_SHOT.pullMs}ms ease-in-out`
     }}>
       <CrtScreen isOn={isPoweredOn} isClipped={isClipped} hasGlare={hasGlare}>{children}</CrtScreen>
-      {!isOpen && <VolumeDisplay />}
-      {isSiren && !isOpen && <SirenEdge />}
-      <ScreenGlass><RollingBar /></ScreenGlass>
-      {!isOpen && (
+      {isCased && <VolumeDisplay />}
+      {isSiren && isCased && <SirenEdge />}
+      {!isBare && <ScreenGlass><RollingBar /></ScreenGlass>}
+      {isCased && (
         <>
           <ScreenCorners />
           <TvCasing data-tv-casing />

@@ -153,8 +153,11 @@ export const SeaKaiju = ({ x, y, height, waterRow, isMirrored = false, isShown =
     <Holder style={{ left: x - legsX, top: y - height, width, height, opacity: isShown ? 1 : 0, transformOrigin: `${legsX}px 50%`, transform: isMirrored ? "scaleX(-1)" : undefined }}>
       <Reveal $ms={isPreview ? 1 : SEA_KAIJU.revealMs} $delayMs={isPreview ? 0 : revealDelayMs}>
       {/* the body, cut by the water */}
-      <div style={{ position: "absolute", left: 0, top: 0, width, height, overflow: "hidden", filter: `drop-shadow(0 0 0.6px ${SEA_KAIJU.outline}) drop-shadow(0 0 0.6px ${SEA_KAIJU.outline})` }}>
-        <div style={{ width, height: frameHeight * scale, backgroundImage: `url(${SEA_KAIJU.sheet})`, backgroundSize: `${kaijuSea.frames.length * 100}% 100%`, backgroundPosition: `${(frame / (kaijuSea.frames.length - 1)) * 100}% 0`, backgroundRepeat: "no-repeat" }} />
+      {/* (the outline on a holder round the cut, not on the cut itself: Safari dropped it there. Jamie, mobile playtest 1) */}
+      <div style={{ position: "absolute", left: 0, top: 0, width, height, filter: `drop-shadow(0 0 0.6px ${SEA_KAIJU.outline}) drop-shadow(0 0 0.6px ${SEA_KAIJU.outline})` }}>
+        <div style={{ position: "absolute", left: 0, top: 0, width, height, overflow: "hidden" }}>
+          <div style={{ width, height: frameHeight * scale, backgroundImage: `url(${SEA_KAIJU.sheet})`, backgroundSize: `${kaijuSea.frames.length * 100}% 100%`, backgroundPosition: `${(frame / (kaijuSea.frames.length - 1)) * 100}% 0`, backgroundRepeat: "no-repeat" }} />
+        </div>
       </div>
       {/* its fire, from its mouth, turned toward its face and up */}
       {shownFire >= 0 && (

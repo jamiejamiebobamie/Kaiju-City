@@ -5,6 +5,7 @@ import { getIsClickThrough } from "Game/DataClasses/DialogueLog";
 import { DialogueLogPanel } from "./DialogueLogPanel";
 import { ROSTER } from "Game/DataClasses/Avatars";
 import { RadarMap } from "./RadarMap";
+import { getIsTouchLayout } from "Utils/device";
 import { PauseModal } from "./GameBoard/PauseModal";
 
 /*
@@ -94,7 +95,7 @@ export const RadioCall = ({ lines, playerAvatar, teammateAvatar, isResuming, onG
   return (
     <>
       <Page>
-        <RadarMap dotCount={kaijuCount} alarmAtMs={alarmAtMs} />
+        <RadarMap dotCount={kaijuCount} alarmAtMs={alarmAtMs} isLandCentered={getIsTouchLayout()} />
         {isPaused && <PauseModal />}
       </Page>
       {frame && createPortal(<DialogueLogPanel entries={entries} isWaiting={!isPaused && !isChoice && !isLastLine} isVisible onContinue={() => nextLineRef.current()} actions={isPaused ? [] : actions} />, frame)}

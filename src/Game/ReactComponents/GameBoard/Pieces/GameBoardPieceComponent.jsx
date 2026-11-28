@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import styled, { css, keyframes } from "styled-components";
+import { getIsTouchLayout } from "Utils/device";
 
+// (a touch screen's: each its own layer, so Safari keeps them over the tiles' canvas as their order changes with each
+// row walked. Jamie, mobile playtest 1: tiles over the avatars as they moved)
+const IS_OWN_LAYER = getIsTouchLayout();
 const Wrapper = styled.i.attrs(({ zIndex, charLocation, isVisible, pieceScale, $isFaded, $opacity }) => ({
   style: {
-    transform: `scale(${pieceScale})`,
+    transform: IS_OWN_LAYER ? `translateZ(0) scale(${pieceScale})` : `scale(${pieceScale})`,
     transformOrigin: "0 0",
     zIndex: (zIndex || 0) + 20001,
     left: `${charLocation.x + 3.5}px`,

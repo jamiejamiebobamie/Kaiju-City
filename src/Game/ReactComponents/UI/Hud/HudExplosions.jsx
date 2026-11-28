@@ -90,12 +90,16 @@ export const HudExplosions = () => {
     listeners.add(onBlast);
     let frameId;
     let last = performance.now();
+    let wasBusy = true; // (cleared once more after the last blast, then left alone till the next: Jamie, mobile playtest 1)
     const run = () => {
       const now = performance.now();
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       const canvas = canvasRef.current;
-      if (canvas) {
+      const isBusy = blasts.length + puffs.length + sparks.length > 0;
+      const isDrawn = isBusy || wasBusy;
+      wasBusy = isBusy;
+      if (canvas && isDrawn) {
         if (canvas.width != window.innerWidth || canvas.height != window.innerHeight) {
           canvas.width = window.innerWidth;
           canvas.height = window.innerHeight;

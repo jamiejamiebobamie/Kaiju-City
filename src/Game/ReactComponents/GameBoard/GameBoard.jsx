@@ -1,3 +1,4 @@
+import { getIsTouchLayout } from "Utils/device";
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import styled, { css, keyframes } from "styled-components";
@@ -155,7 +156,12 @@ const CARET_INFO = {
   // a site's caret icon and word shrink with distance (Jamie, playtest 18): the nearest is the usual size, and each one
   // further off is smaller by this much a tile, down to 'minSiteScale'
   siteScalePerTile: 0.012,
-  minSiteScale: 0.55
+  minSiteScale: 0.55,
+  // a touch screen's (Jamie, mobile playtest 1): every caret one size, smaller, whatever the distance, as a share of the
+  // view's height; a site's icon in a round frame, as an incoming Kaiju's badge, its word over or under the circle
+  touchCaretSize: 0.045,
+  touchSiteRing: 2.3, // the frame, across, in caret sizes
+  touchSiteIcon: 0.72 // the icon, as a share of the frame
 };
 
 // the Subway's warning: while its lights flash and both are out of shot, two comic-book panels at the top show them
@@ -266,6 +272,26 @@ const CaretLabel = styled.div`
   white-space: nowrap;
   color: #f2f6ff;
   text-shadow: -1px -1px 0 black, 1px -1px 0 black, -1px 1px 0 black, 1px 1px 0 black, 0 0 4px black;
+`;
+
+// a site's icon on a touch screen: in a round frame (as CaretBadge, without its flicker)
+const CaretSiteRing = styled.div`
+  position: absolute;
+  z-index: 2147483001;
+  pointer-events: none;
+  translate: -50% -50%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 40%, #0f3a22, #04140b 75%);
+  border: 2px solid var(--ring);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.75), 0 0 8px var(--ring);
+  img {
+    image-rendering: pixelated;
+    object-fit: contain;
+    filter: drop-shadow(0 0 2px var(--glow));
+  }
 `;
 
 const CaretIcon = styled.img`
@@ -485,9 +511,10 @@ const RecruitButton = styled.button`
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-  padding: 12px 22px;
+  /* (a touch screen's much taller: Jamie, mobile playtest 1) */
+  padding: var(--recruit-button-padding, 12px 22px);
   font-family: gameboy;
-  font-size: 22px;
+  font-size: var(--recruit-button-text, 22px);
   cursor: pointer;
   color: #fbfbf0;
   background: ${props => RECRUIT_LOOK[props.$choice].button};
@@ -554,7 +581,7 @@ const CHOICE_KEYS = { recruit: 1, terminate: 2 };
 
 export const ChoiceButton = ({ choice, recruitChoice, onChooseRecruit }) => (
   <RecruitButton data-choice-key={recruitChoice ? undefined : CHOICE_KEYS[choice]} $choice={choice} $isGone={!!recruitChoice} onClick={event => onChooseRecruit(choice, event.currentTarget.getBoundingClientRect())}>
-    <span>{CHOICE_WORDS[choice]}</span><span>{CHOICE_KEYS[choice]}</span>
+    <span>{CHOICE_WORDS[choice]}</span><span style={{ display: "var(--log-key-display, inline)" }}>{CHOICE_KEYS[choice]}</span>
   </RecruitButton>
 );
 
@@ -787,7 +814,8 @@ const RayBeams = styled.svg`
 
 const MOVEMENT_KEYS = ["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowLeft", "ArrowDown", "ArrowRight"];
 
-const getIsTouchScreen = () => window.matchMedia("(pointer: coarse)").matches;
+// (the touch layout's, Utils/device: a phone or tablet, or one forced in dev. Jamie, 2026-11-28; was any coarse pointer)
+const getIsTouchScreen = () => getIsTouchLayout();
 
 // 'isCurtained': the credits are over the screen: nothing of the game's own shows over them (Jamie, playtest 21)
 // 'viewHexes': seen this many hexes across, following the player (the class battle's: Jamie, playtest 26); 'kaijuFade':
@@ -846,6 +874,7 @@ export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade 
     const sizes = { ...worldSizes, viewWidth: windowWidth, viewHeight: windowHeight };
     return new Camera({
       ...sizes,
+      isTouch: getIsTouchScreen() && !viewHexes, // (CAMERA.touch: not the class battle's steadicam)
       // zoomed for the whole frame: a smaller window shows less of the level, with tiles at the same size
       zoom: viewHexes ? sizes.viewWidth / (viewHexes * grid.colStep * grid.scale) : isWholeScene ? getFitZoom(sizes) : getCloseZoom({
         ...worldSizes,
@@ -1125,6 +1154,8 @@ export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade 
   const caretCamera = isCoverScene ? coverCamera : closeCamera;
   const exitTargets = level.exit && activePhases.includes(EXIT_OPEN_PHASE) ? [{ key: "exit", color: "white", charLocation: level.exit.spot }] : [];
   const tilePx = grid.rowStep * grid.scale;
+  const isTouchCarets = getIsTouchScreen();
+  const getSizedCaret = caret => caret && isTouchCarets ? { ...caret, size: windowHeight * CARET_INFO.touchCaretSize } : caret;
   const caretTargets = (isWideShot || !focusPiece ? [] : (isCoverScene ? exitTargets : [
     ...pieces
       .filter(p => p.getTeamIndex() != focusPiece.getTeamIndex() && !p.isDead)
@@ -1133,7 +1164,7 @@ export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade 
   ]))
     .map(target => ({
       ...target,
-      caret: caretCamera.getEdgeCaret(getWorldLocation(target.charLocation), getWorldLocation(focusPiece.charLocation), tilePx),
+      caret: getSizedCaret(caretCamera.getEdgeCaret(getWorldLocation(target.charLocation), getWorldLocation(focusPiece.charLocation), tilePx)),
       tiles: Math.hypot(target.charLocation.x - focusPiece.charLocation.x, target.charLocation.y - focusPiece.charLocation.y) / tilePx
     }));
   // a badge for an enemy off the screen: when no other is on the board in view, or when it comes in close.
@@ -1175,16 +1206,22 @@ export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade 
     .map(({ key, color, icon, piece, caret, isGlowing, isLocked, tiles }) => (
       <React.Fragment key={key}>
         {icon && (() => {
-          const siteScale = getSiteScale(tiles);
-          const spot = getInward(caret, CARET_INFO.inset);
-          const iconHeight = caret.size * CARET_INFO.iconHeight * siteScale;
+          const siteScale = isTouchCarets ? 1 : getSiteScale(tiles);
+          const spot = getInward(caret, isTouchCarets ? CARET_INFO.caretBase + CARET_INFO.badgeGap + CARET_INFO.touchSiteRing / 2 : CARET_INFO.inset);
+          const iconHeight = caret.size * (isTouchCarets ? CARET_INFO.touchSiteRing : CARET_INFO.iconHeight) * siteScale;
           // over the icon in the screen's lower half, where a word under it would be off the screen (Jamie, playtest 18)
           const isOver = MAP_LABEL.position == "top" || spot.y > (boardRef.current ? boardRef.current.clientHeight : 0) / 2;
           return (
             <>
-              <CaretIcon src={`/levels/map/${icon}.png`} style={{ left: `${spot.x}px`, top: `${spot.y}px`, height: `${iconHeight}px`, "--glow": isGlowing && !isLocked ? color : "transparent", filter: isLocked ? "grayscale(1) brightness(0.7)" : undefined }} />
+              {isTouchCarets
+                ? (
+                  <CaretSiteRing style={{ left: `${spot.x}px`, top: `${spot.y}px`, width: `${iconHeight}px`, height: `${iconHeight}px`, "--ring": isLocked ? "#777" : color || CARET_INFO.green, "--glow": isGlowing && !isLocked ? color : "transparent", filter: isLocked ? "grayscale(1) brightness(0.7)" : undefined }}>
+                    <img src={`/levels/map/${icon}.png`} alt="" style={{ width: `${iconHeight * CARET_INFO.touchSiteIcon}px`, height: `${iconHeight * CARET_INFO.touchSiteIcon}px` }} />
+                  </CaretSiteRing>
+                )
+                : <CaretIcon src={`/levels/map/${icon}.png`} style={{ left: `${spot.x}px`, top: `${spot.y}px`, height: `${iconHeight}px`, "--glow": isGlowing && !isLocked ? color : "transparent", filter: isLocked ? "grayscale(1) brightness(0.7)" : undefined }} />}
               {/* its word, as on the map (MAP_LABELS) */}
-              <CaretLabel style={{ left: `${spot.x}px`, top: `${spot.y + (isOver ? -1 : 1) * (iconHeight / 2 + 2)}px`, transform: `translate(-50%, ${isOver ? "-100%" : "0"})`, fontSize: `${Math.max(caret.size * 0.45 * siteScale, 7)}px` }}>{MAP_LABELS[icon] || icon}</CaretLabel>
+              <CaretLabel style={{ left: `${spot.x}px`, top: `${spot.y + (isOver ? -1 : 1) * (iconHeight / 2 + 2)}px`, transform: `translate(-50%, ${isOver ? "-100%" : "0"})`, fontSize: `${Math.max(caret.size * (isTouchCarets ? 0.5 : 0.45) * siteScale, 7)}px` }}>{MAP_LABELS[icon] || icon}</CaretLabel>
             </>
           );
         })()}
@@ -1466,7 +1503,8 @@ export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade 
       $isSwirling={isSwirling}
       style={recruitScene ? { cursor: "pointer" } : undefined}>
       {isPaused && <PauseModal />}
-      <SceneShake $isShaking={!isPaused && level.shakePhases.some(id => activePhases.includes(id))}>
+      {/* (not on a touch screen: hard to follow, and slow there. Jamie, mobile playtest 1) */}
+      <SceneShake $isShaking={!isPaused && !getIsTouchScreen() && level.shakePhases.some(id => activePhases.includes(id))}>
       {/* paused: the whole scene fades, and only the word "Paused" shows */}
       <ViewPane style={{ left: 0, width: splitCameras ? "50%" : "100%" }}>
         {renderWorld(true)}

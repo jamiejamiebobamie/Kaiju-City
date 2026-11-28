@@ -10,7 +10,7 @@ A shared list between Jamie and Claude. Claude reads it at the start of each ses
 - New items can go anywhere. Claude will sort them into place and ask about anything unclear.
 - Once Jamie marks an item done, Claude moves it to [DONE.md](DONE.md), into its section there (newest at the top).
 
-Last updated: 2026-11-25 (evening).
+Last updated: 2026-11-28.
 
 ---
 
@@ -30,6 +30,17 @@ Last updated: 2026-11-25 (evening).
    - iPad and iPhone sizing;
    - controls: a virtual joystick on the left and three ability buttons on the right, all clear "Liquid Glass";
    - framing: the apartment only during the landing zoom, then a tighter game frame without the monitor and side elements, and no drink mechanic.
+   > Claude (2026-11-28): agreed with Jamie and started on `feature/mobile`. Four steps: (1) touch mode, full-screen game and the touch HUD; (2) the screens before a level; (3) the placement tool and per-device tuning (playWindow.json needs a section per device); (4) polish. **Step 1 built, please check** (on your phone: run `npm run dev -- --host` and open the Network address it prints; or on the PC add `?device=phone` to the address, or pick Device in the touch menu):
+   - [x] A phone held upright shows "Turn your phone sideways to play".
+   - [x] In a level (fight, walk or radio call): no room, no monitor casing; the game fills the screen.
+   - [x] The joystick (left) walks in 8 directions; letting go stops.
+   - [x] The three power buttons fire 1, 2, 3; their cooldown is a dark wedge sweeping away; the bead on the rim lights when ready.
+   - [x] Health capsules; passive dots, dim until they work, with their smoke rising.
+   - [x] The objective runs across the top every 7 s (tune `TICKER` in Touch/touchLayouts.js).
+   - [x] The menu button (top left) pauses; Resume, Controls, volume, Quit.
+   - [x] Dialogue: the panel on the right; the scene pushed left beside it, same size; tap the panel or Continue.
+   > Claude (2026-11-28): Jamie's iPhone playtest of step 1 is built; everything to check is in the **Mobile feature checklist** below, which grows with each step. Jamie playtests once all steps are done.
+   - Known for later steps: the screens before a level (start, avatar select, picker, vat) still show the monitor; the whole-scene shots in cutscenes leave black at the side (a phone is wider than the scenes); the camera can put the player near the joystick.
 3. Tab icon (favicon):
    - The roaring right-hand landing Kaiju (facing left, silhouette) with the purple lo-fi fire mid-spew.
    - A tool for it: a static mid-spew Kaiju and fire; rescale and place both; a framing circle Jamie sizes and places; an inner circle where a fade starts, fully clear by the outer circle; export.
@@ -40,6 +51,9 @@ Last updated: 2026-11-25 (evening).
    - [ ] On the left side of the apartment's slow zoom in, duplicate pictures of the apartment scene show, not lined up with each other.
    - [ ] From the cityscape to the apartment's outside shot, the site seems to slow down. It may be the effect itself; to check whether it's dropping frames.
    - [ ] There may be other issues. Claude: remind Jamie to look the whole zoom over for others when this item comes up.
+5. 80s synthwave music (Jamie, 2026-11-28; its own branch). Re-theme the current music as 80s synthwave: keep the tracks Jamie likes (most of them) and change their sound, and rewrite any that don't carry over.
+   > Claude: doable in the same code-made music system: a third style beside "8-bit" and "synth", with gated-reverb drums, detuned saw pads and leads, arpeggiated bass, chorus and a big hall. Each theme keeps its tune and chords; the ones that don't suit it (likely the punk and Kaiju fight, at 152 bpm) get new parts. You'd review them on /music as now.
+
 
 ### LOW (Jamie's order, before merging to master)
 1. Re-enable localStorage saves: one compressed save of all unlocks, maybe one-word codes read on load or on Play.
@@ -123,6 +137,8 @@ Last updated: 2026-11-25 (evening).
    > Jamie: Ok, sounds great.
 
 ### STRETCH
+- A photorealistic landing page (Jamie, 2026-11-28; its own branch). Redo the landing in a photorealistic style, keeping the current scene layout (the Peninsula, the water, the Kaiju, the city lights, the moon).
+  > Claude: the scene is code-drawn pixel art in layers now. A photoreal version would most likely be made images (generated or painted) set into the same layers, with the code-driven parts (traffic, lights, buoys, the sea Kaiju) restyled to match. A test of one layer would show what it takes before the rest.
 - Player hand and drink obstacle (desktop only):
   - The hand drums on the desk; every 2–5 minutes of game time it sips coffee for 5–7 s, blocking part of the view.
   - It only happens while Pause is enabled (fights), and pausing beats it: the sip runs on real time, so it finishes while the game is paused.
@@ -141,10 +157,74 @@ Last updated: 2026-11-25 (evening).
 - Refresh the dialogue viewer summaries.
 
 ### Other open lists
+- Flaky tests (found 2026-11-28): the full test run fails a different test on some runs (the full match, the Mermaid's stairway, the final fight's Kaiju), on the commit before the mobile work too (e62581a); each passes alone. They lean on random rolls and the run's timing. Worth making steady (seeded randomness) at some point.
 - Multiplayer playtests 2–4. Playtest 2 has 4 questions for Jamie: heal, ragdoll layer, New Match label, turned Kaiju.
 - Review the dialogue polish in /dialogue (MEDIUM).
 
 ---
+
+## Mobile feature checklist (`feature/mobile`): check once all steps are done
+
+Jamie will playtest when all four steps are built. Everything that needs checking on a phone goes here.
+
+### The steps
+1. Touch mode, the full-screen game, the touch HUD. **Built** (plus mobile playtest 1, below).
+2. The screens before a level, on touch. **Built** (checks below). Jamie's spec (2026-11-28):
+   - **Start screen**: on a phone, PLAY goes straight on to single player: no mode screen (no Multiplayer yet; Settings there is only for unlocks). An iPad keeps the mode screen (Jamie). **Built.**
+   - **Avatar select**: the main monitor's content; behind the tanks, in the middle of the scene, the Agent's side-monitor content, as if on a screen behind and between the two characters; no side console content; tapping a character goes on to the next screen.
+   - **Power picker** (from avatar select): the Agent's dialogue panel on the right (as the Street's talk), the picker on the left. Fewer than 3 picked: the Agent says "Pick 3 abilities" (no Stompy). One button at the panel's foot, colored as Recruit/Terminate: "BACK" until 3 are picked, then "PLAY".
+   - **Power picker in the Lab**: the same screen. One button: "CANCEL" (red, as Terminate) while nothing has changed, or while changed but fewer than 3 picked; "CONFIRM" (green) once 1+ is different and 3 are picked. The one button fades between the colors, and new words type in letter by letter.
+   - **Color vat**: the Agent's panel, "Choose your color"; the same CANCEL/CONFIRM button. The color picker in its own window, a third over the monitor's content and two thirds over the panel, above the button, clear of the hanging avatar, the vat's drips, the Agent's words and the button. No picker buttons or hex field: just the hue strip and the color square, big enough to use. Then (Jamie, ok'd): the picker entirely inside the panel, between the Agent's words and the button, the panel widened to about 45% on this screen only, so it never covers the avatar or the drips.
+   - **Menu**: no Controls button on touch. **Built.**
+   - **Avatar select to the picker** (desktop too, Jamie: yes): the labels' flash 0.9 s (was 1.5), the slide 0.6 s (was 1.1), so the picker comes up by 1.5 s. **Built.**
+3. Placement tool and per-device tuning: four presets by screen size, not by brand (Jamie, 2026-11-28: yes): small phone (landscape height under ~380 px), standard phone (~380–415), large phone (~416–460), tablet (600+), each checked against the devices people actually use today; playWindow.json gets a section per preset. The iPhone SE's 16:9 gets a look of its own.
+4. Polish (tap to start, performance, the final fight's extra powers, anything left).
+
+### Step 2, built: please check
+- [ ] **The intro** (Jamie, 2026-11-28): tap the landing; the zoom ends in the apartment on the computer's live screen (as on a desktop); PLAY presses itself; the avatar select opens on the computer and its lights come on; then a quick fade from black to the phone layout. No taps count until the cut. Tuning: `TOUCH_INTRO` in Utils/device.js (PLAY after 1.1 s; the avatar select held 6.2 s; the cut 0.45 s).
+- [ ] **Start screen**: on a phone, no mode screen (straight on to single player); an iPad keeps it.
+- [ ] **Avatar select**: the whole screen; the Agent's screen (his "who are you", the chosen one's file) behind and between the two characters; no side monitor or console; tapping a character goes on.
+- [ ] **Avatar select to the picker**: by 1.5 s now (labels 0.9 s, slide 0.6 s), desktop too.
+- [ ] **Power picker**: the picker on the left, the Agent's panel on the right: "Pick 3 abilities." while fewer are picked. The button: BACK (red) until three, then PLAY (green); it fades between the colors and types the new word in. The pendants 1.7x bigger, no key numbers. **Your call:** with three picked the Agent says "Ready when you are." (my line, as a stand-in: change it or say none).
+- [ ] **Power picker from the Lab**: CANCEL (red) while nothing's changed, or changed with fewer than three; CONFIRM (green) once one or more differs and three are picked. CANCEL puts the old powers back.
+- [ ] **Color vat (the Lab's)**: the Agent's panel wider (45%), "Choose your color."; the color square and a thick hue strip inside it between his words and the button; no title, no hex field. CANCEL until the color changes, then CONFIRM, which dunks them and goes back (the button greys out during the dunk).
+- [ ] **Menu**: no Controls on touch.
+- **Open question**: the powers' details (what each does, "Recommended") were on the side monitor; on a phone they're nowhere now. Show the tapped power's details in the Agent's panel? (asked in chat)
+- Known: the avatar select and the picker don't quite fill a phone's width (thin dark bands at the sides): step 3's tuning.
+
+### Step 1, still open
+- [ ] HUD layouts: menu > HUD: 1, 2, 3 (your mock-ups) and 4 (Claude's thumb arc). Which feels right?
+- [ ] A Kaiju's powers past three (final fight): a row of smaller buttons across the top right.
+
+### Mobile playtest 1 (2026-11-28, iPhone): built
+
+**First, test with the fast build.** The dev server (`npm run dev`) runs React's slow development mode; on the phone that was a big part of the slowdown. Run `npm run phone` (it builds, then serves the build on your network) and open the Network address it prints, adding `?tune` once (e.g. `http://192.168.x.x:4173/?tune`) so the HUD and Device switches stay in the menu. `npm run dev -- --host` still works for quick looks.
+
+- [ ] **M6, M18, M21. Tile statuses and the frame rate** (your biggest concern).
+  - The statuses weren't really duplicating. Measured on the same fight, the game spreads them the same on the phone as on the PC. What you saw: each power icon leaves a fading "ghost" where it was, and at a low frame rate those ghosts pile up, so it looks like 3 rows of fire and denser lightning.
+  - The slowdown: every status icon was drawn as glowing text with a canvas blur, on every frame, and twice in one frame while ghosts faded. iPhones are slow at canvas blur. Now each icon is drawn once and copied, and the tiles redraw at most once a frame.
+  - Also: the HUD explosions' full-screen canvas no longer clears itself every frame when nothing is exploding; the small touch pieces (capsules, passives, knob) no longer blur the game behind them (the stick, the powers and the menu still do).
+  - If it still drags, tell me where (which scene, how many statuses) and I'll keep going.
+- [ ] **M17. Train station shake**: off on touch screens.
+- [ ] **M1. The HUD and Device selects** now open on iPhone (a click handler took the focus off them, which closed the picker).
+- [ ] **M25. Music on iPhone.** The ring/silent switch mutes web sound on iPhones unless the page asks for "playback" sound; Spellcraft plays an `<audio>` file, which does that, so this game's sound came on after it. The game now asks for playback (and on older iOS plays a silent loop to do the same), and retries starting sound on each tap.
+- [ ] **M2. The landing's left and right Kaiju**: their purple outline moved onto a holder outside the waterline cut, where Safari had dropped it.
+- [ ] **M3. Radio call**: the radar in its own window on the left beside the panel, as the Street's talk, centered on the Peninsula.
+- [ ] **M4. Dialogue text** about twice the size (1.9x) on touch: names and words.
+- [ ] **M14. Continue**: the panel's whole width at its foot, taller, bigger text; no "[ENTER]" on touch (no keyboard).
+- [ ] **M23. Recruit / Terminate**: much taller on touch; no key numbers.
+- [ ] **M24. After the choice**: the panel goes at once and the result plays full screen.
+- [ ] **M13, M22. Objective**: no longer runs across. Each letter condenses out of a puff of smoke (middle first), holds a beat, then drifts up and apart. Every 7 s; tune `TICKER` in Touch/touchLayouts.js. Shown only while you're in control: not during dialogue, cutscenes, the choice, the Lab's screens or the end (your note).
+- [ ] **M20. The dots** on the power buttons are gone.
+- **M5. Teleport zoom**: undone at your request (the camera still zooms in close near your own Teleport's wormholes, as before). Nothing to check.
+- [ ] **M9, M10, M15, M19. Touch camera**:
+  - Wider: the touch minimum tile size was 50 px (set for tapping tiles, which we dropped for the joystick); now 30. That covers the walking Peninsula too.
+  - The player is kept near the middle, a little above it (clear of the stick and buttons along the bottom), with more room round the player and the Kaiju, less lean toward the Kaiju, and the zoom changing at less than half the speed, so it shouldn't bump about. Tuning: `CAMERA.touch` in DataClasses/Camera.ts.
+- [ ] **M7. Street exit sign** raised clear of the stick on touch.
+- [ ] **M16. Location carets** on touch: one fixed, smaller size; each site's icon in a round frame like the incoming Kaiju badges; its word above or below the circle. (Desktop unchanged; say if you want it there too.)
+- [ ] **M8. The teammate's "Heads-up" balloon** pointed at the player: it was aimed at her planned stop, and spacing moves her a tile over. It's placed from where she actually stands now (desktop too).
+- [ ] **M11. Blurry avatars on the Street's first load**: the loader now fully decodes the sprite sheets and keeps them, so the phone doesn't decode them the first time they're shown. Not something I can see headless: tell me if it still happens.
+- [ ] **M12. Tiles over the avatars** while walking: not in desktop browsers, so it looks like Safari's layer order; on touch each avatar is its own layer now, which Safari keeps above the tiles. Also not checkable headless: tell me if it still happens.
 
 ## Misc fixes (2026-11-27): please check
 
@@ -160,6 +240,8 @@ Last updated: 2026-11-25 (evening).
 - [ ] **Misc4. The coffee's steam** rises in front of the side monitor and console now; the mug stays where it is. (On the game page; in the landing's zoom it stays in the room picture, behind nothing.)
 - [ ] **Misc5. The start screen's cascade: Kaiju, not 1s and 0s.** Flat neon Kaiju silhouettes (Stompy's sprite sheet, each frame trimmed to its figure): at each column's head, random frames flash bright; the one showing as the head moves on burns into that spot, purple, and fades there as a phantom. Then, as you asked: larger (22 columns, was 33), more cascades (two falling in each column at once, and back sooner), a third slower, and the trails fade all the way to black (no faint ghosts left). Then only the Kaiju walking toward you (down the screen): at each head its walk steps on in order, no random poses.
 - [ ] **Misc6. The room's look-about pulls back too.** With the mouse in an edge band (where it pans), the view also zooms out, slowly, building speed as the pan does (about 3 s all the way), as far as the apartment picture still covers the window; it eases back in as the mouse leaves the band. The further into the band, the further out. All the way out, the whole picture shows, so there's no more to pan. Over the side content (Misc1) it doesn't zoom either. Tuning: `CAMERA_TUNING.zoomOut` in Utils/camera.js. Then, as you asked: the room's edges darken to black (about the outer 9% across, 8% down) before they fade out, and past them is pure black (was a dark grey, #0b0c0e, that read as a color); the things in front of the monitor fade out over the same edges. Tuning: `ROOM_EDGE_DARK` in Components/RoomScene.jsx.
+
+- [ ] **Misc7. The coffee's steam** fades out over the top third of its box as it rises, rather than being cut off at the box's edge (Jamie, 2026-11-28). In the room and in the landing's zoom. Tuning: `STEAM.topFade` in Components/RoomScene.jsx.
 
 ## Playtest 41 (2026-11-25 evening): your chat list and your notes above
 

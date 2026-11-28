@@ -77,3 +77,10 @@ button[aria-disabled="true"],
 [role="button"][aria-disabled="true"] {
   cursor: not-allowed !important;
 }
+
+/* touch (Jamie, 2026-11-28; mobile): no double-tap zoom, no pull-to-refresh or rubber-band scroll under the game */
+.App[data-touch] {
+  touch-action: manipulation;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}

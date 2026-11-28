@@ -299,7 +299,42 @@ const HexInput = styled.input`
 // the color on the side monitor's screen as it switches over, the console's Play the vat's (it dunks them and goes on);
 // 'actions.current' is given { play } for it, 'onBusy' told when it can't be pressed. Leaving: 'onClose' at once (the
 // game flies the side units off)
-export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose, backLabel = "Back to Lab", isReadyMain = false, isDunkReady = false, actions = undefined, onBusy = (_isBusy) => {} }) => {
+// a touch screen's color panel (mobile step 2: in the Agent's panel, between his words and its button; Jamie): no
+// title, no hex field, the square filling the room and a thick hue strip to drag
+const TOUCH_PICKER = { hueDvh: 6, thumbDvh: 7.5 };
+const TouchPanel = styled.div`
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2dvh;
+  & > div:first-child { flex: 1; height: auto; min-height: 0; }
+  input[type="range"] {
+    height: ${TOUCH_PICKER.hueDvh}dvh;
+    border-radius: 1dvh;
+    touch-action: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: ${TOUCH_PICKER.thumbDvh * 0.6}dvh;
+    height: ${TOUCH_PICKER.thumbDvh}dvh;
+    border-radius: 0.8dvh;
+    background: transparent;
+    border: 0.6dvh solid white;
+    box-shadow: 0 0 0 0.3dvh black;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: ${TOUCH_PICKER.thumbDvh * 0.6}dvh;
+    height: ${TOUCH_PICKER.thumbDvh}dvh;
+    border-radius: 0.8dvh;
+    background: transparent;
+    border: 0.6dvh solid white;
+  }
+`;
+
+// 'isTouch' (mobile step 2): the color panel as above; 'onColor': told each color as it's picked (the Agent's panel's
+// CANCEL / CONFIRM goes by it); 'actions' then also carries 'leave'
+export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose, backLabel = "Back to Lab", isReadyMain = false, isDunkReady = false, actions = undefined, onBusy = (_isBusy) => {}, isTouch = false, onColor = (_color) => {} }) => {
   const isInPlace = !!actions;
   const [sideScreen, setSideScreen] = useState(null);
   useEffect(() => {
@@ -367,7 +402,8 @@ export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose, backL
     irradiate();
     setTimeout(leave, VAT_LOOK.dunkMs * 2 + VAT_LOOK.holdMs + 600);
   };
-  if (isInPlace) actions.current = { play: dunkThenGo };
+  if (isInPlace) actions.current = { play: dunkThenGo, leave };
+  useEffect(() => { onColor(color); }, [color]);
   useEffect(() => { onBusy(isBusy || isLeaving || isGoing); }, [isBusy, isLeaving, isGoing]);
   // the vat bubbling while it's up, and the scream on the dip (Jamie, 2026-11-26)
   useEffect(() => {
@@ -391,7 +427,20 @@ export const IrradiationVat = ({ avatar, startColor, onIrradiate, onClose, backL
     setTimeout(() => setIsPraising(false), VAT_LOOK.dunkMs * 2 + VAT_LOOK.holdMs + VAT_LOOK.praiseMs);
   };
 
-  const colorPanel = (
+  const colorPanel = isTouch ? (
+      <TouchPanel>
+        <ColorField
+          ref={fieldRef}
+          aria-label="Color"
+          style={{ backgroundColor: hsvToHex(hue, 1, 1) }}
+          onPointerDown={moveSpot}
+          onPointerMove={moveSpot}
+        >
+          <Cursor style={{ left: `${spot.saturation * 100}%`, top: `${(1 - spot.value) * 100}%`, width: "3dvh", height: "3dvh", borderWidth: "0.5dvh" }} />
+        </ColorField>
+        <HueSlider aria-label="Hue" type="range" min="0" max="359" value={hue} onChange={e => changeHue(Number(e.target.value))} />
+      </TouchPanel>
+  ) : (
       <Panel>
         <PanelTitle>Color:</PanelTitle>
         <Picker>

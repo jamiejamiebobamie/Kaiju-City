@@ -42,7 +42,11 @@ import { CAMERA, setIsShakyCam } from "Utils/camera";
 import { ZOOM_BACK } from "Components/ZoomThrough";
 import { HudExplosions } from "./UI/Hud/HudExplosions";
 import { useKeyPress } from "Utils/utils";
-import { ABILITY_KEY_CODES, GAME_TICK, PIECES_INFO, TILE_STATUSES_AND_ABILITY_DATA } from "Utils/gameState";
+import { ABILITY_KEY_CODES, ABILITY_KEY_MAPPINGS, GAME_TICK, PIECES_INFO, TILE_STATUSES_AND_ABILITY_DATA } from "Utils/gameState";
+import { getIsTouchLayout, TOUCH_INTRO, useDevice } from "Utils/device";
+import { TouchHud } from "./Touch/TouchHud";
+import { getTouchLayoutId, saveTouchLayoutId, TOUCH_DIALOGUE, TOUCH_VAT } from "./Touch/touchLayouts";
+import { AgentPanel, AgentScreen } from "./Touch/TouchPreGame";
 import { GameManager, GameResult } from '../DataClasses/GameManager';
 import { getActiveHotspots } from "./GameBoard/SceneElements";
 import { getIsDetourLevel } from "../DataClasses/Objectives";
@@ -131,6 +135,55 @@ const shiftIn = keyframes`
 const shiftOut = keyframes`
   from { transform: translateX(0); }
   to { transform: translateX(-105%); }
+`;
+
+// the touch stick's eight directions, as the keys that give each (Jamie, 2026-11-28)
+const STICK_KEYS: Record<string, string[]> = {
+  up: ["KeyW"], down: ["KeyS"], left: ["KeyA"], right: ["KeyD"],
+  "up left": ["KeyW", "KeyA"], "up right": ["KeyW", "KeyD"], "down left": ["KeyS", "KeyA"], "down right": ["KeyS", "KeyD"]
+};
+
+// the game frame on a touch screen: the whole screen, whatever its shape; the dialogue panel on its right (Jamie: the
+// game pushed over beside it), no projector cone (no monitor)
+const TOUCH_FRAME_STYLE = {
+  width: "100dvw",
+  height: "100dvh",
+  maxWidth: "none",
+  maxHeight: "none",
+  aspectRatio: "auto",
+  "--log-top": "max(2.5dvh, env(safe-area-inset-top))",
+  "--log-bottom": "max(2.5dvh, env(safe-area-inset-bottom))",
+  "--log-right": "max(1.5dvh, env(safe-area-inset-right))",
+  "--log-width": `calc(${TOUCH_DIALOGUE.share * 100}cqw - 3dvh)`,
+  "--log-cone": "none",
+  // (Jamie, mobile playtest 1: the words about twice as big; Continue the panel's whole width at its foot, taller; the
+  // Recruit and Terminate buttons much taller)
+  "--log-text": "1.9",
+  "--log-key-display": "none",
+  "--log-button": "2.3",
+  "--log-button-side": "1.8",
+  "--log-button-margin": "0.6cqw 0 0",
+  "--log-button-last": "0",
+  "--log-footer-padding": "0.6cqw 0 0",
+  "--recruit-button-padding": "3.4dvh 3.4dvh",
+  "--recruit-button-text": "5.4dvh"
+} as React.CSSProperties;
+
+// the Lab's color vat on a touch screen: the Agent's panel wider, its color picker inside it (Jamie, 2026-11-28)
+const TOUCH_VAT_FRAME_STYLE = { ...TOUCH_FRAME_STYLE, "--log-width": `calc(${TOUCH_VAT.share * 100}cqw - 3dvh)` } as React.CSSProperties;
+
+// the touch intro's cut to the touch layout: black, fading off (TOUCH_INTRO)
+const touchCutFade = keyframes`
+  0%, 35% { opacity: 1; }
+  100% { opacity: 0; }
+`;
+const TouchCut = styled.div`
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  background: black;
+  pointer-events: none;
+  animation: ${touchCutFade} ease-out both;
 `;
 
 // everything in the game sits in this box, and scales with it
@@ -384,6 +437,7 @@ ${words.slice(best).join(" ")}`;
 
 // on the button Enter (and 1) presses: "[ENTER]" in yellow (Jamie, playtest 24). gameboy has no brackets: a monospace's
 const EnterHint = styled.span`
+  display: var(--log-key-display, inline); /* (none on a touch screen) */
   margin-left: 0.8em;
   color: #ffd84a;
   text-shadow: 0 0 0.3em rgba(255, 216, 74, 0.6);
@@ -857,6 +911,21 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const { selectedAvatar, setSelectedAvatar, selectedTeammate, setSelectedTeammate, selectedDifficulty, settingsManager } = useContext(GlobalSettingsContext);
   const { objectiveText, isObjectiveKaijuCount, objectiveCount } = useSnapshot(gameUiStore);
   const { takeOverCount, takeOverText } = useSnapshot(gameUiStore);
+  // the touch layout (Jamie, 2026-11-28; mobile): no room, no monitor, the game filling the screen, touch controls over it
+  const device = useDevice();
+  // the touch intro (TOUCH_INTRO): from the landing's zoom, the room and its computer first, as on a desktop, till the cut
+  const [isTouchIntro, setIsTouchIntro] = useState(() => {
+    const isIntro = device.isTouch && TOUCH_INTRO.isPending;
+    TOUCH_INTRO.isPending = false;
+    return isIntro;
+  });
+  const isTouch = device.isTouch && !isTouchIntro;
+  const [touchLayoutId, setTouchLayoutId] = useState(getTouchLayoutId);
+  const [isTouchMenuOpen, setIsTouchMenuOpen] = useState(false);
+  // the Lab's vat on touch: its controls (IrradiationVat's 'actions') and the color picked so far
+  const touchVatActions = useRef<any>(null);
+  const [touchVatColor, setTouchVatColor] = useState<string | undefined>(undefined);
+  const isMenuPaused = useRef<false | 'game' | 'radio'>(false);
   const { isPaused, winner, isPlayerDead, players, recruits, kaijuKillCount, kaijuToWin, activePhases, isWideShot, isCutscene, unlockMessage, unlockImage, speech, recruitScene, dialogueLog, isDialogueWaiting, isTalking, isRecruitTalkDone, speakingPieceIndex, isHudsKept, isBalloonScene, musicId, musicLight, musicIntensity } = useSnapshot(gameUiStore);
   const [isRadioAlarm, setIsRadioAlarm] = useState(false); // the radio call has told of Kaiju coming: the siren glows
   const recruitChoiceFrom = useRef(undefined); // where the pressed Recruit or Terminate button was, for its word to fly from
@@ -881,7 +950,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
 
   const gameManager = useRef<any>(null);
   // dev only: the game manager on the window, for scripted checks (calling recruits, hurting pieces); not in the built game
-  if (import.meta.env.DEV) (window as any).__kaiju = { gameManager };
+  if (import.meta.env.DEV) (window as any).__kaiju = { gameManager, settingsManager }; // (settingsManager: scripted checks pick powers)
   const gameLoop = useRef<GameLoop | null>(null);
 
   const [isTeammate, setIsTeammate] = useState(true);
@@ -946,7 +1015,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   const [fallenRecruits, setFallenRecruits] = useState<Array<string>>([]);
   const [isTrainedNpcs, setIsTrainedNpcs] = useState(false); // off by default (Jamie, 2026-11-06). NPCs play by the trained model in public/models in fights with no Kaiju; against a Kaiju they hand back to the rules
   const [isShakyCam, setIsShakyCamShown] = useState(CAMERA.isShaky); // (dev: the desk-cam bob, Utils/camera)
-  const [isDevHidden, setIsDevHidden] = useState(false); // the dev tools tucked away, to see the game as it will ship
+  const [isDevHidden, setIsDevHidden] = useState(getIsTouchLayout()); // (on touch, tucked away from the start: Jamie, 2026-11-28) // the dev tools tucked away, to see the game as it will ship
   const [npcAggression, setNpcAggression] = useState(DEFAULT_AGGRESSION); // the trained NPCs', 0 careful to 1 reckless
   // the ghost boss's ring, tuned in the dev panel: its size, and the ghosts in each phase's ring (the next ring uses them)
   const [ghostRadiusRows, setGhostRadiusRows] = useState(GHOST_BOSS.ringRadiusRows);
@@ -1252,7 +1321,9 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
       // (not a field to type in: the join code's lost its focus on the first key. Jamie, mp playtest 3)
       const button = (event.target as HTMLElement).closest("button, select, input");
       const isTyping = !!button && button.tagName == "INPUT" && ["text", "search", "number"].includes((button as HTMLInputElement).type);
-      if (button && !isTyping) setTimeout(() => (button as HTMLElement).blur(), 0);
+      // (nor a select on a touch screen: its picker opens on the focus, and closed at once. Jamie, mobile playtest 1)
+      const isTouchSelect = !!button && button.tagName == "SELECT" && getIsTouchLayout();
+      if (button && !isTyping && !isTouchSelect) setTimeout(() => (button as HTMLElement).blur(), 0);
     };
     document.addEventListener("click", letGo, true);
     return () => document.removeEventListener("click", letGo, true);
@@ -2233,13 +2304,51 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
 
   useKeyPress({ keyCodes: "Escape", keyUpCallback: handleClickPause, isCharacterDead: false });
 
+  const quitGame = () => (multiplayer ? leaveMultiplayer() : (isPlayingGame || isBooted) && handleQuitToStart ? quitToStart() : leaveByZoom());
+
+  // the touch menu (Jamie, 2026-11-28): open, the game pauses (where it can), and goes on as it closes
+  const openTouchMenu = () => {
+    setIsTouchMenuOpen(true);
+    if (radioLines) {
+      if (!isRadioPaused) {
+        setIsRadioPaused(true);
+        isMenuPaused.current = 'radio';
+      }
+      return;
+    }
+    const gm = gameManager.current;
+    if (gm && !gameUiStore.isPaused && winner === null && !multiplayer && !level.isWalkingLevel && !labScreen && isPlayingGame) {
+      gm.togglePauseGame();
+      publishGameUi(gm.getUiState());
+      isMenuPaused.current = 'game';
+    }
+  };
+  const closeTouchMenu = () => {
+    setIsTouchMenuOpen(false);
+    const gm = gameManager.current;
+    if (isMenuPaused.current == 'radio') setIsRadioPaused(false);
+    else if (isMenuPaused.current == 'game' && gm && gameUiStore.isPaused) {
+      gm.togglePauseGame();
+      publishGameUi(gm.getUiState());
+    }
+    isMenuPaused.current = false;
+  };
+  const touchMenu = {
+    isOpen: isTouchMenuOpen,
+    onOpen: openTouchMenu,
+    onClose: closeTouchMenu,
+    onControls: openControls,
+    onQuit: quitGame,
+    canPause: isMenuPaused.current !== false
+  };
+
   // the Kaiju-Vision's bezel, the same on every screen it shows (Jamie, playtest 23): Pause, Controls and Leave, and the
   // display top right. Pause is off once a fight is decided (nothing left to hold)
   const getBezelButtons = ({ isPauseOff = false, ticker }) => (
     <>
       <BezelButton title="Pause" onClick={handleClickPause} disabled={isPauseOff}>Pause</BezelButton>
       <BezelButton title="How to play" onClick={openControls}>Controls</BezelButton>
-      <BezelButton title="Goodbye!" onClick={() => (multiplayer ? leaveMultiplayer() : (isPlayingGame || isBooted) && handleQuitToStart ? quitToStart() : leaveByZoom())}>Quit</BezelButton>
+      <BezelButton title="Goodbye!" onClick={quitGame}>Quit</BezelButton>
       {ticker}
     </>
   );
@@ -2300,18 +2409,44 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     isCharacterDead: !import.meta.env.DEV
   });
 
+  const pressMoveKey = (code: string, isDown: boolean) => {
+    if (getIsGuestPlaying()) mp.current.link.send({ t: 'key', code, isDown });
+    else if (gameManager.current) {
+      const input = gameManager.current.getPlayerInputHandler();
+      if (isDown) input.addKey(code);
+      else input.removeKey(code);
+    }
+  };
+  const pressPower = (code: string) => getIsGuestPlaying() ? mp.current.link.send({ t: 'power', code }) : gameManager.current && gameManager.current.getPlayerInputHandler().usePlayerAbility(code, gameManager.current.getAccTime());
+
   useKeyPress({
     keyCodes: ["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowLeft", "ArrowDown", "ArrowRight"],
-    keyDownCallback: code => getIsGuestPlaying() ? mp.current.link.send({ t: 'key', code, isDown: true }) : gameManager.current && gameManager.current.getPlayerInputHandler().addKey(code),
-    keyUpCallback: code => getIsGuestPlaying() ? mp.current.link.send({ t: 'key', code, isDown: false }) : gameManager.current && gameManager.current.getPlayerInputHandler().removeKey(code),
+    keyDownCallback: code => pressMoveKey(code, true),
+    keyUpCallback: code => pressMoveKey(code, false),
     isCharacterDead: isPaused || isPlayerDead
   });
 
   useKeyPress({
     keyCodes: ABILITY_KEY_CODES,
-    keyDownCallback: code => getIsGuestPlaying() ? mp.current.link.send({ t: 'power', code }) : gameManager.current && gameManager.current.getPlayerInputHandler().usePlayerAbility(code, gameManager.current.getAccTime()),
+    keyDownCallback: pressPower,
     isCharacterDead: isPaused || level.isWalkingLevel
   });
+
+  // the touch stick (Jamie, 2026-11-28): its direction held as the keys that give it, as if pressed
+  const stickKeys = useRef<string[]>([]);
+  const moveByStick = (dir: string) => {
+    const next = isPaused || isPlayerDead ? [] : STICK_KEYS[dir] || [];
+    stickKeys.current.filter(code => !next.includes(code)).forEach(code => pressMoveKey(code, false));
+    next.filter(code => !stickKeys.current.includes(code)).forEach(code => pressMoveKey(code, true));
+    stickKeys.current = next;
+  };
+  // (paused or down, the stick lets go: the game never sees a key held through it)
+  useEffect(() => { if (isPaused || isPlayerDead) moveByStick("idle"); }, [isPaused, isPlayerDead]);
+  // a touch power button: as its number key
+  const pressPowerByTouch = (index: number) => {
+    if (isPaused || level.isWalkingLevel) return;
+    pressPower(ABILITY_KEY_MAPPINGS[index]);
+  };
 
   useEffect(() => {
     if (winner === null || !isPlayingGame) return;
@@ -2460,12 +2595,36 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     return () => clearTimeout(timeout);
   }, [isSideContent, isPlayingGame, matchCount, !!level.isWalkingLevel, isCutscene, !!recruitScene, !!matchEnd]);
   const gameWindow = isMonitorCentered && !isAdjustingWindow ? getCenteredWindow(playWindow) : playWindow;
+  // (touch: the whole screen, or left of the dialogue panel while it's there)
+  // the color the Lab's vat opens with (its touch CANCEL / CONFIRM is against it)
+  const vatStartColor: string = selectedAvatar ? (getAvatarColor(selectedAvatar) || PIECES_INFO[selectedAvatar].color) : "#ffffff";
+  // (touch: once Recruit or Terminate is pressed, the panel goes at once and the result fills the screen: Jamie, mobile
+  // playtest 1)
+  const isTouchChoiceMade = isTouch && !!recruitScene && !!recruitChoice;
+  // (touch: the player moving and fighting, so the stick and the objective show)
+  const isTouchInControl = !matchEnd && !isLogShowing && !recruitScene && !labScreen && !isShowingControls && (!isCutscene || isHudsKept);
+  const touchWindow = labScreen == "colors" ? { ...FULL_WINDOW, right: 1 - TOUCH_VAT.share }
+    : ((isLogShowing && dialogueLog.length > 0) || isLogClosing) && !isTouchChoiceMade ? { ...FULL_WINDOW, right: 1 - TOUCH_DIALOGUE.share } : FULL_WINDOW;
 
   // the screens before a game (the avatar select and the power picker) are on the Kaiju-Vision monitor (Jamie, 2026-11-14),
   // one and the same monitor through both (its bezel buttons, display and light as in a game: Jamie), with the
   // Play!/Back console beside it from the avatar select on
   const isPreGame = !isPlayingGame && (isChoosingAvatar || !isSkippingPicker);
-  const preGameWindow = isConsoleIn ? playWindow : getCenteredWindow(playWindow);
+  // (a touch device's intro: the monitor stays in the middle, no side units coming: TOUCH_INTRO)
+  const preGameWindow = isConsoleIn && !device.isTouch ? playWindow : getCenteredWindow(playWindow);
+  // the touch intro's cut: the avatar select's opening seen on the room's computer, then the touch layout
+  useEffect(() => {
+    if (!isTouchIntro || !isBooted || !isChoosingAvatar) return;
+    const timeout = setTimeout(() => { setIsTouchIntro(false); setIsTouchCut(true); }, TOUCH_INTRO.avatarMs);
+    return () => clearTimeout(timeout);
+  }, [isTouchIntro, isBooted, isChoosingAvatar]);
+  // (the cut: black a moment, fading off the touch layout, so its laying out isn't seen)
+  const [isTouchCut, setIsTouchCut] = useState(false);
+  useEffect(() => {
+    if (!isTouchCut) return;
+    const timeout = setTimeout(() => setIsTouchCut(false), TOUCH_INTRO.cutMs);
+    return () => clearTimeout(timeout);
+  }, [isTouchCut]);
   const [isBackFromPicker, setIsBackFromPicker] = useState(false);
   // a character clicked on the avatar select: the side monitor's content fades as the scene moves on (Jamie, playtest 34)
   const [isAvatarPicked, setIsAvatarPicked] = useState(false);
@@ -2534,24 +2693,54 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     setIsChoosingAvatar(false); // the picker comes up on the same monitor
   };
   if (import.meta.env.DEV) (window as any).__kaijuChooseAvatar = chooseAvatar;
+  /*
+    The picker on a touch screen (Jamie, 2026-11-28; mobile step 2): the Agent's panel on the right, the picker on the
+    left, one button at the panel's foot. From the avatar select: BACK until three are picked, then PLAY. From the Lab:
+    CANCEL (red) while nothing's changed, or changed with fewer than three; CONFIRM (green) once one or more is different
+    and three are picked. CANCEL puts back the powers held as it opened.
+  */
+  const isTouchPicker = isTouch && isBooted && !isChoosingAvatar && !isMultiplayerVat && !isMultiplayerSetupOpen;
+  const labPicksAtOpen = useRef<string[]>([]);
+  useEffect(() => { if (isLabPicker) labPicksAtOpen.current = [...pickedAbilities]; }, [isLabPicker]);
+  const isPickedThree = pickedAbilities.length == 3;
+  const isLabPicksChanged = isLabPicker && (pickedAbilities.length != labPicksAtOpen.current.length || pickedAbilities.some(element => !labPicksAtOpen.current.includes(element)));
+  const cancelLabPicker = () => {
+    const picks = labPicksAtOpen.current;
+    setPickedAbilities(picks);
+    settingsManager.setSortedPlayerChosenAbilityElementsString(picks);
+    returnToLab();
+  };
+  const touchPickerButton = isLabPicker
+    ? (isLabPicksChanged && isPickedThree ? { text: "CONFIRM", tone: "go", onClick: playFromConsole } : { text: "CANCEL", tone: "stop", onClick: cancelLabPicker })
+    : (isPickedThree ? { text: "PLAY", tone: "go", onClick: playFromConsole } : { text: "BACK", tone: "stop", onClick: goBackFromPicker });
+  // (the Agent's words: "Pick 3 abilities" while fewer are picked, as Jamie asked; the other is Claude's, to check)
+  const touchPickerLine = isPickedThree ? "Ready when you are." : "Pick 3 abilities.";
   const preGameMonitor = (
     <GameArea style={pullStyle}>
       {IS_LINKED_ENTRY && <LinkFadeIn />}
-      <RoomBackdrop />
+      {/* (the touch intro plays itself: no taps till the cut) */}
+      {isTouchIntro && <div data-touch-intro style={{ position: "fixed", inset: 0, zIndex: 2147483647 }} />}
+      {isTouchCut && <TouchCut style={{ animationDuration: `${TOUCH_INTRO.cutMs}ms` }} />}
+      {!isTouch && <RoomBackdrop />}
           <HudExplosions />
-      <GameFrame data-game-frame $shift={monitorShift == 'in' || monitorShift == 'fade' ? monitorShift : undefined}>
-        <PlayWindow playWindow={preGameWindow} setPlayWindow={updatePlayWindow} isAdjusting={false} isOpen={false} isPoweredOn={isMonitorOn} isClipped hasGlare buttons={getBezelButtons({
+      <GameFrame data-game-frame $shift={!isTouch && (monitorShift == 'in' || monitorShift == 'fade') ? monitorShift : undefined} style={isTouch ? TOUCH_FRAME_STYLE : undefined}>
+        {/* (touch: no casing, the whole screen; the picker on the left beside the Agent's panel) */}
+        <PlayWindow playWindow={!isTouch ? preGameWindow : isTouchPicker ? { ...FULL_WINDOW, right: 1 - TOUCH_DIALOGUE.share } : FULL_WINDOW} isBare={isTouch} setPlayWindow={updatePlayWindow} isAdjusting={false} isOpen={false} isPoweredOn={isMonitorOn} isClipped hasGlare={!isTouch} buttons={!isTouch && getBezelButtons({
           isPauseOff: true, // nothing to pause yet
           ticker: <ObjectiveTicker text="" isKaijuCount={false} count={0} toWin={0} />
         })}>
           {/* multiplayer's match setup: the host's, the guest waiting on it (Jamie) */}
           {isMonitorOn && isBooted && multiplayer && !multiplayerSetup && <MatchSetup isWaiting={multiplayer.link.role == 'guest'} progress={multiplayerProgress} onProgress={progress => mp.current.link && mp.current.link.send({ t: 'setupProgress', progress })} onDone={chooseMultiplayerSetup} />}
-          {isMonitorOn && !isBooted && <MonitorBoot startAt={bootStartAt} onDone={linked => { if (linked && linked.link) setMultiplayer(linked); setIsBooted(true); }} />}
+          {isMonitorOn && !isBooted && <MonitorBoot startAt={bootStartAt} isAutoPlay={isTouchIntro} onDone={linked => { if (linked && linked.link) setMultiplayer(linked); setIsBooted(true); }} />}
           {/* (the avatar select, the picker and the vat: in the screen's design box, today's size on a wider screen; the
               Lab picture runs on past it. Layout phase 2) */}
           <DesignBox>
           {/* the Lab behind them, darkened, lit round the avatars (Jamie) */}
           <MonitorLabBackdrop mode={isChoosingAvatar ? "choice" : "picker"} hovered={hoveredAvatar} focus={isChoosingAvatar ? handOverAvatar : selectedAvatar} />
+          {/* (touch: the side monitor's Agent on a screen behind, between the two characters: Jamie) */}
+          {isTouch && isChoosingAvatar && isBooted && !isMultiplayerSetupOpen && (
+            <AgentScreen bioOf={hoveredAvatar || handOverAvatar} isFadingOut={isAvatarPicked} agentDelayMs={isBackFromPicker ? 0 : LAB_LIGHTS_DELAY_MS + 300} />
+          )}
           {isMultiplayerSetupOpen || isMultiplayerVat ? null : isChoosingAvatar ? (
             <AvatarsInTheDark style={{ position: "absolute", inset: 0, transformOrigin: "0 0", transition: FOCUS_MOVE, transform: getFocusTransform(handOverAvatar), ...(isBooted && !isBackFromPicker ? {} : { animation: "none" }) }}>
             <AvatarChoice isReady={isMonitorOn} isArcs={!isBackFromPicker} onPick={() => setIsAvatarPicked(true)} onHover={setHoveredAvatar} onHandOver={setHandOverAvatar} onChoose={chooseAvatar} />
@@ -2568,6 +2757,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
               isTeammate={isTeammate}
               setIsTeammate={setIsTeammate}
               recommended={multiplayerSetup && multiplayerSetup.mode != 'coop' ? [] : getRecommendedPowers(isLabPicker ? campaignIndex : 0) /* (none in a match: only the campaign has its fights to recommend for. Jamie) */}
+              isTouch={isTouch}
             />
           )}
           {/* the chosen one's name and number on the picker: the avatar select's own, where the camera left them (Jamie) */}
@@ -2597,7 +2787,8 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
           </DesignBox>
           {screenFade == 'out' && <ScreenBlack />}
         </PlayWindow>
-        {isMonitorOn && isBooted && !isMultiplayerSetupOpen && (
+        {isTouchPicker && isMonitorOn && <AgentPanel text={touchPickerLine} button={touchPickerButton} />}
+        {isMonitorOn && isBooted && !isMultiplayerSetupOpen && !device.isTouch && (
           <>
             {/* from the avatar select on, flying in with the console (Jamie) */}
             <div data-mock="side-monitor" style={{ display: "contents" }}>{/* (the apartment mock-up tool hides or shows each side element by this: dev) */}
@@ -2643,12 +2834,13 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     : !isPlayingGame ? null
       : radioLines ?
         <GameArea style={pullStyle}>
-          <RoomBackdrop />
+          {!isTouch && <RoomBackdrop />}
           <HudExplosions />
-          <GameFrame data-game-frame>
+          <GameFrame data-game-frame style={isTouch ? TOUCH_FRAME_STYLE : undefined}>
             {/* the alarm only when the call sends the team into a Kaiju fight */}
             {/* aside, for the call's dialogue panel beside it (Jamie: the panel moves the monitor too) */}
-            <PlayWindow playWindow={playWindow} setPlayWindow={updatePlayWindow} isAdjusting={false} isOpen={false} isSiren={isRadioAlarm} buttons={getBezelButtons({
+            {/* (touch: the radar in its own window on the left, beside the panel, as the Street's talk: Jamie, mobile playtest 1) */}
+            <PlayWindow playWindow={isTouch ? { ...FULL_WINDOW, right: 1 - TOUCH_DIALOGUE.share } : playWindow} isBare={isTouch} setPlayWindow={updatePlayWindow} isAdjusting={false} isOpen={false} isSiren={isRadioAlarm} buttons={!isTouch && getBezelButtons({
               // blank through the call (Jamie, playtest 24): the Kaiju count only once the fight's "Defeat the Kaiju" has shown
               ticker: <ObjectiveTicker text="" isKaijuCount={false} count={0} toWin={0} />
             })}>
@@ -2672,10 +2864,11 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
               />
             </PlayWindow>
             {isShowingControls && <ControlsOverlay onClose={closeControls} />}
+            {isTouch && <TouchHud layoutId={touchLayoutId} onLayout={id => { saveTouchLayoutId(id); setTouchLayoutId(id); }} pd={undefined} isPaused={isRadioPaused} isHudShowing={false} isStickShowing={false} isPowersShowing={false} objective="" onDir={moveByStick} onPower={pressPowerByTouch} menu={touchMenu} />}
           </GameFrame>
         </GameArea>
       : !gameManager.current ? (isCoopHostBusy ? <CoopHostBusy playWindow={preGameWindow} /> : null) : (<GameArea style={pullStyle}>
-          <RoomBackdrop />
+          {!isTouch && <RoomBackdrop />}
           <HudExplosions />
           {import.meta.env.DEV && !isDevHidden && (
             <PhaseToggles>
@@ -2851,8 +3044,8 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
               )}
             </PhaseToggles>
           )}
-          <GameFrame data-game-frame $shift={monitorShift == 'out' ? 'out' : undefined}>
-            <PlayWindow isPoweredOn={isMonitorOn} playWindow={gameWindow} setPlayWindow={updatePlayWindow} isAdjusting={isAdjustingWindow} isOpen={isWindowOpen} isCut={!!recruitScene} isSiren={!!level.kaijuEntry && winner === null && !isPaused} buttons={!isEditingTiles && getBezelButtons({
+          <GameFrame data-game-frame $shift={monitorShift == 'out' ? 'out' : undefined} style={!isTouch ? undefined : labScreen == "colors" ? TOUCH_VAT_FRAME_STYLE : TOUCH_FRAME_STYLE}>
+            <PlayWindow isPoweredOn={isMonitorOn} playWindow={isTouch ? touchWindow : gameWindow} isBare={isTouch} setPlayWindow={updatePlayWindow} isAdjusting={isAdjustingWindow} isOpen={isTouch ? false : isWindowOpen} isCut={!!recruitScene} isSiren={!!level.kaijuEntry && winner === null && !isPaused} buttons={!isEditingTiles && !isTouch && getBezelButtons({
               isPauseOff: winner !== null || !!multiplayer || !!level.isWalkingLevel, // (no pause in the walking Lab: Jamie, playtest 39)
               // the objective's display: always there (Jamie), running the objective, or the Kaiju count
               ticker: !isWindowOpen && (gameManager.current && gameManager.current.getMultiplayerScore
@@ -2874,13 +3067,13 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
                 // how long their line is: their shake lasts in step with it (B1)
                 speakingLineLength={((speech && speech.text) || (dialogueLog.length ? dialogueLog[dialogueLog.length - 1].text : "") || "").length}
                 isSwirling={isSwirling}
-                isWindowOpen={isWindowOpen}
+                isWindowOpen={isTouch ? false : isWindowOpen} // (touch: a walking scene fills the screen and follows the player, as in the monitor)
                 isPaused={isPaused}
                 gameManager={gameManager.current}
                 level={level}
                 activePhases={activePhases as Array<string>}
                 isWholeScene={isWholeScene}
-                playWindow={playWindow}
+                playWindow={isTouch ? touchWindow : playWindow} // (touch: the cameras frame the whole screen, or beside the dialogue panel)
                 isShowingWindowSize={isAdjustingWindow}
                 isEditingTiles={isEditingTiles}
                 isMouseLook={isMouseLook}
@@ -2934,10 +3127,25 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
               )}
             </PlayWindow>
             {labScreen == "terminal" && createPortal(<LabTerminal context="lab" files={getTerminalFiles()} onClose={closeTerminal} isNight={level.id == "labBeforeTrap"} />, document.querySelector("[data-play-screen]") || document.body)}
-            {labScreen == "colors" && <IrradiationVat avatar={selectedAvatar} startColor={getAvatarColor(selectedAvatar) || PIECES_INFO[selectedAvatar].color} onIrradiate={irradiate} onClose={closeLabScreen} />}
+            {labScreen == "colors" && !isTouch && <IrradiationVat avatar={selectedAvatar} startColor={getAvatarColor(selectedAvatar) || PIECES_INFO[selectedAvatar].color} onIrradiate={irradiate} onClose={closeLabScreen} />}
+            {/* (touch: the Agent's panel, "Choose your color", the picker in it and one button: CANCEL, or CONFIRM once the
+                color's changed, which dunks them and goes back. Jamie, 2026-11-28) */}
+            {labScreen == "colors" && isTouch && (
+              <>
+                <IrradiationVat avatar={selectedAvatar} startColor={vatStartColor} onIrradiate={irradiate} onClose={closeLabScreen} isTouch actions={touchVatActions} onBusy={setIsVatBusy} onColor={setTouchVatColor} />
+                <AgentPanel
+                  text="Choose your color."
+                  button={touchVatColor && touchVatColor.toLowerCase() != vatStartColor.toLowerCase()
+                    ? { text: "CONFIRM", tone: "go", isDisabled: isVatBusy, onClick: () => touchVatActions.current && touchVatActions.current.play() }
+                    : { text: "CANCEL", tone: "stop", isDisabled: isVatBusy, onClick: () => touchVatActions.current && touchVatActions.current.leave() }}
+                >
+                  <div data-side-screen="vat" style={{ position: "relative", height: `${TOUCH_VAT.pickerDvh}dvh`, margin: "0 1.4cqw 2dvh" }} />
+                </AgentPanel>
+              </>
+            )}
             {isShowingControls && <ControlsOverlay onClose={closeControls} />}
             <div data-mock="dialogue" style={{ display: "contents" }}>
-            <DialogueLogPanel
+            {!isTouchChoiceMade && <DialogueLogPanel
               footer={coopChecks && coopChecks.isWaiting && !recruitScene ? <CoopChecks checks={coopChecks} ownRole={multiplayer ? multiplayer.link.role : 'host'} /> : recruitScene && isMonitorAlways && isRecruitTalkDone && (
                 <>
                   {["recruit", "terminate"].map(choice => (
@@ -2956,10 +3164,29 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
                 // a fight waits for the log to finish coming apart before it starts
                 if (isClosing && gameManager.current && !level.isWalkingLevel) gameManager.current.holdFor(BREAK_TOTAL_MS);
               }}
-            />
+            />}
             </div>
+            {isTouch && !isEditingTiles && (
+              <TouchHud
+                layoutId={touchLayoutId}
+                onLayout={id => { saveTouchLayoutId(id); setTouchLayoutId(id); }}
+                pd={[...players, ...(recruits || [])].find(pd => pd.isControlled)}
+                isPaused={isPaused}
+                isHudShowing={isHudsShowing}
+                isStickShowing={isTouchInControl}
+                isPowersShowing={!level.isWalkingLevel}
+                // (only while the player is in control: none over dialogue, cutscenes, the choice, the Lab's screens or the
+                // end. Jamie, mobile playtest 1)
+                objective={!isTouchInControl || isCutscene ? "" : gameManager.current && gameManager.current.getMultiplayerScore
+                  ? (score => `YOU ${score.mine} - THEM ${score.theirs} OF ${score.toWin}`)(gameManager.current.getMultiplayerScore())
+                  : isObjectiveKaijuCount ? `KAIJU ${String(kaijuKillCount).padStart(2, "0")}/${kaijuToWin}` : (objectiveText || "").toUpperCase()}
+                onDir={moveByStick}
+                onPower={pressPowerByTouch}
+                menu={touchMenu}
+              />
+            )}
             <div data-mock="huds" style={{ display: "contents" }}>
-            {!isEditingTiles && !isLogClosing && <UI
+            {!isTouch && !isEditingTiles && !isLogClosing && <UI
               players={players}
               recruits={recruits}
               kaijuKillCount={kaijuKillCount}
