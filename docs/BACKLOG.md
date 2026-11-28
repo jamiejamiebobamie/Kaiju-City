@@ -53,6 +53,12 @@ Last updated: 2026-11-28.
    - [ ] There may be other issues. Claude: remind Jamie to look the whole zoom over for others when this item comes up.
 5. 80s synthwave music (Jamie, 2026-11-28; its own branch). Re-theme the current music as 80s synthwave: keep the tracks Jamie likes (most of them) and change their sound, and rewrite any that don't carry over.
    > Claude: doable in the same code-made music system: a third style beside "8-bit" and "synth", with gated-reverb drums, detuned saw pads and leads, arpeggiated bass, chorus and a big hall. Each theme keeps its tune and chords; the ones that don't suit it (likely the punk and Kaiju fight, at 152 bpm) get new parts. You'd review them on /music as now.
+   > Claude (2026-11-28): **built on `feature/synthwave`, please listen at /music** (run `npm run dev`, open `localhost:5173/music`). "80s synthwave" is now the first button on every theme, and the game's own style for every theme you haven't picked another for (it was 8-bit). The tunes and chords are all yours; the sound is new: detuned saw leads with a long echo, brass stabs, wide chorused pads under the chords, a rolling or pumping bass, plucky arpeggios, a punchy kick, the gated-reverb snare and big falling toms, in a large hall. Each theme has a flavor (shown after its description):
+   - **Outrun** (warm, driving, a night drive): the teammate (four on the floor, a pumping bass), the Peninsula map (a little faster, 104), the title (epic: its low line now synth brass), the Agent (noir: a gated backbeat in place of the rim clicks, less swing), the avatar select/picker theme (unused).
+   - **Darksynth** (heavy, menacing): Punk Guy and the Kaiju fight (same tempo and drums you liked, a rolling sixteenth bass, a growling saw on the power chords, a tom roll into a crash in the Kaiju fight's fill), the Subway, Rooftop, Aquarium and final battles, the Lab escape.
+   - **Dreamwave** (soft, hazy): Ghost Girl (a glassy bell for the music box), the Mermaid (a soft half-time beat added), the teammate's slow take, the Lab, the Sewers.
+   - Measured: as loud as the other styles, no clipping. In the game the Sound (dev) panel's Style has "all 80s synthwave" too.
+   - [ ] Listen to each at /music; Approve, Redo (say what to change) or Cut, as before. If one should stay 8-bit or "not 8-bit", pick it under "Use".
 
 
 ### LOW (Jamie's order, before merging to master)

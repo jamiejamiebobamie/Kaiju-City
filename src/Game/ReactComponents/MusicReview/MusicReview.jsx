@@ -16,7 +16,9 @@ const VERDICTS = [
   { id: "redo", label: "Redo", color: "#e0b030" },
   { id: "cut", label: "Cut", color: "#d24a4a" }
 ];
-const STYLES = [{ id: "chip", label: "8-bit" }, { id: "synth", label: "Not 8-bit" }];
+// (80s synthwave first, the default now: Jamie, 2026-11-28)
+const STYLES = [{ id: "synthwave", label: "80s synthwave" }, { id: "chip", label: "8-bit" }, { id: "synth", label: "Not 8-bit" }];
+const getStyleLabel = id => (STYLES.find(style => style.id == id) || STYLES[0]).label.toLowerCase();
 
 const Page = styled.div`
   height: 100vh;
@@ -155,11 +157,12 @@ export const MusicReview = () => {
           Volume <input type="range" min={0} max={1} step={0.05} value={volume} onChange={event => setVolume(Number(event.target.value))} />
         </label>
         <Button onClick={stop}>■ Stop</Button>
-        <Muted>{playing ? `Playing: ${THEMES[playing.id].name} (${playing.style == "chip" ? "8-bit" : "not 8-bit"}${playing.isLight ? ", light" : ""}${playing.isTense ? ", tense" : ""})` : ""}</Muted>
+        <Muted>{playing ? `Playing: ${THEMES[playing.id].name} (${getStyleLabel(playing.style)}${playing.isLight ? ", light" : ""}${playing.isTense ? ", tense" : ""})` : ""}</Muted>
         <Muted>{status}</Muted>
       </Top>
       <Context style={{ maxWidth: 950, marginTop: 12 }}>
-        Each theme loops until you press another or Stop. Every theme plays in both styles: pick the one the game should use
+        Each theme loops until you press another or Stop. Every theme plays in all three styles (80s synthwave, the game's
+        own now unless you pick another): pick the one the game should use
         ("Use"), then Approve, Redo (say what to change: faster, darker, a different tune, more like the other style…) or Cut.
         Battles also play "Light", the lighter take used for training and sparring; a few have "Tense", the layer that comes
         in when the scene heats up (the ghost rings, the flood, the glowing door).
@@ -170,7 +173,7 @@ export const MusicReview = () => {
           {Object.entries(THEMES).filter(([, theme]) => theme.group == group).map(([id, theme]) => {
             const entry = review[id] || {};
             const verdict = VERDICTS.find(({ id: verdictId }) => verdictId == entry.verdict);
-            const style = entry.style || "chip";
+            const style = entry.style || "synthwave";
             return (
               <Row key={id} $color={verdict && verdict.color}>
                 <div>
@@ -192,7 +195,7 @@ export const MusicReview = () => {
                     </Buttons>
                   )}
                 </div>
-                <Context>{theme.context}</Context>
+                <Context>{theme.context}{theme.synthwave && theme.synthwave.flavor ? ` Synthwave: ${theme.synthwave.flavor}.` : ""}</Context>
                 <Judge>
                   <Buttons>
                     <Muted style={{ alignSelf: "center" }}>Use:</Muted>

@@ -7,7 +7,10 @@
     in the named 'bass' and 'harmony' patterns (music.js);
   - drums: DRUMS presets, one a bar, repeating;
   - intense: what changes when the scene gets tense (setMusicIntensity(1)): its harmony and drums;
-  - voices: an instrument per part for each style, over the defaults (music.js VOICES).
+  - voices: an instrument per part for each style, over the defaults (music.js VOICES);
+  - synthwave: its 80s synthwave take (Jamie, 2026-11-28), over the rest when that style plays: 'flavor' (outrun: warm,
+    driving, a night drive; darksynth: heavy and menacing; dreamwave: soft and hazy), and any of bpm, swing, bass,
+    harmony, drums, intense, wavePad (false: no pad under the chords). The tune and chords stay the theme's own.
 */
 
 // a bar of drums: a lane per drum (k kick, s snare, h hat, o open hat, r rim, t tom, c crash), "x" a hit, "X" accented
@@ -34,13 +37,22 @@ export const DRUMS = {
   // the title's (Jamie, 2026-11-27: dramatic): slow, heavy, timpani-like toms, rolling into crashes
   epic: { k: "X.....x.x.......", t: "........x.....x.", s: "....X.......X...", o: "..............x." },
   epicRoll: { k: "X.....x.x.......", t: "........x.x.xxxx", s: "....X..........." },
-  epicCrash: { k: "X.....x.x.......", t: "........x.....x.", s: "....X.......X...", c: "X..............." }
+  epicCrash: { k: "X.....x.x.......", t: "........x.....x.", s: "....X.......X...", c: "X..............." },
+  // synthwave's (Jamie, 2026-11-28): outrun's four on the floor with open hats off the beat and a tom run into the
+  // next; the Agent's noir backbeat; darksynth's tom roll into a crash; dreamwave's soft half-time
+  outrun: { k: "x...x...x...x...", s: "....x.......x...", h: "x.x.x.x.x.x.x.x.", o: "..x...x...x...x." },
+  outrunFill: { k: "x...x...x...x...", s: "....x.......x...", t: "..........x.xxxx", h: "x.x.x.x.x......." },
+  noir: { k: "x.........x.....", s: "....x.......x...", h: "x.x.x.x.x.x.x.x." },
+  noirFill: { k: "x.........x.....", s: "....x.......x.xx", h: "x.x.x.x.x.x.x...", o: "..............x." },
+  darkFill: { k: "x...x...x.......", s: "....X...........", t: "........x.x.xxxx", c: "x..............." },
+  dreamBeat: { k: "x.......x.x.....", s: "........x.......", h: "..x...x...x...x." }
 };
 
 export const THEMES = {
   // - - - the characters (each also its area's walking level, Jamie) - - -
   agent: {
     name: "Sleazy Agent", group: "Characters",
+    synthwave: { flavor: "Outrun, noir", swing: 0.2, drums: ["noir", "noir", "noir", "noir", "noir", "noir", "noir", "noirFill"] },
     context: "Slinky, creeping, a swung walking bass and a sly sliding lead. The Street walk; a ~4 s sting of it whenever an Agent shows (the Lab showdown, the Agents dropping in, the radio calls).",
     bpm: 96, swing: 0.33,
     chords: "Em7 | Em7 | Am7 | Am7 | Em7 | C7 | B7 | B7",
@@ -50,6 +62,7 @@ export const THEMES = {
   },
   punk: {
     name: "Punk Guy", group: "Characters",
+    synthwave: { flavor: "Darksynth", bass: "roll16" },
     context: "Fast, scrappy, driving power chords. The Subway walk, his intro and his recruit choice.",
     bpm: 152,
     chords: "A5 | A5 | F5 | G5 | A5 | A5 | C5:8 G5:8 | E5",
@@ -59,6 +72,7 @@ export const THEMES = {
   },
   ghostGirl: {
     name: "Ghost Girl", group: "Characters",
+    synthwave: { flavor: "Dreamwave", voices: { synthwave: { lead: "waveSoftLead" } } },
     context: "Eerie and lonely, a music box with an echo. The Rooftop walk, her intro and her recruit choice.",
     bpm: 76,
     chords: "Dm | Bb | Gm | A | Dm | Bb | Gm6 | A7",
@@ -68,6 +82,7 @@ export const THEMES = {
   },
   mermaid: {
     name: "The Mermaid", group: "Characters",
+    synthwave: { flavor: "Dreamwave", bass: "rootFifth", drums: ["dreamBeat"], voices: { synthwave: { lead: "waveSoftLead" } } },
     context: "Flowing and dreamy, watery arpeggios. The Aquarium walk, her intro and her recruit choice.",
     bpm: 84,
     chords: "Ebmaj7 | Cm7 | Abmaj7 | Bb | Ebmaj7 | Gm7 | Abmaj7 | Bbsus4:8 Bb:8",
@@ -77,6 +92,7 @@ export const THEMES = {
   },
   teammate: {
     name: "The teammate", group: "Characters",
+    synthwave: { flavor: "Outrun", bass: "pump8", drums: ["outrun", "outrun", "outrun", "outrunFill"] },
     context: "Warm and hopeful, the friend's theme. For now it's heard in the credits; the final battle is built on it, and its slow take below plays at the final turn. Where else should it play?",
     bpm: 108,
     chords: "G | D | Em | C | G | D | C | D",
@@ -86,6 +102,7 @@ export const THEMES = {
   },
   teammateSad: {
     name: "The teammate (slow, the final turn)", group: "Characters",
+    synthwave: { flavor: "Dreamwave", voices: { synthwave: { lead: "waveSoftLead" } } },
     context: "The teammate's theme slowed and in a minor key, with no drums: the final turn, as the teammate becomes a Kaiju.",
     bpm: 66,
     chords: "Gm | Dm | Eb | Cm | Gm | D | Cm | D",
@@ -97,6 +114,7 @@ export const THEMES = {
   // - - - the battles (tense; training and sparring play them lighter) - - -
   subwayBattle: {
     name: "Subway battle", group: "Battles",
+    synthwave: { flavor: "Darksynth", bass: "roll16" },
     context: "Urgent, the train's rhythm in the drums. Punk Guy's fight; lighter for the Subway's training and sparring; the Rapid Transit multiplayer ground.",
     bpm: 160,
     chords: "Em | Em | C | D | Em | Em | Am | B",
@@ -105,6 +123,7 @@ export const THEMES = {
   },
   rooftopBattle: {
     name: "Rooftop battle", group: "Battles",
+    synthwave: { flavor: "Darksynth" },
     context: "Tense and haunted, Ghost Girl's tune turned to a fight; it grows more intense when the ghost rings start (play it with 'Tense' on). Her fight; lighter for training and sparring; the Rooftop multiplayer ground.",
     bpm: 128,
     chords: "Dm | Dm | Bb | A | Dm | Dm | Gm | A7",
@@ -114,6 +133,7 @@ export const THEMES = {
   },
   aquariumBattle: {
     name: "Aquarium battle", group: "Battles",
+    synthwave: { flavor: "Darksynth" },
     context: "Pressing and heavy, the Mermaid's tune in a dark key; it builds when the glass breaks and the water runs ('Tense'). Her fight; lighter for training and sparring; the Aquarium multiplayer grounds.",
     bpm: 120,
     chords: "Cm | Cm | Ab | Bb | Cm | Cm | Fm | G7",
@@ -123,6 +143,7 @@ export const THEMES = {
   },
   kaijuFight: {
     name: "Kaiju fight", group: "Battles",
+    synthwave: { flavor: "Darksynth", bass: "roll16", drums: ["punk", "punk", "punk", "darkFill", "punk", "punk", "punk", "punkFill"] },
     context: "Big and stompy: the first take's tune, at Punk Guy's tempo with his driving drums and bass (Jamie's redo, 2026-11-26), a stomp in its fills. The Peninsula's fights against the Kaiju from the sea, the Peninsula multiplayer ground and the defense mode.",
     bpm: 152,
     chords: "E5 | E5 | E5 | F5 | E5 | E5 | C5 | B5",
@@ -132,6 +153,7 @@ export const THEMES = {
   },
   finalBattle: {
     name: "Final battle", group: "Battles",
+    synthwave: { flavor: "Darksynth", bass: "roll16", drums: ["drive", "drive", "drive", "darkFill"] },
     context: "The boss theme: tragic and fierce, the teammate's theme in a minor key at full tilt. The teammate turned Kaiju.",
     bpm: 140,
     chords: "Gm | Dm | Eb | Cm | Gm | D | Cm | D7",
@@ -141,6 +163,7 @@ export const THEMES = {
   },
   labEscape: {
     name: "Lab escape", group: "Battles",
+    synthwave: { flavor: "Darksynth" },
     context: "A chase, fast and alarmed, a siren in the lead. The trap and the Agents chasing; the Lab multiplayer ground.",
     bpm: 168,
     chords: "Am | Am | Bb | Bb | Am | Am | F | E",
@@ -151,6 +174,7 @@ export const THEMES = {
   // - - - places - - -
   peninsulaMap: {
     name: "Peninsula map", group: "Places",
+    synthwave: { flavor: "Outrun", bpm: 104, bass: "pump8", drums: ["outrun", "outrun", "outrun", "outrunFill"] },
     context: "A travel theme with a radar-blip feel. Walking the radar map between areas.",
     bpm: 100,
     chords: "C | D | G | Em | C | D | G | G",
@@ -160,6 +184,7 @@ export const THEMES = {
   },
   lab: {
     name: "The Lab", group: "Places",
+    synthwave: { flavor: "Dreamwave", voices: { synthwave: { lead: "waveSoftLead" } } },
     context: "Cold, humming and uneasy. The Lab walk, the vat and the class battle preview.",
     bpm: 90,
     chords: "Am | Bbmaj7 | Am | E | Am | Bbmaj7 | Dm | E",
@@ -169,6 +194,7 @@ export const THEMES = {
   },
   sewers: {
     name: "The Sewers", group: "Places",
+    synthwave: { flavor: "Dreamwave", voices: { synthwave: { lead: "waveSoftLead" } } },
     context: "Dark, dripping and low; it swells as you near the glowing door, and at the whiteout climb ('Tense'). Both Sewers levels.",
     bpm: 70,
     chords: "Cm | Cm | Db | Cm | Cm | Ab | Db | G",
@@ -181,6 +207,7 @@ export const THEMES = {
   // - - - screens - - -
   title: {
     name: "Start screen (title)", group: "Screens",
+    synthwave: { flavor: "Outrun, epic", voices: { synthwave: { counter: "waveBrass" } } },
     context: "The game's title theme, redone to be dramatic as the logo is (Jamie, 2026-11-27): slower, huge held chords, a heroic tune with wide leaps over a low brass line, timpani-like toms rolling into crashes. The monitor's PLAY screen and the multiplayer setup; the landing too, once the page has been clicked.",
     bpm: 92,
     chords: "Dm | Bb | Gm | A | Dm | F | Bb | A7",
@@ -192,6 +219,7 @@ export const THEMES = {
   },
   menu: {
     name: "Avatar select and picker", group: "Screens",
+    synthwave: { flavor: "Outrun" },
     context: "The title theme's calm take, to think over: the avatar select and the power picker.",
     bpm: 96,
     chords: "Dm | Bb | C | A | Dm | Bb | Gm | A",
@@ -201,6 +229,7 @@ export const THEMES = {
   },
   credits: {
     name: "Credits", group: "Screens",
+    synthwave: { flavor: "Each its own" },
     context: "A medley: the teammate, the Agent, Punk Guy, Ghost Girl, the Mermaid, and the title, each once through.",
     bpm: 108,
     medley: ["teammate", "agent", "punk", "ghostGirl", "mermaid", "title"]

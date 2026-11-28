@@ -19,7 +19,8 @@ const VERDICTS = [
   { id: "redo", label: "Redo", color: "#e0b030" },
   { id: "cut", label: "Cut", color: "#d24a4a" }
 ];
-const STYLE_CHOICES = [{ value: "", label: "each its /music pick" }, { value: "chip", label: "all 8-bit" }, { value: "synth", label: "all not 8-bit" }];
+const STYLE_CHOICES = [{ value: "", label: "each its /music pick" }, { value: "synthwave", label: "all 80s synthwave" }, { value: "chip", label: "all 8-bit" }, { value: "synth", label: "all not 8-bit" }];
+const STYLE_NAMES = { chip: "8-bit", synth: "not 8-bit", synthwave: "80s synthwave" };
 
 const Panel = styled.div`
   position: fixed;
@@ -198,7 +199,7 @@ export const AudioDevPanel = () => {
           {STYLE_CHOICES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
         </select>
       </Row>
-      <Title>Music: {theme ? `${theme.name} (${music.style == "chip" ? "8-bit" : "not 8-bit"}${music.isLight ? ", light" : ""}${music.intensity ? ", tense" : ""})` : "none"}</Title>
+      <Title>Music: {theme ? `${theme.name} (${STYLE_NAMES[music.style] || music.style}${music.isLight ? ", light" : ""}${music.intensity ? ", tense" : ""})` : "none"}</Title>
       {theme && (
         <Judge name="music-review" id={music.id} entry={MUSIC_REVIEW[music.id] || {}} onSaved={entry => {
           setStatus(entry ? "Saved" : "Not saved: is the dev server running?");

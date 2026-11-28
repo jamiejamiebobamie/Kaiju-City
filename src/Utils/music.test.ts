@@ -22,3 +22,22 @@ describe('music themes', () => {
     });
   });
 });
+
+// the 80s synthwave takes (Jamie, 2026-11-28): every theme has one, and it names only drums, patterns and voices there are
+describe('synthwave takes', () => {
+  const BASS = ['long', 'rootFifth', 'root8', 'octave8', 'pulse16', 'arp', 'stomp', 'walk', 'pump8', 'roll16'];
+  Object.entries(THEMES).forEach(([id, theme]: [string, any]) => {
+    it(`${id}: a synthwave take that holds together`, () => {
+      expect(theme.synthwave).toBeDefined();
+      expect(typeof theme.synthwave.flavor).toBe('string');
+      const take = { ...theme, ...theme.synthwave };
+      if (take.medley) return;
+      if (take.bass) expect(BASS).toContain(take.bass);
+      [].concat(take.drums || [], (take.intense && take.intense.drums) || []).forEach((name: string) => {
+        expect(DRUMS).toHaveProperty(name);
+        Object.values((DRUMS as any)[name]).forEach((lane: any) => expect(lane.length).toBe(16));
+      });
+      expect(take.bpm).toBeGreaterThan(40);
+    });
+  });
+});
