@@ -47,6 +47,7 @@ import { getIsTouchLayout, TOUCH_INTRO, useDevice } from "Utils/device";
 import { TouchHud } from "./Touch/TouchHud";
 import { getTouchLayoutId, saveTouchLayoutId, TOUCH_DIALOGUE, TOUCH_VAT } from "./Touch/touchLayouts";
 import { AgentPanel, AgentScreen } from "./Touch/TouchPreGame";
+import { useTouchTuning } from "./Touch/touchTuning";
 import { GameManager, GameResult } from '../DataClasses/GameManager';
 import { getActiveHotspots } from "./GameBoard/SceneElements";
 import { getIsDetourLevel } from "../DataClasses/Objectives";
@@ -145,7 +146,8 @@ const STICK_KEYS: Record<string, string[]> = {
 
 // the game frame on a touch screen: the whole screen, whatever its shape; the dialogue panel on its right (Jamie: the
 // game pushed over beside it), no projector cone (no monitor)
-const TOUCH_FRAME_STYLE = {
+// (a function: the panel's width is each screen size's own, touchTuning.js)
+const getTouchFrameStyle = (share = TOUCH_DIALOGUE.share) => ({
   width: "100dvw",
   height: "100dvh",
   maxWidth: "none",
@@ -154,7 +156,7 @@ const TOUCH_FRAME_STYLE = {
   "--log-top": "max(2.5dvh, env(safe-area-inset-top))",
   "--log-bottom": "max(2.5dvh, env(safe-area-inset-bottom))",
   "--log-right": "max(1.5dvh, env(safe-area-inset-right))",
-  "--log-width": `calc(${TOUCH_DIALOGUE.share * 100}cqw - 3dvh)`,
+  "--log-width": `calc(${share * 100}cqw - 3dvh)`,
   "--log-cone": "none",
   // (Jamie, mobile playtest 1: the words about twice as big; Continue the panel's whole width at its foot, taller; the
   // Recruit and Terminate buttons much taller)
@@ -167,10 +169,10 @@ const TOUCH_FRAME_STYLE = {
   "--log-footer-padding": "0.6cqw 0 0",
   "--recruit-button-padding": "3.4dvh 3.4dvh",
   "--recruit-button-text": "5.4dvh"
-} as React.CSSProperties;
+}) as React.CSSProperties;
 
 // the Lab's color vat on a touch screen: the Agent's panel wider, its color picker inside it (Jamie, 2026-11-28)
-const TOUCH_VAT_FRAME_STYLE = { ...TOUCH_FRAME_STYLE, "--log-width": `calc(${TOUCH_VAT.share * 100}cqw - 3dvh)` } as React.CSSProperties;
+const getTouchVatFrameStyle = () => getTouchFrameStyle(TOUCH_VAT.share);
 
 // the touch intro's cut to the touch layout: black, fading off (TOUCH_INTRO)
 const touchCutFade = keyframes`
@@ -920,8 +922,10 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     return isIntro;
   });
   const isTouch = device.isTouch && !isTouchIntro;
+  const { tuning: touchTuning } = useTouchTuning(); // (this screen size's zoom and panel width: touchTuning.js)
   const [touchLayoutId, setTouchLayoutId] = useState(getTouchLayoutId);
   const [isTouchMenuOpen, setIsTouchMenuOpen] = useState(false);
+  const [isTouchPlacing, setIsTouchPlacing] = useState(false); // (the placement tool: the game held, its scene still seen)
   // the Lab's vat on touch: its controls (IrradiationVat's 'actions') and the color picked so far
   const touchVatActions = useRef<any>(null);
   const [touchVatColor, setTouchVatColor] = useState<string | undefined>(undefined);
@@ -2723,7 +2727,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
       {isTouchCut && <TouchCut style={{ animationDuration: `${TOUCH_INTRO.cutMs}ms` }} />}
       {!isTouch && <RoomBackdrop />}
           <HudExplosions />
-      <GameFrame data-game-frame $shift={!isTouch && (monitorShift == 'in' || monitorShift == 'fade') ? monitorShift : undefined} style={isTouch ? TOUCH_FRAME_STYLE : undefined}>
+      <GameFrame data-game-frame $shift={!isTouch && (monitorShift == 'in' || monitorShift == 'fade') ? monitorShift : undefined} style={isTouch ? getTouchFrameStyle() : undefined}>
         {/* (touch: no casing, the whole screen; the picker on the left beside the Agent's panel) */}
         <PlayWindow playWindow={!isTouch ? preGameWindow : isTouchPicker ? { ...FULL_WINDOW, right: 1 - TOUCH_DIALOGUE.share } : FULL_WINDOW} isBare={isTouch} setPlayWindow={updatePlayWindow} isAdjusting={false} isOpen={false} isPoweredOn={isMonitorOn} isClipped hasGlare={!isTouch} buttons={!isTouch && getBezelButtons({
           isPauseOff: true, // nothing to pause yet
@@ -2836,7 +2840,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
         <GameArea style={pullStyle}>
           {!isTouch && <RoomBackdrop />}
           <HudExplosions />
-          <GameFrame data-game-frame style={isTouch ? TOUCH_FRAME_STYLE : undefined}>
+          <GameFrame data-game-frame style={isTouch ? getTouchFrameStyle() : undefined}>
             {/* the alarm only when the call sends the team into a Kaiju fight */}
             {/* aside, for the call's dialogue panel beside it (Jamie: the panel moves the monitor too) */}
             {/* (touch: the radar in its own window on the left, beside the panel, as the Street's talk: Jamie, mobile playtest 1) */}
@@ -3044,7 +3048,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
               )}
             </PhaseToggles>
           )}
-          <GameFrame data-game-frame $shift={monitorShift == 'out' ? 'out' : undefined} style={!isTouch ? undefined : labScreen == "colors" ? TOUCH_VAT_FRAME_STYLE : TOUCH_FRAME_STYLE}>
+          <GameFrame data-game-frame $shift={monitorShift == 'out' ? 'out' : undefined} style={!isTouch ? undefined : labScreen == "colors" ? getTouchVatFrameStyle() : getTouchFrameStyle()}>
             <PlayWindow isPoweredOn={isMonitorOn} playWindow={isTouch ? touchWindow : gameWindow} isBare={isTouch} setPlayWindow={updatePlayWindow} isAdjusting={isAdjustingWindow} isOpen={isTouch ? false : isWindowOpen} isCut={!!recruitScene} isSiren={!!level.kaijuEntry && winner === null && !isPaused} buttons={!isEditingTiles && !isTouch && getBezelButtons({
               isPauseOff: winner !== null || !!multiplayer || !!level.isWalkingLevel, // (no pause in the walking Lab: Jamie, playtest 39)
               // the objective's display: always there (Jamie), running the objective, or the Kaiju count
@@ -3067,8 +3071,9 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
                 // how long their line is: their shake lasts in step with it (B1)
                 speakingLineLength={((speech && speech.text) || (dialogueLog.length ? dialogueLog[dialogueLog.length - 1].text : "") || "").length}
                 isSwirling={isSwirling}
+                minTouchTilePx={touchTuning.minTilePx}
                 isWindowOpen={isTouch ? false : isWindowOpen} // (touch: a walking scene fills the screen and follows the player, as in the monitor)
-                isPaused={isPaused}
+                isPaused={isPaused && !isTouchPlacing} // (the placement tool: the scene seen, the game still held)
                 gameManager={gameManager.current}
                 level={level}
                 activePhases={activePhases as Array<string>}
@@ -3182,7 +3187,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
                   : isObjectiveKaijuCount ? `KAIJU ${String(kaijuKillCount).padStart(2, "0")}/${kaijuToWin}` : (objectiveText || "").toUpperCase()}
                 onDir={moveByStick}
                 onPower={pressPowerByTouch}
-                menu={touchMenu}
+                menu={{ ...touchMenu, onPlaceStart: () => { setIsTouchMenuOpen(false); setIsTouchPlacing(true); }, onPlaceEnd: () => { setIsTouchPlacing(false); closeTouchMenu(); } }}
               />
             )}
             <div data-mock="huds" style={{ display: "contents" }}>

@@ -834,7 +834,7 @@ const getCoverZoom = ({ viewWidth, viewHeight }, world) => {
 
 // 'isPreview': the class battle's board (Jamie, playtest 29): no health bars, no status icons, no off-screen markers
 const WATER_REACH_PX = 4000;
-export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade = undefined, isCurtained = false, controlMarker = "outline", speakingLineLength = 0, isSwirling = false, speakingPieceIndex = undefined, choiceFromRef = undefined, isWindowOpen = true, isPaused, gameManager, level, activePhases, isWholeScene, playWindow, isShowingWindowSize, isEditingTiles, isMouseLook, isEnemyZoom, isSlowMotion, isTeamColors, speech, recruitScene, recruitChoice, onChooseRecruit, onHotspot }) => {
+export const GameBoard = ({ minTouchTilePx = undefined, isPreview = false, viewHexes = undefined, kaijuFade = undefined, isCurtained = false, controlMarker = "outline", speakingLineLength = 0, isSwirling = false, speakingPieceIndex = undefined, choiceFromRef = undefined, isWindowOpen = true, isPaused, gameManager, level, activePhases, isWholeScene, playWindow, isShowingWindowSize, isEditingTiles, isMouseLook, isEnemyZoom, isSlowMotion, isTeamColors, speech, recruitScene, recruitChoice, onChooseRecruit, onHotspot }) => {
   // redraws the pieces when the game updates. the tiles draw themselves.
   useSyncExternalStore(gameManager.subscribeToBoard, gameManager.getBoardRevision);
   const pieces = gameManager.getPieces();
@@ -882,10 +882,11 @@ export const GameBoard = ({ isPreview = false, viewHexes = undefined, kaijuFade 
         viewHeight: frame.height,
         hexWidthPx: getHexRadius(grid) * 2,
         cameraZoom: level.cameraZoom,
-        isTouch: getIsTouchScreen()
+        isTouch: getIsTouchScreen(),
+        minTouchTilePx // (each screen size's own: touchTuning.js)
       })
     });
-  }, [level, frame, isWholeScene, playWindow, viewHexes]);
+  }, [level, frame, isWholeScene, playWindow, viewHexes, minTouchTilePx]);
   // what the play camera shows round the player, in tiles to the nearer edge: the allies' leash at its widest
   // (GameManager's ALLY_LEASH. Jamie, 2026-11-25)
   useEffect(() => {

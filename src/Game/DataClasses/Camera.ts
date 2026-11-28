@@ -184,15 +184,16 @@ export const getFitZoom = ({ viewWidth, viewHeight, worldWidth, worldHeight }: {
 }) => Math.min(viewWidth / worldWidth, viewHeight / worldHeight);
 
 // shows as much of the level as fits, then zooms in further if tiles would be too small to click or tap
-export const getCameraZoom = ({ hexWidthPx, isTouch, viewWidth, viewHeight, worldWidth, worldHeight }: {
+export const getCameraZoom = ({ hexWidthPx, isTouch, minTouchTilePx, viewWidth, viewHeight, worldWidth, worldHeight }: {
   hexWidthPx: number;
   isTouch: boolean;
+  minTouchTilePx?: number; // (a screen size's own: touchTuning.js)
   viewWidth: number;
   viewHeight: number;
   worldWidth: number;
   worldHeight: number;
 }) => {
-  const minTilePx = isTouch ? CAMERA.minTouchTilePx : CAMERA.minMouseTilePx;
+  const minTilePx = isTouch ? minTouchTilePx ?? CAMERA.minTouchTilePx : CAMERA.minMouseTilePx;
   return Math.max(getFitZoom({ viewWidth, viewHeight, worldWidth, worldHeight }), minTilePx / hexWidthPx);
 };
 

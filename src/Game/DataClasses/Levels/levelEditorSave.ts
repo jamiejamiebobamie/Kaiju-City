@@ -181,6 +181,8 @@ export const soundReviewSave = (reviewPath: string): Plugin => reviewFileSave('s
 export const musicReviewSave = (reviewPath: string): Plugin => reviewFileSave('music-review', reviewPath);
 // each sound's volume per scene, from the game's Sound (dev) panel (Jamie, 2026-11-26)
 export const soundVolumesSave = (filePath: string): Plugin => reviewFileSave('sound-volumes', filePath);
+// the touch HUD's placement and the per-device tuning (mobile step 3): Touch/touchTuning.json
+export const touchTuningSave = (filePath: string): Plugin => reviewFileSave('touch-tuning', filePath);
 const reviewFileSave = (name: string, reviewPath: string): Plugin => ({
   name: `${name}-save`,
   apply: 'serve',

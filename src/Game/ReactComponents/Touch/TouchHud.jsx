@@ -6,6 +6,7 @@ import { HUD_LOOK } from "Game/ReactComponents/UI/Hud/hudSpec";
 import { VOLUME_LEVEL, stepVolume } from "Game/ReactComponents/GameBoard/PlayWindow";
 import { DEVICE_KINDS, getDeviceKind, getIsDeviceForced, setDeviceOverride, getIsTuning } from "Utils/device";
 import { TICKER, TOUCH_LAYOUTS, TOUCH_LAYOUT_IDS } from "./touchLayouts";
+import { DEVICE_PRESETS, HUD_GROUPS, HUD_GROUP_LABELS, getDevicePresetId, getGroupMiddle, getShortSidePx, getTunedLayout, saveTouchTuning, setDevicePresetOverride, setHudGroupTuning, updatePresetTuning, useTouchTuning } from "./touchTuning";
 
 /*
   The touch HUD (Jamie, 2026-11-28; mobile): the game fills the screen, and over it a virtual stick on the left, the
@@ -494,7 +495,7 @@ const VolumeMeter = styled.div`
   div { height: 100%; background: linear-gradient(to right, #2dff6a, #c8ff6a); }
 `;
 
-const Menu = ({ onClose, onControls, onQuit, canPause, layoutId, onLayout }) => {
+const Menu = ({ onClose, onControls, onQuit, canPause, layoutId, onLayout, onPlace = undefined }) => {
   const [volume, setVolume] = useState(VOLUME_LEVEL.value);
   const step = by => {
     stepVolume(by);
@@ -520,10 +521,151 @@ const Menu = ({ onClose, onControls, onQuit, canPause, layoutId, onLayout }) => 
               </select>
             </Row>
             <DeviceSelect />
+            <PresetSelect />
+            {onPlace && <GlassButton onClick={onPlace}>Place HUD</GlassButton>}
           </>
         )}
       </Sheet>
     </Shade>
+  );
+};
+
+// tuning: which size's tuning this screen uses ("auto": by its size, touchTuning.js)
+export const PresetSelect = () => {
+  const { preset } = useTouchTuning();
+  const isForced = !!window.localStorage.getItem("kaiju-touch-preset");
+  return (
+    <Row>
+      Size
+      <select value={isForced ? preset.id : "auto"} onChange={event => setDevicePresetOverride(event.target.value)}>
+        <option value="auto">Auto</option>
+        {DEVICE_PRESETS.map(({ id, label }) => <option key={id} value={id}>{label}</option>)}
+      </select>
+    </Row>
+  );
+};
+
+/*
+  The placement tool (Jamie, 2026-11-28; mobile step 3): the game paused, a handle on each part of the HUD. Drag one to
+  move that part; with one chosen, - and + size it. The camera's zoom and the dialogue panel's width too. Each for this
+  screen's size (touchTuning.js), saved into the game through the dev server.
+*/
+const PlacementShade = styled.div`
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  background: rgba(0, 0, 0, 0.18);
+  touch-action: none;
+`;
+const Handle = styled.div`
+  position: absolute;
+  translate: -50% -50%;
+  min-width: 9cqh;
+  height: 9cqh;
+  padding: 0 2cqh;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: gameboy;
+  font-size: 2.6cqh;
+  white-space: nowrap;
+  color: white;
+  background: ${props => props.$isChosen ? "rgba(45, 255, 106, 0.55)" : "rgba(20, 30, 50, 0.55)"};
+  border: 0.4cqh dashed ${props => props.$isChosen ? "#2dff6a" : "rgba(255, 255, 255, 0.8)"};
+  touch-action: none;
+  cursor: grab;
+`;
+const ToolBar = styled.div`
+  ${LIQUID_GLASS}
+  position: absolute;
+  left: 50%;
+  translate: -50% 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 1.4cqh 2.4cqh;
+  max-width: 92cqw;
+  padding: 1.6cqh 3cqh;
+  border-radius: 3cqh;
+  font-family: gameboy;
+  font-size: 2.6cqh;
+  color: white;
+  pointer-events: auto;
+  button { padding: 1.2cqh 2.6cqh; font-size: 2.8cqh; }
+`;
+const Ghost = styled.div`
+  position: absolute;
+  translate: -50% -50%;
+  border-radius: 50%;
+  border: 0.4cqh dashed rgba(255, 255, 255, 0.6);
+`;
+const PlacementTool = ({ layout, layoutId, tuning, preset, onDone }) => {
+  const layerRef = useRef(null);
+  const [chosen, setChosen] = useState("powers");
+  const [status, setStatus] = useState("");
+  const [barAt, setBarAt] = useState(1); // (the bar's place, out of the way of what's being placed: top, middle, bottom)
+  const drag = useRef(undefined);
+  const startDrag = (group, event) => {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setChosen(group);
+    drag.current = { group, x: event.clientX, y: event.clientY };
+  };
+  const moveDrag = event => {
+    if (!drag.current) return;
+    const box = layerRef.current.getBoundingClientRect();
+    const { group, x, y } = drag.current;
+    const dx = (event.clientX - x) / box.width;
+    const dy = (event.clientY - y) / box.height;
+    drag.current = { group, x: event.clientX, y: event.clientY };
+    setHudGroupTuning(layoutId, group, now => ({ dx: now.dx + dx, dy: now.dy + dy }));
+  };
+  const endDrag = () => { drag.current = undefined; };
+  const resize = by => setHudGroupTuning(layoutId, chosen, now => ({ scale: Math.max(0.4, Math.min(2.5, now.scale * by)) }));
+  const reset = () => setHudGroupTuning(layoutId, chosen, () => ({ dx: 0, dy: 0, scale: 1 }));
+  const save = async () => {
+    setStatus("Saving...");
+    setStatus(await saveTouchTuning());
+  };
+  const extras = layout.extras;
+  return (
+    <PlacementShade ref={layerRef} data-placement-tool>
+      {/* where a Kaiju's extra powers go (the final fight only): three ghosts to place */}
+      {extras && [0, 1, 2].map(k => (
+        <Ghost key={k} style={{ left: `${(extras.x + ((extras.right - extras.x) * k) / 2) * 100}cqw`, top: `${extras.y * 100}cqh`, width: `${extras.size * 100}cqh`, height: `${extras.size * 100}cqh` }} />
+      ))}
+      {HUD_GROUPS.filter(group => layout[group]).map(group => {
+        const middle = getGroupMiddle(layout, group);
+        return (
+          <Handle key={group} $isChosen={chosen == group} style={{ left: `${middle.x * 100}cqw`, top: `${middle.y * 100}cqh` }}
+            onPointerDown={event => startDrag(group, event)} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={endDrag}>
+            {HUD_GROUP_LABELS[group]}
+          </Handle>
+        );
+      })}
+      <ToolBar style={{ top: `${[2, 30, 58][barAt]}cqh` }}>
+        {/* (no brackets: the pixel font has none) */}
+        <span>{preset.label}: {getShortSidePx()} px</span>
+        <GlassButton aria-label="Move this bar" onClick={() => setBarAt(at => (at + 1) % 3)}>Move bar</GlassButton>
+        <span>{HUD_GROUP_LABELS[chosen]}:</span>
+        <GlassButton aria-label="Smaller" onClick={() => resize(1 / 1.06)}>-</GlassButton>
+        <GlassButton aria-label="Bigger" onClick={() => resize(1.06)}>+</GlassButton>
+        <GlassButton onClick={reset}>Reset</GlassButton>
+        <span>Zoom:</span>
+        <GlassButton aria-label="Zoom out" onClick={() => updatePresetTuning(now => ({ minTilePx: Math.max(14, now.minTilePx - 2) }))}>-</GlassButton>
+        <span>{tuning.minTilePx}</span>
+        <GlassButton aria-label="Zoom in" onClick={() => updatePresetTuning(now => ({ minTilePx: Math.min(80, now.minTilePx + 2) }))}>+</GlassButton>
+        <span>Panel:</span>
+        <GlassButton aria-label="Panel narrower" onClick={() => updatePresetTuning(now => ({ dialogueShare: Math.max(0.25, +(now.dialogueShare - 0.02).toFixed(2)) }))}>-</GlassButton>
+        <span>{Math.round(tuning.dialogueShare * 100)}%</span>
+        <GlassButton aria-label="Panel wider" onClick={() => updatePresetTuning(now => ({ dialogueShare: Math.min(0.55, +(now.dialogueShare + 0.02).toFixed(2)) }))}>+</GlassButton>
+        <GlassButton onClick={save}>Save</GlassButton>
+        <GlassButton onClick={onDone}>Done</GlassButton>
+        {status && <span style={{ flexBasis: "100%", textAlign: "center", fontSize: "2.2cqh" }}>{status}</span>}
+      </ToolBar>
+    </PlacementShade>
   );
 };
 
@@ -545,13 +687,16 @@ export const DeviceSelect = () => (
   a power's index pressed; 'menu' { isOpen, onOpen, onClose, onControls, onQuit, canPause }.
 */
 export const TouchHud = ({ layoutId, onLayout, pd, isPaused, isHudShowing, isStickShowing, isPowersShowing, objective, onDir, onPower, menu }) => {
-  const layout = TOUCH_LAYOUTS[layoutId] || TOUCH_LAYOUTS[TOUCH_LAYOUT_IDS[0]];
+  // (this screen's size's moves and sizes on the layout: touchTuning.js)
+  const { tuning, preset } = useTouchTuning();
+  const layout = getTunedLayout(TOUCH_LAYOUTS[layoutId] || TOUCH_LAYOUTS[TOUCH_LAYOUT_IDS[0]], tuning.hud[layoutId], preset.hudScale || 1);
+  const [isPlacing, setIsPlacing] = useState(false);
   const abilities = (pd && pd.abilities) || [];
   const extras = abilities.slice(3);
   const isAlive = pd && !pd.isDead;
   return (
     <Layer data-touch-hud>
-      {!menu.isOpen && <MenuButton aria-label="Menu" style={{ ...placeRound(layout.menu), pointerEvents: "auto" }} onClick={menu.onOpen}><span /><span /><span /></MenuButton>}
+      {!menu.isOpen && !isPlacing && <MenuButton aria-label="Menu" style={{ ...placeRound(layout.menu), pointerEvents: "auto" }} onClick={menu.onOpen}><span /><span /><span /></MenuButton>}
       <Ticker spot={layout.ticker} text={objective} isPaused={isPaused} />
       {isStickShowing && <Group><Joystick spot={layout.joystick} onDir={onDir} /></Group>}
       {isHudShowing && isAlive && (
@@ -569,7 +714,8 @@ export const TouchHud = ({ layoutId, onLayout, pd, isPaused, isHudShowing, isSti
           })}
         </Group>
       )}
-      {menu.isOpen && <Menu {...menu} layoutId={layoutId} onLayout={onLayout} />}
+      {menu.isOpen && <Menu {...menu} layoutId={layoutId} onLayout={onLayout} onPlace={menu.onPlaceStart && (() => { setIsPlacing(true); menu.onPlaceStart(); })} />}
+      {isPlacing && <PlacementTool layout={layout} layoutId={layoutId} tuning={tuning} preset={preset} onDone={() => { setIsPlacing(false); menu.onPlaceEnd(); }} />}
     </Layer>
   );
 };
