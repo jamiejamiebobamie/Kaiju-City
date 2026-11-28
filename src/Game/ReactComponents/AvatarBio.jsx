@@ -89,6 +89,10 @@ const AGENT_CALL = { line: "Welcome, recruit.\nWho are you?" }; // (Jamie's word
 // a hover, he's simply there (a quick fade)
 const AGENT_TIMING = { walkMs: 1700, balloonAtMs: 1750, typeMs: 55, quickMs: 260 };
 let isAgentIntroDone = false;
+// told as he shows on the side screen: the Sleazy Agent's theme starts then (Jamie, 2026-11-27: no music before it, for
+// the lights and the tanks coming up)
+const shownListeners = new Set();
+export const onAgentShown = listener => { shownListeners.add(listener); return () => shownListeners.delete(listener); };
 // told once his "...Who are you?" is all typed: the avatar select's tanks wait for it (Jamie, playtest 34)
 const introListeners = new Set();
 export const whenAgentIntroDone = listener => {
@@ -331,6 +335,7 @@ const AgentCall = ({ startDelayMs = 0 }) => {
   const [isStarted, setIsStarted] = useState(isQuick || startDelayMs <= 0);
   const [isBalloonUp, setIsBalloonUp] = useState(isQuick);
   const [typed, setTyped] = useState(isQuick ? AGENT_CALL.line.length : 0);
+  useEffect(() => { if (isStarted) shownListeners.forEach(listener => listener()); }, [isStarted]);
   useEffect(() => {
     if (isQuick) return;
     const at = Math.max(0, startDelayMs);

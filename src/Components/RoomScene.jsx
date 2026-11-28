@@ -310,15 +310,18 @@ export const BlackLight = ({ room = ROOM, burstsAtMs = undefined }) => {
 // the room's living things, over its picture (in a box the picture's shape)
 // ('hasClock': false for the Lab's desk, which has none: Jamie, playtest 39; 'room': which room's spots: the Lab's desk
 // is the old room's; 'blackLightBurstsAtMs': the zoom's flickers)
-export const RoomExtras = ({ hasClock = true, room = ROOM, blackLightBurstsAtMs = undefined }) => (
+export const RoomExtras = ({ hasClock = true, room = ROOM, blackLightBurstsAtMs = undefined, hasSteam = true }) => (
   <>
     {!room.hasOwnMonitor && <MonitorStand room={room} />}
     {hasClock && <ClockDigits style={at(...room.clockDigits)} />}
-    <Steam style={at(...room.steam)} size={room.steam.slice(2)} />
+    {hasSteam && <Steam style={at(...room.steam)} size={room.steam.slice(2)} />}
     {room.blackLight && <BlackLight room={room} burstsAtMs={blackLightBurstsAtMs} />}
   </>
 );
 
+// (Jamie, 2026-11-27: the room's edges darken into black, as if past the lamp's light, before they fade out: something's
+// there, unlit, not a flat color)
+const ROOM_EDGE_DARK = { across: 9, down: 8, darkness: 0.92 }; // % of the picture's width and height; at the very edge
 const Box = styled.div`
   position: fixed;
   z-index: 0;
@@ -328,6 +331,15 @@ const Box = styled.div`
   pointer-events: none;
   filter: brightness(var(--room-brightness, 1));
   transition: filter ${ROOM.settleMs}ms ease-out;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(to right, rgba(0, 0, 0, ${ROOM_EDGE_DARK.darkness}), transparent ${ROOM_EDGE_DARK.across}%, transparent ${100 - ROOM_EDGE_DARK.across}%, rgba(0, 0, 0, ${ROOM_EDGE_DARK.darkness})),
+      linear-gradient(to bottom, rgba(0, 0, 0, ${ROOM_EDGE_DARK.darkness}), transparent ${ROOM_EDGE_DARK.down}%, transparent ${100 - ROOM_EDGE_DARK.down}%, rgba(0, 0, 0, ${ROOM_EDGE_DARK.darkness}));
+  }
 `;
 
 // the front layer: the room picture's things in front of the monitor, over the game frame (it's a stacking context)
@@ -341,6 +353,13 @@ const FrontBox = styled.div`
   pointer-events: none;
 `;
 
+// the coffee's steam, rising in front of the side monitor and console (Jamie, 2026-11-27: more immersive; the mug stays
+// where it is in the room). Placed as the room is; over the front layer and the side units, under the Lab's lights out
+const SteamBox = styled(FrontBox)`
+  z-index: 7;
+  background: none;
+`;
+
 const lerp = (a, b, t) => a + (b - a) * t;
 const ease = t => 1 - Math.pow(1 - Math.min(Math.max(t, 0), 1), 3);
 
@@ -348,6 +367,7 @@ const ease = t => 1 - Math.pow(1 - Math.min(Math.max(t, 0), 1), 3);
 export const RoomBackdrop = () => {
   const ref = useRef(null);
   const frontRef = useRef(null);
+  const steamRef = useRef(null);
   const [isStandInShown, setIsStandInShown] = useState(!!ROOM_HANDOFF.view);
   // (the whole page has the eye cursor while the apartment is up: where the camera's pan has moved the game area aside,
   // at the window's edges, the page shows. Jamie, 2026-11-25)
@@ -361,8 +381,16 @@ export const RoomBackdrop = () => {
     if (from) resetCamera(); // (from the landing's zoom: the view starts still, in the middle)
     const start = performance.now();
     let frameId;
-    // the camera's offset this game area has now (it moves the whole area: the room, the monitor, all of it)
-    const applied = { x: 0, y: 0 };
+    // the camera's offset and zoom this game area has now (it moves the whole area: the room, the monitor, all of it;
+    // the zoom about the window's middle)
+    const applied = { x: 0, y: 0, scale: 1 };
+    // a box seen on the screen, as it would be with the camera still (the area unmoved and unzoomed)
+    const unmove = (seen, middle) => ({
+      left: middle.x + (seen.left - middle.x - applied.x) / applied.scale,
+      top: middle.y + (seen.top - middle.y - applied.y) / applied.scale,
+      width: seen.width / applied.scale,
+      height: seen.height / applied.scale
+    });
     const place = () => {
       const box = ref.current;
       const casing = document.querySelector("[data-tv-casing]");
@@ -370,8 +398,9 @@ export const RoomBackdrop = () => {
       if (box && area && !ROOM_HANDOFF.isFrozen) {
         const now = performance.now();
         // (where the casing would be with the camera still: the room is placed from that)
-        const seen = casing && casing.getBoundingClientRect();
-        const casingBox = seen && { left: seen.left - applied.x, width: seen.width, bottom: seen.bottom - applied.y, height: seen.height };
+        const middle = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+        const seen = casing && unmove(casing.getBoundingClientRect(), middle);
+        const casingBox = seen && { left: seen.left, width: seen.width, bottom: seen.top + seen.height, height: seen.height };
         if (casingBox && casingBox.height > 0) ROOM_HANDOFF.casingAspect = casingBox.width / casingBox.height;
         let view = casingBox && getRoomViewFor(casingBox);
         const isSettling = !!from && now - start < ROOM.settleMs;
@@ -384,21 +413,42 @@ export const RoomBackdrop = () => {
           // the camera: as far as the room picture reaches past the window each way (less its faded edge)
           const height = (view.width * ROOM.size.height) / ROOM.size.width;
           const fade = { x: ROOM_EDGE_FADE * view.width, y: ROOM_EDGE_FADE * height };
-          const limits = {
-            x: [Math.min(0, window.innerWidth - (view.left + view.width) + fade.x), Math.max(0, -view.left - fade.x)],
-            y: [Math.min(0, window.innerHeight - (view.top + height) + fade.y), Math.max(0, -view.top - fade.y)]
+          // (zoomed out by 's' about the window's middle, the room's edges come in toward it: the pan's limits shrink)
+          const getLimits = s => {
+            // (zoomed out, the room may have to move to keep covering the window: it's placed round the monitor, not the
+            // window's middle. When it can't cover both sides at once (it's out as far as it goes), it's held between)
+            const edge = (low, size, extent, fadeBy, mid) => {
+              const least = extent - mid - s * (low + size - mid) + s * fadeBy;
+              const most = -mid - s * (low - mid) - s * fadeBy;
+              if (s >= 0.999) return [Math.min(0, least), Math.max(0, most)]; // (as it always was, not zoomed)
+              return least <= most ? [least, most] : [(least + most) / 2, (least + most) / 2];
+            };
+            return { x: edge(view.left, view.width, window.innerWidth, fade.x, middle.x), y: edge(view.top, height, window.innerHeight, fade.y, middle.y) };
           };
-          const areaBox = area.getBoundingClientRect();
-          const origin = { x: areaBox.left - applied.x, y: areaBox.top - applied.y };
-          const camera = stepCamera(now, limits, isSettling, casingBox && { left: casingBox.left, right: casingBox.left + casingBox.width });
+          // (how far out it may go: the room, less its faded edges, still covering the window)
+          const minScale = Math.min(1, Math.max(window.innerWidth / Math.max(1, view.width - 2 * fade.x), window.innerHeight / Math.max(1, height - 2 * fade.y)));
+          const areaBox = unmove(area.getBoundingClientRect(), middle);
+          const origin = { x: areaBox.left, y: areaBox.top };
+          const camera = stepCamera(now, getLimits, isSettling, casingBox && { left: casingBox.left, right: casingBox.left + casingBox.width }, minScale);
           applied.x = camera.x;
           applied.y = camera.y;
+          applied.scale = camera.scale;
           area.style.translate = `${applied.x.toFixed(2)}px ${applied.y.toFixed(2)}px`;
+          area.style.transformOrigin = `${(middle.x - origin.x).toFixed(1)}px ${(middle.y - origin.y).toFixed(1)}px`;
+          area.style.scale = applied.scale.toFixed(4);
           // (the room's box is fixed, so it's placed in the moved area's own px: where it's seen, less the area's place)
           box.style.left = `${view.left - origin.x}px`;
           box.style.top = `${view.top - origin.y}px`;
           box.style.width = `${view.width}px`;
           box.style.visibility = "visible";
+          const steam = steamRef.current;
+          if (steam) {
+            steam.style.left = box.style.left;
+            steam.style.top = box.style.top;
+            steam.style.width = box.style.width;
+            steam.style.visibility = "visible";
+            steam.style.filter = getComputedStyle(box).filter;
+          }
           const front = frontRef.current;
           if (front) {
             front.style.left = box.style.left;
@@ -426,8 +476,9 @@ export const RoomBackdrop = () => {
   // (and what's in front of the monitor, over the game frame: placed as the room is. Layout phase 3)
   return (
     <>
-      <Box ref={ref} data-room-box aria-hidden="true" style={{ visibility: "hidden", ...getEdgeFade(ROOM_EDGE_FADE) }}><RoomExtras /><RoomMonitor isShown={isStandInShown} /></Box>
-      {ROOM.front && <FrontBox ref={frontRef} aria-hidden="true" style={{ visibility: "hidden", backgroundImage: `url(${ROOM.front})` }} />}
+      <Box ref={ref} data-room-box aria-hidden="true" style={{ visibility: "hidden", ...getEdgeFade(ROOM_EDGE_FADE) }}><RoomExtras hasSteam={false} /><RoomMonitor isShown={isStandInShown} /></Box>
+      {ROOM.front && <FrontBox ref={frontRef} aria-hidden="true" style={{ visibility: "hidden", backgroundImage: `url(${ROOM.front})`, ...getEdgeFade(ROOM_EDGE_DARK.across / 100) }} />}
+      <SteamBox ref={steamRef} aria-hidden="true" style={{ visibility: "hidden" }}><Steam style={at(...ROOM.steam)} size={ROOM.steam.slice(2)} /></SteamBox>
     </>
   );
 };

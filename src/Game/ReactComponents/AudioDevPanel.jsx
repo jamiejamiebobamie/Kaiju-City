@@ -181,9 +181,9 @@ export const AudioDevPanel = () => {
   useEffect(() => { if (!soundId && recent[0]) setSoundId(recent[0]); }, [recent]);
   const shownSound = soundId;
 
-  if (!isOpen) return <Panel style={{ width: "auto" }}><button data-sfx="none" onClick={() => setIsOpen(true)}>Sound (dev)</button></Panel>;
+  if (!isOpen) return <Panel data-camera-keep-out style={{ width: "auto" }}><button data-sfx="none" onClick={() => setIsOpen(true)}>Sound (dev)</button></Panel>;
   return (
-    <Panel onPointerDown={event => event.stopPropagation()}>
+    <Panel data-camera-keep-out onPointerDown={event => event.stopPropagation()}>
       <Row style={{ justifyContent: "space-between" }}>
         <Title>Sound (dev)</Title>
         <button data-sfx="none" onClick={() => setIsOpen(false)}>hide</button>

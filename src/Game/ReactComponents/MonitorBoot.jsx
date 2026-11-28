@@ -34,13 +34,52 @@ const Screen = styled.div`
   pointer-events: auto;
 `;
 /*
-  Behind the logo and Play (Jamie, playtest 30: the screens were dull): a cascade of 1s and 0s in purple, matrix-style:
-  columns falling at their own speeds, each with a bright head and a trail that fades, now and then a digit flickering.
+  Behind the logo and Play (Jamie, playtest 30: the screens were dull): a cascade in purple, matrix-style: columns
+  falling at their own speeds, each with a bright head and a trail that fades.
+  (Jamie, 2026-11-27: Kaiju, not 1s and 0s: flat neon silhouettes of the Kaiju's sprite frames, as Stompy is drawn. At
+  the head, its walk toward the viewer steps on, bright; the step it's on as the head moves on burns there, purple, and
+  fades away where it is, as a phantom)
 */
 // (Jamie, playtest 31: in cascades: neighbouring columns fall together in bands, like a waterfall, with longer trails)
 // (denser: more columns, longer trails, bands back sooner: Jamie, playtest 31; was 42 columns, fade 0.045)
 // (the digits 2.5 times as big: Jamie, playtest 31: a digit fills its column, so 64 / 2.5 columns across)
-const RAIN = { columns: 33, /* (0.8 of the last size: 26 / 0.8) */ speed: [6, 12], fade: 0.03, head: "#f1dcff", body: [178, 92, 255], glyphs: "01", band: [2, 5], jitter: 0.12 };
+// (Jamie, 2026-11-27: the Kaiju larger, 22 columns, was 33; and more cascades: 'lanes' falling in each column at once)
+const RAIN = { columns: 22, lanes: 2, /* (0.8 of the last size: 26 / 0.8) */ speed: [4, 8] /* (a third slower: Jamie, 2026-11-27; was 6 to 12 cells a second) */, fade: 0.03, head: "#f1dcff", body: [178, 92, 255], glyphs: "01", band: [2, 5], jitter: 0.12, flashMs: 70, background: "#05030a", clearEveryMs: 500, clearBelow: 80 /* (r + g + b: the background is 18; a fade stalls about 16 above it in each channel, ~66) */ };
+// the Kaiju's frames (Stompy's sheet: Tamagotchi's SHEET), each a silhouette in one color
+const RAIN_SHEET = { src: "/spritesheet/kaiju_sprite2.png", frames: 10, rows: 6, frameWidth: 180, frameHeight: 1382 / 6 };
+const RAIN_FRAME_COUNT = RAIN_SHEET.frames * RAIN_SHEET.rows;
+// (Jamie, 2026-11-27: only the row walking toward the viewer, down the screen, its walk played in order; no random poses)
+const RAIN_WALK_ROW = 2;
+const rainSheet = typeof Image != "undefined" ? new Image() : undefined;
+if (rainSheet) rainSheet.src = RAIN_SHEET.src;
+// each frame's figure: its box on the sheet, trimmed of empty space (found once)
+const figureBoxes = new Map();
+const getFigureBox = frame => {
+  if (figureBoxes.has(frame)) return figureBoxes.get(frame);
+  const width = rainSheet.naturalWidth / RAIN_SHEET.frames;
+  const height = rainSheet.naturalHeight / RAIN_SHEET.rows;
+  const left = (frame % RAIN_SHEET.frames) * width;
+  const top = Math.floor(frame / RAIN_SHEET.frames) * height;
+  const scan = document.createElement("canvas");
+  scan.width = Math.ceil(width);
+  scan.height = Math.ceil(height);
+  const scanCtx = scan.getContext("2d");
+  scanCtx.drawImage(rainSheet, left, top, width, height, 0, 0, width, height);
+  const { data } = scanCtx.getImageData(0, 0, scan.width, scan.height);
+  let [minX, minY, maxX, maxY] = [scan.width, scan.height, -1, -1];
+  for (let y = 0; y < scan.height; y++) {
+    for (let x = 0; x < scan.width; x++) {
+      if (data[(y * scan.width + x) * 4 + 3] < 40) continue;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+  }
+  const box = maxX < 0 ? { x: left, y: top, width, height } : { x: left + minX, y: top + minY, width: maxX - minX + 1, height: maxY - minY + 1 };
+  figureBoxes.set(frame, box);
+  return box;
+};
 const RainCanvas = styled.canvas`
   position: absolute;
   inset: 0;
@@ -57,28 +96,69 @@ const MatrixRain = () => {
     let width = 0;
     let height = 0;
     let cell = 10;
-    let drops = [];
-    // a cell's digit: fixed for its column and row (a hash), so nothing changes in place
-    const glyphAt = (column, row) => RAIN.glyphs[(((column * 73856093) ^ (row * 19349663)) >>> 0) % RAIN.glyphs.length];
-    const launchBand = (from, to, top) => {
+    let lanes = []; // each lane: a drop per column, in its own bands
+    // a frame's silhouette in a color, at the cell's size (made once each)
+    let tints = new Map();
+    const getTint = (frame, color) => {
+      const key = `${frame}|${color}`;
+      if (tints.has(key)) return tints.get(key);
+      if (!rainSheet || !rainSheet.complete || !rainSheet.naturalWidth) return undefined;
+      const size = Math.max(4, Math.round(cell));
+      const tint = document.createElement("canvas");
+      tint.width = size;
+      tint.height = size;
+      const tintCtx = tint.getContext("2d");
+      // (the figure only, trimmed of the frame's empty space, fitted to the cell: the frames are mostly space)
+      const box = getFigureBox(frame);
+      const fit = size / Math.max(box.width, box.height);
+      const drawWidth = box.width * fit;
+      const drawHeight = box.height * fit;
+      tintCtx.imageSmoothingEnabled = false;
+      tintCtx.drawImage(rainSheet, box.x, box.y, box.width, box.height, (size - drawWidth) / 2, size - drawHeight, drawWidth, drawHeight);
+      tintCtx.globalCompositeOperation = "source-in";
+      tintCtx.fillStyle = color;
+      tintCtx.fillRect(0, 0, size, size);
+      tints.set(key, tint);
+      return tint;
+    };
+    // a drop's first step: anywhere in the walk; then each next one in turn
+    const getRandomFrame = () => RAIN_WALK_ROW * RAIN_SHEET.frames + Math.floor(Math.random() * RAIN_SHEET.frames);
+    const getNextFrame = frame => RAIN_WALK_ROW * RAIN_SHEET.frames + ((frame % RAIN_SHEET.frames) + 1) % RAIN_SHEET.frames;
+    // a cell's Kaiju (or, till the sheet's in, its digit), drawn over a cleared cell
+    const drawCell = (column, row, frame, color) => {
+      const x = column * cell;
+      const y = row * cell - cell * 0.85;
+      ctx.fillStyle = RAIN.background;
+      ctx.fillRect(x, y, cell, cell);
+      const tint = getTint(frame, color);
+      if (tint) ctx.drawImage(tint, x, y, cell, cell);
+      else {
+        ctx.fillStyle = color;
+        ctx.fillText(RAIN.glyphs[frame % RAIN.glyphs.length], x + cell / 2, row * cell);
+      }
+    };
+    const launchBand = (drops, from, to, top) => {
       playSfx("boot-tick", { gain: 0.45, minGapMs: 40 }); // (the boot patter: a data tick as each cascade starts. Jamie, 2026-11-26)
       const speed = RAIN.speed[0] + Math.random() * (RAIN.speed[1] - RAIN.speed[0]);
       for (let k = from; k < to; k++) {
-        drops[k] = { y: top - Math.random() * cell * 4, speed: speed * (1 + (Math.random() - 0.5) * RAIN.jitter * 2), band: from, bandEnd: to };
+        drops[k] = { y: top - Math.random() * cell * 4, speed: speed * (1 + (Math.random() - 0.5) * RAIN.jitter * 2), band: from, bandEnd: to, frame: getRandomFrame(), flashAt: 0 };
       }
     };
     const resize = () => {
       width = canvas.width = Math.max(1, canvas.clientWidth);
       height = canvas.height = Math.max(1, canvas.clientHeight);
       cell = width / RAIN.columns;
-      drops = [...Array(RAIN.columns)].map(() => ({ y: 0, speed: 0, band: 0 }));
+      tints = new Map();
+      lanes = [...Array(RAIN.lanes)].map(() => [...Array(RAIN.columns)].map(() => ({ y: 0, speed: 0, band: 0, frame: 0, flashAt: 0 })));
       // bands of neighbouring columns: each band one cascade, its columns a little apart in step and speed
-      for (let k = 0; k < RAIN.columns;) {
-        const size = Math.round(RAIN.band[0] + Math.random() * (RAIN.band[1] - RAIN.band[0]));
-        launchBand(k, Math.min(RAIN.columns, k + size), Math.random() * height * 1.2 - height * 0.3); // (all down the screen from the start)
-        k += size;
-      }
-      ctx.fillStyle = "#05030a";
+      lanes.forEach(drops => {
+        for (let k = 0; k < RAIN.columns;) {
+          const size = Math.round(RAIN.band[0] + Math.random() * (RAIN.band[1] - RAIN.band[0]));
+          launchBand(drops, k, Math.min(RAIN.columns, k + size), Math.random() * height * 1.2 - height * 0.3); // (all down the screen from the start)
+          k += size;
+        }
+      });
+      ctx.fillStyle = RAIN.background;
       ctx.fillRect(0, 0, width, height);
     };
     resize();
@@ -86,6 +166,7 @@ const MatrixRain = () => {
     observer.observe(canvas);
     let frameId;
     let last = performance.now();
+    let lastClearAt = last;
     const run = () => {
       const now = performance.now();
       const dt = Math.min(0.05, (now - last) / 1000);
@@ -93,27 +174,46 @@ const MatrixRain = () => {
       // the trails fade
       ctx.fillStyle = `rgba(5, 3, 10, ${RAIN.fade})`;
       ctx.fillRect(0, 0, width, height);
+      // (and fade away for good: a little fade each frame stalls just above black, in the canvas's rounding, leaving
+      // faint ghosts for ever. Every so often the faintest go black: Jamie, 2026-11-27)
+      if (now - lastClearAt > RAIN.clearEveryMs && width > 1) {
+        lastClearAt = now;
+        const image = ctx.getImageData(0, 0, width, height);
+        const { data } = image;
+        for (let at = 0; at < data.length; at += 4) {
+          if (data[at] + data[at + 1] + data[at + 2] < RAIN.clearBelow) {
+            data[at] = 5;
+            data[at + 1] = 3;
+            data[at + 2] = 10;
+          }
+        }
+        ctx.putImageData(image, 0, 0);
+      }
       ctx.font = `${Math.round(cell * 0.95)}px gameboy, monospace`;
       ctx.textAlign = "center";
       const [r, g, b] = RAIN.body;
-      drops.forEach((drop, k) => {
+      const body = `rgb(${r}, ${g}, ${b})`;
+      lanes.forEach(drops => drops.forEach((drop, k) => {
         const before = Math.floor(drop.y / cell);
         drop.y += drop.speed * cell * dt;
         const row = Math.floor(drop.y / cell);
         if (row != before && row >= 0) {
-          const x = (k + 0.5) * cell;
-          // the one above the head turns purple; the head itself bright. Each cell keeps its own digit (Jamie, playtest
-          // 31: random digits each step made it jitter): the same one is drawn over it as it dims
-          ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-          ctx.fillText(glyphAt(k, row - 1), x, (row - 1) * cell);
-          ctx.fillStyle = RAIN.head;
-          ctx.fillText(glyphAt(k, row), x, row * cell);
+          // the head moves on: the frame it was on burns into the cell it leaves, purple, and fades there
+          drawCell(k, row - 1, drop.frame, body);
+          drop.frame = getNextFrame(drop.frame);
+          drop.flashAt = now;
+          drawCell(k, row, drop.frame, RAIN.head);
+        } else if (row >= 0 && now - drop.flashAt >= RAIN.flashMs) {
+          // at the head, the walk steps on
+          drop.frame = getNextFrame(drop.frame);
+          drop.flashAt = now;
+          drawCell(k, row, drop.frame, RAIN.head);
         }
         // a band starts again together, once all of it has run off the bottom
-        if (k == drop.band && drops.slice(drop.band, drop.bandEnd).every(other => other.y > height + cell * 10) && Math.random() < 0.5) {
-          launchBand(drop.band, drop.bandEnd, -Math.random() * height * 0.1);
+        if (k == drop.band && drops.slice(drop.band, drop.bandEnd).every(other => other.y > height + cell * 4) && Math.random() < 0.5) /* (back sooner: Jamie, 2026-11-27; was 10 cells past) */ {
+          launchBand(drops, drop.band, drop.bandEnd, -Math.random() * height * 0.1);
         }
-      });
+      }));
       frameId = requestAnimationFrame(run);
     };
     frameId = requestAnimationFrame(run);

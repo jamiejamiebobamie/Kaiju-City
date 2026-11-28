@@ -17,7 +17,10 @@ export const CAMERA_TUNING = {
   edge: { across: 0.06, down: 0.08, minPx: 28, casingGapPx: 10 },
   glide: 3, // how quickly it follows (per second: higher is snappier); critically damped, so never past its place
   maxSpeed: 0.9, // window heights per second
-  shake: { amplitude: 0.0055 } // window heights
+  shake: { amplitude: 0.0055 }, // window heights
+  // (Jamie, 2026-11-27) the pull back as it looks about: in an edge band, the view also zooms out, as far as the room
+  // picture still covers the window, gliding as the pan does: slow to start, building, easing to its stop
+  zoomOut: { glide: 1.4, maxSpeed: 0.14 } // per second; scale per second (about 3 s all the way out)
 };
 
 const readShaky = () => {
@@ -32,6 +35,7 @@ const readShaky = () => {
 export const CAMERA = {
   x: 0, // the scene's offset now (px), pan and shake together
   y: 0,
+  scale: 1, // the pull back: 1 as it stands, less as it zooms out (about the window's middle)
   isShaky: readShaky()
 };
 export const setIsShakyCam = isShaky => {
@@ -45,9 +49,20 @@ export const setIsShakyCam = isShaky => {
 
 // per axis: where it's panned (px), how fast (px/s), and where it's going (a share of the way to a limit, -1 to 1)
 const axes = { x: { at: 0, speed: 0, aim: 0 }, y: { at: 0, speed: 0, aim: 0 } };
-const mouse = { x: undefined, y: undefined, isIn: false };
+const zoom = { at: 1, speed: 0 };
+const mouse = { x: undefined, y: undefined, isIn: false, isKeptOut: false };
 let isListening = false;
 const isOverControl = target => !!(target && target.closest && target.closest("button, select, input, textarea, a, label, [role=button]"));
+/*
+  (Jamie, 2026-11-27: the side content to click (the side monitor and the console, beside the avatar select, the power
+  picker and the color vat; the dev panel) sat in the right-hand band: reaching for it panned the room away. The
+  mouse on or near one of them ('data-camera-keep-out', 'KEEP_OUT_MARGIN_PX' round it) asks for no look at all)
+*/
+const KEEP_OUT_MARGIN_PX = 24;
+const getIsInKeepOut = (x, y) => [...document.querySelectorAll("[data-camera-keep-out]")].some(element => {
+  const box = element.getBoundingClientRect();
+  return box.width > 0 && x >= box.left - KEEP_OUT_MARGIN_PX && x <= box.right + KEEP_OUT_MARGIN_PX && y >= box.top - KEEP_OUT_MARGIN_PX && y <= box.bottom + KEEP_OUT_MARGIN_PX;
+});
 
 const listen = () => {
   if (isListening || typeof window == "undefined") return;
@@ -57,6 +72,7 @@ const listen = () => {
     mouse.isIn = !isOverControl(event.target) && event.buttons == 0;
     mouse.x = event.clientX;
     mouse.y = event.clientY;
+    mouse.isKeptOut = getIsInKeepOut(event.clientX, event.clientY);
   }, { passive: true });
   // (out of the window, often just past its edge: likewise)
   document.documentElement.addEventListener("mouseleave", () => (mouse.isIn = false));
@@ -68,6 +84,7 @@ const listen = () => {
 // high bands end (px from the window's left or top)
 const smooth = t => t * t * (3 - 2 * t);
 const getAim = (position, near, far, size, was) => {
+  if (mouse.isKeptOut) return 0; // (over the side content: back to its usual place)
   if (!mouse.isIn || position === undefined) return was;
   if (position < near) return smooth(Math.min(1, (near - position) / Math.max(1, near)));
   if (position > far) return -smooth(Math.min(1, (position - far) / Math.max(1, size - far)));
@@ -107,28 +124,41 @@ const getShake = now => {
 };
 
 let lastNow;
-// a frame: 'limits' how far each way the scene can move and still be all room picture ({ x: [low, high], y: [...] },
-// px; the scene's offset); 'isHeld' keeps it in its usual place (the zoom's hand-off); 'casing' the monitor casing's
-// left and right, unpanned (px), for the side bands. Returns the offset.
-export const stepCamera = (now, limits, isHeld = false, casing = undefined) => {
+// a frame: 'getLimits(scale)' how far each way the scene can move at that zoom and still be all room picture
+// ({ x: [low, high], y: [...] }, px; the scene's offset); 'isHeld' keeps it in its usual place (the zoom's hand-off);
+// 'casing' the monitor casing's left and right, unpanned (px), for the side bands; 'minScale' how far it may zoom out
+// (1: not at all). Returns the offset and the zoom.
+export const stepCamera = (now, getLimits, isHeld = false, casing = undefined, minScale = 1) => {
   listen();
   const dt = lastNow === undefined ? 0 : Math.min(0.05, Math.max(0, (now - lastNow) / 1000));
   lastNow = now;
   if (dt > 0) {
     const unit = window.innerHeight;
     const { innerWidth: width, innerHeight: height } = window;
-    stepAxis(axes.x, isHeld ? 0 : getAim(mouse.x, ...getBands(width, CAMERA_TUNING.edge.across, casing), width, axes.x.aim), limits.x, dt, unit);
-    stepAxis(axes.y, isHeld ? 0 : getAim(mouse.y, ...getBands(height, CAMERA_TUNING.edge.down), height, axes.y.aim), limits.y, dt, unit);
+    const aimX = isHeld ? 0 : getAim(mouse.x, ...getBands(width, CAMERA_TUNING.edge.across, casing), width, axes.x.aim);
+    const aimY = isHeld ? 0 : getAim(mouse.y, ...getBands(height, CAMERA_TUNING.edge.down), height, axes.y.aim);
+    // the pull back: as far into a band as the mouse is, that share of the way out (a critically damped glide, as the pan)
+    const { glide, maxSpeed } = CAMERA_TUNING.zoomOut;
+    const lowest = Math.min(1, minScale);
+    const zoomTarget = 1 - Math.max(Math.abs(aimX), Math.abs(aimY)) * (1 - lowest);
+    zoom.speed += (glide * glide * (zoomTarget - zoom.at) - 2 * glide * zoom.speed) * dt;
+    zoom.speed = Math.max(-maxSpeed, Math.min(maxSpeed, zoom.speed));
+    zoom.at = Math.max(lowest, Math.min(1, zoom.at + zoom.speed * dt));
+    const limits = getLimits(zoom.at);
+    stepAxis(axes.x, aimX, limits.x, dt, unit);
+    stepAxis(axes.y, aimY, limits.y, dt, unit);
   }
   const shake = getShake(now);
   CAMERA.x = axes.x.at + shake.x;
   CAMERA.y = axes.y.at + shake.y;
+  CAMERA.scale = zoom.at;
   return CAMERA;
 };
 
 // back to the middle, at once (a new arrival in the apartment: the landing's zoom hands off to the still view)
 export const resetCamera = () => {
   Object.values(axes).forEach(axis => Object.assign(axis, { at: 0, speed: 0, aim: 0 }));
+  Object.assign(zoom, { at: 1, speed: 0 });
 };
 
 /*

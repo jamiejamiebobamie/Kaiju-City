@@ -2,6 +2,9 @@ import { playSfx } from "Utils/sfx";
 
 // each power's cast and passive sounds (Jamie, 2026-11-26: Utils/sfx.js); the player's loudest, everyone else's quieter
 const CAST_SFX = { ice: "cast-ice", fire: "cast-fire", water: "cast-water", wood: "cast-wood", lightning: "cast-lightning", death: "cast-death", bubble: "cast-bubble", metal: "cast-metal", glass: "cast-glass", love: "cast-love", wink: "cast-love", heal: "cast-heal" };
+// the passives' sounds: off (Jamie, 2026-11-27: they went off with the cast, two sounds at once). The sounds stay in
+// Utils/sfx.js: 'true' here brings them back
+export const IS_PASSIVE_SFX_ON = false;
 const getSfxGain = piece => (!piece || !piece.isNpc ? 1 : piece.avatar == "kaiju" ? 0.35 : 0.55);
 
 // the extra wait before an NPC can use an ability again, in milliseconds
@@ -67,7 +70,7 @@ export class GameBoardPieceAbility {
             if (!isRefresh && maxPassiveStacks && this.passiveIds.size >= maxPassiveStacks) this.endPassive(piece, Math.min(...this.passiveIds));
             else this.gameBoardPieceAbilityData.togglePassive(piece);
             this.isPassiveApplied = true;
-            if (CAST_SFX[element]) playSfx(`passive-${element == "wink" ? "love" : element}`, { gain: getSfxGain(piece) * 0.8 });
+            if (IS_PASSIVE_SFX_ON && CAST_SFX[element]) playSfx(`passive-${element == "wink" ? "love" : element}`, { gain: getSfxGain(piece) * 0.8 });
             this.passiveCount += 1;
             const passiveId = this.passiveCount;
             this.passiveIds.add(passiveId);

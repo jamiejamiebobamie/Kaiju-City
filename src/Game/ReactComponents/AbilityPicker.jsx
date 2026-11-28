@@ -1610,7 +1610,7 @@ export const PlayConsole = (props) => {
     <>
       <Wires delayMs={MINI_TIMING.riseDelayMs + MINI_TIMING.flyMs - 250} wires={CONSOLE_WIRES} ripFor={isLeaving ? "console" : undefined} />
       <Arm box={CONSOLE} isLeaving={isLeaving} />
-      <Console $isLeaving={isLeaving}>
+      <Console data-camera-keep-out $isLeaving={isLeaving}>
         <Depth radius={1.4} />
         <FaceWell>
           <FaceBar style={{ left: "-0.2cqw" }} />
@@ -1710,7 +1710,7 @@ export const SideFrame = ({ children, brow = null, isPoweredOff = false, isLeavi
     <>
       <Wires delayMs={MINI_TIMING.wiresAtMs} ripFor={isLeaving ? "mini" : undefined} />
       <Arm box={MINI} isLeaving={isLeaving} />
-      <MiniMonitor $isLeaving={isLeaving}>
+      <MiniMonitor data-camera-keep-out $isLeaving={isLeaving}>
         <Depth radius={2} />
         {isLeaving
           ? null

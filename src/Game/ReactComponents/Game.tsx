@@ -5,7 +5,7 @@ import { GIANT_KAIJU } from 'Game/DataClasses/GiantKaiju';
 import { Credits, CREDITS_TIMING } from './Credits';
 import { createPortal } from "react-dom";
 import { LabTerminal } from "./LabTerminal";
-import { AVATAR_BIOS, RECRUIT_BIOS } from "./AvatarBio";
+import { AVATAR_BIOS, onAgentShown, RECRUIT_BIOS } from "./AvatarBio";
 import { BEATEN_CODE } from "../DataClasses/UnlockCodes";
 import styled, { css, keyframes } from "styled-components";
 import { useSnapshot } from "valtio";
@@ -72,7 +72,7 @@ const GameArea = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #0b0c0e;
+  background: #000; /* (past the room's edges: black, outside the lit room. Jamie, 2026-11-27; was #0b0c0e, which read as a color) */
 `;
 
 /*
@@ -1150,10 +1150,16 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
   useEffect(() => {
     setSoundScene(isPlayingGame ? String(level.id) : !isBooted || isMultiplayerSetupOpen ? "start" : "menu");
   }, [isPlayingGame, isBooted, isMultiplayerSetupOpen, level.id]);
+  // (Jamie, 2026-11-27: the avatar select starts with no music, for the lights and the tanks coming up; the Sleazy
+  // Agent's theme starts as he shows on the side screen, and plays on through the picker and the vat)
+  const [isAgentShown, setIsAgentShown] = useState(false);
+  useEffect(() => { const off = onAgentShown(() => setIsAgentShown(true)); return () => { off(); }; }, []);
   useEffect(() => {
     if (!isPlayingGame) {
       if (!isMonitorOn && !isBooted) return; // (dead, on the way in: the landing's title plays on)
-      playMusic(!isBooted || isMultiplayerSetupOpen ? "title" : "menu");
+      if (!isBooted || isMultiplayerSetupOpen) playMusic("title");
+      else if (isChoosingAvatar && !isAgentShown) stopMusic(1.2);
+      else playMusic("agent");
       return;
     }
     if (matchEnd && matchEnd.isFinale) return playMusic("credits");
@@ -1161,7 +1167,7 @@ export const Game = ({ handleClickHome, triggerTransition, handleShiftHome = und
     if (!musicId) return stopMusic(1.5);
     playMusic(musicId, { isLight: musicLight, intensity: musicIntensity });
     setMusicIntensity(musicIntensity);
-  }, [isPlayingGame, isMonitorOn, isBooted, isMultiplayerSetupOpen, matchEnd, musicId, musicLight, musicIntensity]);
+  }, [isPlayingGame, isMonitorOn, isBooted, isMultiplayerSetupOpen, matchEnd, musicId, musicLight, musicIntensity, isChoosingAvatar, isAgentShown]);
   useEffect(() => {
     if (!isMusicDucked) return;
     setMusicDuck(true);

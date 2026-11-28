@@ -36,7 +36,7 @@ Last updated: 2026-11-25 (evening).
    - Then Claude makes the icon set as for SpellCraft (../QuickCast): favicon.ico (16/32/48), favicon-32, apple-touch 180, icon-192, icon-512, a webmanifest, loaded with the first loader.
    > Claude (2026-11-25): the tool is built: open `localhost:5180/icon` (dev server). Pick Kaiju, Fire or Circle; drag to move, mouse wheel to scale; sliders for everything. Previews at 16, 32, 48 (on a dark tab, a light tab and clear) and 180. **Save** keeps your settings (iconTool.json); **Export 1024 px** downloads the image and writes it to `public/icon-source/kaiju-icon.png`. When you're happy with it, tell me and I'll run `scripts/makeIcons.py` (ready) to make the icon set and add the tags to index.html.
    > Claude (2026-11-25): made from your final export: favicon.ico (16, 32, 48), favicon-32.png, apple-touch-icon.png (180), icon-192.png, icon-512.png and site.webmanifest in `public/`, and the tags in index.html. Tick this item when you've seen it in the tab and I'll move it to DONE.md.
-4. The zoom in from the landing, its issues (Jamie, 2026-11-26):
+4. The zoom in from the landing, its issues (Jamie, 2026-11-26). Fixed 2026-11-27: see Misc2 below.
    - [ ] On the left side of the apartment's slow zoom in, duplicate pictures of the apartment scene show, not lined up with each other.
    - [ ] From the cityscape to the apartment's outside shot, the site seems to slow down. It may be the effect itself; to check whether it's dropping frames.
    - [ ] There may be other issues. Claude: remind Jamie to look the whole zoom over for others when this item comes up.
@@ -145,6 +145,21 @@ Last updated: 2026-11-25 (evening).
 - Review the dialogue polish in /dialogue (MEDIUM).
 
 ---
+
+## Misc fixes (2026-11-27): please check
+
+- [ ] **Misc1. The room's camera pan over the side content.** Mousing over (or near) the side monitor and the console no longer pans the room on the avatar select, the power picker and the color vat. It goes back to its usual place there; the bands past them, at the window's edge, still pan. The dev panel is the same.
+- [ ] **Misc2. The landing zoom.**
+  - The far-left strip: the room's push showed the pictures before it (the window's) down the left edge, where the room doesn't reach on a wide window. Now they're hidden once the room has taken over, and its edges fade to dark, as the game page's room does.
+  - The slowdown: not dropped frames (measured headless: steady). The zoom's own pace dipped. The city's push sped up, then slowed into the window shot, whose pace was slower. The window shot is now quicker (1.2 s to 0.7 s), so the city only ever speeds up into it, and the room's push starts at the window's pace. If it still seems to slow on your machine, tell me and I'll measure it there.
+  - **Reminder (you asked):** look the whole zoom over for any other issues.
+- [ ] **Misc3. Your sound and music notes.**
+  - Passives: silent everywhere (the cast and the passive sounded together). The sounds are kept: `IS_PASSIVE_SFX_ON` in GameBoardPieceAbility.js, set to `true`, brings them back.
+  - Title theme, redone to be dramatic: slower (92), huge held chords, a heroic tune with wide leaps over a low brass line, timpani-like toms rolling into crashes. Listen at /music or on the start screen.
+  - Avatar select: no music while the lights and the tanks come up; the Sleazy Agent's theme starts as he shows on the side monitor, and plays on through the picker and the vat. (The calm "menu" theme isn't used now.) Should the picker and the vat have their own music, or keep his?
+- [ ] **Misc4. The coffee's steam** rises in front of the side monitor and console now; the mug stays where it is. (On the game page; in the landing's zoom it stays in the room picture, behind nothing.)
+- [ ] **Misc5. The start screen's cascade: Kaiju, not 1s and 0s.** Flat neon Kaiju silhouettes (Stompy's sprite sheet, each frame trimmed to its figure): at each column's head, random frames flash bright; the one showing as the head moves on burns into that spot, purple, and fades there as a phantom. Then, as you asked: larger (22 columns, was 33), more cascades (two falling in each column at once, and back sooner), a third slower, and the trails fade all the way to black (no faint ghosts left). Then only the Kaiju walking toward you (down the screen): at each head its walk steps on in order, no random poses.
+- [ ] **Misc6. The room's look-about pulls back too.** With the mouse in an edge band (where it pans), the view also zooms out, slowly, building speed as the pan does (about 3 s all the way), as far as the apartment picture still covers the window; it eases back in as the mouse leaves the band. The further into the band, the further out. All the way out, the whole picture shows, so there's no more to pan. Over the side content (Misc1) it doesn't zoom either. Tuning: `CAMERA_TUNING.zoomOut` in Utils/camera.js. Then, as you asked: the room's edges darken to black (about the outer 9% across, 8% down) before they fade out, and past them is pure black (was a dark grey, #0b0c0e, that read as a color); the things in front of the monitor fade out over the same edges. Tuning: `ROOM_EDGE_DARK` in Components/RoomScene.jsx.
 
 ## Playtest 41 (2026-11-25 evening): your chat list and your notes above
 

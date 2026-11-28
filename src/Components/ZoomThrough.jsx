@@ -28,7 +28,7 @@ export const ZOOM_THROUGH = {
     // at 0.348), so the room takes over seamlessly (layout phase 3; was 0.511, 0.337, a little above the old drawing)
     // 'inner': the next picture's place in this one (its top left, as shares; its size, as a share): while the next
     // blends in, it's held exactly there, so the two never slide past each other (Jamie, layout phase 3)
-    { src: "/zoom-scene/2-window.png", target: { x: (449 + 1365 * 0.348 / 2) / 1365, y: (157 + 768 * 0.348 / 2) / 768 }, span: Math.log(1 / 0.348), ms: 1200, inner: { x: 449 / 1365, y: 157 / 768, scale: 0.348 } },
+    { src: "/zoom-scene/2-window.png", target: { x: (449 + 1365 * 0.348 / 2) / 1365, y: (157 + 768 * 0.348 / 2) / 768 }, span: Math.log(1 / 0.348), ms: 700 /* (Jamie, 2026-11-27: the push seemed to slow from the city into the window. At 1200 ms its pace was below the city's, so the city sped up, then slowed into it; at 700 the city only speeds up into it) */, inner: { x: 449 / 1365, y: 157 / 768, scale: 0.348 } },
     // to the monitor's spot (worked out for the screen). (Jamie, 2026-11-24: a long, slow, steady push in, to take in the
     // room: was 1.5 s. The way back keeps its quick 'backMs')
     // (the way back from the game too: the whole push backwards, ~5 s, on the room's picture with its own monitor, not the
@@ -70,6 +70,7 @@ const getRoomEnd = () => {
   return { span: Math.log(Math.max(zoom, 1.05)), target: { x: middle.x / ROOM.size.width, y: middle.y / ROOM.size.height } };
 };
 
+const ROOM_EDGE_SHARE = 2.5; // (as RoomScene's ROOM_EDGE_FADE, in %)
 const smooth = x => {
   const t = Math.max(0, Math.min(1, x));
   return t * t * (3 - 2 * t);
@@ -183,7 +184,11 @@ export const ZoomThrough = ({ isOn, startMs, onDone, isReverse = false }) => {
           return zoom + span * ((3 - endSlope) * share * share + (endSlope - 2) * share * share * share);
         }
         if (k == pictures.length - 1 && (!isReverse || pictures[k].isBackAsIn)) {
-          const { catch: caught, catchPower, glidePower } = ZOOM_THROUGH.roomEase;
+          const { catch: caught, glidePower } = ZOOM_THROUGH.roomEase;
+          // (its catch starts at just the window's pace, whatever the room's span on this screen: no step down. Jamie,
+          // 2026-11-27)
+          const before = pictures[k - 1];
+          const catchPower = before ? Math.max(1.5, ((before.span / before.ms) * own / span - (1 - caught) * glidePower) / caught) : ZOOM_THROUGH.roomEase.catchPower;
           return zoom + span * (caught * (1 - Math.pow(1 - share, catchPower)) + (1 - caught) * (1 - Math.pow(1 - share, glidePower)));
         }
         return zoom + span * (k == pictures.length - 1 ? 1 - Math.pow(1 - share, 2) : share);
@@ -232,8 +237,18 @@ export const ZoomThrough = ({ isOn, startMs, onDone, isReverse = false }) => {
         element.style.opacity = String(blend);
         // feathered while it blends in: a soft oval, opening to the whole picture as it takes over
         const mask = blend < 1 ? `radial-gradient(ellipse 75% 75% at 50% 50%, black ${30 + 70 * blend}%, transparent 100%)` : "none";
-        element.style.maskImage = mask;
-        element.style.webkitMaskImage = mask;
+        // (once the room has taken over, its edges fade to black, as the game page's room's do: where the room doesn't
+        // reach the screen's edge (a wide window), the dark shows, not the pictures before it. Jamie, 2026-11-27)
+        const isRoomOver = k == pictures.length - 1 && blend >= 1;
+        const edgeMask = `linear-gradient(to right, transparent, black ${ROOM_EDGE_SHARE}%, black ${100 - ROOM_EDGE_SHARE}%, transparent), linear-gradient(to bottom, transparent, black ${ROOM_EDGE_SHARE}%, black ${100 - ROOM_EDGE_SHARE}%, transparent)`;
+        element.style.maskImage = isRoomOver ? edgeMask : mask;
+        element.style.webkitMaskImage = isRoomOver ? edgeMask : mask;
+        element.style.maskComposite = isRoomOver ? "intersect" : "";
+        element.style.webkitMaskComposite = isRoomOver ? "source-in" : "";
+        if (k == pictures.length - 1) {
+          pictures.slice(0, -1).forEach((_, before) => { if (refs.current[before]) refs.current[before].style.visibility = isRoomOver ? "hidden" : ""; });
+          if (frameRef.current) frameRef.current.parentElement.style.background = isRoomOver ? "black" : "";
+        }
       });
       if (isReverse) {
         if (into > 0) frameId = requestAnimationFrame(run);

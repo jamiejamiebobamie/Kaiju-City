@@ -7,11 +7,10 @@
   "note": ""
  },
  "title": {
-  "note": "Not a fan of this... not sure. it feels like it needs to be more dramatic given the logo image",
-  "verdict": "redo"
+  "note": "Not a fan of this... not sure. it feels like it needs to be more dramatic given the logo image [Claude, 2026-11-27: redone, dramatic (slower, held chords, brass line, toms and crashes); please listen again]"
  },
  "menu": {
-  "note": "Should the agent music start playing on show of agent in side monitor? can we try this?\n\nmaybe no music here to highlight the booting-up of the lights and tanks? ",
-  "verdict": "redo"
+  "verdict": "cut",
+  "note": "Should the agent music start playing on show of agent in side monitor? can we try this?\n\nmaybe no music here to highlight the booting-up of the lights and tanks?  [Claude, 2026-11-27: done that way: silent through the lights, the Agent theme from his showing on through the picker and vat; this theme unused now]"
  }
 }

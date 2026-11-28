@@ -30,7 +30,11 @@ export const DRUMS = {
   tick: { h: "x...x...x...x...", r: "..........x....." },
   drip: { r: "......x.........", h: "............x..." },
   heartbeat: { k: "x..x............" },
-  march: { k: "x...x...x...x...", s: "..x...x...x.x.x." }
+  march: { k: "x...x...x...x...", s: "..x...x...x.x.x." },
+  // the title's (Jamie, 2026-11-27: dramatic): slow, heavy, timpani-like toms, rolling into crashes
+  epic: { k: "X.....x.x.......", t: "........x.....x.", s: "....X.......X...", o: "..............x." },
+  epicRoll: { k: "X.....x.x.......", t: "........x.x.xxxx", s: "....X..........." },
+  epicCrash: { k: "X.....x.x.......", t: "........x.....x.", s: "....X.......X...", c: "X..............." }
 };
 
 export const THEMES = {
@@ -177,12 +181,14 @@ export const THEMES = {
   // - - - screens - - -
   title: {
     name: "Start screen (title)", group: "Screens",
-    context: "The game's title theme: the monitor's PLAY screen and the multiplayer setup; the landing too, once the page has been clicked.",
-    bpm: 126,
-    chords: "Dm | Bb | C | A | Dm | Bb | Gm | A",
-    bass: "octave8", harmony: "stabs", drums: ["rock", "rock", "rock", "rockFill"],
-    melody: "D5:4 A4:2 D5:2 F5:4 E5:2 D5:2 | D5:4 F5:4 Bb5:6 A5:2 | G5:4 E5:2 C5:2 G5:4 A5:2 G5:2 | E5:8 C#5:8 | D5:4 A4:2 D5:2 F5:4 A5:2 D6:2 | D6:4 C6:2 Bb5:2 F5:8 | G5:4 Bb5:4 D6:4 C6:2 Bb5:2 | A5:4 E5:4 C#5:4 A4:4",
-    voices: { chip: { lead: "pulse25" } }
+    context: "The game's title theme, redone to be dramatic as the logo is (Jamie, 2026-11-27): slower, huge held chords, a heroic tune with wide leaps over a low brass line, timpani-like toms rolling into crashes. The monitor's PLAY screen and the multiplayer setup; the landing too, once the page has been clicked.",
+    bpm: 92,
+    chords: "Dm | Bb | Gm | A | Dm | F | Bb | A7",
+    bass: "rootFifth", harmony: "pad", drums: ["epic", "epic", "epic", "epicRoll", "epicCrash", "epic", "epic", "epicRoll"],
+    isCounterAlways: true,
+    counter: "D4:12 F4:4 | D4:8 Bb3:8 | G3:12 Bb3:4 | A3:8 C#4:8 | D4:12 F4:4 | C4:8 A3:8 | Bb3:8 D4:8 | A3:8 E3:8",
+    melody: "D5:6 A4:2 D5:4 F5:4 | Bb5:8 A5:4 F5:4 | G5:6 F5:2 E5:4 D5:4 | C#5:12 A4:4 | D5:6 A4:2 D5:4 F5:4 | A5:8 C6:4 A5:4 | Bb5:6 A5:2 G5:4 Bb5:4 | A5:12 E5:2 C#5:2",
+    voices: { chip: { lead: "pulse25", counter: "pulse50", harmony: "pulse12" }, synth: { lead: "saw", counter: "pluckLow" } }
   },
   menu: {
     name: "Avatar select and picker", group: "Screens",
